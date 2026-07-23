@@ -18,6 +18,18 @@ const routes = [
         component: () => import('@/views/Dashboard.vue'),
         meta: { title: 'Dashboard', requiresAuth: true },
       },
+      {
+        path: 'nhan-su/danh-sach',
+        name: 'nhan-su-danh-sach',
+        component: () => import('@/views/nhan-su/EmployeeList.vue'),
+        meta: { title: 'Danh sách nhân sự', requiresAuth: true },
+      },
+      {
+        path: 'nhan-su/phong-ban',
+        name: 'nhan-su-phong-ban',
+        component: () => import('@/views/nhan-su/DepartmentList.vue'),
+        meta: { title: 'Phòng ban', requiresAuth: true },
+      },
     ],
   },
   {

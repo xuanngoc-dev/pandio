@@ -1,0 +1,29 @@
+[
+  {
+    "index": "/",
+    "title": "Trang chủ",
+    "icon": "House"
+  },
+  {
+    "index": "/dashboard",
+    "title": "Dashboard",
+    "icon": "Odometer"
+  },
+  {
+    "index": "/nhan-su",
+    "title": "Nhân sự",
+    "icon": "User",
+    "children": [
+      {
+        "index": "/nhan-su/danh-sach",
+        "title": "Danh sách",
+        "icon": "List"
+      },
+      {
+        "index": "/nhan-su/phong-ban",
+        "title": "Phòng ban",
+        "icon": "OfficeBuilding"
+      }
+    ]
+  }
+]

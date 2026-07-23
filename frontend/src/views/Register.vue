@@ -1,6 +1,6 @@
 <template>
   <div class="auth-wrapper">
-    <el-card class="page-card" shadow="always">
+    <el-card class="page-card register-card" shadow="always">
       <template #header>
         <div class="auth-header">
           <h2>Đăng ký</h2>
@@ -15,45 +15,67 @@
         label-position="top"
         @submit.prevent="onSubmit"
       >
-        <el-form-item label="Họ tên" prop="name">
-          <el-input
-            v-model="form.name"
-            placeholder="Nguyễn Văn A"
-            clearable
-            :prefix-icon="User"
-          />
-        </el-form-item>
+        <el-row :gutter="16">
+          <el-col :span="24">
+            <el-form-item label="Họ tên" prop="name">
+              <el-input
+                v-model="form.name"
+                placeholder="Nguyễn Văn A"
+                clearable
+                :prefix-icon="User"
+              />
+            </el-form-item>
+          </el-col>
 
-        <el-form-item label="Email" prop="email">
-          <el-input
-            v-model="form.email"
-            type="email"
-            placeholder="you@example.com"
-            clearable
-            :prefix-icon="Message"
-          />
-        </el-form-item>
+          <el-col :xs="24" :sm="12">
+            <el-form-item label="Email" prop="email">
+              <el-input
+                v-model="form.email"
+                type="email"
+                placeholder="you@example.com"
+                clearable
+                :prefix-icon="Message"
+              />
+            </el-form-item>
+          </el-col>
 
-        <el-form-item label="Mật khẩu" prop="password">
-          <el-input
-            v-model="form.password"
-            type="password"
-            placeholder="••••••••"
-            show-password
-            :prefix-icon="Lock"
-          />
-        </el-form-item>
+          <el-col :xs="24" :sm="12">
+            <el-form-item label="Số điện thoại" prop="phone">
+              <el-input
+                v-model="form.phone"
+                placeholder="0912345678"
+                clearable
+                maxlength="12"
+                :prefix-icon="Phone"
+              />
+            </el-form-item>
+          </el-col>
 
-        <el-form-item label="Xác nhận mật khẩu" prop="password_confirmation">
-          <el-input
-            v-model="form.password_confirmation"
-            type="password"
-            placeholder="••••••••"
-            show-password
-            :prefix-icon="Lock"
-            @keyup.enter="onSubmit"
-          />
-        </el-form-item>
+          <el-col :xs="24" :sm="12">
+            <el-form-item label="Mật khẩu" prop="password">
+              <el-input
+                v-model="form.password"
+                type="password"
+                placeholder="••••••••"
+                show-password
+                :prefix-icon="Lock"
+              />
+            </el-form-item>
+          </el-col>
+
+          <el-col :xs="24" :sm="12">
+            <el-form-item label="Xác nhận mật khẩu" prop="password_confirmation">
+              <el-input
+                v-model="form.password_confirmation"
+                type="password"
+                placeholder="••••••••"
+                show-password
+                :prefix-icon="Lock"
+                @keyup.enter="onSubmit"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
 
         <el-form-item>
           <el-button
@@ -78,7 +100,7 @@
 <script setup>
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { User, Message, Lock } from '@element-plus/icons-vue'
+import { User, Message, Lock, Phone } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
@@ -88,9 +110,25 @@ const formRef = ref()
 const form = reactive({
   name: '',
   email: '',
+  phone: '',
   password: '',
   password_confirmation: '',
 })
+
+const PHONE_RE = /^(0|\+84)(3|5|7|8|9)[0-9]{8}$/
+
+const validatePhone = (_rule, value, callback) => {
+  const v = String(value || '').trim()
+  if (!v) {
+    callback(new Error('Vui lòng nhập số điện thoại'))
+    return
+  }
+  if (!PHONE_RE.test(v)) {
+    callback(new Error('Số điện thoại không hợp lệ (VD: 0912345678)'))
+    return
+  }
+  callback()
+}
 
 const validateConfirm = (_rule, value, callback) => {
   if (value !== form.password) {
@@ -106,6 +144,7 @@ const rules = {
     { required: true, message: 'Vui lòng nhập email', trigger: 'blur' },
     { type: 'email', message: 'Email không hợp lệ', trigger: 'blur' },
   ],
+  phone: [{ required: true, validator: validatePhone, trigger: 'blur' }],
   password: [
     { required: true, message: 'Vui lòng nhập mật khẩu', trigger: 'blur' },
     { min: 8, message: 'Tối thiểu 8 ký tự', trigger: 'blur' },
@@ -121,7 +160,13 @@ async function onSubmit() {
   if (!valid) return
 
   try {
-    await authStore.register({ ...form })
+    await authStore.register({
+      name: form.name.trim(),
+      email: form.email.trim(),
+      phone: form.phone.trim(),
+      password: form.password,
+      password_confirmation: form.password_confirmation,
+    })
     router.push({ name: 'dashboard' })
   } catch {
     // Lỗi đã được interceptor xử lý
@@ -130,6 +175,11 @@ async function onSubmit() {
 </script>
 
 <style scoped>
+.register-card {
+  width: 100%;
+  max-width: 720px;
+}
+
 .auth-header h2 {
   margin: 0 0 4px;
 }

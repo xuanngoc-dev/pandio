@@ -4,7 +4,7 @@
       <template #header>
         <div class="auth-header">
           <h2>Đăng nhập</h2>
-          <p>Sử dụng tài khoản đã đăng ký</p>
+          <p>Đăng nhập bằng email hoặc số điện thoại</p>
         </div>
       </template>
 
@@ -15,13 +15,12 @@
         label-position="top"
         @submit.prevent="onSubmit"
       >
-        <el-form-item label="Email" prop="email">
+        <el-form-item label="Email hoặc số điện thoại" prop="login">
           <el-input
-            v-model="form.email"
-            type="email"
-            placeholder="you@example.com"
+            v-model="form.login"
+            placeholder="you@example.com hoặc 0912345678"
             clearable
-            :prefix-icon="Message"
+            :prefix-icon="User"
           />
         </el-form-item>
 
@@ -59,7 +58,7 @@
 <script setup>
 import { reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Message, Lock } from '@element-plus/icons-vue'
+import { User, Lock } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
@@ -68,15 +67,28 @@ const route = useRoute()
 
 const formRef = ref()
 const form = reactive({
-  email: '',
+  login: '',
   password: '',
 })
 
+const PHONE_RE = /^(0|\+84)(3|5|7|8|9)[0-9]{8}$/
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+const validateLogin = (_rule, value, callback) => {
+  const v = String(value || '').trim()
+  if (!v) {
+    callback(new Error('Vui lòng nhập email hoặc số điện thoại'))
+    return
+  }
+  if (EMAIL_RE.test(v) || PHONE_RE.test(v)) {
+    callback()
+    return
+  }
+  callback(new Error('Email hoặc số điện thoại không hợp lệ'))
+}
+
 const rules = {
-  email: [
-    { required: true, message: 'Vui lòng nhập email', trigger: 'blur' },
-    { type: 'email', message: 'Email không hợp lệ', trigger: 'blur' },
-  ],
+  login: [{ required: true, validator: validateLogin, trigger: 'blur' }],
   password: [
     { required: true, message: 'Vui lòng nhập mật khẩu', trigger: 'blur' },
     { min: 6, message: 'Tối thiểu 6 ký tự', trigger: 'blur' },
@@ -89,7 +101,7 @@ async function onSubmit() {
 
   try {
     await authStore.login({
-      email: form.email,
+      login: form.login.trim(),
       password: form.password,
     })
     const redirect = route.query.redirect || '/dashboard'

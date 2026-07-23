@@ -3,6 +3,9 @@
 *.log
 .env.local
 
+# Tài liệu tham khảo (local only, không deploy)
+documents/
+
 # IDE
 .idea/
 .vscode/

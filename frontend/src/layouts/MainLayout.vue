@@ -7,21 +7,7 @@
         <span v-show="!collapsed" class="brand-text">Pandio</span>
       </div>
 
-      <el-menu
-        :default-active="activeMenu"
-        :collapse="collapsed"
-        router
-        class="side-menu"
-      >
-        <el-menu-item index="/">
-          <el-icon><House /></el-icon>
-          <span>Trang chủ</span>
-        </el-menu-item>
-        <el-menu-item index="/dashboard">
-          <el-icon><Odometer /></el-icon>
-          <span>Dashboard</span>
-        </el-menu-item>
-      </el-menu>
+      <SideMenu :collapsed="collapsed" />
     </el-aside>
 
     <el-container>
@@ -83,17 +69,14 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import {
-  Monitor,
-  House,
-  Odometer,
-  Fold,
-  Expand,
-  ArrowDown,
-} from '@element-plus/icons-vue'
+import { Monitor, Fold, Expand, ArrowDown } from '@element-plus/icons-vue'
+import SideMenu from '@/components/SideMenu.vue'
+
+/** Dưới breakpoint này sidebar tự chuyển sang collapsed */
+const COLLAPSE_BREAKPOINT = 992
 
 const route = useRoute()
 const router = useRouter()
@@ -102,11 +85,16 @@ const authStore = useAuthStore()
 const collapsed = ref(false)
 const isDark = ref(document.documentElement.classList.contains('dark'))
 
-const activeMenu = computed(() => route.path)
 const pageTitle = computed(() => route.meta.title || 'Pandio')
 const avatarLetter = computed(() =>
   (authStore.user?.name || 'U').charAt(0).toUpperCase()
 )
+
+let mediaQuery = null
+
+function syncCollapseByViewport(e) {
+  collapsed.value = e.matches
+}
 
 function toggleDark(val) {
   document.documentElement.classList.toggle('dark', val)
@@ -126,6 +114,14 @@ onMounted(() => {
     isDark.value = true
     document.documentElement.classList.add('dark')
   }
+
+  mediaQuery = window.matchMedia(`(max-width: ${COLLAPSE_BREAKPOINT - 1}px)`)
+  collapsed.value = mediaQuery.matches
+  mediaQuery.addEventListener('change', syncCollapseByViewport)
+})
+
+onUnmounted(() => {
+  mediaQuery?.removeEventListener('change', syncCollapseByViewport)
 })
 </script>
 
@@ -150,10 +146,6 @@ onMounted(() => {
   font-size: 18px;
   color: var(--el-color-primary);
   border-bottom: 1px solid var(--el-border-color);
-}
-
-.side-menu {
-  border-right: none;
 }
 
 .header {
