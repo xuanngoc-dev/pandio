@@ -22,7 +22,7 @@ defineExpose({
 </script>
 
 <template>
-  <el-table ref="tableRef" v-bind="$attrs">
+  <el-table ref="tableRef" border v-bind="$attrs">
     <template v-for="(_, name) in slots" #[name]="slotData">
       <slot :name="name" v-bind="slotData || {}" />
     </template>

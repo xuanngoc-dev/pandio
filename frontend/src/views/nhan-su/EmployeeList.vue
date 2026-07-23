@@ -1,16 +1,6 @@
 <template>
   <div class="employee-list">
-    <CustomCard shadow="hover">
-      <template #header>
-        <div class="card-header">
-          <span>Danh sách nhân sự</span>
-          <CustomButton type="primary" @click="openCreate">
-            <CustomIcon><Plus /></CustomIcon>
-            Thêm nhân sự
-          </CustomButton>
-        </div>
-      </template>
-
+    <CustomCard shadow="hover" class="filter-card">
       <div class="toolbar">
         <CustomInput
           v-model="keyword"
@@ -39,24 +29,168 @@
           Tìm kiếm
         </CustomButton>
       </div>
+    </CustomCard>
 
-      <CustomTable v-loading="loading" :data="employees" stripe style="width: 100%">
-        <CustomTableColumn prop="id" label="Mã" width="80" />
-        <CustomTableColumn prop="name" label="Họ tên" min-width="160" />
-        <CustomTableColumn prop="email" label="Email" min-width="200" />
-        <CustomTableColumn prop="phone" label="SĐT" width="140" />
-        <CustomTableColumn prop="role" label="Vai trò" width="120">
+    <CustomCard shadow="hover" class="table-card">
+      <template #header>
+        <div class="card-header">
+          <span class="card-title">Danh sách nhân sự</span>
+          <CustomButton type="primary" @click="openCreate">
+            <CustomIcon><Plus /></CustomIcon>
+            Thêm nhân sự
+          </CustomButton>
+        </div>
+      </template>
+
+      <CustomTable v-loading="loading" :data="employees" stripe row-key="id" style="width: 100%">
+        <CustomTableColumn type="expand" width="40">
           <template #default="{ row }">
-            <CustomTag size="small" effect="plain">{{ roleLabel(row.role) }}</CustomTag>
+            <div class="expand-panel">
+              <section class="expand-block">
+                <h4 class="expand-title">Thông tin cá nhân</h4>
+                <dl class="detail-grid">
+                  <div><dt>CCCD</dt><dd>{{ nv(row).cccd || '—' }}</dd></div>
+                  <div><dt>Ngày sinh</dt><dd>{{ formatDate(nv(row).ngay_sinh) }}</dd></div>
+                  <div><dt>Giới tính</dt><dd>{{ genderLabel(nv(row).gioi_tinh) }}</dd></div>
+                  <div><dt>Ngày ký HĐ</dt><dd>{{ formatDate(nv(row).ngay_ky_hop_dong) }}</dd></div>
+                  <div><dt>Công chuẩn</dt><dd>{{ formatNumber(nv(row).cong_chuan) }}</dd></div>
+                  <div>
+                    <dt>Người phụ thuộc</dt>
+                    <dd>{{ nv(row).so_nguoi_phu_thuoc ?? 0 }}</dd>
+                  </div>
+                  <div>
+                    <dt>Bảo hiểm</dt>
+                    <dd>{{ nv(row).tham_gia_bao_hiem ? 'Có tham gia' : 'Không' }}</dd>
+                  </div>
+                </dl>
+              </section>
+
+              <section class="expand-block">
+                <h4 class="expand-title">Tài khoản ngân hàng</h4>
+                <dl class="detail-grid">
+                  <div><dt>Ngân hàng</dt><dd>{{ nv(row).ngan_hang || '—' }}</dd></div>
+                  <div><dt>Chi nhánh</dt><dd>{{ nv(row).chi_nhanh || '—' }}</dd></div>
+                  <div><dt>Số tài khoản</dt><dd>{{ nv(row).so_tai_khoan || '—' }}</dd></div>
+                  <div><dt>Chủ tài khoản</dt><dd>{{ nv(row).chu_tai_khoan || '—' }}</dd></div>
+                </dl>
+              </section>
+
+              <section class="expand-block expand-block--wide">
+                <h4 class="expand-title">Lương & phụ cấp</h4>
+                <dl class="detail-grid detail-grid--money">
+                  <div><dt>Lương cứng</dt><dd>{{ formatMoney(nv(row).luong_cung) }}</dd></div>
+                  <div><dt>Lương mềm</dt><dd>{{ formatMoney(nv(row).luong_mem) }}</dd></div>
+                  <div><dt>Phụ cấp</dt><dd>{{ formatMoney(nv(row).phu_cap) }}</dd></div>
+                  <div><dt>Lương cơ bản</dt><dd>{{ formatMoney(nv(row).luong_co_ban) }}</dd></div>
+                  <div><dt>Lương tăng ca</dt><dd>{{ formatMoney(nv(row).luong_tang_ca) }}</dd></div>
+                  <div><dt>PC xăng</dt><dd>{{ formatMoney(nv(row).phu_cap_xang) }}</dd></div>
+                  <div><dt>PC ăn trưa</dt><dd>{{ formatMoney(nv(row).phu_cap_an_trua) }}</dd></div>
+                  <div><dt>PC điện thoại</dt><dd>{{ formatMoney(nv(row).phu_cap_dien_thoai) }}</dd></div>
+                  <div><dt>PC nhà ở</dt><dd>{{ formatMoney(nv(row).phu_cap_nha_o) }}</dd></div>
+                  <div><dt>Thưởng chuyên cần</dt><dd>{{ formatMoney(nv(row).thuong_chuyen_can) }}</dd></div>
+                  <div>
+                    <dt>HH HĐ cuối</dt>
+                    <dd>{{ formatMoney(nv(row).hoa_hong_hop_dong_cuoi) }}</dd>
+                  </div>
+                  <div>
+                    <dt>HH HĐ trang phục</dt>
+                    <dd>{{ formatMoney(nv(row).hoa_hong_hop_dong_trang_phuc) }}</dd>
+                  </div>
+                </dl>
+              </section>
+            </div>
           </template>
         </CustomTableColumn>
-        <CustomTableColumn prop="status" label="Trạng thái" width="140">
+
+        <CustomTableColumn label="STT" width="60" align="center">
+          <template #default="{ $index }">
+            {{ (page - 1) * perPage + $index + 1 }}
+          </template>
+        </CustomTableColumn>
+
+        <CustomTableColumn label="Nhân viên" min-width="220">
           <template #default="{ row }">
-            <CustomTag :type="statusType(row.status)" size="small">
-              {{ statusLabel(row.status) }}
+            <div class="cell-person">
+              <el-avatar :size="40" :src="mediaUrl(nv(row).hinh_anh) || undefined" class="cell-avatar">
+                {{ avatarInitial(row.name) }}
+              </el-avatar>
+              <div class="cell-person-meta">
+                <div class="cell-primary">{{ row.name }}</div>
+                <div class="cell-secondary">
+                  <span>#{{ row.id }}</span>
+                  <span v-if="nv(row).gioi_tinh">· {{ genderLabel(nv(row).gioi_tinh) }}</span>
+                  <span v-if="nv(row).cccd">· {{ nv(row).cccd }}</span>
+                </div>
+              </div>
+            </div>
+          </template>
+        </CustomTableColumn>
+
+        <CustomTableColumn label="Liên hệ" min-width="180">
+          <template #default="{ row }">
+            <div class="cell-stack">
+              <span class="cell-primary">{{ row.email || '—' }}</span>
+              <span class="cell-secondary">{{ row.phone || '—' }}</span>
+            </div>
+          </template>
+        </CustomTableColumn>
+
+        <CustomTableColumn label="Công việc" min-width="200">
+          <template #default="{ row }">
+            <div class="cell-stack">
+              <span class="cell-primary">{{ deptName(row) }}</span>
+              <span class="cell-secondary">{{ nv(row).vi_tri_lam_viec || 'Chưa có vị trí' }}</span>
+              <div class="cell-tags">
+                <CustomTag v-if="nv(row).loai_nhan_vien" size="small" effect="plain">
+                  {{ employeeTypeLabel(nv(row).loai_nhan_vien) }}
+                </CustomTag>
+                <CustomTag v-if="nv(row).loai_hop_dong" size="small" type="info" effect="plain">
+                  {{ contractTypeLabel(nv(row).loai_hop_dong) }}
+                </CustomTag>
+              </div>
+            </div>
+          </template>
+        </CustomTableColumn>
+
+        <CustomTableColumn label="Ngày vào" width="120">
+          <template #default="{ row }">
+            <div class="cell-stack">
+              <span class="cell-primary">{{ formatDate(nv(row).ngay_vao_cong_ty) }}</span>
+              <span class="cell-secondary">
+                HĐ: {{ formatDate(nv(row).ngay_ky_hop_dong) }}
+              </span>
+            </div>
+          </template>
+        </CustomTableColumn>
+
+        <CustomTableColumn label="Lương" min-width="140" align="right">
+          <template #default="{ row }">
+            <div class="cell-stack cell-stack--right">
+              <span class="cell-primary cell-money">{{ formatMoney(nv(row).luong_co_ban) }}</span>
+              <span class="cell-secondary">Cứng: {{ formatMoney(nv(row).luong_cung) }}</span>
+            </div>
+          </template>
+        </CustomTableColumn>
+
+        <CustomTableColumn label="BHXH" width="100" align="center">
+          <template #default="{ row }">
+            <CustomTag :type="nv(row).tham_gia_bao_hiem ? 'success' : 'info'" size="small">
+              {{ nv(row).tham_gia_bao_hiem ? 'Có' : 'Không' }}
             </CustomTag>
           </template>
         </CustomTableColumn>
+
+        <CustomTableColumn label="Tài khoản" width="130">
+          <template #default="{ row }">
+            <div class="cell-stack">
+              <CustomTag size="small" effect="plain">{{ roleLabel(row.role) }}</CustomTag>
+              <CustomTag :type="statusType(row.status)" size="small">
+                {{ statusLabel(row.status) }}
+              </CustomTag>
+            </div>
+          </template>
+        </CustomTableColumn>
+
         <CustomTableColumn label="Thao tác" width="100" fixed="right" align="center">
           <template #default="{ row }">
             <div class="action-btns">
@@ -661,6 +795,19 @@ function onSearch() {
   loadEmployees()
 }
 
+function nv(row) {
+  return row?.nhan_vien || {}
+}
+
+function deptName(row) {
+  return nv(row).phong_ban?.ten_phong_ban || 'Chưa có phòng ban'
+}
+
+function avatarInitial(name) {
+  const text = String(name || '').trim()
+  return text ? text.charAt(0).toUpperCase() : '?'
+}
+
 function roleLabel(role) {
   return { user: 'User', admin: 'Admin' }[role] || role
 }
@@ -671,6 +818,44 @@ function statusLabel(status) {
 
 function statusType(status) {
   return { active: 'success', inactive: 'info' }[status] || 'info'
+}
+
+function genderLabel(value) {
+  return { nam: 'Nam', nu: 'Nữ', khac: 'Khác' }[value] || '—'
+}
+
+function employeeTypeLabel(value) {
+  return { full_time: 'Full time', part_time: 'Part time' }[value] || value || '—'
+}
+
+function contractTypeLabel(value) {
+  return {
+    chinh_thuc: 'Chính thức',
+    hoc_viec: 'Học việc',
+    thu_viec: 'Thử việc',
+  }[value] || value || '—'
+}
+
+function formatDate(value) {
+  if (!value) return '—'
+  const raw = String(value).slice(0, 10)
+  const [y, m, d] = raw.split('-')
+  if (!y || !m || !d) return raw
+  return `${d}/${m}/${y}`
+}
+
+function formatNumber(value) {
+  if (value == null || value === '') return '—'
+  const num = Number(value)
+  if (Number.isNaN(num)) return '—'
+  return num.toLocaleString('vi-VN')
+}
+
+function formatMoney(value) {
+  if (value == null || value === '') return '—'
+  const num = Number(value)
+  if (Number.isNaN(num)) return '—'
+  return `${num.toLocaleString('vi-VN')} ₫`
 }
 
 function clearPendingPreview() {
@@ -870,23 +1055,170 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.employee-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+}
+
+.card-title {
+  font-weight: 600;
+  color: var(--el-text-color-primary);
 }
 
 .toolbar {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  margin-bottom: 16px;
 }
 
 .action-btns {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
+
+.cell-person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.cell-avatar {
+  flex-shrink: 0;
+  background: var(--el-color-primary-light-7);
+  color: var(--el-color-primary);
+  font-weight: 600;
+}
+
+.cell-person-meta,
+.cell-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cell-stack--right {
+  align-items: flex-end;
+}
+
+.cell-primary {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cell-secondary {
+  font-size: 12px;
+  color: var(--el-text-color-regular);
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cell-money {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+.cell-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.expand-panel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 20px;
+  padding: 0 4px 2px;
+}
+
+.expand-block--wide {
+  grid-column: 1 / -1;
+}
+
+.expand-title {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+  line-height: 1.3;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 12px;
+  margin: 0;
+}
+
+.detail-grid--money {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.detail-grid > div {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  line-height: 1.35;
+}
+
+.detail-grid dt {
+  flex: 0 0 auto;
+  margin: 0;
+  font-size: 12px;
+  color: var(--el-text-color-regular);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.detail-grid dt::after {
+  content: ':';
+}
+
+.detail-grid dd {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 12px;
+  color: var(--el-text-color-primary);
+  font-weight: 600;
+  word-break: break-word;
+}
+
+@media (max-width: 1100px) {
+  .detail-grid--money {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .expand-panel {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .detail-grid,
+  .detail-grid--money {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 .salary-fields :deep(.el-input-number .el-input__inner) {

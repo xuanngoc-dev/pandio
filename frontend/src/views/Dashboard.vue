@@ -52,7 +52,7 @@
     <!-- Ví dụ ElTable -->
     <el-card shadow="hover" style="margin-top: 20px">
       <template #header>Danh sách phiên (demo table)</template>
-      <el-table :data="sessions" stripe style="width: 100%">
+      <el-table :data="sessions" stripe border style="width: 100%">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="device" label="Thiết bị" />
         <el-table-column prop="ip" label="IP" width="140" />

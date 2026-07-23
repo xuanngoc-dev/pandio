@@ -59,24 +59,5 @@ const dialogClass = computed(() => {
 .custom-dialog.el-dialog {
   width: min(var(--custom-dialog-width, 520px), calc(100vw - 32px)) !important;
   max-width: var(--custom-dialog-width, 520px);
-  max-height: calc(100vh - 48px);
-  display: flex;
-  flex-direction: column;
-  margin-top: 24px !important;
-  margin-bottom: 24px !important;
-}
-
-.custom-dialog.el-dialog .el-dialog__header {
-  flex-shrink: 0;
-}
-
-.custom-dialog.el-dialog .el-dialog__body {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-.custom-dialog.el-dialog .el-dialog__footer {
-  flex-shrink: 0;
 }
 </style>

@@ -1,16 +1,6 @@
 <template>
   <div class="department-list">
-    <CustomCard shadow="hover">
-      <template #header>
-        <div class="card-header">
-          <span>Phòng ban</span>
-          <CustomButton type="primary" @click="openCreate">
-            <CustomIcon><Plus /></CustomIcon>
-            Thêm phòng ban
-          </CustomButton>
-        </div>
-      </template>
-
+    <CustomCard shadow="hover" class="filter-card">
       <div class="toolbar">
         <CustomInput
           v-model="keyword"
@@ -29,8 +19,25 @@
           Tìm kiếm
         </CustomButton>
       </div>
+    </CustomCard>
+
+    <CustomCard shadow="hover" class="table-card">
+      <template #header>
+        <div class="card-header">
+          <span class="card-title">Danh sách phòng ban</span>
+          <CustomButton type="primary" @click="openCreate">
+            <CustomIcon><Plus /></CustomIcon>
+            Thêm phòng ban
+          </CustomButton>
+        </div>
+      </template>
 
       <CustomTable v-loading="loading" :data="departments" stripe style="width: 100%">
+        <CustomTableColumn label="STT" width="60" align="center">
+          <template #default="{ $index }">
+            {{ (page - 1) * perPage + $index + 1 }}
+          </template>
+        </CustomTableColumn>
         <CustomTableColumn prop="ma_phong_ban" label="Mã" width="120" />
         <CustomTableColumn prop="ten_phong_ban" label="Tên phòng ban" min-width="180" />
         <CustomTableColumn prop="truong_phong" label="Trưởng phòng" min-width="160">
@@ -272,17 +279,28 @@ onMounted(loadDepartments)
 </script>
 
 <style scoped>
+.department-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+}
+
+.card-title {
+  font-weight: 600;
+  color: var(--el-text-color-primary);
 }
 
 .toolbar {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  margin-bottom: 16px;
 }
 
 .action-btns {

@@ -1,4 +1,20 @@
 /* Style toàn cục cho SPA */
+
+/* Tăng độ tương phản chữ — sáng: đen; tối: trắng (theo theme) */
+:root {
+  --el-text-color-primary: #141414;
+  --el-text-color-regular: #1f1f1f;
+  --el-text-color-secondary: #303133;
+  --el-text-color-placeholder: #606266;
+}
+
+html.dark {
+  --el-text-color-primary: #f0f2f5;
+  --el-text-color-regular: #e5eaf3;
+  --el-text-color-secondary: #cfd3dc;
+  --el-text-color-placeholder: #a3a6ad;
+}
+
 html,
 body,
 #app {
@@ -32,4 +48,27 @@ a {
 
 html.dark .auth-wrapper {
   background: linear-gradient(135deg, #1a1a1a 0%, #141414 50%, #1d1e1f 100%);
+}
+
+/* Bảng dữ liệu: thu gọn hàng tiêu đề cột cho cân đối hơn */
+.el-table {
+  th.el-table__cell {
+    padding: 6px 0;
+  }
+
+  th.el-table__cell > .cell {
+    font-size: 13px;
+    line-height: 1.3;
+    font-weight: 600;
+    padding: 0 8px;
+  }
+
+  td.el-table__cell {
+    padding: 6px 0;
+  }
+
+  td.el-table__cell > .cell {
+    line-height: 1.35;
+    padding: 0 8px;
+  }
 }
