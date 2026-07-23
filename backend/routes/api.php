@@ -23,8 +23,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'me']);
 
-    // Nhân sự (users)
-    Route::get('/users', [UserController::class, 'index']);
+    // Nhân sự (users + nhan_vien)
+    Route::post('/users/upload-hinh-anh', [UserController::class, 'uploadHinhAnh']);
+    Route::apiResource('users', UserController::class);
 
     // Phòng ban
     Route::apiResource('phong-ban', PhongBanController::class);

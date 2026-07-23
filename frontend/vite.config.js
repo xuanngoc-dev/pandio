@@ -15,8 +15,9 @@ export default defineConfig({
       imports: ['vue', 'vue-router', 'pinia'],
       dts: 'src/auto-imports.d.ts',
     }),
-    // On-demand Element Plus components (kèm CSS khi dùng)
+    // Auto-import component local (Custom*) + Element Plus on-demand
     Components({
+      dirs: ['src/components', 'src/components/element'],
       resolvers: [ElementPlusResolver()],
       dts: 'src/components.d.ts',
     }),

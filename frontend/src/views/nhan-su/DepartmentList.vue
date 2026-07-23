@@ -1,135 +1,207 @@
 <template>
   <div class="department-list">
-    <el-card shadow="hover">
+    <CustomCard shadow="hover">
       <template #header>
         <div class="card-header">
           <span>Phòng ban</span>
-          <el-button type="primary" @click="openCreate">
-            <el-icon><Plus /></el-icon>
+          <CustomButton type="primary" @click="openCreate">
+            <CustomIcon><Plus /></CustomIcon>
             Thêm phòng ban
-          </el-button>
+          </CustomButton>
         </div>
       </template>
 
-      <el-table :data="departments" stripe style="width: 100%">
-        <el-table-column prop="ma" label="Mã" width="100" />
-        <el-table-column prop="ten" label="Tên phòng ban" min-width="180" />
-        <el-table-column prop="chi_nhanh" label="Chi nhánh" min-width="180" />
-        <el-table-column prop="truong_phong" label="Trưởng phòng" min-width="160" />
-        <el-table-column prop="so_nhan_su" label="Số nhân sự" width="120" align="center" />
-        <el-table-column label="Thao tác" width="140" fixed="right">
-          <template #default="{ row }">
-            <el-button type="primary" link @click="openEdit(row)">Sửa</el-button>
-            <el-button type="danger" link @click="remove(row)">Xóa</el-button>
+      <div class="toolbar">
+        <CustomInput
+          v-model="keyword"
+          placeholder="Tìm theo mã, tên, trưởng phòng..."
+          clearable
+          style="max-width: 300px"
+          @clear="onSearch"
+          @keyup.enter="onSearch"
+        >
+          <template #prefix>
+            <CustomIcon><Search /></CustomIcon>
           </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
+        </CustomInput>
+        <CustomButton type="primary" plain @click="onSearch">
+          <CustomIcon><Search /></CustomIcon>
+          Tìm kiếm
+        </CustomButton>
+      </div>
 
-    <el-dialog
+      <CustomTable v-loading="loading" :data="departments" stripe style="width: 100%">
+        <CustomTableColumn prop="ma_phong_ban" label="Mã" width="120" />
+        <CustomTableColumn prop="ten_phong_ban" label="Tên phòng ban" min-width="180" />
+        <CustomTableColumn prop="truong_phong" label="Trưởng phòng" min-width="160">
+          <template #default="{ row }">
+            {{ row.truong_phong || '—' }}
+          </template>
+        </CustomTableColumn>
+        <CustomTableColumn prop="mo_ta" label="Mô tả" min-width="200" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ row.mo_ta || '—' }}
+          </template>
+        </CustomTableColumn>
+        <CustomTableColumn prop="ghi_chu" label="Ghi chú" min-width="160" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ row.ghi_chu || '—' }}
+          </template>
+        </CustomTableColumn>
+        <CustomTableColumn label="Thao tác" width="100" fixed="right" align="center">
+          <template #default="{ row }">
+            <div class="action-btns">
+              <CustomTooltip content="Sửa" placement="top">
+                <CustomButton type="primary" link :icon="Edit" @click="openEdit(row)" />
+              </CustomTooltip>
+              <CustomTooltip content="Xóa" placement="top">
+                <CustomButton type="danger" link :icon="Delete" @click="remove(row)" />
+              </CustomTooltip>
+            </div>
+          </template>
+        </CustomTableColumn>
+      </CustomTable>
+
+      <Pagination
+        v-model="page"
+        v-model:page-size="perPage"
+        :total="total"
+        :disabled="loading"
+        @change="loadDepartments"
+      />
+    </CustomCard>
+
+    <CustomDialog
       v-model="dialogVisible"
       :title="editingId ? 'Sửa phòng ban' : 'Thêm phòng ban'"
-      width="480px"
-      destroy-on-close
+      :width="780"
     >
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="120px">
-        <el-form-item label="Mã" prop="ma">
-          <el-input v-model="form.ma" :disabled="!!editingId" />
-        </el-form-item>
-        <el-form-item label="Tên" prop="ten">
-          <el-input v-model="form.ten" />
-        </el-form-item>
-        <el-form-item label="Chi nhánh" prop="chi_nhanh">
-          <el-select v-model="form.chi_nhanh" style="width: 100%">
-            <el-option label="Sora Rooftop – Bạch Mai" value="Sora Rooftop – Bạch Mai" />
-            <el-option label="Biệt Thự Colonia – Tân Mai" value="Biệt Thự Colonia – Tân Mai" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="Trưởng phòng" prop="truong_phong">
-          <el-input v-model="form.truong_phong" />
-        </el-form-item>
-      </el-form>
+      <CustomForm ref="formRef" :model="form" :rules="rules">
+        <CustomRow :gutter="16">
+          <CustomCol :xs="24" :sm="12" :md="8">
+            <CustomFormItem label="Mã" prop="ma_phong_ban">
+              <CustomInput
+                v-model="form.ma_phong_ban"
+                :disabled="!!editingId"
+                placeholder="VD: PB01"
+              />
+            </CustomFormItem>
+          </CustomCol>
+          <CustomCol :xs="24" :sm="12" :md="8">
+            <CustomFormItem label="Tên" prop="ten_phong_ban">
+              <CustomInput v-model="form.ten_phong_ban" placeholder="Tên phòng ban" />
+            </CustomFormItem>
+          </CustomCol>
+          <CustomCol :xs="24" :sm="12" :md="8">
+            <CustomFormItem label="Trưởng phòng" prop="truong_phong">
+              <CustomInput v-model="form.truong_phong" placeholder="Để trống nếu chưa có" />
+            </CustomFormItem>
+          </CustomCol>
+          <CustomCol :xs="24" :sm="12" :md="12">
+            <CustomFormItem label="Mô tả" prop="mo_ta">
+              <CustomInput
+                v-model="form.mo_ta"
+                type="textarea"
+                :rows="2"
+                placeholder="Mô tả (tuỳ chọn)"
+              />
+            </CustomFormItem>
+          </CustomCol>
+          <CustomCol :xs="24" :sm="12" :md="12">
+            <CustomFormItem label="Ghi chú" prop="ghi_chu">
+              <CustomInput
+                v-model="form.ghi_chu"
+                type="textarea"
+                :rows="2"
+                placeholder="Ghi chú (tuỳ chọn)"
+              />
+            </CustomFormItem>
+          </CustomCol>
+        </CustomRow>
+      </CustomForm>
       <template #footer>
-        <el-button @click="dialogVisible = false">Hủy</el-button>
-        <el-button type="primary" @click="save">Lưu</el-button>
+        <CustomButton @click="dialogVisible = false">Hủy</CustomButton>
+        <CustomButton type="primary" :loading="saving" @click="save">Lưu</CustomButton>
       </template>
-    </el-dialog>
+    </CustomDialog>
   </div>
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Delete, Edit, Plus, Search } from '@element-plus/icons-vue'
+import {
+  createPhongBan,
+  deletePhongBan,
+  fetchPhongBan,
+  updatePhongBan,
+} from '@/api/phongBan'
+import {
+  CustomButton,
+  CustomCard,
+  CustomCol,
+  CustomDialog,
+  CustomForm,
+  CustomFormItem,
+  CustomIcon,
+  CustomInput,
+  CustomRow,
+  CustomTable,
+  CustomTableColumn,
+  CustomTooltip,
+} from '@/components/element'
+import Pagination from '@/components/Pagination.vue'
 
-const departments = ref([
-  {
-    id: 1,
-    ma: 'PB01',
-    ten: 'Sale',
-    chi_nhanh: 'Sora Rooftop – Bạch Mai',
-    truong_phong: 'Trần Thị Bình',
-    so_nhan_su: 8,
-  },
-  {
-    id: 2,
-    ma: 'PB02',
-    ten: 'Sản xuất',
-    chi_nhanh: 'Sora Rooftop – Bạch Mai',
-    truong_phong: 'Lê Minh Cường',
-    so_nhan_su: 10,
-  },
-  {
-    id: 3,
-    ma: 'PB03',
-    ten: 'Tài chính-NS',
-    chi_nhanh: 'Sora Rooftop – Bạch Mai',
-    truong_phong: 'Nguyễn Văn An',
-    so_nhan_su: 4,
-  },
-  {
-    id: 4,
-    ma: 'PB04',
-    ten: 'Trang phục',
-    chi_nhanh: 'Biệt Thự Colonia – Tân Mai',
-    truong_phong: 'Phạm Thu Dung',
-    so_nhan_su: 5,
-  },
-  {
-    id: 5,
-    ma: 'PB05',
-    ten: 'Marketing',
-    chi_nhanh: 'Sora Rooftop – Bạch Mai',
-    truong_phong: '—',
-    so_nhan_su: 2,
-  },
-  {
-    id: 6,
-    ma: 'PB06',
-    ten: 'Kho',
-    chi_nhanh: 'Biệt Thự Colonia – Tân Mai',
-    truong_phong: '—',
-    so_nhan_su: 2,
-  },
-])
+const departments = ref([])
+const loading = ref(false)
+const saving = ref(false)
+const page = ref(1)
+const perPage = ref(10)
+const total = ref(0)
+const keyword = ref('')
 
 const dialogVisible = ref(false)
 const editingId = ref(null)
 const formRef = ref(null)
 
 const emptyForm = () => ({
-  ma: '',
-  ten: '',
-  chi_nhanh: '',
+  ma_phong_ban: '',
+  ten_phong_ban: '',
   truong_phong: '',
+  mo_ta: '',
+  ghi_chu: '',
 })
 
 const form = reactive(emptyForm())
 
 const rules = {
-  ma: [{ required: true, message: 'Vui lòng nhập mã', trigger: 'blur' }],
-  ten: [{ required: true, message: 'Vui lòng nhập tên phòng ban', trigger: 'blur' }],
-  chi_nhanh: [{ required: true, message: 'Vui lòng chọn chi nhánh', trigger: 'change' }],
+  ma_phong_ban: [{ required: true, message: 'Vui lòng nhập mã phòng ban', trigger: 'blur' }],
+  ten_phong_ban: [{ required: true, message: 'Vui lòng nhập tên phòng ban', trigger: 'blur' }],
+}
+
+async function loadDepartments() {
+  loading.value = true
+  try {
+    const { data } = await fetchPhongBan({
+      page: page.value,
+      per_page: perPage.value,
+      keyword: keyword.value.trim() || undefined,
+    })
+    departments.value = data.data || []
+    total.value = data.total || 0
+    page.value = data.current_page || page.value
+  } catch {
+    departments.value = []
+    total.value = 0
+  } finally {
+    loading.value = false
+  }
+}
+
+function onSearch() {
+  page.value = 1
+  loadDepartments()
 }
 
 function openCreate() {
@@ -141,10 +213,11 @@ function openCreate() {
 function openEdit(row) {
   editingId.value = row.id
   Object.assign(form, {
-    ma: row.ma,
-    ten: row.ten,
-    chi_nhanh: row.chi_nhanh,
-    truong_phong: row.truong_phong,
+    ma_phong_ban: row.ma_phong_ban,
+    ten_phong_ban: row.ten_phong_ban,
+    truong_phong: row.truong_phong || '',
+    mo_ta: row.mo_ta || '',
+    ghi_chu: row.ghi_chu || '',
   })
   dialogVisible.value = true
 }
@@ -153,45 +226,49 @@ async function save() {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
 
-  if (editingId.value) {
-    const idx = departments.value.findIndex((d) => d.id === editingId.value)
-    if (idx !== -1) {
-      departments.value[idx] = {
-        ...departments.value[idx],
-        ten: form.ten,
-        chi_nhanh: form.chi_nhanh,
-        truong_phong: form.truong_phong || '—',
-      }
-    }
-    ElMessage.success('Đã cập nhật phòng ban.')
-  } else {
-    if (departments.value.some((d) => d.ma === form.ma)) {
-      ElMessage.error('Mã phòng ban đã tồn tại.')
-      return
-    }
-    const nextId = Math.max(0, ...departments.value.map((d) => d.id)) + 1
-    departments.value.push({
-      id: nextId,
-      ma: form.ma,
-      ten: form.ten,
-      chi_nhanh: form.chi_nhanh,
-      truong_phong: form.truong_phong || '—',
-      so_nhan_su: 0,
-    })
-    ElMessage.success('Đã thêm phòng ban.')
+  saving.value = true
+  const payload = {
+    ma_phong_ban: form.ma_phong_ban.trim(),
+    ten_phong_ban: form.ten_phong_ban.trim(),
+    truong_phong: form.truong_phong?.trim() || null,
+    mo_ta: form.mo_ta?.trim() || null,
+    ghi_chu: form.ghi_chu?.trim() || null,
   }
-  dialogVisible.value = false
+
+  try {
+    if (editingId.value) {
+      await updatePhongBan(editingId.value, payload)
+      ElMessage.success('Đã cập nhật phòng ban.')
+    } else {
+      await createPhongBan(payload)
+      ElMessage.success('Đã thêm phòng ban.')
+    }
+    dialogVisible.value = false
+    await loadDepartments()
+  } catch {
+    // Lỗi đã được axios interceptor xử lý
+  } finally {
+    saving.value = false
+  }
 }
 
 async function remove(row) {
-  await ElMessageBox.confirm(`Xóa phòng ban "${row.ten}"?`, 'Xác nhận', {
+  await ElMessageBox.confirm(`Xóa phòng ban "${row.ten_phong_ban}"?`, 'Xác nhận', {
     type: 'warning',
     confirmButtonText: 'Xóa',
     cancelButtonText: 'Hủy',
   })
-  departments.value = departments.value.filter((d) => d.id !== row.id)
-  ElMessage.success('Đã xóa phòng ban.')
+
+  try {
+    await deletePhongBan(row.id)
+    ElMessage.success('Đã xóa phòng ban.')
+    await loadDepartments()
+  } catch {
+    // Lỗi đã được axios interceptor xử lý
+  }
 }
+
+onMounted(loadDepartments)
 </script>
 
 <style scoped>
@@ -199,5 +276,18 @@ async function remove(row) {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.action-btns {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 </style>
