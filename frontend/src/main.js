@@ -1,0 +1,28 @@
+import { createApp } from 'vue'
+import { createPinia } from 'pinia'
+import ElementPlus from 'element-plus'
+import * as ElementPlusIconsVue from '@element-plus/icons-vue'
+import 'element-plus/dist/index.css'
+import 'element-plus/theme-chalk/dark/css-vars.css'
+
+import App from './App.vue'
+import router from './router'
+import './styles/index.scss'
+
+const app = createApp(App)
+
+// Đăng ký toàn bộ icon Element Plus (global)
+for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+  app.component(key, component)
+}
+
+app.use(createPinia())
+app.use(router)
+app.use(ElementPlus)
+
+// Dark mode mặc định theo .env
+if (import.meta.env.VITE_DARK_MODE === 'true') {
+  document.documentElement.classList.add('dark')
+}
+
+app.mount('#app')

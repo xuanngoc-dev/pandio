@@ -1,0 +1,9 @@
+# Root
+.DS_Store
+*.log
+.env.local
+
+# IDE
+.idea/
+.vscode/
+*.swp

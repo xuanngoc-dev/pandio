@@ -1,0 +1,10 @@
+# Theme Element Plus (tuỳ biến SCSS nếu dùng importStyle: 'sass')
+# Hiện tại main.js import CSS global — file này để sẵn khi cần custom theme.
+
+@forward 'element-plus/theme-chalk/src/common/var.scss' with (
+  $colors: (
+    'primary': (
+      'base': #409eff,
+    ),
+  )
+);
