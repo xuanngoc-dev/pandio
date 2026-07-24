@@ -9,6 +9,9 @@
       <el-tab-pane label="Nhà cung cấp trang phục" name="nha-cung-cap">
         <NhaCungCapTrangPhuc />
       </el-tab-pane>
+      <el-tab-pane label="Đặt mua trang phục" name="dat-mua">
+        <DatMuaTrangPhuc />
+      </el-tab-pane>
     </el-tabs>
   </div>
 </template>
@@ -16,6 +19,7 @@
 <script setup>
 import { ref } from 'vue'
 import DanhMucTrangPhuc from './trang-phuc/DanhMucTrangPhuc.vue'
+import DatMuaTrangPhuc from './trang-phuc/DatMuaTrangPhuc.vue'
 import NhaCungCapTrangPhuc from './trang-phuc/NhaCungCapTrangPhuc.vue'
 
 const activeTab = ref('danh-muc')
