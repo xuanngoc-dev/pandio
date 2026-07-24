@@ -11,8 +11,8 @@ const slots = useSlots()
 
 <template>
   <el-table-column v-bind="$attrs">
-    <template v-for="(_, name) in slots" #[name]="slotData">
-      <slot :name="name" v-bind="slotData || {}" />
+    <template v-for="(_, name) in slots" #[name]="scope">
+      <slot :name="name" v-bind="scope || {}" />
     </template>
   </el-table-column>
 </template>

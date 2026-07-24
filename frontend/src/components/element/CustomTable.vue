@@ -1,13 +1,13 @@
 <script setup>
 /**
  * CustomTable — wrapper el-table.
+ * Default slot phải là con trực tiếp của el-table để cột được đăng ký đúng.
  */
-import { ref, useSlots } from 'vue'
+import { ref } from 'vue'
 
 defineOptions({ name: 'CustomTable', inheritAttrs: false })
 
 const tableRef = ref(null)
-const slots = useSlots()
 
 defineExpose({
   clearSelection: (...args) => tableRef.value?.clearSelection?.(...args),
@@ -23,8 +23,12 @@ defineExpose({
 
 <template>
   <el-table ref="tableRef" border v-bind="$attrs">
-    <template v-for="(_, name) in slots" #[name]="slotData">
-      <slot :name="name" v-bind="slotData || {}" />
+    <slot />
+    <template v-if="$slots.append" #append>
+      <slot name="append" />
+    </template>
+    <template v-if="$slots.empty" #empty>
+      <slot name="empty" />
     </template>
   </el-table>
 </template>

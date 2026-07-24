@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CauHinhChiNhanhController;
+use App\Http\Controllers\Api\CauHinhGioLamViecController;
+use App\Http\Controllers\Api\CauHinhNgayNghiController;
 use App\Http\Controllers\Api\CauHinhTaiKhoanThanhToanController;
 use App\Http\Controllers\Api\CauHinhThongTinStudioController;
 use App\Http\Controllers\Api\IpDiemDanhController;
@@ -46,4 +48,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Cấu hình chi nhánh
     Route::apiResource('cau-hinh-chi-nhanh', CauHinhChiNhanhController::class);
+
+    // Cấu hình giờ làm việc
+    Route::apiResource('cau-hinh-gio-lam-viec', CauHinhGioLamViecController::class);
+
+    // Cấu hình ngày nghỉ
+    Route::apiResource('cau-hinh-ngay-nghi', CauHinhNgayNghiController::class);
 });
