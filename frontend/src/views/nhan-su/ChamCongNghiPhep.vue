@@ -1,7 +1,43 @@
 <template>
-  <PagePlaceholder title="Chấm công · Nghỉ phép" />
+  <div class="cham-cong-nghi-phep">
+    <h2 class="page-title">Chấm công · Nghỉ phép</h2>
+
+    <el-tabs v-model="activeTab" class="page-tabs">
+      <el-tab-pane label="Chấm công tháng" name="cham-cong-thang">
+        <ChamCongThang />
+      </el-tab-pane>
+      <el-tab-pane label="Đăng ký ca" name="dang-ky-ca">
+        <DangKyCa />
+      </el-tab-pane>
+      <el-tab-pane label="Nghỉ phép" name="nghi-phep">
+        <NghiPhep />
+      </el-tab-pane>
+    </el-tabs>
+  </div>
 </template>
 
 <script setup>
-import PagePlaceholder from '@/components/PagePlaceholder.vue'
+import { ref } from 'vue'
+import ChamCongThang from './cham-cong-nghi-phep/ChamCongThang.vue'
+import DangKyCa from './cham-cong-nghi-phep/DangKyCa.vue'
+import NghiPhep from './cham-cong-nghi-phep/NghiPhep.vue'
+
+const activeTab = ref('cham-cong-thang')
 </script>
+
+<style scoped lang="scss">
+.cham-cong-nghi-phep {
+  .page-title {
+    margin: 0 0 16px;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--el-text-color-primary);
+  }
+
+  .page-tabs {
+    :deep(.el-tabs__header) {
+      margin-bottom: 16px;
+    }
+  }
+}
+</style>

@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\IpDiemDanhController;
 use App\Http\Controllers\Api\PhongBanController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\VaiTroController;
+use App\Http\Controllers\Api\XinNghiPhepController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -39,6 +40,11 @@ Route::middleware('auth:sanctum')->group(function () {
     // Nhân sự (users + nhan_vien)
     Route::post('/users/upload-hinh-anh', [UserController::class, 'uploadHinhAnh']);
     Route::apiResource('users', UserController::class);
+
+    // Xin nghỉ phép
+    Route::post('/xin-nghi-phep/{xin_nghi_phep}/duyet', [XinNghiPhepController::class, 'duyet']);
+    Route::post('/xin-nghi-phep/{xin_nghi_phep}/tu-choi', [XinNghiPhepController::class, 'tuChoi']);
+    Route::apiResource('xin-nghi-phep', XinNghiPhepController::class);
 
     // Phòng ban
     Route::apiResource('phong-ban', PhongBanController::class);
