@@ -1,11 +1,12 @@
 import axios from 'axios'
-import { ElMessage } from 'element-plus'
+import { ElLoading, ElMessage } from 'element-plus'
 import router from '@/router'
 
 /**
  * Axios instance dùng chung cho toàn bộ API.
  * - baseURL lấy từ .env
  * - Tự gắn Bearer token
+ * - Fullscreen loading đến khi có phản hồi (bỏ qua nếu config.skipLoading = true)
  * - Xử lý 401: xoá session + chuyển về Login
  */
 const api = axios.create({
@@ -17,7 +18,32 @@ const api = axios.create({
   },
 })
 
-// Request interceptor: gắn token vào mỗi request
+let loadingInstance = null
+let pendingCount = 0
+
+function startLoading() {
+  if (pendingCount === 0) {
+    loadingInstance = ElLoading.service({
+      fullscreen: true,
+      lock: true,
+      text: 'Đang tải...',
+      background: 'rgba(0, 0, 0, 0.45)',
+    })
+  }
+  pendingCount += 1
+}
+
+function stopLoading() {
+  if (pendingCount > 0) {
+    pendingCount -= 1
+  }
+  if (pendingCount === 0 && loadingInstance) {
+    loadingInstance.close()
+    loadingInstance = null
+  }
+}
+
+// Request interceptor: gắn token + bật loading
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token')
@@ -32,15 +58,29 @@ api.interceptors.request.use(
       }
     }
 
+    if (!config.skipLoading) {
+      startLoading()
+      config._showLoading = true
+    }
+
     return config
   },
   (error) => Promise.reject(error)
 )
 
-// Response interceptor: xử lý lỗi chung + 401
+// Response interceptor: tắt loading + xử lý lỗi chung + 401
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (response.config?._showLoading) {
+      stopLoading()
+    }
+    return response
+  },
   async (error) => {
+    if (error.config?._showLoading) {
+      stopLoading()
+    }
+
     const status = error.response?.status
     const originalRequest = error.config
 

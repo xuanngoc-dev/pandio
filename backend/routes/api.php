@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CauHinhTaiKhoanThanhToanController;
+use App\Http\Controllers\Api\CauHinhThongTinStudioController;
+use App\Http\Controllers\Api\IpDiemDanhController;
 use App\Http\Controllers\Api\PhongBanController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
@@ -29,4 +32,14 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Phòng ban
     Route::apiResource('phong-ban', PhongBanController::class);
+
+    // IP điểm danh
+    Route::apiResource('ip-diem-danh', IpDiemDanhController::class);
+
+    // Cấu hình thông tin studio
+    Route::post('/cau-hinh-thong-tin-studio/upload-logo', [CauHinhThongTinStudioController::class, 'uploadLogo']);
+    Route::apiResource('cau-hinh-thong-tin-studio', CauHinhThongTinStudioController::class);
+
+    // Cấu hình tài khoản thanh toán
+    Route::apiResource('cau-hinh-tai-khoan-thanh-toan', CauHinhTaiKhoanThanhToanController::class);
 });
