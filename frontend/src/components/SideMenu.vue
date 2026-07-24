@@ -87,7 +87,13 @@ const props = defineProps({
 
 const route = useRoute()
 const layoutStore = useLayoutStore()
-const activeMenu = computed(() => route.path)
+/** Giữ menu cha active khi đang ở trang cấu hình con. */
+const activeMenu = computed(() => {
+  if (route.path.startsWith('/he-thong/cau-hinh-quan-tri')) {
+    return '/he-thong/cau-hinh-quan-tri'
+  }
+  return route.path
+})
 const collapsed = computed(() => props.collapsed)
 
 /** Các nhóm đang mở (theo index) */
