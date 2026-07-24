@@ -143,6 +143,7 @@ import {
   fetchDiemDanh,
   getDiemDanhToday,
 } from '@/api/diemDanh'
+import { getCauHinhJson } from '@/api/cauHinhJson'
 import {
   CustomButton,
   CustomCard,
@@ -162,6 +163,7 @@ const total = ref(0)
 
 const canCheckin = ref(true)
 const canCheckout = ref(false)
+const kiemSoatIpDiemDanh = ref(false)
 const alreadyDone = computed(() => !canCheckin.value && !canCheckout.value)
 
 function formatTime(value) {
@@ -198,6 +200,16 @@ function formatMoney(value) {
   const num = Number(value)
   if (Number.isNaN(num) || num === 0) return '—'
   return `${num.toLocaleString('vi-VN')} ₫`
+}
+
+async function loadChamCongConfig() {
+  try {
+    const { data } = await getCauHinhJson({ skipLoading: true })
+    const group = data?.thong_tin_cau_hinh?.cham_cong_tang_ca || {}
+    kiemSoatIpDiemDanh.value = Boolean(group.kiem_soat_ip_diem_danh?.gia_tri)
+  } catch {
+    kiemSoatIpDiemDanh.value = false
+  }
 }
 
 async function loadTodayStatus() {
@@ -242,12 +254,15 @@ async function loadItems() {
 async function onCheckInOut() {
   checking.value = true
   try {
-    const clientIp = await fetchClientIp()
+    const payload = {}
+    if (kiemSoatIpDiemDanh.value) {
+      payload.ip = await fetchClientIp()
+    }
     if (canCheckout.value) {
-      await checkoutDiemDanh({ ip: clientIp })
+      await checkoutDiemDanh(payload)
       ElMessage.success('Checkout thành công')
     } else {
-      await checkinDiemDanh({ ip: clientIp })
+      await checkinDiemDanh(payload)
       ElMessage.success('Checkin thành công')
     }
     await Promise.all([loadTodayStatus(), loadItems()])
@@ -262,7 +277,7 @@ async function onCheckInOut() {
 }
 
 onMounted(async () => {
-  await Promise.all([loadTodayStatus(), loadItems()])
+  await Promise.all([loadChamCongConfig(), loadTodayStatus(), loadItems()])
 })
 </script>
 

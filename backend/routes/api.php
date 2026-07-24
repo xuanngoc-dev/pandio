@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CauHinhCaLamViecController;
+use App\Http\Controllers\Api\ConceptController;
 use App\Http\Controllers\Api\CauHinhChiNhanhController;
 use App\Http\Controllers\Api\CauHinhFormDanhGiaMauController;
 use App\Http\Controllers\Api\CauHinhGioLamViecController;
@@ -9,6 +10,7 @@ use App\Http\Controllers\Api\CauHinhJsonController;
 use App\Http\Controllers\Api\CauHinhNgayNghiController;
 use App\Http\Controllers\Api\CauHinhTaiKhoanThanhToanController;
 use App\Http\Controllers\Api\CauHinhThongTinStudioController;
+use App\Http\Controllers\Api\DanhMucConceptController;
 use App\Http\Controllers\Api\DangKyCaLamViecController;
 use App\Http\Controllers\Api\DiemDanhController;
 use App\Http\Controllers\Api\IpDiemDanhController;
@@ -92,4 +94,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Cấu hình JSON động
     Route::get('/cau-hinh-json', [CauHinhJsonController::class, 'show']);
     Route::put('/cau-hinh-json', [CauHinhJsonController::class, 'update']);
+
+    // Concept
+    Route::post('/concept/upload-hinh-anh', [ConceptController::class, 'uploadHinhAnh']);
+    Route::apiResource('concept', ConceptController::class);
+    Route::apiResource('danh-muc-concept', DanhMucConceptController::class);
 });

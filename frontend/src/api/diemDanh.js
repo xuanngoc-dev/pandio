@@ -45,16 +45,16 @@ export function getDiemDanhToday(config = {}) {
 
 /**
  * Checkin điểm danh.
- * @param {{ ip: string }} payload
+ * @param {{ ip?: string }} payload — ip bắt buộc khi bật kiểm soát IP
  */
-export function checkinDiemDanh(payload) {
+export function checkinDiemDanh(payload = {}) {
   return api.post('/diem-danh/checkin', payload)
 }
 
 /**
  * Checkout điểm danh.
- * @param {{ ip: string }} payload
+ * @param {{ ip?: string }} payload — ip bắt buộc khi bật kiểm soát IP
  */
-export function checkoutDiemDanh(payload) {
+export function checkoutDiemDanh(payload = {}) {
   return api.post('/diem-danh/checkout', payload)
 }

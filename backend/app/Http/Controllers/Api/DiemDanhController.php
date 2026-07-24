@@ -17,6 +17,8 @@ class DiemDanhController extends Controller
 {
     private const TIMEZONE = 'Asia/Ho_Chi_Minh';
 
+    private const GHI_CHU_CHUA_DANG_KY_CA = 'Điểm danh chưa đăng ký ca';
+
     /**
      * Danh sách điểm danh — phân trang + lọc.
      *
@@ -110,19 +112,15 @@ class DiemDanhController extends Controller
      */
     public function checkin(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'ip' => ['required', 'string', 'max:45', 'ip'],
-        ]);
+        $clientIp = $this->resolveClientIp($request);
 
-        $clientIp = $validated['ip'];
         $user = $request->user();
         $now = Carbon::now(self::TIMEZONE);
         $today = $now->copy()->startOfDay();
 
-        $this->assertIpAllowed($clientIp);
-
-        $dangKy = $this->requireDangKyCaHomNay((int) $user->id, $today);
-        $caLam = $dangKy->caLam;
+        $dangKy = $this->resolveDangKyCaHomNay((int) $user->id, $today);
+        $caLam = $dangKy?->caLam;
+        $chuaDangKyCa = $caLam === null;
 
         $existing = DiemDanh::query()
             ->where('user_id', $user->id)
@@ -135,29 +133,45 @@ class DiemDanhController extends Controller
             ]);
         }
 
-        $gioBatDau = $this->combineDateAndTime($today, $caLam->gio_bat_dau);
-        $lateMinutes = max(0, (int) $gioBatDau->diffInMinutes($now, false));
+        if ($chuaDangKyCa) {
+            $payload = [
+                'user_id' => $user->id,
+                'ngay_lam' => $today->toDateString(),
+                'ca_lam_id' => null,
+                'gio_vao' => $now->format('Y-m-d H:i:s'),
+                'di_muon' => 'khong',
+                'thoi_gian_di_muon' => 0,
+                'tien_phat_di_muon' => 0,
+                'ly_do' => null,
+                'ghi_chu' => self::GHI_CHU_CHUA_DANG_KY_CA,
+                'ip_checkin' => $clientIp,
+            ];
+        } else {
+            $gioBatDau = $this->combineDateAndTime($today, $caLam->gio_bat_dau);
+            $lateMinutes = max(0, (int) $gioBatDau->diffInMinutes($now, false));
 
-        $waiveLate = $this->hasApprovedLeave((int) $user->id, $today, 'di_muon');
-        $lyDo = $this->resolveLyDo((int) $user->id, $today);
+            $waiveLate = $this->hasApprovedLeave((int) $user->id, $today, 'di_muon');
+            $lyDo = $this->resolveLyDo((int) $user->id, $today);
 
-        $diMuon = (! $waiveLate && $lateMinutes > 0) ? 'co' : 'khong';
-        $thoiGianDiMuon = $diMuon === 'co' ? $lateMinutes : 0;
-        $tienPhatDiMuon = $diMuon === 'co'
-            ? $this->tinhTienPhat($user, $caLam, $thoiGianDiMuon)
-            : 0;
+            $diMuon = (! $waiveLate && $lateMinutes > 0) ? 'co' : 'khong';
+            $thoiGianDiMuon = $diMuon === 'co' ? $lateMinutes : 0;
+            $tienPhatDiMuon = $diMuon === 'co'
+                ? $this->tinhTienPhat($user, $caLam, $thoiGianDiMuon)
+                : 0;
 
-        $payload = [
-            'user_id' => $user->id,
-            'ngay_lam' => $today->toDateString(),
-            'ca_lam_id' => $caLam->id,
-            'gio_vao' => $now->format('Y-m-d H:i:s'),
-            'di_muon' => $diMuon,
-            'thoi_gian_di_muon' => $thoiGianDiMuon,
-            'tien_phat_di_muon' => $tienPhatDiMuon,
-            'ly_do' => $lyDo,
-            'ip_checkin' => $clientIp,
-        ];
+            $payload = [
+                'user_id' => $user->id,
+                'ngay_lam' => $today->toDateString(),
+                'ca_lam_id' => $caLam->id,
+                'gio_vao' => $now->format('Y-m-d H:i:s'),
+                'di_muon' => $diMuon,
+                'thoi_gian_di_muon' => $thoiGianDiMuon,
+                'tien_phat_di_muon' => $tienPhatDiMuon,
+                'ly_do' => $lyDo,
+                'ghi_chu' => null,
+                'ip_checkin' => $clientIp,
+            ];
+        }
 
         if ($existing) {
             $existing->update($payload);
@@ -179,19 +193,11 @@ class DiemDanhController extends Controller
      */
     public function checkout(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'ip' => ['required', 'string', 'max:45', 'ip'],
-        ]);
+        $clientIp = $this->resolveClientIp($request);
 
-        $clientIp = $validated['ip'];
         $user = $request->user();
         $now = Carbon::now(self::TIMEZONE);
         $today = $now->copy()->startOfDay();
-
-        $this->assertIpAllowed($clientIp);
-
-        $dangKy = $this->requireDangKyCaHomNay((int) $user->id, $today);
-        $caLam = $dangKy->caLam;
 
         $diemDanh = DiemDanh::query()
             ->where('user_id', $user->id)
@@ -217,34 +223,65 @@ class DiemDanhController extends Controller
             ]);
         }
 
-        $gioKetThuc = $this->combineDateAndTime($today, $caLam->gio_ket_thuc);
-        $earlyMinutes = max(0, (int) $now->diffInMinutes($gioKetThuc, false));
+        $chuaDangKyCa = $diemDanh->ca_lam_id === null;
 
-        $waiveEarly = $this->hasApprovedLeave((int) $user->id, $today, 've_som');
-        $veSom = (! $waiveEarly && $earlyMinutes > 0) ? 'co' : 'khong';
-        $thoiGianVeSom = $veSom === 'co' ? $earlyMinutes : 0;
-        $tienPhatVeSom = $veSom === 'co'
-            ? $this->tinhTienPhat($user, $caLam, $thoiGianVeSom)
-            : 0;
+        if ($chuaDangKyCa) {
+            $phutLam = (int) $gioVao->diffInMinutes($now);
+            $gioLamCoBan = round($phutLam / 60, 2);
+            $gioLamTangCa = 0.0;
+            [$luongCoBan, $luongTangCa] = $this->tinhLuong($user, $gioLamCoBan, $gioLamTangCa);
 
-        [$gioLamCoBan, $gioLamTangCa] = $this->tinhGioLam($gioVao, $now, $caLam);
-        [$luongCoBan, $luongTangCa] = $this->tinhLuong($user, $gioLamCoBan, $gioLamTangCa);
+            $diemDanh->update([
+                'gio_ra' => $now->format('Y-m-d H:i:s'),
+                've_som' => 'khong',
+                'thoi_gian_ve_som' => 0,
+                'tien_phat_ve_som' => 0,
+                'ghi_chu' => $diemDanh->ghi_chu ?: self::GHI_CHU_CHUA_DANG_KY_CA,
+                'ip_checkout' => $clientIp,
+                'gio_lam_co_ban' => $gioLamCoBan,
+                'gio_lam_tang_ca' => $gioLamTangCa,
+                'luong_co_ban' => $luongCoBan,
+                'luong_tang_ca' => $luongTangCa,
+            ]);
+        } else {
+            $dangKy = $this->resolveDangKyCaHomNay((int) $user->id, $today);
+            $caLam = $dangKy?->caLam ?? $diemDanh->caLam;
 
-        $lyDo = $diemDanh->ly_do ?: $this->resolveLyDo((int) $user->id, $today);
+            if (! $caLam) {
+                throw ValidationException::withMessages([
+                    'ca_lam' => ['Không tìm thấy ca làm để checkout.'],
+                ]);
+            }
 
-        $diemDanh->update([
-            'ca_lam_id' => $caLam->id,
-            'gio_ra' => $now->format('Y-m-d H:i:s'),
-            've_som' => $veSom,
-            'thoi_gian_ve_som' => $thoiGianVeSom,
-            'tien_phat_ve_som' => $tienPhatVeSom,
-            'ly_do' => $lyDo,
-            'ip_checkout' => $clientIp,
-            'gio_lam_co_ban' => $gioLamCoBan,
-            'gio_lam_tang_ca' => $gioLamTangCa,
-            'luong_co_ban' => $luongCoBan,
-            'luong_tang_ca' => $luongTangCa,
-        ]);
+            $gioKetThuc = $this->combineDateAndTime($today, $caLam->gio_ket_thuc);
+            $earlyMinutes = max(0, (int) $now->diffInMinutes($gioKetThuc, false));
+
+            $waiveEarly = $this->hasApprovedLeave((int) $user->id, $today, 've_som');
+            $veSom = (! $waiveEarly && $earlyMinutes > 0) ? 'co' : 'khong';
+            $thoiGianVeSom = $veSom === 'co' ? $earlyMinutes : 0;
+            $tienPhatVeSom = $veSom === 'co'
+                ? $this->tinhTienPhat($user, $caLam, $thoiGianVeSom)
+                : 0;
+
+            [$gioLamCoBan, $gioLamTangCa] = $this->tinhGioLam($gioVao, $now, $caLam);
+            [$luongCoBan, $luongTangCa] = $this->tinhLuong($user, $gioLamCoBan, $gioLamTangCa);
+
+            $lyDo = $diemDanh->ly_do ?: $this->resolveLyDo((int) $user->id, $today);
+
+            $diemDanh->update([
+                'ca_lam_id' => $caLam->id,
+                'gio_ra' => $now->format('Y-m-d H:i:s'),
+                've_som' => $veSom,
+                'thoi_gian_ve_som' => $thoiGianVeSom,
+                'tien_phat_ve_som' => $tienPhatVeSom,
+                'ly_do' => $lyDo,
+                'ip_checkout' => $clientIp,
+                'gio_lam_co_ban' => $gioLamCoBan,
+                'gio_lam_tang_ca' => $gioLamTangCa,
+                'luong_co_ban' => $luongCoBan,
+                'luong_tang_ca' => $luongTangCa,
+            ]);
+        }
 
         $diemDanh->load([
             'user:id,name,email',
@@ -271,14 +308,21 @@ class DiemDanhController extends Controller
             ->first();
     }
 
-    private function requireDangKyCaHomNay(int $userId, Carbon $today): DangKyCaLamViec
+    /**
+     * Trả về đăng ký ca hôm nay; null nếu chưa đăng ký và cấu hình cho phép điểm danh không cần ca.
+     */
+    private function resolveDangKyCaHomNay(int $userId, Carbon $today): ?DangKyCaLamViec
     {
         $dangKy = $this->findDangKyCaHomNay($userId, $today);
 
         if (! $dangKy || ! $dangKy->caLam) {
-            throw ValidationException::withMessages([
-                'ca_lam' => ['Bạn chưa đăng ký ca làm hôm nay nên không thể điểm danh.'],
-            ]);
+            if ($this->yeuCauDangKyCa()) {
+                throw ValidationException::withMessages([
+                    'ca_lam' => ['Bạn chưa đăng ký ca làm hôm nay nên không thể điểm danh.'],
+                ]);
+            }
+
+            return null;
         }
 
         if ($dangKy->caLam->trang_thai === 'khong') {
@@ -290,15 +334,45 @@ class DiemDanhController extends Controller
         return $dangKy;
     }
 
-    private function assertIpAllowed(string $clientIp): void
+    private function yeuCauDangKyCa(): bool
     {
-        $config = $this->chamCongConfig();
-        $kiemSoatIp = (bool) data_get($config, 'kiem_soat_ip_diem_danh.gia_tri', false);
+        return (bool) data_get(
+            $this->chamCongConfig(),
+            'yeu_cau_dang_ky_ca_moi_duoc_diem_danh.gia_tri',
+            false
+        );
+    }
 
-        if (! $kiemSoatIp) {
-            return;
+    private function kiemSoatIp(): bool
+    {
+        return (bool) data_get(
+            $this->chamCongConfig(),
+            'kiem_soat_ip_diem_danh.gia_tri',
+            false
+        );
+    }
+
+    /**
+     * Lấy IP client khi bật kiểm soát IP; null nếu tắt.
+     */
+    private function resolveClientIp(Request $request): ?string
+    {
+        if (! $this->kiemSoatIp()) {
+            return null;
         }
 
+        $validated = $request->validate([
+            'ip' => ['required', 'string', 'max:45', 'ip'],
+        ]);
+
+        $clientIp = $validated['ip'];
+        $this->assertIpAllowed($clientIp);
+
+        return $clientIp;
+    }
+
+    private function assertIpAllowed(string $clientIp): void
+    {
         $allowed = IpDiemDanh::query()
             ->where('trang_thai', 'active')
             ->where('dia_chi_ip', $clientIp)
