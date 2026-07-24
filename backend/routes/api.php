@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\NhaCungCapTrangPhucController;
 use App\Http\Controllers\Api\DangKyCaLamViecController;
 use App\Http\Controllers\Api\DiemDanhController;
 use App\Http\Controllers\Api\IpDiemDanhController;
+use App\Http\Controllers\Api\LoaiHopDongController;
 use App\Http\Controllers\Api\PhongBanController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\VaiTroController;
@@ -89,6 +90,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Vai trò (chức danh nhân sự)
     Route::apiResource('vai-tro', VaiTroController::class);
+
+    // Loại hợp đồng khách hàng (ký với khách, không phải nhân viên)
+    Route::apiResource('loai-hop-dong', LoaiHopDongController::class);
 
     // Form đánh giá mẫu
     Route::apiResource('cau-hinh-form-danh-gia-mau', CauHinhFormDanhGiaMauController::class);
