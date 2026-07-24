@@ -112,13 +112,6 @@ const routes = [
         component: () => import('@/views/nhan-su/EmployeeList.vue'),
         meta: { title: 'Nhân sự', requiresAuth: true },
       },
-      {
-        path: 'nhan-su/phong-ban',
-        name: 'nhan-su-phong-ban',
-        component: () => import('@/views/nhan-su/DepartmentList.vue'),
-        meta: { title: 'Phòng ban', requiresAuth: true },
-      },
-
       // Tài chính
       {
         path: 'tai-chinh/ke-toan-thue',

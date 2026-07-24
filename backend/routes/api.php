@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CauHinhCaLamViecController;
 use App\Http\Controllers\Api\CauHinhChiNhanhController;
 use App\Http\Controllers\Api\CauHinhGioLamViecController;
 use App\Http\Controllers\Api\CauHinhNgayNghiController;
@@ -54,4 +55,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Cấu hình ngày nghỉ
     Route::apiResource('cau-hinh-ngay-nghi', CauHinhNgayNghiController::class);
+
+    // Cấu hình ca làm việc
+    Route::apiResource('cau-hinh-ca-lam-viec', CauHinhCaLamViecController::class);
 });
