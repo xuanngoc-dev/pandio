@@ -104,7 +104,7 @@ async function onSubmit() {
       login: form.login.trim(),
       password: form.password,
     })
-    const redirect = route.query.redirect || '/dashboard'
+    const redirect = route.query.redirect || '/tong-quan'
     router.push(String(redirect))
   } catch {
     // Lỗi đã được interceptor / store xử lý hiển thị

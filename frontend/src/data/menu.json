@@ -1,28 +1,155 @@
 [
   {
-    "index": "/",
-    "title": "Trang chủ",
-    "icon": "House"
-  },
-  {
-    "index": "/dashboard",
-    "title": "Dashboard",
-    "icon": "Odometer"
-  },
-  {
-    "index": "/nhan-su",
-    "title": "Nhân sự",
-    "icon": "User",
-    "children": [
+    "items": [
       {
-        "index": "/nhan-su/danh-sach",
-        "title": "Danh sách",
-        "icon": "List"
+        "index": "/tong-quan",
+        "title": "Tổng quan",
+        "icon": "Odometer",
+        "component": "tong-quan/TongQuan"
       },
       {
-        "index": "/nhan-su/phong-ban",
-        "title": "Phòng ban",
-        "icon": "OfficeBuilding"
+        "index": "/cong-viec-cua-toi",
+        "title": "Công việc của tôi",
+        "icon": "Finished",
+        "component": "cong-viec/CongViecCuaToi"
+      }
+    ]
+  },
+  {
+    "header": "VẬN HÀNH CƯỚI",
+    "items": [
+      {
+        "index": "/van-hanh-cuoi/hop-dong-sddv",
+        "title": "Hợp đồng SDDV",
+        "icon": "Document",
+        "component": "van-hanh-cuoi/HopDongSddv"
+      },
+      {
+        "index": "/van-hanh-cuoi/lich-dieu-phoi",
+        "title": "Lịch điều phối",
+        "icon": "Calendar",
+        "component": "van-hanh-cuoi/LichDieuPhoi"
+      },
+      {
+        "index": "/van-hanh-cuoi/lich-khach-hang",
+        "title": "Lịch khách hàng",
+        "icon": "Calendar",
+        "component": "van-hanh-cuoi/LichKhachHang"
+      },
+      {
+        "index": "/van-hanh-cuoi/trang-phuc",
+        "title": "Trang phục",
+        "icon": "Box",
+        "component": "van-hanh-cuoi/TrangPhuc"
+      },
+      {
+        "index": "/van-hanh-cuoi/hop-dong-cho-thue",
+        "title": "Hợp đồng cho thuê",
+        "icon": "Refresh",
+        "component": "van-hanh-cuoi/HopDongChoThue"
+      },
+      {
+        "index": "/van-hanh-cuoi/concept",
+        "title": "Concept",
+        "icon": "Picture",
+        "component": "van-hanh-cuoi/Concept"
+      },
+      {
+        "index": "/van-hanh-cuoi/dich-vu",
+        "title": "Dịch vụ",
+        "icon": "Ticket",
+        "component": "van-hanh-cuoi/DichVu"
+      }
+    ]
+  },
+  {
+    "header": "KHÁCH HÀNG",
+    "items": [
+      {
+        "index": "/khach-hang",
+        "title": "Khách hàng",
+        "icon": "UserFilled",
+        "component": "khach-hang/KhachHang"
+      },
+      {
+        "index": "/khach-hang/note-khach-moi",
+        "title": "Note khách mới",
+        "icon": "Phone",
+        "component": "khach-hang/NoteKhachMoi"
+      },
+      {
+        "index": "/khach-hang/quang-cao",
+        "title": "Quảng cáo",
+        "icon": "TrendCharts",
+        "component": "khach-hang/QuangCao"
+      },
+      {
+        "index": "/khach-hang/xem-danh-gia",
+        "title": "Xem đánh giá",
+        "icon": "DataAnalysis",
+        "component": "khach-hang/XemDanhGia"
+      }
+    ]
+  },
+  {
+    "header": "NHÂN SỰ",
+    "items": [
+      {
+        "index": "/nhan-su/cham-cong-nghi-phep",
+        "title": "Chấm công · Nghỉ phép",
+        "icon": "Clock",
+        "component": "nhan-su/ChamCongNghiPhep"
+      },
+      {
+        "index": "/nhan-su/tinh-luong",
+        "title": "Tính lương",
+        "icon": "Money",
+        "component": "nhan-su/TinhLuong"
+      },
+      {
+        "index": "/nhan-su/danh-sach",
+        "title": "Nhân sự",
+        "icon": "User",
+        "component": "nhan-su/EmployeeList"
+      }
+    ]
+  },
+  {
+    "header": "TÀI CHÍNH",
+    "items": [
+      {
+        "index": "/tai-chinh/ke-toan-thue",
+        "title": "Kế toán & Thuế",
+        "icon": "Briefcase",
+        "component": "tai-chinh/KeToanThue"
+      }
+    ]
+  },
+  {
+    "header": "HỆ THỐNG",
+    "items": [
+      {
+        "index": "/he-thong/cau-hinh-quan-tri",
+        "title": "Cấu hình & Quản trị",
+        "icon": "Setting",
+        "component": "he-thong/CauHinhQuanTri"
+      },
+      {
+        "index": "/he-thong/trung-tam-phe-duyet",
+        "title": "Trung tâm Phê duyệt",
+        "icon": "CircleCheck",
+        "component": "he-thong/TrungTamPheDuyet"
+      }
+    ]
+  },
+  {
+    "header": "PANDIO SAAS",
+    "items": [
+      {
+        "index": "/pandio-saas/kinh-doanh",
+        "title": "Kinh doanh Pandio",
+        "icon": "DataLine",
+        "component": "pandio-saas/KinhDoanhPandio"
       }
     ]
   }

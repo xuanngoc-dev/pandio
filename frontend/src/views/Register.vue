@@ -167,7 +167,7 @@ async function onSubmit() {
       password: form.password,
       password_confirmation: form.password_confirmation,
     })
-    router.push({ name: 'dashboard' })
+    router.push({ name: 'tong-quan' })
   } catch {
     // Lỗi đã được interceptor xử lý
   }
