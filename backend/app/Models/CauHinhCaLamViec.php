@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'ten_ca',
@@ -15,4 +16,9 @@ use Illuminate\Database\Eloquent\Model;
 class CauHinhCaLamViec extends Model
 {
     protected $table = 'cau_hinh_ca_lam_viec';
+
+    public function dangKyCa(): HasMany
+    {
+        return $this->hasMany(DangKyCaLamViec::class, 'ca_lam_id');
+    }
 }
