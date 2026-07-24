@@ -9,6 +9,17 @@ export function fetchFormDanhGia(params = {}) {
 }
 
 /**
+ * Lấy form đánh giá theo slug (công khai, không cần đăng nhập).
+ * @param {string} slug
+ */
+export function getFormDanhGiaBySlug(slug) {
+  return api.get(`/public/form-danh-gia/${encodeURIComponent(slug)}`, {
+    skipLoading: true,
+    silent401: true,
+  })
+}
+
+/**
  * Chi tiết form đánh giá mẫu.
  * @param {number|string} id
  */

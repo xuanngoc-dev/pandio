@@ -272,6 +272,12 @@ const routes = [
     meta: { title: 'Đăng ký', guest: true },
   },
   {
+    path: '/danh-gia/:slug',
+    name: 'danh-gia-khach',
+    component: () => import('@/views/khach-hang/DanhGiaKhachHang.vue'),
+    meta: { title: 'Đánh giá dịch vụ', public: true },
+  },
+  {
     path: '/:pathMatch(.*)*',
     redirect: { name: 'tong-quan' },
   },
@@ -284,11 +290,16 @@ const router = createRouter({
 
 /**
  * Navigation guard:
+ * - public: không cần đăng nhập (form đánh giá khách hàng)
  * - requiresAuth: bắt buộc đã login
  * - guest: chỉ dành cho khách (đã login thì chuyển Tổng quan)
  */
 router.beforeEach(async (to, from, next) => {
   document.title = `${to.meta.title || 'Pandio'} | Pandio`
+
+  if (to.meta.public) {
+    return next()
+  }
 
   const authStore = useAuthStore()
 

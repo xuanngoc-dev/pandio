@@ -28,6 +28,9 @@ Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
 });
 
+// Form đánh giá — công khai cho khách hàng điền
+Route::get('/public/form-danh-gia/{slug}', [CauHinhFormDanhGiaMauController::class, 'showBySlug']);
+
 // Auth bảo vệ bởi Sanctum
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);

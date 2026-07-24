@@ -40,7 +40,15 @@
             </template>
           </CustomTableColumn>
           <CustomTableColumn prop="ten_form" label="Tên form" min-width="200" show-overflow-tooltip />
-          <CustomTableColumn prop="slug" label="Slug" min-width="160" show-overflow-tooltip />
+          <CustomTableColumn prop="slug" label="Slug" min-width="180" show-overflow-tooltip>
+            <template #default="{ row }">
+              <CustomTooltip content="Mở trang đánh giá khách hàng" placement="top">
+                <button type="button" class="slug-link" @click="openCustomerForm(row)">
+                  {{ row.slug }}
+                </button>
+              </CustomTooltip>
+            </template>
+          </CustomTableColumn>
           <CustomTableColumn label="Số câu hỏi" width="110" align="center">
             <template #default="{ row }">
               {{ countQuestions(row.cau_hoi) }}
@@ -192,6 +200,7 @@
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Edit, Plus, Search } from '@element-plus/icons-vue'
 import {
@@ -218,6 +227,8 @@ import {
 } from '@/components/element'
 import Pagination from '@/components/Pagination.vue'
 import ConfigSettingPage from './ConfigSettingPage.vue'
+
+const router = useRouter()
 
 const DEFAULT_THONG_TIN = [
   'Thợ chụp',
@@ -274,6 +285,15 @@ const questionRules = {
 
 function countQuestions(value) {
   return Array.isArray(value) ? value.length : 0
+}
+
+function openCustomerForm(row) {
+  if (!row?.slug) return
+  const resolved = router.resolve({
+    name: 'danh-gia-khach',
+    params: { slug: row.slug },
+  })
+  window.open(resolved.href, '_blank', 'noopener,noreferrer')
 }
 
 function resetThongTinOptions(extraValues = []) {
@@ -436,6 +456,21 @@ onMounted(loadItems)
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
+
+.slug-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--el-color-primary);
+  cursor: pointer;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.slug-link:hover {
+  color: var(--el-color-primary-light-3);
 }
 
 .questions-header {

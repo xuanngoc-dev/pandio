@@ -48,6 +48,23 @@ class CauHinhFormDanhGiaMauController extends Controller
     }
 
     /**
+     * Lấy form đánh giá mẫu theo slug (công khai — cho khách hàng điền).
+     */
+    public function showBySlug(string $slug): JsonResponse
+    {
+        $item = CauHinhFormDanhGiaMau::query()
+            ->where('slug', $slug)
+            ->firstOrFail();
+
+        return response()->json([
+            'id' => $item->id,
+            'ten_form' => $item->ten_form,
+            'slug' => $item->slug,
+            'cau_hoi' => $item->cau_hoi ?? [],
+        ]);
+    }
+
+    /**
      * Tạo form đánh giá mẫu mới.
      */
     public function store(Request $request): JsonResponse
