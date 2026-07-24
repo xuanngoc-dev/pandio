@@ -637,6 +637,7 @@
       <template #footer>
         <CustomButton @click="dialogVisible = false">Hủy</CustomButton>
         <CustomButton type="primary" :loading="saving" @click="save">Lưu</CustomButton>
+        <CustomButton v-if="!editingId" plain @click="fillSampleData">Dữ liệu mẫu</CustomButton>
       </template>
     </CustomDialog>
 
@@ -900,6 +901,116 @@ function openCreate() {
   Object.assign(form, emptyForm())
   resetImageState()
   dialogVisible.value = true
+}
+
+function pick(list) {
+  return list[Math.floor(Math.random() * list.length)]
+}
+
+function randomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min
+}
+
+function randomDigits(length) {
+  let out = ''
+  for (let i = 0; i < length; i += 1) out += String(randomInt(0, 9))
+  return out
+}
+
+function pad2(n) {
+  return String(n).padStart(2, '0')
+}
+
+function randomDate(startYear, endYear) {
+  const year = randomInt(startYear, endYear)
+  const month = randomInt(1, 12)
+  const day = randomInt(1, 28)
+  return `${year}-${pad2(month)}-${pad2(day)}`
+}
+
+function toUnsign(text) {
+  return String(text)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '')
+}
+
+function fillSampleData() {
+  const ho = pick(['Nguyễn', 'Trần', 'Lê', 'Phạm', 'Hoàng', 'Huỳnh', 'Phan', 'Vũ', 'Võ', 'Đặng'])
+  const dem = pick(['Văn', 'Thị', 'Minh', 'Hoàng', 'Quốc', 'Thanh', 'Hữu', 'Ngọc', 'Đức', 'Anh'])
+  const ten = pick([
+    'An', 'Bình', 'Cường', 'Dũng', 'Hà', 'Hùng', 'Lan', 'Linh', 'Long', 'Mai',
+    'Nam', 'Nga', 'Phong', 'Quân', 'Son', 'Trang', 'Tuấn', 'Vy', 'Yến', 'Khoa',
+  ])
+  const fullName = `${ho} ${dem} ${ten}`
+  const emailLocal = `${toUnsign(ho)}${toUnsign(ten)}${randomDigits(4)}`
+  const gioiTinh = pick(['nam', 'nu', 'khac'])
+  const viTri = pick([
+    'Nhân viên kinh doanh',
+    'Nhân viên kế toán',
+    'Nhân viên marketing',
+    'Nhân viên hành chính',
+    'Nhân viên kỹ thuật',
+    'Chuyên viên nhân sự',
+    'Trợ lý giám đốc',
+  ])
+  const nganHang = pick(['Vietcombank', 'Techcombank', 'MB Bank', 'BIDV', 'VPBank', 'ACB', 'TPBank'])
+  const chiNhanh = pick([
+    'Chi nhánh Hà Nội',
+    'Chi nhánh TP.HCM',
+    'Chi nhánh Đà Nẵng',
+    'Chi nhánh Cầu Giấy',
+    'Chi nhánh Quận 1',
+  ])
+  const luongCung = randomInt(6, 15) * 1_000_000
+  const luongMem = randomInt(1, 5) * 1_000_000
+  const phuCap = randomInt(5, 20) * 100_000
+  const ngayVao = randomDate(2022, 2025)
+
+  Object.assign(form, emptyForm(), {
+    name: fullName,
+    email: `${emailLocal}@example.com`,
+    phone: `09${randomDigits(8)}`,
+    password: `Pass${randomDigits(6)}`,
+    role: pick(['user', 'admin']),
+    status: pick(['active', 'inactive']),
+    phong_ban_id: departments.value.length
+      ? pick(departments.value).id
+      : null,
+    ngan_hang: nganHang,
+    chi_nhanh: chiNhanh,
+    so_tai_khoan: randomDigits(10),
+    chu_tai_khoan: toUnsign(fullName).toUpperCase(),
+    gioi_tinh: gioiTinh,
+    ngay_sinh: randomDate(1988, 2002),
+    cccd: `0${randomDigits(11)}`,
+    vi_tri_lam_viec: viTri,
+    ngay_vao_cong_ty: ngayVao,
+    ngay_ky_hop_dong: ngayVao,
+    loai_nhan_vien: pick(['full_time', 'part_time']),
+    loai_hop_dong: pick(['chinh_thuc', 'hoc_viec', 'thu_viec']),
+    cong_chuan: randomInt(22, 26),
+    tham_gia_bao_hiem: Math.random() > 0.3,
+    so_nguoi_phu_thuoc: randomInt(0, 3),
+    luong_cung: luongCung,
+    luong_mem: luongMem,
+    phu_cap: phuCap,
+    luong_co_ban: luongCung + luongMem,
+    luong_tang_ca: randomInt(3, 8) * 10_000,
+    phu_cap_xang: randomInt(3, 8) * 100_000,
+    phu_cap_an_trua: randomInt(5, 10) * 100_000,
+    phu_cap_dien_thoai: randomInt(1, 4) * 100_000,
+    phu_cap_nha_o: randomInt(5, 15) * 100_000,
+    thuong_chuyen_can: randomInt(2, 8) * 100_000,
+    hoa_hong_hop_dong_cuoi: randomInt(0, 5) * 100_000,
+    hoa_hong_hop_dong_trang_phuc: randomInt(0, 3) * 100_000,
+  })
+  resetImageState()
+  formRef.value?.clearValidate?.()
+  ElMessage.success('Đã điền dữ liệu mẫu ngẫu nhiên')
 }
 
 function openEdit(row) {

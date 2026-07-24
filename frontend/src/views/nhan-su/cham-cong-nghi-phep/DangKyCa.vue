@@ -2,29 +2,89 @@
   <div class="dang-ky-ca">
     <CustomCard shadow="hover" class="filter-card">
       <div class="toolbar">
-        <div class="week-nav">
-          <CustomButton :icon="ArrowLeft" @click="shiftWeek(-1)" />
-          <span class="week-label">{{ weekLabel }}</span>
-          <CustomButton :icon="ArrowRight" @click="shiftWeek(1)" />
-          <CustomButton plain @click="goToThisWeek">Tuần này</CustomButton>
-        </div>
-        <div class="toolbar-search">
-          <CustomInput
-            v-model="keyword"
-            placeholder="Tìm nhân viên..."
-            clearable
-            style="max-width: 260px"
-            @clear="onSearch"
-            @keyup.enter="onSearch"
-          >
-            <template #prefix>
-              <CustomIcon><Search /></CustomIcon>
-            </template>
-          </CustomInput>
-          <CustomButton type="primary" plain @click="onSearch">
+        <CustomInput
+          v-model="keyword"
+          placeholder="Tìm nhân viên..."
+          clearable
+          style="max-width: 260px"
+          @clear="onSearch"
+          @keyup.enter="onSearch"
+        >
+          <template #prefix>
             <CustomIcon><Search /></CustomIcon>
-            Tìm kiếm
-          </CustomButton>
+          </template>
+        </CustomInput>
+        <CustomButton type="primary" plain @click="onSearch">
+          <CustomIcon><Search /></CustomIcon>
+          Tìm kiếm
+        </CustomButton>
+        <CustomButton :type="isThisWeek ? 'primary' : 'default'" plain @click="goToThisWeek">
+          Tuần này
+        </CustomButton>
+        <CustomButton :type="isNextWeek ? 'primary' : 'default'" plain @click="goToNextWeek">
+          Tuần sau
+        </CustomButton>
+        <span class="week-label">{{ weekLabel }}</span>
+      </div>
+    </CustomCard>
+
+    <CustomCard shadow="hover" class="summary-card">
+      <template #header>
+        <div class="summary-card-header">
+          <span class="card-title">Đăng ký ca làm theo tuần</span>
+          <span class="employee-badge">{{ activeEmployeeTotal }} nhân viên</span>
+        </div>
+      </template>
+
+      <div class="overview-row">
+        <div class="overview-tile overview-tile--week">
+          <div class="overview-tile__head">
+            <span class="overview-tile__title">{{ weekShortLabel }}</span>
+            <span class="overview-tile__badge">{{ weekOverview.registered }}</span>
+          </div>
+          <div class="overview-tile__body">
+            <div
+              v-for="ca in weekOverview.byCa"
+              :key="ca.caId"
+              class="overview-ca-row"
+            >
+              <span>{{ ca.label }}</span>
+              <strong>{{ ca.count }}</strong>
+            </div>
+          </div>
+          <div class="overview-tile__foot">
+            <em>Chưa ĐK</em>
+            <strong>{{ weekOverview.unregistered }}</strong>
+          </div>
+        </div>
+
+        <div
+          v-for="day in dayOverviews"
+          :key="day.date"
+          class="overview-tile"
+          :class="{
+            'overview-tile--weekend': day.isWeekend,
+            'overview-tile--today': day.isToday,
+          }"
+        >
+          <div class="overview-tile__head">
+            <span class="overview-tile__title">{{ day.shortLabel }} {{ day.shortDate }}</span>
+            <span class="overview-tile__badge">{{ day.registered }}</span>
+          </div>
+          <div class="overview-tile__body">
+            <div
+              v-for="ca in day.byCa"
+              :key="ca.caId"
+              class="overview-ca-row"
+            >
+              <span>{{ ca.label }}</span>
+              <strong>{{ ca.count }}</strong>
+            </div>
+          </div>
+          <div class="overview-tile__foot">
+            <em>Chưa ĐK</em>
+            <strong>{{ day.unregistered }}</strong>
+          </div>
         </div>
       </div>
     </CustomCard>
@@ -32,8 +92,8 @@
     <CustomCard shadow="hover" class="table-card">
       <template #header>
         <div class="card-header">
-          <span class="card-title">Lịch đăng ký ca · Tuần này</span>
-          <span class="card-hint">Chỉ đăng ký từ ngày mai trở đi · Ca cả tuần áp dụng các ngày còn chỉnh được</span>
+          <span class="card-title">Lịch đăng ký ca</span>
+          <!-- <span class="card-hint">Chỉ đăng ký từ ngày mai trở đi · Ca cả tuần áp dụng các ngày còn chỉnh được</span> -->
         </div>
       </template>
 
@@ -150,7 +210,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, ArrowRight, Search } from '@element-plus/icons-vue'
+import { Search } from '@element-plus/icons-vue'
 import { fetchUsers } from '@/api/users'
 import { fetchCaLamViec } from '@/api/caLamViec'
 import { createDangKyCa, deleteDangKyCa, fetchDangKyCa, syncDangKyCaTuan } from '@/api/dangKyCa'
@@ -167,6 +227,7 @@ import {
 import Pagination from '@/components/Pagination.vue'
 
 const DAY_LABELS = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật']
+const DAY_SHORT_LABELS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
 
 /** Tổng width các cột — đảm bảo luôn có thanh cuộn ngang khi viewport hẹp */
 const COL_STT = 60
@@ -185,6 +246,8 @@ const keyword = ref('')
 const page = ref(1)
 const perPage = ref(10)
 const total = ref(0)
+/** Tổng NV đang hoạt động — dùng cho tổng quan (không phụ thuộc keyword) */
+const activeEmployeeTotal = ref(0)
 /** @type {import('vue').Ref<Record<string, boolean>>} */
 const savingKeys = ref({})
 /** @type {import('vue').Ref<Record<number|string, boolean>>} */
@@ -237,10 +300,13 @@ const weekDays = computed(() => {
     const dateKey = toDateKey(date)
     return {
       label,
+      shortLabel: DAY_SHORT_LABELS[index],
       date: dateKey,
       displayDate: `${pad(date.getDate())}/${pad(date.getMonth() + 1)}`,
+      shortDate: `${date.getDate()}/${date.getMonth() + 1}`,
       isToday: dateKey === today,
       isLocked: dateKey <= today,
+      isWeekend: index >= 5,
     }
   })
 })
@@ -258,6 +324,79 @@ const weekLabel = computed(() => {
   const startFull = `${pad(startDate.getDate())}/${pad(startDate.getMonth() + 1)}/${startDate.getFullYear()}`
   const endFull = `${pad(endDate.getDate())}/${pad(endDate.getMonth() + 1)}/${endDate.getFullYear()}`
   return `${startFull} — ${endFull}`
+})
+
+const weekShortLabel = computed(() => {
+  const days = weekDays.value
+  if (!days.length) return ''
+  return `Tuần ${days[0].shortDate}–${days[6].shortDate}`
+})
+
+const thisWeekMonday = computed(() => getMonday(new Date()))
+
+const isThisWeek = computed(
+  () => toDateKey(weekStart.value) === toDateKey(thisWeekMonday.value),
+)
+
+const isNextWeek = computed(
+  () => toDateKey(weekStart.value) === toDateKey(addDays(thisWeekMonday.value, 7)),
+)
+
+/** Đếm ca_lam_id theo từng ngày trong tuần */
+const countsByDate = computed(() => {
+  /** @type {Record<string, Record<number, number>>} */
+  const byDate = {}
+  for (const day of weekDays.value) {
+    byDate[day.date] = {}
+  }
+  for (const [key, entry] of Object.entries(scheduleMap.value)) {
+    const dateKey = key.split('|')[1]
+    if (!byDate[dateKey] || entry.ca_lam_id == null) continue
+    const caId = entry.ca_lam_id
+    byDate[dateKey][caId] = (byDate[dateKey][caId] || 0) + 1
+  }
+  return byDate
+})
+
+function buildCaRows(countMap) {
+  return caOptions.value.map((ca) => ({
+    caId: ca.id,
+    label: formatCaLabel(ca),
+    count: countMap[ca.id] || 0,
+  }))
+}
+
+const dayOverviews = computed(() => {
+  const employeeCount = activeEmployeeTotal.value
+  return weekDays.value.map((day) => {
+    const countMap = countsByDate.value[day.date] || {}
+    const byCa = buildCaRows(countMap)
+    const registered = byCa.reduce((sum, item) => sum + item.count, 0)
+    return {
+      ...day,
+      byCa,
+      registered,
+      unregistered: Math.max(0, employeeCount - registered),
+    }
+  })
+})
+
+const weekOverview = computed(() => {
+  const employeeCount = activeEmployeeTotal.value
+  /** @type {Record<number, number>} */
+  const countMap = {}
+  for (const day of dayOverviews.value) {
+    for (const ca of day.byCa) {
+      countMap[ca.caId] = (countMap[ca.caId] || 0) + ca.count
+    }
+  }
+  const byCa = buildCaRows(countMap)
+  const registered = byCa.reduce((sum, item) => sum + item.count, 0)
+  return {
+    byCa,
+    registered,
+    unregistered: Math.max(0, employeeCount * 7 - registered),
+  }
 })
 
 function formatCaLabel(ca) {
@@ -286,20 +425,22 @@ function isWeekSaving(userId) {
   return !!weekSavingIds.value[userId]
 }
 
-function shiftWeek(delta) {
-  weekStart.value = addDays(weekStart.value, delta * 7)
+async function loadWeek(mondayDate) {
+  weekStart.value = mondayDate
   loading.value = true
-  loadSchedule().finally(() => {
+  try {
+    await loadSchedule()
+  } finally {
     loading.value = false
-  })
+  }
 }
 
 function goToThisWeek() {
-  weekStart.value = getMonday(new Date())
-  loading.value = true
-  loadSchedule().finally(() => {
-    loading.value = false
-  })
+  loadWeek(getMonday(new Date()))
+}
+
+function goToNextWeek() {
+  loadWeek(addDays(getMonday(new Date()), 7))
 }
 
 async function refreshTableLayout() {
@@ -317,6 +458,15 @@ async function fetchUserPage() {
   users.value = data.data || []
   total.value = data.total || 0
   page.value = data.current_page || page.value
+}
+
+async function loadActiveEmployeeTotal() {
+  try {
+    const { data } = await fetchUsers({ page: 1, per_page: 1, status: 'active' })
+    activeEmployeeTotal.value = data.total || 0
+  } catch {
+    activeEmployeeTotal.value = 0
+  }
 }
 
 async function loadUsers() {
@@ -478,6 +628,7 @@ onMounted(async () => {
         users.value = []
         total.value = 0
       }),
+      loadActiveEmployeeTotal(),
       loadSchedule(),
     ])
   } finally {
@@ -513,28 +664,14 @@ onBeforeUnmount(() => {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.week-nav {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.toolbar-search {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
   gap: 8px;
 }
 
 .week-label {
-  min-width: 190px;
-  text-align: center;
+  margin-left: 4px;
   font-weight: 600;
   color: var(--el-text-color-primary);
+  white-space: nowrap;
 }
 
 .card-header {
@@ -552,6 +689,158 @@ onBeforeUnmount(() => {
 .card-hint {
   font-size: 13px;
   color: var(--el-text-color-secondary);
+}
+
+.summary-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  width: 100%;
+}
+
+.employee-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--el-color-primary);
+  background: var(--el-color-primary-light-9);
+}
+
+.overview-row {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 10px;
+  overflow-x: auto;
+}
+
+.overview-tile {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 10px;
+  background: var(--el-bg-color);
+  overflow: hidden;
+}
+
+.overview-tile__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--el-fill-color-light);
+}
+
+.overview-tile--week .overview-tile__head {
+  background: var(--el-color-primary-light-9);
+}
+
+.overview-tile--weekend .overview-tile__head {
+  background: var(--el-color-success-light-9);
+}
+
+.overview-tile--today:not(.overview-tile--weekend) .overview-tile__head {
+  background: var(--el-color-primary-light-8);
+}
+
+.overview-tile__title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--el-text-color-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.overview-tile--week .overview-tile__title {
+  color: var(--el-color-primary);
+}
+
+.overview-tile--weekend .overview-tile__title {
+  color: var(--el-color-success);
+}
+
+.overview-tile__badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--el-text-color-regular);
+  background: var(--el-bg-color);
+  border: 1px solid var(--el-border-color-lighter);
+}
+
+.overview-tile--week .overview-tile__badge {
+  color: var(--el-color-primary);
+  border-color: var(--el-color-primary-light-5);
+  background: var(--el-bg-color);
+}
+
+.overview-tile--weekend .overview-tile__badge {
+  color: var(--el-color-success);
+  border-color: var(--el-color-success-light-5);
+  background: var(--el-bg-color);
+}
+
+.overview-tile__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  flex: 1;
+}
+
+.overview-ca-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--el-text-color-regular);
+}
+
+.overview-ca-row strong {
+  font-weight: 700;
+  color: var(--el-text-color-primary);
+}
+
+.overview-tile__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px 10px;
+  border-top: 1px solid var(--el-border-color-extra-light);
+}
+
+.overview-tile__foot em {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--el-color-warning);
+}
+
+.overview-tile__foot strong {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--el-color-warning);
+}
+
+@media (max-width: 1200px) {
+  .overview-row {
+    grid-template-columns: repeat(8, minmax(120px, 1fr));
+  }
 }
 
 .table-wrap {
