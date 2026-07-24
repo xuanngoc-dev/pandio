@@ -188,12 +188,6 @@ const routes = [
         meta: { title: 'Lương & Hoa hồng', requiresAuth: true },
       },
       {
-        path: 'he-thong/cau-hinh-quan-tri/don-gia-luong-mac-dinh',
-        name: 'cau-hinh-don-gia-luong',
-        component: () => import('@/views/he-thong/cau-hinh/DonGiaLuongMacDinh.vue'),
-        meta: { title: 'Đơn giá lương mặc định', requiresAuth: true },
-      },
-      {
         path: 'he-thong/cau-hinh-quan-tri/vai-tro',
         name: 'cau-hinh-vai-tro',
         component: () => import('@/views/he-thong/cau-hinh/VaiTro.vue'),

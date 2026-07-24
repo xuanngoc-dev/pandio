@@ -89,12 +89,6 @@ export const cauHinhSections = [
         component: 'LuongHoaHong',
       },
       {
-        label: 'Đơn giá lương mặc định',
-        routeName: 'cau-hinh-don-gia-luong',
-        path: 'don-gia-luong-mac-dinh',
-        component: 'DonGiaLuongMacDinh',
-      },
-      {
         label: 'Vai trò (chức danh nhân sự)',
         routeName: 'cau-hinh-vai-tro',
         path: 'vai-tro',
