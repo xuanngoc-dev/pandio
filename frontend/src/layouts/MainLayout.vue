@@ -1,18 +1,36 @@
 <template>
-  <el-container class="main-layout">
+  <el-container
+    class="main-layout"
+    :class="{
+      'is-navbar-fixed': layoutStore.navbarFixed,
+      'is-sidebar-fixed': layoutStore.sidebarFixed,
+    }"
+  >
     <!-- Sidebar -->
-    <el-aside :width="collapsed ? '64px' : '220px'" class="aside">
+    <el-aside
+      :width="collapsed ? '64px' : '220px'"
+      class="aside"
+      :class="{
+        'is-fixed': layoutStore.sidebarFixed,
+        'is-collapsed': collapsed,
+      }"
+    >
       <div class="brand">
         <el-icon :size="22"><Monitor /></el-icon>
         <span v-show="!collapsed" class="brand-text">Pandio</span>
       </div>
 
-      <SideMenu :collapsed="collapsed" />
+      <div class="aside-menu">
+        <SideMenu :collapsed="collapsed" />
+      </div>
     </el-aside>
 
-    <el-container>
+    <el-container class="content-shell">
       <!-- Header -->
-      <el-header class="header">
+      <el-header
+        class="header"
+        :class="{ 'is-fixed': layoutStore.navbarFixed }"
+      >
         <div class="header-left">
           <el-button text @click="collapsed = !collapsed">
             <el-icon :size="20">
@@ -31,6 +49,24 @@
             inactive-text="☀️"
             @change="toggleDark"
           />
+
+          <el-tooltip content="Thông báo" placement="bottom">
+            <el-badge
+              :value="unreadNotifications"
+              :hidden="!unreadNotifications"
+              class="header-badge"
+            >
+              <el-button text class="icon-btn" @click="notificationsOpen = true">
+                <el-icon :size="20"><Bell /></el-icon>
+              </el-button>
+            </el-badge>
+          </el-tooltip>
+
+          <el-tooltip content="Cài đặt giao diện" placement="bottom">
+            <el-button text class="icon-btn" @click="settingsOpen = true">
+              <el-icon :size="20"><Setting /></el-icon>
+            </el-button>
+          </el-tooltip>
 
           <template v-if="authStore.isAuthenticated">
             <el-dropdown trigger="click" @command="onCommand">
@@ -65,6 +101,12 @@
         <router-view />
       </el-main>
     </el-container>
+
+    <NotificationDrawer
+      v-model="notificationsOpen"
+      v-model:unread-count="unreadNotifications"
+    />
+    <LayoutSettingsDrawer v-model="settingsOpen" v-model:dark="isDark" />
   </el-container>
 </template>
 
@@ -72,8 +114,11 @@
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { Monitor, Fold, Expand, ArrowDown } from '@element-plus/icons-vue'
+import { useLayoutStore } from '@/stores/layout'
+import { Monitor, Fold, Expand, ArrowDown, Setting, Bell } from '@element-plus/icons-vue'
 import SideMenu from '@/components/SideMenu.vue'
+import NotificationDrawer from '@/components/NotificationDrawer.vue'
+import LayoutSettingsDrawer from '@/components/LayoutSettingsDrawer.vue'
 
 /** Dưới breakpoint này sidebar tự chuyển sang collapsed */
 const COLLAPSE_BREAKPOINT = 992
@@ -81,8 +126,12 @@ const COLLAPSE_BREAKPOINT = 992
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const layoutStore = useLayoutStore()
 
 const collapsed = ref(false)
+const settingsOpen = ref(false)
+const notificationsOpen = ref(false)
+const unreadNotifications = ref(0)
 const isDark = ref(document.documentElement.classList.contains('dark'))
 
 const pageTitle = computed(() => route.meta.title || 'Pandio')
@@ -128,16 +177,38 @@ onUnmounted(() => {
 <style scoped lang="scss">
 .main-layout {
   min-height: 100vh;
+
+  &.is-navbar-fixed,
+  &.is-sidebar-fixed {
+    height: 100vh;
+    overflow: hidden;
+  }
 }
 
 .aside {
   border-right: 1px solid var(--el-border-color);
   background: var(--el-bg-color);
   transition: width 0.2s ease;
+  display: flex;
+  flex-direction: column;
+
+  &.is-fixed {
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    overflow: hidden;
+  }
+}
+
+.aside-menu {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .brand {
   height: 60px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -146,6 +217,31 @@ onUnmounted(() => {
   font-size: 18px;
   color: var(--el-color-primary);
   border-bottom: 1px solid var(--el-border-color);
+  overflow: hidden;
+  white-space: nowrap;
+
+  .aside.is-collapsed & {
+    justify-content: center;
+    padding: 0;
+  }
+}
+
+.content-shell {
+  min-width: 0;
+  min-height: 0;
+
+  .is-navbar-fixed &,
+  .is-sidebar-fixed & {
+    height: 100vh;
+  }
+
+  .is-navbar-fixed & {
+    overflow: hidden;
+  }
+
+  .is-sidebar-fixed:not(.is-navbar-fixed) & {
+    overflow-y: auto;
+  }
 }
 
 .header {
@@ -154,6 +250,13 @@ onUnmounted(() => {
   justify-content: space-between;
   border-bottom: 1px solid var(--el-border-color);
   background: var(--el-bg-color);
+  flex-shrink: 0;
+
+  &.is-fixed {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
 }
 
 .header-left,
@@ -161,6 +264,16 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.icon-btn {
+  padding: 8px;
+}
+
+.header-badge {
+  :deep(.el-badge__content) {
+    transform: translateY(-2px) translateX(2px);
+  }
 }
 
 .page-title {
@@ -180,5 +293,10 @@ onUnmounted(() => {
 
 .main {
   background: var(--el-bg-color-page);
+  min-height: 0;
+
+  .is-navbar-fixed & {
+    overflow-y: auto;
+  }
 }
 </style>
