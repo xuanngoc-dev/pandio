@@ -11,6 +11,8 @@ use App\Http\Controllers\Api\CauHinhNgayNghiController;
 use App\Http\Controllers\Api\CauHinhTaiKhoanThanhToanController;
 use App\Http\Controllers\Api\CauHinhThongTinStudioController;
 use App\Http\Controllers\Api\DanhMucConceptController;
+use App\Http\Controllers\Api\DanhMucTrangPhucController;
+use App\Http\Controllers\Api\NhaCungCapTrangPhucController;
 use App\Http\Controllers\Api\DangKyCaLamViecController;
 use App\Http\Controllers\Api\DiemDanhController;
 use App\Http\Controllers\Api\IpDiemDanhController;
@@ -99,4 +101,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/concept/upload-hinh-anh', [ConceptController::class, 'uploadHinhAnh']);
     Route::apiResource('concept', ConceptController::class);
     Route::apiResource('danh-muc-concept', DanhMucConceptController::class);
+
+    // Trang phục
+    Route::apiResource('danh-muc-trang-phuc', DanhMucTrangPhucController::class);
+    Route::apiResource('nha-cung-cap-trang-phuc', NhaCungCapTrangPhucController::class);
 });
