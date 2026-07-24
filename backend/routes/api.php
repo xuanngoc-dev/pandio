@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\CauHinhNgayNghiController;
 use App\Http\Controllers\Api\CauHinhTaiKhoanThanhToanController;
 use App\Http\Controllers\Api\CauHinhThongTinStudioController;
 use App\Http\Controllers\Api\DangKyCaLamViecController;
+use App\Http\Controllers\Api\DiemDanhController;
 use App\Http\Controllers\Api\IpDiemDanhController;
 use App\Http\Controllers\Api\PhongBanController;
 use App\Http\Controllers\Api\UserController;
@@ -50,6 +51,12 @@ Route::middleware('auth:sanctum')->group(function () {
     // Đăng ký ca làm việc
     Route::post('/dang-ky-ca-lam-viec/sync-tuan', [DangKyCaLamViecController::class, 'syncTuan']);
     Route::apiResource('dang-ky-ca-lam-viec', DangKyCaLamViecController::class);
+
+    // Điểm danh
+    Route::get('/diem-danh/today', [DiemDanhController::class, 'today']);
+    Route::post('/diem-danh/checkin', [DiemDanhController::class, 'checkin']);
+    Route::post('/diem-danh/checkout', [DiemDanhController::class, 'checkout']);
+    Route::get('/diem-danh', [DiemDanhController::class, 'index']);
 
     // Phòng ban
     Route::apiResource('phong-ban', PhongBanController::class);
