@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CauHinhChiNhanhController;
 use App\Http\Controllers\Api\CauHinhTaiKhoanThanhToanController;
 use App\Http\Controllers\Api\CauHinhThongTinStudioController;
 use App\Http\Controllers\Api\IpDiemDanhController;
@@ -42,4 +43,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Cấu hình tài khoản thanh toán
     Route::apiResource('cau-hinh-tai-khoan-thanh-toan', CauHinhTaiKhoanThanhToanController::class);
+
+    // Cấu hình chi nhánh
+    Route::apiResource('cau-hinh-chi-nhanh', CauHinhChiNhanhController::class);
 });
