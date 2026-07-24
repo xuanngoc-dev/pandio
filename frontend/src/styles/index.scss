@@ -6,6 +6,7 @@
   --el-text-color-regular: #1f1f1f;
   --el-text-color-secondary: #303133;
   --el-text-color-placeholder: #606266;
+  --el-table-header-text-color: #141414;
 }
 
 html.dark {
@@ -13,6 +14,10 @@ html.dark {
   --el-text-color-regular: #e5eaf3;
   --el-text-color-secondary: #cfd3dc;
   --el-text-color-placeholder: #a3a6ad;
+  --el-table-header-text-color: #f0f2f5;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 html,
@@ -59,7 +64,7 @@ html.dark .auth-wrapper {
   th.el-table__cell > .cell {
     font-size: 13px;
     line-height: 1.3;
-    font-weight: 600;
+    font-weight: inherit;
     padding: 0 8px;
   }
 
@@ -70,5 +75,40 @@ html.dark .auth-wrapper {
   td.el-table__cell > .cell {
     line-height: 1.35;
     padding: 0 8px;
+  }
+}
+
+/* Cần specificity cao hơn .el-table của EP (on-demand CSS có thể load sau index.scss) */
+html:not(.dark) .el-table {
+  --el-table-header-text-color: #141414;
+
+  thead,
+  thead th.el-table__cell,
+  thead th.el-table__cell > .cell {
+    color: #141414;
+  }
+
+  thead th,
+  thead th.el-table__cell > .cell {
+    font-weight: 500;
+  }
+}
+
+html.dark .el-table {
+  --el-table-header-text-color: #f0f2f5;
+
+  thead,
+  thead th.el-table__cell,
+  thead th.el-table__cell > .cell {
+    color: #f0f2f5;
+  }
+
+  thead th,
+  thead th.el-table__cell > .cell {
+    font-weight: 400;
+  }
+
+  td.el-table__cell > .cell {
+    font-weight: 400;
   }
 }
