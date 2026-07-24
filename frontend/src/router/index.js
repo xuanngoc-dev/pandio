@@ -206,12 +206,6 @@ const routes = [
         meta: { title: 'Phòng ban', requiresAuth: true },
       },
       {
-        path: 'he-thong/cau-hinh-quan-tri/phan-quyen-vai-tro',
-        name: 'cau-hinh-phan-quyen-vai-tro',
-        component: () => import('@/views/he-thong/cau-hinh/PhanQuyenVaiTro.vue'),
-        meta: { title: 'Phân quyền theo vai trò', requiresAuth: true },
-      },
-      {
         path: 'he-thong/cau-hinh-quan-tri/ca-lam-viec',
         name: 'cau-hinh-ca-lam-viec',
         component: () => import('@/views/he-thong/cau-hinh/CaLamViec.vue'),

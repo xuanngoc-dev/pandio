@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\CauHinhThongTinStudioController;
 use App\Http\Controllers\Api\IpDiemDanhController;
 use App\Http\Controllers\Api\PhongBanController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\VaiTroController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -58,4 +59,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Cấu hình ca làm việc
     Route::apiResource('cau-hinh-ca-lam-viec', CauHinhCaLamViecController::class);
+
+    // Vai trò (chức danh nhân sự)
+    Route::apiResource('vai-tro', VaiTroController::class);
 });

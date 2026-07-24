@@ -13,8 +13,10 @@ const props = defineProps({
   title: { type: String, default: '' },
   /** Chiều rộng dialog. VD: 780 | '780px' | '70%' */
   width: { type: [String, Number], default: 520 },
+  /** Căn giữa title. */
   destroyOnClose: { type: Boolean, default: true },
   appendToBody: { type: Boolean, default: true },
+  alignCenter: { type: Boolean, default: true },
 })
 
 const attrs = useAttrs()
@@ -43,6 +45,7 @@ const dialogClass = computed(() => {
     v-model="visible"
     :title="title"
     :width="resolvedWidth"
+    :align-center="alignCenter"
     :destroy-on-close="destroyOnClose"
     :append-to-body="appendToBody"
     :class="dialogClass"

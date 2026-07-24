@@ -107,12 +107,6 @@ export const cauHinhSections = [
         component: 'PhongBan',
       },
       {
-        label: 'Phân quyền theo vai trò',
-        routeName: 'cau-hinh-phan-quyen-vai-tro',
-        path: 'phan-quyen-vai-tro',
-        component: 'PhanQuyenVaiTro',
-      },
-      {
         label: 'Ca làm việc',
         routeName: 'cau-hinh-ca-lam-viec',
         path: 'ca-lam-viec',
