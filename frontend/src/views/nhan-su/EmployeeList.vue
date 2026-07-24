@@ -46,57 +46,117 @@
         <CustomTableColumn type="expand" width="40">
           <template #default="{ row }">
             <div class="expand-panel">
-              <section class="expand-block">
+              <section class="expand-block expand-block--form expand-block--wide">
                 <h4 class="expand-title">Thông tin cá nhân</h4>
-                <dl class="detail-grid">
-                  <div><dt>CCCD</dt><dd>{{ nv(row).cccd || '—' }}</dd></div>
-                  <div><dt>Ngày sinh</dt><dd>{{ formatDate(nv(row).ngay_sinh) }}</dd></div>
-                  <div><dt>Giới tính</dt><dd>{{ genderLabel(nv(row).gioi_tinh) }}</dd></div>
-                  <div><dt>Ngày ký HĐ</dt><dd>{{ formatDate(nv(row).ngay_ky_hop_dong) }}</dd></div>
-                  <div><dt>Công chuẩn</dt><dd>{{ formatNumber(nv(row).cong_chuan) }}</dd></div>
-                  <div>
-                    <dt>Người phụ thuộc</dt>
-                    <dd>{{ nv(row).so_nguoi_phu_thuoc ?? 0 }}</dd>
+                <div class="expand-fields">
+                  <div class="expand-field">
+                    <label class="expand-field__label">CCCD</label>
+                    <CustomInput :model-value="nv(row).cccd || '—'" readonly />
                   </div>
-                  <div>
-                    <dt>Bảo hiểm</dt>
-                    <dd>{{ nv(row).tham_gia_bao_hiem ? 'Có tham gia' : 'Không' }}</dd>
+                  <div class="expand-field">
+                    <label class="expand-field__label">Ngày sinh</label>
+                    <CustomInput :model-value="formatDate(nv(row).ngay_sinh)" readonly />
                   </div>
-                </dl>
+                  <div class="expand-field">
+                    <label class="expand-field__label">Giới tính</label>
+                    <CustomInput :model-value="genderLabel(nv(row).gioi_tinh)" readonly />
+                  </div>
+                  <div class="expand-field">
+                    <label class="expand-field__label">Ngày ký HĐ</label>
+                    <CustomInput :model-value="formatDate(nv(row).ngay_ky_hop_dong)" readonly />
+                  </div>
+                  <div class="expand-field">
+                    <label class="expand-field__label">Bảo hiểm</label>
+                    <CustomInput
+                      :model-value="nv(row).tham_gia_bao_hiem ? 'Có tham gia' : 'Không'"
+                      readonly
+                    />
+                  </div>
+                </div>
               </section>
 
-              <section class="expand-block">
+              <section class="expand-block expand-block--form expand-block--wide">
                 <h4 class="expand-title">Tài khoản ngân hàng</h4>
-                <dl class="detail-grid">
-                  <div><dt>Ngân hàng</dt><dd>{{ nv(row).ngan_hang || '—' }}</dd></div>
-                  <div><dt>Chi nhánh</dt><dd>{{ nv(row).chi_nhanh || '—' }}</dd></div>
-                  <div><dt>Số tài khoản</dt><dd>{{ nv(row).so_tai_khoan || '—' }}</dd></div>
-                  <div><dt>Chủ tài khoản</dt><dd>{{ nv(row).chu_tai_khoan || '—' }}</dd></div>
-                </dl>
+                <div class="expand-fields">
+                  <div class="expand-field">
+                    <label class="expand-field__label">Ngân hàng</label>
+                    <CustomInput :model-value="nv(row).ngan_hang || '—'" readonly />
+                  </div>
+                  <div class="expand-field">
+                    <label class="expand-field__label">Chi nhánh</label>
+                    <CustomInput :model-value="nv(row).chi_nhanh || '—'" readonly />
+                  </div>
+                  <div class="expand-field">
+                    <label class="expand-field__label">Số tài khoản</label>
+                    <CustomInput :model-value="nv(row).so_tai_khoan || '—'" readonly />
+                  </div>
+                  <div class="expand-field">
+                    <label class="expand-field__label">Chủ tài khoản</label>
+                    <CustomInput :model-value="nv(row).chu_tai_khoan || '—'" readonly />
+                  </div>
+                </div>
               </section>
 
-              <section class="expand-block expand-block--wide">
+              <section class="expand-block expand-block--form expand-block--wide">
                 <h4 class="expand-title">Lương & phụ cấp</h4>
-                <dl class="detail-grid detail-grid--money">
-                  <div><dt>Lương cứng</dt><dd>{{ formatMoney(nv(row).luong_cung) }}</dd></div>
-                  <div><dt>Lương mềm</dt><dd>{{ formatMoney(nv(row).luong_mem) }}</dd></div>
-                  <div><dt>Phụ cấp</dt><dd>{{ formatMoney(nv(row).phu_cap) }}</dd></div>
-                  <div><dt>Lương cơ bản</dt><dd>{{ formatMoney(nv(row).luong_co_ban) }}</dd></div>
-                  <div><dt>Lương tăng ca</dt><dd>{{ formatMoney(nv(row).luong_tang_ca) }}</dd></div>
-                  <div><dt>PC xăng</dt><dd>{{ formatMoney(nv(row).phu_cap_xang) }}</dd></div>
-                  <div><dt>PC ăn trưa</dt><dd>{{ formatMoney(nv(row).phu_cap_an_trua) }}</dd></div>
-                  <div><dt>PC điện thoại</dt><dd>{{ formatMoney(nv(row).phu_cap_dien_thoai) }}</dd></div>
-                  <div><dt>PC nhà ở</dt><dd>{{ formatMoney(nv(row).phu_cap_nha_o) }}</dd></div>
-                  <div><dt>Thưởng chuyên cần</dt><dd>{{ formatMoney(nv(row).thuong_chuyen_can) }}</dd></div>
-                  <div>
-                    <dt>HH HĐ cuối</dt>
-                    <dd>{{ formatMoney(nv(row).hoa_hong_hop_dong_cuoi) }}</dd>
+                <div class="expand-fields">
+                  <div class="expand-field">
+                    <label class="expand-field__label">Công chuẩn</label>
+                    <CustomInput :model-value="formatNumber(nv(row).cong_chuan)" readonly />
                   </div>
-                  <div>
-                    <dt>HH HĐ trang phục</dt>
-                    <dd>{{ formatMoney(nv(row).hoa_hong_hop_dong_trang_phuc) }}</dd>
+                  <div class="expand-field">
+                    <label class="expand-field__label">Người phụ thuộc</label>
+                    <CustomInput :model-value="String(nv(row).so_nguoi_phu_thuoc ?? 0)" readonly />
                   </div>
-                </dl>
+                  <div class="expand-field">
+                    <label class="expand-field__label">Lương cứng</label>
+                    <CustomInput :model-value="formatMoney(nv(row).luong_cung)" readonly />
+                  </div>
+                  <div class="expand-field">
+                    <label class="expand-field__label">Lương mềm</label>
+                    <CustomInput :model-value="formatMoney(nv(row).luong_mem)" readonly />
+                  </div>
+                  <div class="expand-field">
+                    <label class="expand-field__label">Phụ cấp</label>
+                    <CustomInput :model-value="formatMoney(nv(row).phu_cap)" readonly />
+                  </div>
+                  <div class="expand-field">
+                    <label class="expand-field__label">Lương cơ bản</label>
+                    <CustomInput :model-value="formatMoney(nv(row).luong_co_ban)" readonly />
+                  </div>
+                  <div class="expand-field">
+                    <label class="expand-field__label">Lương tăng ca</label>
+                    <CustomInput :model-value="formatMoney(nv(row).luong_tang_ca)" readonly />
+                  </div>
+                  <div class="expand-field">
+                    <label class="expand-field__label">PC xăng</label>
+                    <CustomInput :model-value="formatMoney(nv(row).phu_cap_xang)" readonly />
+                  </div>
+                  <div class="expand-field">
+                    <label class="expand-field__label">PC ăn trưa</label>
+                    <CustomInput :model-value="formatMoney(nv(row).phu_cap_an_trua)" readonly />
+                  </div>
+                  <div class="expand-field">
+                    <label class="expand-field__label">PC điện thoại</label>
+                    <CustomInput :model-value="formatMoney(nv(row).phu_cap_dien_thoai)" readonly />
+                  </div>
+                  <div class="expand-field">
+                    <label class="expand-field__label">PC nhà ở</label>
+                    <CustomInput :model-value="formatMoney(nv(row).phu_cap_nha_o)" readonly />
+                  </div>
+                  <div class="expand-field">
+                    <label class="expand-field__label">Thưởng chuyên cần</label>
+                    <CustomInput :model-value="formatMoney(nv(row).thuong_chuyen_can)" readonly />
+                  </div>
+                  <div class="expand-field">
+                    <label class="expand-field__label">HH HĐ cuối</label>
+                    <CustomInput :model-value="formatMoney(nv(row).hoa_hong_hop_dong_cuoi)" readonly />
+                  </div>
+                  <div class="expand-field">
+                    <label class="expand-field__label">HH HĐ trang phục</label>
+                    <CustomInput :model-value="formatMoney(nv(row).hoa_hong_hop_dong_trang_phuc)" readonly />
+                  </div>
+                </div>
               </section>
             </div>
           </template>
@@ -342,8 +402,9 @@
                       <el-date-picker
                         v-model="form.ngay_sinh"
                         type="date"
+                        format="DD/MM/YYYY"
                         value-format="YYYY-MM-DD"
-                        placeholder="Chọn ngày"
+                        placeholder="dd/mm/yyyy"
                         style="width: 100%"
                       />
                     </CustomFormItem>
@@ -366,8 +427,9 @@
                       <el-date-picker
                         v-model="form.ngay_vao_cong_ty"
                         type="date"
+                        format="DD/MM/YYYY"
                         value-format="YYYY-MM-DD"
-                        placeholder="Chọn ngày"
+                        placeholder="dd/mm/yyyy"
                         style="width: 100%"
                       />
                     </CustomFormItem>
@@ -378,8 +440,9 @@
                       <el-date-picker
                         v-model="form.ngay_ky_hop_dong"
                         type="date"
+                        format="DD/MM/YYYY"
                         value-format="YYYY-MM-DD"
-                        placeholder="Chọn ngày"
+                        placeholder="dd/mm/yyyy"
                         style="width: 100%"
                       />
                     </CustomFormItem>
@@ -468,161 +531,65 @@
 
               <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
                 <CustomFormItem label="Lương cứng" prop="luong_cung">
-                  <el-input-number
-                    v-model="form.luong_cung"
-                    :min="0"
-                    :precision="0"
-                    :controls="false"
-                    align="left"
-                    placeholder="0"
-                    style="width: 100%"
-                  />
+                  <MoneyInput v-model="form.luong_cung" style="width: 100%" />
                 </CustomFormItem>
               </CustomCol>
               <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
                 <CustomFormItem label="Lương mềm" prop="luong_mem">
-                  <el-input-number
-                    v-model="form.luong_mem"
-                    :min="0"
-                    :precision="0"
-                    :controls="false"
-                    align="left"
-                    placeholder="0"
-                    style="width: 100%"
-                  />
+                  <MoneyInput v-model="form.luong_mem" style="width: 100%" />
                 </CustomFormItem>
               </CustomCol>
               <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
                 <CustomFormItem label="Phụ cấp" prop="phu_cap">
-                  <el-input-number
-                    v-model="form.phu_cap"
-                    :min="0"
-                    :precision="0"
-                    :controls="false"
-                    align="left"
-                    placeholder="0"
-                    style="width: 100%"
-                  />
+                  <MoneyInput v-model="form.phu_cap" style="width: 100%" />
                 </CustomFormItem>
               </CustomCol>
 
               <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
                 <CustomFormItem label="Lương cơ bản" prop="luong_co_ban">
-                  <el-input-number
-                    v-model="form.luong_co_ban"
-                    :min="0"
-                    :precision="0"
-                    :controls="false"
-                    align="left"
-                    placeholder="0"
-                    style="width: 100%"
-                  />
+                  <MoneyInput v-model="form.luong_co_ban" style="width: 100%" />
                 </CustomFormItem>
               </CustomCol>
               <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
                 <CustomFormItem label="Lương tăng ca" prop="luong_tang_ca">
-                  <el-input-number
-                    v-model="form.luong_tang_ca"
-                    :min="0"
-                    :precision="0"
-                    :controls="false"
-                    align="left"
-                    placeholder="0"
-                    style="width: 100%"
-                  />
+                  <MoneyInput v-model="form.luong_tang_ca" style="width: 100%" />
                 </CustomFormItem>
               </CustomCol>
               <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
                 <CustomFormItem label="Phụ cấp xăng" prop="phu_cap_xang">
-                  <el-input-number
-                    v-model="form.phu_cap_xang"
-                    :min="0"
-                    :precision="0"
-                    :controls="false"
-                    align="left"
-                    placeholder="0"
-                    style="width: 100%"
-                  />
+                  <MoneyInput v-model="form.phu_cap_xang" style="width: 100%" />
                 </CustomFormItem>
               </CustomCol>
 
               <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
                 <CustomFormItem label="Phụ cấp ăn trưa" prop="phu_cap_an_trua">
-                  <el-input-number
-                    v-model="form.phu_cap_an_trua"
-                    :min="0"
-                    :precision="0"
-                    :controls="false"
-                    align="left"
-                    placeholder="0"
-                    style="width: 100%"
-                  />
+                  <MoneyInput v-model="form.phu_cap_an_trua" style="width: 100%" />
                 </CustomFormItem>
               </CustomCol>
               <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
                 <CustomFormItem label="Phụ cấp điện thoại" prop="phu_cap_dien_thoai">
-                  <el-input-number
-                    v-model="form.phu_cap_dien_thoai"
-                    :min="0"
-                    :precision="0"
-                    :controls="false"
-                    align="left"
-                    placeholder="0"
-                    style="width: 100%"
-                  />
+                  <MoneyInput v-model="form.phu_cap_dien_thoai" style="width: 100%" />
                 </CustomFormItem>
               </CustomCol>
               <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
                 <CustomFormItem label="Phụ cấp nhà ở" prop="phu_cap_nha_o">
-                  <el-input-number
-                    v-model="form.phu_cap_nha_o"
-                    :min="0"
-                    :precision="0"
-                    :controls="false"
-                    align="left"
-                    placeholder="0"
-                    style="width: 100%"
-                  />
+                  <MoneyInput v-model="form.phu_cap_nha_o" style="width: 100%" />
                 </CustomFormItem>
               </CustomCol>
 
               <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
                 <CustomFormItem label="Thưởng chuyên cần" prop="thuong_chuyen_can">
-                  <el-input-number
-                    v-model="form.thuong_chuyen_can"
-                    :min="0"
-                    :precision="0"
-                    :controls="false"
-                    align="left"
-                    placeholder="0"
-                    style="width: 100%"
-                  />
+                  <MoneyInput v-model="form.thuong_chuyen_can" style="width: 100%" />
                 </CustomFormItem>
               </CustomCol>
               <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
                 <CustomFormItem label="Hoa hồng HĐ cuối" prop="hoa_hong_hop_dong_cuoi">
-                  <el-input-number
-                    v-model="form.hoa_hong_hop_dong_cuoi"
-                    :min="0"
-                    :precision="0"
-                    :controls="false"
-                    align="left"
-                    placeholder="0"
-                    style="width: 100%"
-                  />
+                  <MoneyInput v-model="form.hoa_hong_hop_dong_cuoi" style="width: 100%" />
                 </CustomFormItem>
               </CustomCol>
               <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
                 <CustomFormItem label="Hoa hồng HĐ trang phục" prop="hoa_hong_hop_dong_trang_phuc">
-                  <el-input-number
-                    v-model="form.hoa_hong_hop_dong_trang_phuc"
-                    :min="0"
-                    :precision="0"
-                    :controls="false"
-                    align="left"
-                    placeholder="0"
-                    style="width: 100%"
-                  />
+                  <MoneyInput v-model="form.hoa_hong_hop_dong_trang_phuc" style="width: 100%" />
                 </CustomFormItem>
               </CustomCol>
               <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
@@ -651,6 +618,7 @@ import { Delete, Edit, Plus, Search } from '@element-plus/icons-vue'
 import { createUser, deleteUser, fetchUsers, updateUser, uploadNhanVienHinh } from '@/api/users'
 import { fetchPhongBan } from '@/api/phongBan'
 import { mediaUrl } from '@/utils/media'
+import { formatInteger } from '@/utils/number'
 import {
   CustomButton,
   CustomCard,
@@ -662,6 +630,7 @@ import {
   CustomInput,
   CustomOption,
   CustomRow,
+  MoneyInput,
   CustomSelect,
   CustomTable,
   CustomTableColumn,
@@ -847,16 +816,15 @@ function formatDate(value) {
 
 function formatNumber(value) {
   if (value == null || value === '') return '—'
-  const num = Number(value)
-  if (Number.isNaN(num)) return '—'
-  return num.toLocaleString('vi-VN')
+  const formatted = formatInteger(value)
+  return formatted || '—'
 }
 
 function formatMoney(value) {
   if (value == null || value === '') return '—'
-  const num = Number(value)
-  if (Number.isNaN(num)) return '—'
-  return `${num.toLocaleString('vi-VN')} ₫`
+  const formatted = formatInteger(value)
+  if (!formatted) return '—'
+  return `${formatted} ₫`
 }
 
 function clearPendingPreview() {
@@ -1254,14 +1222,14 @@ onMounted(() => {
 }
 
 .expand-panel {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   padding: 0 4px 2px;
 }
 
 .expand-block--wide {
-  grid-column: 1 / -1;
+  width: 100%;
 }
 
 .expand-title {
@@ -1272,63 +1240,73 @@ onMounted(() => {
   line-height: 1.3;
 }
 
-.detail-grid {
+.expand-block--form {
+  padding: 4px 8px 4px 16px;
+}
+
+.expand-block--form .expand-title {
+  margin-bottom: 8px;
+}
+
+.expand-fields {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 2px 12px;
-  margin: 0;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px 12px;
 }
 
-.detail-grid--money {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.detail-grid > div {
+.expand-field {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
+  flex-direction: column;
+  gap: 4px;
   min-width: 0;
-  line-height: 1.35;
 }
 
-.detail-grid dt {
-  flex: 0 0 auto;
-  margin: 0;
+.expand-field__label {
   font-size: 12px;
-  color: var(--el-text-color-regular);
   font-weight: 500;
-  white-space: nowrap;
+  color: var(--el-text-color-regular);
+  line-height: 1.3;
 }
 
-.detail-grid dt::after {
-  content: ':';
+.expand-field :deep(.el-input__wrapper) {
+  background-color: var(--el-fill-color-light);
+  box-shadow: 0 0 0 1px var(--el-border-color-lighter) inset;
 }
 
-.detail-grid dd {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
+.expand-field :deep(.el-input__inner) {
   font-size: 12px;
-  color: var(--el-text-color-primary);
   font-weight: 600;
-  word-break: break-word;
+  color: var(--el-text-color-primary);
+  cursor: default;
 }
 
-@media (max-width: 1100px) {
-  .detail-grid--money {
+@media (max-width: 1400px) {
+  .expand-fields {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1200px) {
+  .expand-fields {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 992px) {
+  .expand-fields {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 767px) {
-  .expand-panel {
-    grid-template-columns: 1fr;
-    gap: 8px;
+  .expand-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
 
-  .detail-grid,
-  .detail-grid--money {
-    grid-template-columns: 1fr 1fr;
+@media (max-width: 480px) {
+  .expand-fields {
+    grid-template-columns: 1fr;
   }
 }
 

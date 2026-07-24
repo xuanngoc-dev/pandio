@@ -75,6 +75,7 @@ declare module 'vue' {
     ElTree: typeof import('element-plus/es')['ElTree']
     ElUpload: typeof import('element-plus/es')['ElUpload']
     LayoutSettingsDrawer: typeof import('./components/LayoutSettingsDrawer.vue')['default']
+    MoneyInput: typeof import('./components/element/MoneyInput.vue')['default']
     NotificationDrawer: typeof import('./components/NotificationDrawer.vue')['default']
     PagePlaceholder: typeof import('./components/PagePlaceholder.vue')['default']
     Pagination: typeof import('./components/Pagination.vue')['default']

@@ -3,6 +3,9 @@
     <h2 class="page-title">Chấm công · Nghỉ phép</h2>
 
     <el-tabs v-model="activeTab" class="page-tabs">
+      <el-tab-pane label="Điểm danh" name="diem-danh">
+        <DiemDanh />
+      </el-tab-pane>
       <el-tab-pane label="Chấm công tháng" name="cham-cong-thang">
         <ChamCongThang />
       </el-tab-pane>
@@ -18,11 +21,12 @@
 
 <script setup>
 import { ref } from 'vue'
+import DiemDanh from './cham-cong-nghi-phep/DiemDanh.vue'
 import ChamCongThang from './cham-cong-nghi-phep/ChamCongThang.vue'
 import DangKyCa from './cham-cong-nghi-phep/DangKyCa.vue'
 import NghiPhep from './cham-cong-nghi-phep/NghiPhep.vue'
 
-const activeTab = ref('cham-cong-thang')
+const activeTab = ref('diem-danh')
 </script>
 
 <style scoped lang="scss">
