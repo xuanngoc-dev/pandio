@@ -80,6 +80,7 @@ declare module 'vue' {
     NotificationDrawer: typeof import('./components/NotificationDrawer.vue')['default']
     PagePlaceholder: typeof import('./components/PagePlaceholder.vue')['default']
     Pagination: typeof import('./components/Pagination.vue')['default']
+    QuickSearchModal: typeof import('./components/QuickSearchModal.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SideMenu: typeof import('./components/SideMenu.vue')['default']

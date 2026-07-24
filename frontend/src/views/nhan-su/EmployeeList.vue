@@ -613,6 +613,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Edit, Plus, Search } from '@element-plus/icons-vue'
 import { createUser, deleteUser, fetchUsers, updateUser, uploadNhanVienHinh } from '@/api/users'
@@ -639,6 +640,8 @@ import {
 } from '@/components/element'
 import Pagination from '@/components/Pagination.vue'
 
+const route = useRoute()
+
 const employees = ref([])
 const departments = ref([])
 const loading = ref(false)
@@ -647,7 +650,7 @@ const page = ref(1)
 const perPage = ref(10)
 const total = ref(0)
 
-const keyword = ref('')
+const keyword = ref(String(route.query.keyword || ''))
 const statusFilter = ref('')
 const dialogVisible = ref(false)
 const editingId = ref(null)

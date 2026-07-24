@@ -41,6 +41,17 @@
           <span class="page-title">{{ pageTitle }}</span>
         </div>
 
+        <button
+          type="button"
+          class="header-search"
+          aria-label="Tìm kiếm nhanh"
+          @click="searchOpen = true"
+        >
+          <el-icon :size="16"><Search /></el-icon>
+          <span class="header-search__placeholder">Tìm kiếm nhanh...</span>
+          <kbd class="header-search__kbd">{{ searchShortcutLabel }}</kbd>
+        </button>
+
         <div class="header-right">
           <el-switch
             v-model="isDark"
@@ -107,6 +118,7 @@
       v-model:unread-count="unreadNotifications"
     />
     <LayoutSettingsDrawer v-model="settingsOpen" v-model:dark="isDark" />
+    <QuickSearchModal v-model="searchOpen" />
   </el-container>
 </template>
 
@@ -115,10 +127,11 @@ import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useLayoutStore } from '@/stores/layout'
-import { Monitor, Fold, Expand, ArrowDown, Setting, Bell } from '@element-plus/icons-vue'
+import { Monitor, Fold, Expand, ArrowDown, Setting, Bell, Search } from '@element-plus/icons-vue'
 import SideMenu from '@/components/SideMenu.vue'
 import NotificationDrawer from '@/components/NotificationDrawer.vue'
 import LayoutSettingsDrawer from '@/components/LayoutSettingsDrawer.vue'
+import QuickSearchModal from '@/components/QuickSearchModal.vue'
 
 /** Dưới breakpoint này sidebar tự chuyển sang collapsed */
 const COLLAPSE_BREAKPOINT = 992
@@ -131,8 +144,12 @@ const layoutStore = useLayoutStore()
 const collapsed = ref(false)
 const settingsOpen = ref(false)
 const notificationsOpen = ref(false)
+const searchOpen = ref(false)
 const unreadNotifications = ref(0)
 const isDark = ref(document.documentElement.classList.contains('dark'))
+
+const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform)
+const searchShortcutLabel = isMac ? '⌘K' : 'Ctrl+K'
 
 const pageTitle = computed(() => route.meta.title || 'Pandio')
 const avatarLetter = computed(() =>
@@ -143,6 +160,16 @@ let mediaQuery = null
 
 function syncCollapseByViewport(e) {
   collapsed.value = e.matches
+}
+
+function onGlobalKeydown(event) {
+  const key = event.key?.toLowerCase()
+  const withModifier = event.metaKey || event.ctrlKey
+
+  if (withModifier && key === 'k') {
+    event.preventDefault()
+    searchOpen.value = true
+  }
 }
 
 function toggleDark(val) {
@@ -167,10 +194,12 @@ onMounted(() => {
   mediaQuery = window.matchMedia(`(max-width: ${COLLAPSE_BREAKPOINT - 1}px)`)
   collapsed.value = mediaQuery.matches
   mediaQuery.addEventListener('change', syncCollapseByViewport)
+  window.addEventListener('keydown', onGlobalKeydown)
 })
 
 onUnmounted(() => {
   mediaQuery?.removeEventListener('change', syncCollapseByViewport)
+  window.removeEventListener('keydown', onGlobalKeydown)
 })
 </script>
 
@@ -247,7 +276,7 @@ onUnmounted(() => {
 .header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 16px;
   border-bottom: 1px solid var(--el-border-color);
   background: var(--el-bg-color);
   flex-shrink: 0;
@@ -259,11 +288,71 @@ onUnmounted(() => {
   }
 }
 
+.header-search {
+  flex: 1;
+  max-width: 420px;
+  min-width: 0;
+  margin: 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 8px;
+  background: var(--el-fill-color-light);
+  color: var(--el-text-color-secondary);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+
+  &:hover {
+    border-color: var(--el-color-primary-light-5);
+    background: var(--el-fill-color);
+  }
+}
+
+.header-search__placeholder {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.header-search__kbd {
+  flex-shrink: 0;
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid var(--el-border-color);
+  background: var(--el-bg-color);
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--el-text-color-placeholder);
+  font-family: inherit;
+}
+
 .header-left,
 .header-right {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-shrink: 0;
+}
+
+.header-right {
+  margin-left: auto;
+}
+
+@media (max-width: 991px) {
+  .header-search {
+    max-width: 220px;
+  }
+
+  .header-search__placeholder,
+  .header-search__kbd {
+    display: none;
+  }
 }
 
 .icon-btn {
