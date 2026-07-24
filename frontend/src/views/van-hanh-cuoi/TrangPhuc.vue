@@ -3,6 +3,9 @@
     <h2 class="page-title">Trang phục</h2>
 
     <el-tabs v-model="activeTab" class="page-tabs">
+      <el-tab-pane label="Trang phục" name="trang-phuc">
+        <TrangPhucList />
+      </el-tab-pane>
       <el-tab-pane label="Danh mục trang phục" name="danh-muc">
         <DanhMucTrangPhuc />
       </el-tab-pane>
@@ -21,8 +24,9 @@ import { ref } from 'vue'
 import DanhMucTrangPhuc from './trang-phuc/DanhMucTrangPhuc.vue'
 import DatMuaTrangPhuc from './trang-phuc/DatMuaTrangPhuc.vue'
 import NhaCungCapTrangPhuc from './trang-phuc/NhaCungCapTrangPhuc.vue'
+import TrangPhucList from './trang-phuc/TrangPhucList.vue'
 
-const activeTab = ref('danh-muc')
+const activeTab = ref('trang-phuc')
 </script>
 
 <style scoped lang="scss">
