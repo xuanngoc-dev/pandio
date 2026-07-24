@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CauHinhCaLamViecController;
 use App\Http\Controllers\Api\CauHinhChiNhanhController;
 use App\Http\Controllers\Api\CauHinhGioLamViecController;
+use App\Http\Controllers\Api\CauHinhJsonController;
 use App\Http\Controllers\Api\CauHinhNgayNghiController;
 use App\Http\Controllers\Api\CauHinhTaiKhoanThanhToanController;
 use App\Http\Controllers\Api\CauHinhThongTinStudioController;
@@ -62,4 +63,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Vai trò (chức danh nhân sự)
     Route::apiResource('vai-tro', VaiTroController::class);
+
+    // Cấu hình JSON động
+    Route::get('/cau-hinh-json', [CauHinhJsonController::class, 'show']);
+    Route::put('/cau-hinh-json', [CauHinhJsonController::class, 'update']);
 });
