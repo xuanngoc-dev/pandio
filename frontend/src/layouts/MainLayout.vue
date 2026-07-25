@@ -389,3 +389,15 @@ onUnmounted(() => {
   }
 }
 </style>
+
+<style lang="scss">
+/* Tăng tương phản chữ el-select disabled — giao diện sáng */
+html:not(.dark) {
+  --el-select-disabled-color: #141414 !important;
+
+  .el-select .el-select__wrapper.is-disabled .el-select__selected-item {
+    color: var(--el-select-disabled-color) !important;
+    -webkit-text-fill-color: var(--el-select-disabled-color) !important;
+  }
+}
+</style>

@@ -2,6 +2,7 @@
 /**
  * CustomDialog — wrapper el-dialog.
  * Mặc định: destroy-on-close, append-to-body, width responsive.
+ * Nội dung dài: body cuộn dọc, header/footer luôn hiển thị (max-height theo viewport).
  */
 import { computed, useAttrs, useSlots } from 'vue'
 
@@ -62,5 +63,26 @@ const dialogClass = computed(() => {
 .custom-dialog.el-dialog {
   width: min(var(--custom-dialog-width, 520px), calc(100vw - 32px)) !important;
   max-width: var(--custom-dialog-width, 520px);
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.custom-dialog.el-dialog .el-dialog__header {
+  flex-shrink: 0;
+  margin-right: 0;
+}
+
+.custom-dialog.el-dialog .el-dialog__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.custom-dialog.el-dialog .el-dialog__footer {
+  flex-shrink: 0;
 }
 </style>

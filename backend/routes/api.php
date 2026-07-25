@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\CauHinhThongTinStudioController;
 use App\Http\Controllers\Api\DanhMucConceptController;
 use App\Http\Controllers\Api\DanhMucTrangPhucController;
 use App\Http\Controllers\Api\DatMuaTrangPhucController;
+use App\Http\Controllers\Api\HopDongChoThueTrangPhucController;
 use App\Http\Controllers\Api\NhaCungCapTrangPhucController;
 use App\Http\Controllers\Api\TrangPhucController;
 use App\Http\Controllers\Api\DangKyCaLamViecController;
@@ -114,4 +115,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('danh-muc-trang-phuc', DanhMucTrangPhucController::class);
     Route::apiResource('nha-cung-cap-trang-phuc', NhaCungCapTrangPhucController::class);
     Route::apiResource('dat-mua-trang-phuc', DatMuaTrangPhucController::class);
+    Route::apiResource('hop-dong-cho-thue-trang-phuc', HopDongChoThueTrangPhucController::class);
 });
