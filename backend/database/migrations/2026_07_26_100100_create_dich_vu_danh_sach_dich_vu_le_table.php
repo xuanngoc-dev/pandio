@@ -15,7 +15,7 @@ return new class extends Migration
             $table->foreignId('loai_dich_vu_id')
                 ->constrained('dich_vu_loai_dich_vu')
                 ->restrictOnDelete();
-            $table->json('loai_dich_vu_ids')->nullable();
+            $table->json('loai_hop_dong_ids')->nullable();
             $table->decimal('gia_goc', 15, 0)->default(0);
             $table->decimal('gia_khuyen_mai', 15, 0)->nullable();
             $table->text('mo_ta')->nullable();

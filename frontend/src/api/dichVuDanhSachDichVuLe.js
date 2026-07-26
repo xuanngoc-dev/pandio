@@ -2,7 +2,7 @@ import api from '@/api/axios'
 
 /**
  * Danh sách dịch vụ lẻ — phân trang.
- * @param {{ page?: number, per_page?: number, keyword?: string, trang_thai?: string, loai_dich_vu_id?: number }} params
+ * @param {{ page?: number, per_page?: number, keyword?: string, trang_thai?: string, loai_dich_vu_id?: number, loai_hop_dong_id?: number }} params
  */
 export function fetchDichVuDanhSachDichVuLe(params = {}) {
   return api.get('/dich-vu-danh-sach-dich-vu-le', { params })

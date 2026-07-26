@@ -15,17 +15,17 @@
           </template>
         </CustomInput>
         <CustomSelect
-          v-model="filterLoaiDichVuId"
-          placeholder="Loại dịch vụ"
+          v-model="filterLoaiHopDongId"
+          placeholder="Loại hợp đồng"
           clearable
           filterable
           style="width: 220px"
           @change="onSearch"
         >
           <CustomOption
-            v-for="item in loaiDichVuOptions"
+            v-for="item in loaiHopDongOptions"
             :key="item.id"
-            :label="item.ten_dich_vu"
+            :label="item.ten_hop_dong"
             :value="item.id"
           />
         </CustomSelect>
@@ -65,9 +65,9 @@
         </CustomTableColumn>
         <CustomTableColumn prop="ma_nhom" label="Mã nhóm" width="120" />
         <CustomTableColumn prop="ten_nhom" label="Tên nhóm" min-width="180" />
-        <CustomTableColumn label="Loại dịch vụ" min-width="160">
+        <CustomTableColumn label="Loại hợp đồng" min-width="160">
           <template #default="{ row }">
-            {{ row.loai_dich_vu?.ten_dich_vu || '—' }}
+            {{ row.loai_hop_dong?.ten_hop_dong || '—' }}
           </template>
         </CustomTableColumn>
         <CustomTableColumn label="Dịch vụ lẻ trong combo" min-width="220" show-overflow-tooltip>
@@ -147,18 +147,18 @@
             </CustomFormItem>
           </CustomCol>
           <CustomCol :xs="24" :sm="12" :md="6">
-            <CustomFormItem label="Loại dịch vụ" prop="loai_dich_vu_id">
+            <CustomFormItem label="Áp dụng cho loại hợp đồng" prop="loai_hop_dong_id">
               <CustomSelect
-                v-model="form.loai_dich_vu_id"
-                placeholder="Chọn loại dịch vụ"
+                v-model="form.loai_hop_dong_id"
+                placeholder="Chọn loại hợp đồng"
                 filterable
                 style="width: 100%"
-                @change="onLoaiDichVuChange"
+                @change="onLoaiHopDongChange"
               >
                 <CustomOption
-                  v-for="item in loaiDichVuOptions"
+                  v-for="item in loaiHopDongOptions"
                   :key="item.id"
-                  :label="item.ten_dich_vu"
+                  :label="item.ten_hop_dong"
                   :value="item.id"
                 />
               </CustomSelect>
@@ -178,8 +178,8 @@
                 <div v-if="loadingDichVuLe" class="dich-vu-le-empty">
                   Đang tải dịch vụ lẻ...
                 </div>
-                <div v-else-if="!form.loai_dich_vu_id" class="dich-vu-le-empty">
-                  Chọn loại dịch vụ trước.
+                <div v-else-if="!form.loai_hop_dong_id" class="dich-vu-le-empty">
+                  Chọn loại hợp đồng trước.
                 </div>
                 <div v-else class="dich-vu-le-card-grid">
                   <button
@@ -206,7 +206,7 @@
                     </div>
                   </button>
                   <div v-if="!dichVuLeOptions.length" class="dich-vu-le-empty">
-                    Không có dịch vụ lẻ cho loại này.
+                    Không có dịch vụ lẻ cho loại hợp đồng này.
                   </div>
                 </div>
               </div>
@@ -285,7 +285,7 @@ import {
   updateDichVuDanhSachDichNhomDichVu,
 } from '@/api/dichVuDanhSachDichNhomDichVu'
 import { fetchDichVuDanhSachDichVuLe } from '@/api/dichVuDanhSachDichVuLe'
-import { fetchDichVuLoaiDichVu } from '@/api/dichVuLoaiDichVu'
+import { fetchLoaiHopDong } from '@/api/loaiHopDong'
 import {
   CustomButton,
   CustomCard,
@@ -314,9 +314,9 @@ const perPage = ref(10)
 const total = ref(0)
 const keyword = ref('')
 const filterTrangThai = ref('')
-const filterLoaiDichVuId = ref(null)
+const filterLoaiHopDongId = ref(null)
 
-const loaiDichVuOptions = ref([])
+const loaiHopDongOptions = ref([])
 const dichVuLeOptions = ref([])
 
 const dialogVisible = ref(false)
@@ -327,7 +327,7 @@ const giaKhuyenMaiSynced = ref(true)
 const emptyForm = () => ({
   ma_nhom: '',
   ten_nhom: '',
-  loai_dich_vu_id: null,
+  loai_hop_dong_id: null,
   dich_vu_le_ids: [],
   gia_goc: 0,
   gia_khuyen_mai: 0,
@@ -342,7 +342,7 @@ const form = reactive(emptyForm())
 const rules = {
   ma_nhom: [{ required: true, message: 'Vui lòng nhập mã nhóm', trigger: 'blur' }],
   ten_nhom: [{ required: true, message: 'Vui lòng nhập tên nhóm', trigger: 'blur' }],
-  loai_dich_vu_id: [{ required: true, message: 'Vui lòng chọn loại dịch vụ', trigger: 'change' }],
+  loai_hop_dong_id: [{ required: true, message: 'Vui lòng chọn loại hợp đồng', trigger: 'change' }],
   gia_goc: [{ required: true, message: 'Vui lòng nhập giá gốc', trigger: 'blur' }],
   so_diem_chup: [{ required: true, message: 'Vui lòng nhập số điểm chụp', trigger: 'blur' }],
   so_anh_chinh_sua: [{ required: true, message: 'Vui lòng nhập số ảnh chỉnh sửa', trigger: 'blur' }],
@@ -410,17 +410,17 @@ function onGiaKhuyenMaiInput() {
   giaKhuyenMaiSynced.value = false
 }
 
-async function loadLoaiDichVuOptions() {
+async function loadLoaiHopDongOptions() {
   try {
-    const { data } = await fetchDichVuLoaiDichVu({ per_page: 100, trang_thai: 'dang_hoat_dong' })
-    loaiDichVuOptions.value = data?.data || []
+    const { data } = await fetchLoaiHopDong({ per_page: 100, trang_thai: 'hoat_dong' })
+    loaiHopDongOptions.value = data?.data || []
   } catch {
-    loaiDichVuOptions.value = []
+    loaiHopDongOptions.value = []
   }
 }
 
-async function loadDichVuLeByLoai(loaiDichVuId, keepSelected = false) {
-  if (!loaiDichVuId) {
+async function loadDichVuLeByLoaiHopDong(loaiHopDongId, keepSelected = false) {
+  if (!loaiHopDongId) {
     dichVuLeOptions.value = []
     if (!keepSelected) form.dich_vu_le_ids = []
     return
@@ -430,7 +430,7 @@ async function loadDichVuLeByLoai(loaiDichVuId, keepSelected = false) {
   try {
     const { data } = await fetchDichVuDanhSachDichVuLe({
       per_page: 100,
-      loai_dich_vu_id: loaiDichVuId,
+      loai_hop_dong_id: loaiHopDongId,
       trang_thai: 'dang_su_dung',
     })
     dichVuLeOptions.value = data?.data || []
@@ -453,8 +453,8 @@ async function loadDichVuLeByLoai(loaiDichVuId, keepSelected = false) {
   }
 }
 
-function onLoaiDichVuChange(loaiDichVuId) {
-  loadDichVuLeByLoai(loaiDichVuId, false)
+function onLoaiHopDongChange(loaiHopDongId) {
+  loadDichVuLeByLoaiHopDong(loaiHopDongId, false)
 }
 
 async function loadItems() {
@@ -465,7 +465,7 @@ async function loadItems() {
       per_page: perPage.value,
       keyword: keyword.value.trim() || undefined,
       trang_thai: filterTrangThai.value || undefined,
-      loai_dich_vu_id: filterLoaiDichVuId.value || undefined,
+      loai_hop_dong_id: filterLoaiHopDongId.value || undefined,
     })
     items.value = data.data || []
     total.value = data.total || 0
@@ -499,7 +499,7 @@ async function openEdit(row) {
   Object.assign(form, {
     ma_nhom: row.ma_nhom,
     ten_nhom: row.ten_nhom,
-    loai_dich_vu_id: row.loai_dich_vu_id,
+    loai_hop_dong_id: row.loai_hop_dong_id,
     dich_vu_le_ids: [...(row.dich_vu_le_ids || [])],
     gia_goc: giaGoc,
     gia_khuyen_mai: giaKhuyenMai,
@@ -509,7 +509,7 @@ async function openEdit(row) {
     ghi_chu: row.ghi_chu || '',
   })
   dialogVisible.value = true
-  await loadDichVuLeByLoai(row.loai_dich_vu_id, true)
+  await loadDichVuLeByLoaiHopDong(row.loai_hop_dong_id, true)
 }
 
 async function save() {
@@ -520,7 +520,7 @@ async function save() {
   const payload = {
     ma_nhom: form.ma_nhom.trim(),
     ten_nhom: form.ten_nhom.trim(),
-    loai_dich_vu_id: form.loai_dich_vu_id,
+    loai_hop_dong_id: form.loai_hop_dong_id,
     dich_vu_le_ids: form.dich_vu_le_ids?.length ? form.dich_vu_le_ids : [],
     gia_goc: Number(form.gia_goc) || 0,
     gia_khuyen_mai: form.gia_khuyen_mai != null && form.gia_khuyen_mai !== ''
@@ -566,7 +566,7 @@ async function remove(row) {
 }
 
 onMounted(async () => {
-  await loadLoaiDichVuOptions()
+  await loadLoaiHopDongOptions()
   await loadItems()
 })
 </script>

@@ -15,7 +15,7 @@ class DichVuDanhSachDichNhomDichVuController extends Controller
     /**
      * Danh sách nhóm dịch vụ (combo) — phân trang + tìm kiếm.
      *
-     * Query: page, per_page, keyword, trang_thai, loai_dich_vu_id
+     * Query: page, per_page, keyword, trang_thai, loai_hop_dong_id
      */
     public function index(Request $request): JsonResponse
     {
@@ -24,16 +24,16 @@ class DichVuDanhSachDichNhomDichVuController extends Controller
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
             'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
             'trang_thai' => ['sometimes', 'nullable', Rule::in(['dang_su_dung', 'ngung_su_dung'])],
-            'loai_dich_vu_id' => ['sometimes', 'nullable', 'integer', 'exists:dich_vu_loai_dich_vu,id'],
+            'loai_hop_dong_id' => ['sometimes', 'nullable', 'integer', 'exists:loai_hop_dong,id'],
         ]);
 
         $perPage = $validated['per_page'] ?? 10;
         $keyword = trim((string) ($validated['keyword'] ?? ''));
         $trangThai = $validated['trang_thai'] ?? null;
-        $loaiDichVuId = $validated['loai_dich_vu_id'] ?? null;
+        $loaiHopDongId = $validated['loai_hop_dong_id'] ?? null;
 
         $query = DichVuDanhSachDichNhomDichVu::query()
-            ->with('loaiDichVu:id,ten_dich_vu')
+            ->with('loaiHopDong:id,ten_hop_dong,ma_hop_dong')
             ->when($keyword !== '', function ($q) use ($keyword) {
                 $q->where(function ($inner) use ($keyword) {
                     $inner->where('ma_nhom', 'like', "%{$keyword}%")
@@ -41,7 +41,7 @@ class DichVuDanhSachDichNhomDichVuController extends Controller
                 });
             })
             ->when($trangThai, fn ($q) => $q->where('trang_thai', $trangThai))
-            ->when($loaiDichVuId, fn ($q) => $q->where('loai_dich_vu_id', $loaiDichVuId))
+            ->when($loaiHopDongId, fn ($q) => $q->where('loai_hop_dong_id', $loaiHopDongId))
             ->orderByDesc('id');
 
         $paginator = $query->paginate($perPage);
@@ -64,7 +64,7 @@ class DichVuDanhSachDichNhomDichVuController extends Controller
 
     public function show(DichVuDanhSachDichNhomDichVu $dich_vu_danh_sach_dich_nhom_dich_vu): JsonResponse
     {
-        $dich_vu_danh_sach_dich_nhom_dich_vu->load('loaiDichVu:id,ten_dich_vu');
+        $dich_vu_danh_sach_dich_nhom_dich_vu->load('loaiHopDong:id,ten_hop_dong,ma_hop_dong');
         $this->appendDichVuLeLabels($dich_vu_danh_sach_dich_nhom_dich_vu);
 
         return response()->json($dich_vu_danh_sach_dich_nhom_dich_vu);
@@ -75,7 +75,7 @@ class DichVuDanhSachDichNhomDichVuController extends Controller
         $validated = $this->validatePayload($request);
 
         $nhomDichVu = DichVuDanhSachDichNhomDichVu::create($validated);
-        $nhomDichVu->load('loaiDichVu:id,ten_dich_vu');
+        $nhomDichVu->load('loaiHopDong:id,ten_hop_dong,ma_hop_dong');
         $this->appendDichVuLeLabels($nhomDichVu);
 
         return response()->json($nhomDichVu, 201);
@@ -87,7 +87,7 @@ class DichVuDanhSachDichNhomDichVuController extends Controller
 
         $dich_vu_danh_sach_dich_nhom_dich_vu->update($validated);
 
-        $nhomDichVu = $dich_vu_danh_sach_dich_nhom_dich_vu->fresh()->load('loaiDichVu:id,ten_dich_vu');
+        $nhomDichVu = $dich_vu_danh_sach_dich_nhom_dich_vu->fresh()->load('loaiHopDong:id,ten_hop_dong,ma_hop_dong');
         $this->appendDichVuLeLabels($nhomDichVu);
 
         return response()->json($nhomDichVu);
@@ -112,7 +112,7 @@ class DichVuDanhSachDichNhomDichVuController extends Controller
             'ten_nhom' => ['required', 'string', 'max:255'],
             'gia_goc' => ['required', 'numeric', 'min:0'],
             'gia_khuyen_mai' => ['nullable', 'numeric', 'min:0'],
-            'loai_dich_vu_id' => ['required', 'integer', 'exists:dich_vu_loai_dich_vu,id'],
+            'loai_hop_dong_id' => ['required', 'integer', 'exists:loai_hop_dong,id'],
             'so_diem_chup' => ['required', 'integer', 'min:0'],
             'so_anh_chinh_sua' => ['required', 'integer', 'min:0'],
             'dich_vu_le_ids' => ['nullable', 'array'],
@@ -122,15 +122,21 @@ class DichVuDanhSachDichNhomDichVuController extends Controller
         ]);
 
         if (! empty($validated['dich_vu_le_ids'])) {
+            $loaiHopDongId = (int) $validated['loai_hop_dong_id'];
             $invalidIds = DichVuDanhSachDichVuLe::query()
                 ->whereIn('id', $validated['dich_vu_le_ids'])
-                ->where('loai_dich_vu_id', '!=', $validated['loai_dich_vu_id'])
+                ->get(['id', 'loai_hop_dong_ids'])
+                ->filter(function (DichVuDanhSachDichVuLe $item) use ($loaiHopDongId) {
+                    $ids = $item->loai_hop_dong_ids ?? [];
+
+                    return ! in_array($loaiHopDongId, $ids, true);
+                })
                 ->pluck('id')
                 ->all();
 
             if ($invalidIds !== []) {
                 throw ValidationException::withMessages([
-                    'dich_vu_le_ids' => ['Các dịch vụ lẻ được chọn phải thuộc loại dịch vụ đã chọn.'],
+                    'dich_vu_le_ids' => ['Các dịch vụ lẻ được chọn phải áp dụng cho loại hợp đồng đã chọn.'],
                 ]);
             }
         }

@@ -14,8 +14,8 @@ return new class extends Migration
             $table->string('ten_nhom');
             $table->decimal('gia_goc', 15, 0)->default(0);
             $table->decimal('gia_khuyen_mai', 15, 0)->nullable();
-            $table->foreignId('loai_dich_vu_id')
-                ->constrained('dich_vu_loai_dich_vu')
+            $table->foreignId('loai_hop_dong_id')
+                ->constrained('loai_hop_dong')
                 ->restrictOnDelete();
             $table->unsignedInteger('so_diem_chup')->default(0);
             $table->unsignedInteger('so_anh_chinh_sua')->default(0);

@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'ma_dich_vu',
     'ten_dich_vu',
     'loai_dich_vu_id',
-    'loai_dich_vu_ids',
+    'loai_hop_dong_ids',
     'gia_goc',
     'gia_khuyen_mai',
     'mo_ta',
@@ -24,7 +24,7 @@ class DichVuDanhSachDichVuLe extends Model
     protected function casts(): array
     {
         return [
-            'loai_dich_vu_ids' => 'array',
+            'loai_hop_dong_ids' => 'array',
             'gia_goc' => 'decimal:0',
             'gia_khuyen_mai' => 'decimal:0',
         ];

@@ -2,7 +2,7 @@ import api from '@/api/axios'
 
 /**
  * Danh sách nhóm dịch vụ (combo) — phân trang.
- * @param {{ page?: number, per_page?: number, keyword?: string, trang_thai?: string, loai_dich_vu_id?: number }} params
+ * @param {{ page?: number, per_page?: number, keyword?: string, trang_thai?: string, loai_hop_dong_id?: number }} params
  */
 export function fetchDichVuDanhSachDichNhomDichVu(params = {}) {
   return api.get('/dich-vu-danh-sach-dich-nhom-dich-vu', { params })

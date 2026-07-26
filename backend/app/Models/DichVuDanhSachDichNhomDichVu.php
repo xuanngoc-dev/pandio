@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'ten_nhom',
     'gia_goc',
     'gia_khuyen_mai',
-    'loai_dich_vu_id',
+    'loai_hop_dong_id',
     'so_diem_chup',
     'so_anh_chinh_sua',
     'dich_vu_le_ids',
@@ -33,8 +33,8 @@ class DichVuDanhSachDichNhomDichVu extends Model
         ];
     }
 
-    public function loaiDichVu(): BelongsTo
+    public function loaiHopDong(): BelongsTo
     {
-        return $this->belongsTo(DichVuLoaiDichVu::class, 'loai_dich_vu_id');
+        return $this->belongsTo(LoaiHopDong::class, 'loai_hop_dong_id');
     }
 }

@@ -14,7 +14,7 @@ class DichVuDanhSachDichVuLeController extends Controller
     /**
      * Danh sách dịch vụ lẻ — phân trang + tìm kiếm.
      *
-     * Query: page, per_page, keyword, trang_thai, loai_dich_vu_id
+     * Query: page, per_page, keyword, trang_thai, loai_dich_vu_id, loai_hop_dong_id
      */
     public function index(Request $request): JsonResponse
     {
@@ -24,12 +24,14 @@ class DichVuDanhSachDichVuLeController extends Controller
             'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
             'trang_thai' => ['sometimes', 'nullable', Rule::in(['dang_su_dung', 'ngung_su_dung'])],
             'loai_dich_vu_id' => ['sometimes', 'nullable', 'integer', 'exists:dich_vu_loai_dich_vu,id'],
+            'loai_hop_dong_id' => ['sometimes', 'nullable', 'integer', 'exists:loai_hop_dong,id'],
         ]);
 
         $perPage = $validated['per_page'] ?? 10;
         $keyword = trim((string) ($validated['keyword'] ?? ''));
         $trangThai = $validated['trang_thai'] ?? null;
         $loaiDichVuId = $validated['loai_dich_vu_id'] ?? null;
+        $loaiHopDongId = $validated['loai_hop_dong_id'] ?? null;
 
         $query = DichVuDanhSachDichVuLe::query()
             ->with('loaiDichVu:id,ten_dich_vu')
@@ -42,6 +44,7 @@ class DichVuDanhSachDichVuLeController extends Controller
             })
             ->when($trangThai, fn ($q) => $q->where('trang_thai', $trangThai))
             ->when($loaiDichVuId, fn ($q) => $q->where('loai_dich_vu_id', $loaiDichVuId))
+            ->when($loaiHopDongId, fn ($q) => $q->whereJsonContains('loai_hop_dong_ids', (int) $loaiHopDongId))
             ->orderByDesc('id');
 
         $paginator = $query->paginate($perPage);
@@ -50,7 +53,7 @@ class DichVuDanhSachDichVuLeController extends Controller
             ->all();
 
         $paginator->getCollection()->transform(function (DichVuDanhSachDichVuLe $item) use ($loaiHopDongMap) {
-            $ids = $item->loai_dich_vu_ids ?? [];
+            $ids = $item->loai_hop_dong_ids ?? [];
             $item->loai_hop_dong_labels = collect($ids)
                 ->map(fn ($id) => $loaiHopDongMap[$id] ?? null)
                 ->filter()
@@ -107,8 +110,8 @@ class DichVuDanhSachDichVuLeController extends Controller
             ],
             'ten_dich_vu' => ['required', 'string', 'max:255'],
             'loai_dich_vu_id' => ['required', 'integer', 'exists:dich_vu_loai_dich_vu,id'],
-            'loai_dich_vu_ids' => ['nullable', 'array'],
-            'loai_dich_vu_ids.*' => ['integer', 'exists:loai_hop_dong,id'],
+            'loai_hop_dong_ids' => ['nullable', 'array'],
+            'loai_hop_dong_ids.*' => ['integer', 'exists:loai_hop_dong,id'],
             'gia_goc' => ['required', 'numeric', 'min:0'],
             'gia_khuyen_mai' => ['nullable', 'numeric', 'min:0'],
             'mo_ta' => ['nullable', 'string'],

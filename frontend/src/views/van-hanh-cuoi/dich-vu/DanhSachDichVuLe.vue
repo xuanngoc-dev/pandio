@@ -184,7 +184,7 @@
             </CustomFormItem>
           </CustomCol>
           <CustomCol :span="24">
-            <CustomFormItem label="Loại hợp đồng áp dụng" prop="loai_dich_vu_ids">
+            <CustomFormItem label="Loại hợp đồng áp dụng" prop="loai_hop_dong_ids">
               <div class="loai-hop-dong-section">
                 <div class="loai-hop-dong-card-grid">
                   <button
@@ -292,7 +292,7 @@ const emptyForm = () => ({
   ma_dich_vu: '',
   ten_dich_vu: '',
   loai_dich_vu_id: null,
-  loai_dich_vu_ids: [],
+  loai_hop_dong_ids: [],
   gia_goc: 0,
   gia_khuyen_mai: 0,
   mo_ta: '',
@@ -326,15 +326,15 @@ function formatLoaiHopDong(row) {
 }
 
 function isLoaiHopDongSelected(id) {
-  return form.loai_dich_vu_ids.includes(id)
+  return form.loai_hop_dong_ids.includes(id)
 }
 
 function toggleLoaiHopDong(id) {
-  const index = form.loai_dich_vu_ids.indexOf(id)
+  const index = form.loai_hop_dong_ids.indexOf(id)
   if (index >= 0) {
-    form.loai_dich_vu_ids.splice(index, 1)
+    form.loai_hop_dong_ids.splice(index, 1)
   } else {
-    form.loai_dich_vu_ids.push(id)
+    form.loai_hop_dong_ids.push(id)
   }
 }
 
@@ -410,7 +410,7 @@ function openEdit(row) {
     ma_dich_vu: row.ma_dich_vu,
     ten_dich_vu: row.ten_dich_vu,
     loai_dich_vu_id: row.loai_dich_vu_id,
-    loai_dich_vu_ids: [...(row.loai_dich_vu_ids || [])],
+    loai_hop_dong_ids: [...(row.loai_hop_dong_ids || [])],
     gia_goc: giaGoc,
     gia_khuyen_mai: giaKhuyenMai,
     mo_ta: row.mo_ta || '',
@@ -429,7 +429,7 @@ async function save() {
     ma_dich_vu: form.ma_dich_vu.trim(),
     ten_dich_vu: form.ten_dich_vu.trim(),
     loai_dich_vu_id: form.loai_dich_vu_id,
-    loai_dich_vu_ids: form.loai_dich_vu_ids?.length ? form.loai_dich_vu_ids : [],
+    loai_hop_dong_ids: form.loai_hop_dong_ids?.length ? form.loai_hop_dong_ids : [],
     gia_goc: Number(form.gia_goc) || 0,
     gia_khuyen_mai: form.gia_khuyen_mai != null && form.gia_khuyen_mai !== ''
       ? Number(form.gia_khuyen_mai)
