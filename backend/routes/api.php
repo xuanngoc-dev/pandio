@@ -27,6 +27,7 @@ use App\Http\Controllers\Api\PhongBanController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\VaiTroController;
 use App\Http\Controllers\Api\XinNghiPhepController;
+use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -45,8 +46,8 @@ Route::prefix('auth')->group(function () {
 // Form đánh giá — công khai cho khách hàng điền
 Route::get('/public/form-danh-gia/{slug}', [CauHinhFormDanhGiaMauController::class, 'showBySlug']);
 
-// Auth bảo vệ bởi Sanctum
-Route::middleware('auth:sanctum')->group(function () {
+// Auth bảo vệ bởi Sanctum — thiếu/sai token → 401 JSON, không cho gọi API
+Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'me']);
 

@@ -71,7 +71,6 @@
                 placeholder="••••••••"
                 show-password
                 :prefix-icon="Lock"
-                @keyup.enter="onSubmit"
               />
             </el-form-item>
           </el-col>
@@ -81,7 +80,8 @@
           <el-button
             type="primary"
             native-type="submit"
-            :loading="authStore.loading"
+            :loading="authStore.loading || submitting"
+            :disabled="authStore.loading || submitting"
             style="width: 100%"
           >
             Đăng ký
@@ -107,6 +107,7 @@ const authStore = useAuthStore()
 const router = useRouter()
 
 const formRef = ref()
+const submitting = ref(false)
 const form = reactive({
   name: '',
   email: '',
@@ -156,20 +157,26 @@ const rules = {
 }
 
 async function onSubmit() {
-  const valid = await formRef.value?.validate().catch(() => false)
-  if (!valid) return
+  if (submitting.value || authStore.loading) return
+  submitting.value = true
 
   try {
-    await authStore.register({
+    const valid = await formRef.value?.validate().catch(() => false)
+    if (!valid) return
+
+    const data = await authStore.register({
       name: form.name.trim(),
       email: form.email.trim(),
       phone: form.phone.trim(),
       password: form.password,
       password_confirmation: form.password_confirmation,
     })
+    if (!data) return
     router.push({ name: 'tong-quan' })
   } catch {
     // Lỗi đã được interceptor xử lý
+  } finally {
+    submitting.value = false
   }
 }
 </script>

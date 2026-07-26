@@ -5,9 +5,9 @@ import router from '@/router'
 /**
  * Axios instance dùng chung cho toàn bộ API.
  * - baseURL lấy từ .env
- * - Tự gắn Bearer token
+ * - Tự gắn Bearer token từ localStorage (sau khi đăng nhập)
  * - Fullscreen loading đến khi có phản hồi (bỏ qua nếu config.skipLoading = true)
- * - Xử lý 401: xoá session + chuyển về Login
+ * - Xử lý 401: xoá session + thông báo + chuyển về Login
  */
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api',
@@ -47,7 +47,9 @@ function stopLoading() {
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token')
+
     if (token) {
+      config.headers = config.headers || {}
       config.headers.Authorization = `Bearer ${token}`
     }
 
@@ -83,8 +85,9 @@ api.interceptors.response.use(
 
     const status = error.response?.status
     const originalRequest = error.config
+    const message = error.response?.data?.message
 
-    // Token hết hạn / không hợp lệ
+    // Token thiếu / hết hạn / không hợp lệ — backend chặn bằng auth:sanctum
     if (status === 401 && originalRequest && !originalRequest._retry) {
       originalRequest._retry = true
 
@@ -95,7 +98,9 @@ api.interceptors.response.use(
 
       // silent401: bootstrap / refresh user — để router guard quyết định điều hướng
       if (!originalRequest.silent401) {
-        ElMessage.error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.')
+        ElMessage.error(
+          message || 'Token không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.'
+        )
 
         const current = router.currentRoute.value
         if (current.name !== 'login' && current.name !== 'register') {
@@ -113,7 +118,7 @@ api.interceptors.response.use(
         const first = Object.values(errors)[0]
         ElMessage.error(Array.isArray(first) ? first[0] : String(first))
       } else {
-        ElMessage.error(error.response?.data?.message || 'Dữ liệu không hợp lệ.')
+        ElMessage.error(message || 'Dữ liệu không hợp lệ.')
       }
       return Promise.reject(error)
     }
@@ -121,8 +126,12 @@ api.interceptors.response.use(
     // Lỗi server / mạng
     if (!error.response) {
       ElMessage.error('Không thể kết nối tới máy chủ.')
+    } else if (status === 403) {
+      ElMessage.error(message || 'Bạn không có quyền thực hiện thao tác này.')
     } else if (status >= 500) {
-      ElMessage.error('Lỗi máy chủ. Vui lòng thử lại sau.')
+      ElMessage.error(message || 'Lỗi máy chủ. Vui lòng thử lại sau.')
+    } else if (status && status !== 401 && message) {
+      ElMessage.error(message)
     }
 
     return Promise.reject(error)

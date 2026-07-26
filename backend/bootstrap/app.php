@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -13,11 +14,29 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->redirectGuestsTo(fn () => route('api-docs.login'));
+        // Chỉ áp dụng cho web (api-docs). API trả JSON 401, không redirect HTML.
+        $middleware->redirectGuestsTo(function (Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return null;
+            }
+
+            return route('api-docs.login');
+        });
         $middleware->redirectUsersTo(fn () => route('api-docs'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*'),
+            fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        // Token thiếu / sai / hết hạn → chặn API, trả JSON rõ ràng
+        $exceptions->render(function (AuthenticationException $e, Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Token không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.',
+                ], 401);
+            }
+
+            return redirect()->guest(route('api-docs.login'));
+        });
     })->create();

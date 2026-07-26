@@ -31,7 +31,6 @@
             placeholder="••••••••"
             show-password
             :prefix-icon="Lock"
-            @keyup.enter="onSubmit"
           />
         </el-form-item>
 
@@ -39,7 +38,8 @@
           <el-button
             type="primary"
             native-type="submit"
-            :loading="authStore.loading"
+            :loading="authStore.loading || submitting"
+            :disabled="authStore.loading || submitting"
             style="width: 100%"
           >
             Đăng nhập
@@ -66,6 +66,7 @@ const router = useRouter()
 const route = useRoute()
 
 const formRef = ref()
+const submitting = ref(false)
 const form = reactive({
   login: '',
   password: '',
@@ -96,18 +97,26 @@ const rules = {
 }
 
 async function onSubmit() {
-  const valid = await formRef.value?.validate().catch(() => false)
-  if (!valid) return
+  // Khóa đồng bộ ngay từ đầu — tránh Enter/submit trùng hoặc double-click
+  if (submitting.value || authStore.loading) return
+  submitting.value = true
 
   try {
-    await authStore.login({
+    const valid = await formRef.value?.validate().catch(() => false)
+    if (!valid) return
+
+    const data = await authStore.login({
       login: form.login.trim(),
       password: form.password,
     })
+    if (!data) return
+
     const redirect = route.query.redirect || '/tong-quan'
     router.push(String(redirect))
   } catch {
     // Lỗi đã được interceptor / store xử lý hiển thị
+  } finally {
+    submitting.value = false
   }
 }
 </script>

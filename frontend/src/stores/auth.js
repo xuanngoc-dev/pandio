@@ -3,12 +3,25 @@ import { ref, computed } from 'vue'
 import api from '@/api/axios'
 import { ElMessage, ElNotification } from 'element-plus'
 
+const TOKEN_KEY = 'token'
+const USER_KEY = 'user'
+
+function readStoredUser() {
+  try {
+    const raw = localStorage.getItem(USER_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
 /**
  * Pinia Auth Store — quản lý token + thông tin user.
+ * Token lấy từ login/register, lưu localStorage và gắn Bearer khi gọi API.
  */
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref(null)
-  const token = ref(localStorage.getItem('token') || null)
+  const user = ref(readStoredUser())
+  const token = ref(localStorage.getItem(TOKEN_KEY) || null)
   const loading = ref(false)
 
   const isAuthenticated = computed(() => !!token.value && !!user.value)
@@ -17,25 +30,41 @@ export const useAuthStore = defineStore('auth', () => {
   function setToken(newToken) {
     token.value = newToken
     if (newToken) {
-      localStorage.setItem('token', newToken)
+      localStorage.setItem(TOKEN_KEY, newToken)
     } else {
-      localStorage.removeItem('token')
+      localStorage.removeItem(TOKEN_KEY)
     }
+  }
+
+  /** Lưu thông tin user vào state + localStorage */
+  function setUser(newUser) {
+    user.value = newUser
+    if (newUser) {
+      localStorage.setItem(USER_KEY, JSON.stringify(newUser))
+    } else {
+      localStorage.removeItem(USER_KEY)
+    }
+  }
+
+  /** Lưu phiên đăng nhập (token + user) */
+  function setAuth(newToken, newUser) {
+    setToken(newToken)
+    setUser(newUser)
   }
 
   /** Xoá toàn bộ trạng thái đăng nhập */
   function clearAuth() {
-    user.value = null
+    setUser(null)
     setToken(null)
   }
 
   /** Đăng ký */
   async function register(payload) {
+    if (loading.value) return null
     loading.value = true
     try {
       const { data } = await api.post('/auth/register', payload)
-      setToken(data.token)
-      user.value = data.user
+      setAuth(data.token, data.user)
       ElNotification.success({
         title: 'Thành công',
         message: data.message || 'Đăng ký thành công.',
@@ -46,13 +75,13 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  /** Đăng nhập */
+  /** Đăng nhập — lưu token + thông tin user để các API sau dùng Bearer */
   async function login(payload) {
+    if (loading.value) return null
     loading.value = true
     try {
       const { data } = await api.post('/auth/login', payload)
-      setToken(data.token)
-      user.value = data.user
+      setAuth(data.token, data.user)
       ElNotification.success({
         title: 'Thành công',
         message: data.message || 'Đăng nhập thành công.',
@@ -83,7 +112,7 @@ export const useAuthStore = defineStore('auth', () => {
    */
   async function fetchUser() {
     if (!token.value) {
-      user.value = null
+      clearAuth()
       return false
     }
 
@@ -91,7 +120,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       // silent401: không hiện message khi token cũ hết hạn lúc F5
       const { data } = await api.get('/user', { silent401: true })
-      user.value = data.user
+      setUser(data.user)
       return true
     } catch {
       clearAuth()
@@ -107,6 +136,8 @@ export const useAuthStore = defineStore('auth', () => {
     loading,
     isAuthenticated,
     setToken,
+    setUser,
+    setAuth,
     clearAuth,
     register,
     login,
