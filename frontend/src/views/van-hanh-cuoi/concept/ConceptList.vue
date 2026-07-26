@@ -96,7 +96,7 @@
                 inactive-value="ngung_su_dung"
                 :loading="togglingId === row.id"
                 :disabled="togglingId === row.id"
-                @change="(val) => toggleStatus(row, val)"
+                :before-change="() => toggleStatus(row)"
               />
               <span
                 class="status-label"
@@ -432,7 +432,11 @@ async function save() {
   }
 }
 
-async function toggleStatus(row, value) {
+async function toggleStatus(row) {
+  if (!row?.id) return false
+
+  const value = row.trang_thai === 'dang_su_dung' ? 'ngung_su_dung' : 'dang_su_dung'
+
   togglingId.value = row.id
   try {
     await updateConcept(row.id, {
@@ -446,8 +450,10 @@ async function toggleStatus(row, value) {
     })
     row.trang_thai = value
     ElMessage.success('Đã cập nhật trạng thái.')
+    return true
   } catch {
     // Lỗi đã được axios interceptor xử lý
+    return false
   } finally {
     togglingId.value = null
   }
