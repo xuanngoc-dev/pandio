@@ -123,5 +123,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Dịch vụ
     Route::apiResource('dich-vu-loai-dich-vu', DichVuLoaiDichVuController::class);
     Route::apiResource('dich-vu-danh-sach-dich-vu-le', DichVuDanhSachDichVuLeController::class);
-    Route::apiResource('dich-vu-danh-sach-dich-nhom-dich-vu', DichVuDanhSachDichNhomDichVuController::class);
+    // Param rút ngắn vì Symfony giới hạn tên biến route ≤ 32 ký tự (tên mặc định dài 35).
+    // Binding: {nhom_dich_vu} ↔ DichVuDanhSachDichNhomDichVu (bảng dich_vu_danh_sach_dich_nhom_dich_vu).
+    Route::apiResource('dich-vu-danh-sach-dich-nhom-dich-vu', DichVuDanhSachDichNhomDichVuController::class)
+        ->parameters(['dich-vu-danh-sach-dich-nhom-dich-vu' => 'nhom_dich_vu']);
 });

@@ -62,12 +62,13 @@ class DichVuDanhSachDichNhomDichVuController extends Controller
         return response()->json($paginator);
     }
 
-    public function show(DichVuDanhSachDichNhomDichVu $dich_vu_danh_sach_dich_nhom_dich_vu): JsonResponse
+    // {nhom_dich_vu} = route param rút ngắn cho DichVuDanhSachDichNhomDichVu (xem api.php).
+    public function show(DichVuDanhSachDichNhomDichVu $nhom_dich_vu): JsonResponse
     {
-        $dich_vu_danh_sach_dich_nhom_dich_vu->load('loaiHopDong:id,ten_hop_dong,ma_hop_dong');
-        $this->appendDichVuLeLabels($dich_vu_danh_sach_dich_nhom_dich_vu);
+        $nhom_dich_vu->load('loaiHopDong:id,ten_hop_dong,ma_hop_dong');
+        $this->appendDichVuLeLabels($nhom_dich_vu);
 
-        return response()->json($dich_vu_danh_sach_dich_nhom_dich_vu);
+        return response()->json($nhom_dich_vu);
     }
 
     public function store(Request $request): JsonResponse
@@ -81,21 +82,21 @@ class DichVuDanhSachDichNhomDichVuController extends Controller
         return response()->json($nhomDichVu, 201);
     }
 
-    public function update(Request $request, DichVuDanhSachDichNhomDichVu $dich_vu_danh_sach_dich_nhom_dich_vu): JsonResponse
+    public function update(Request $request, DichVuDanhSachDichNhomDichVu $nhom_dich_vu): JsonResponse
     {
-        $validated = $this->validatePayload($request, $dich_vu_danh_sach_dich_nhom_dich_vu->id);
+        $validated = $this->validatePayload($request, $nhom_dich_vu->id);
 
-        $dich_vu_danh_sach_dich_nhom_dich_vu->update($validated);
+        $nhom_dich_vu->update($validated);
 
-        $nhomDichVu = $dich_vu_danh_sach_dich_nhom_dich_vu->fresh()->load('loaiHopDong:id,ten_hop_dong,ma_hop_dong');
+        $nhomDichVu = $nhom_dich_vu->fresh()->load('loaiHopDong:id,ten_hop_dong,ma_hop_dong');
         $this->appendDichVuLeLabels($nhomDichVu);
 
         return response()->json($nhomDichVu);
     }
 
-    public function destroy(DichVuDanhSachDichNhomDichVu $dich_vu_danh_sach_dich_nhom_dich_vu): JsonResponse
+    public function destroy(DichVuDanhSachDichNhomDichVu $nhom_dich_vu): JsonResponse
     {
-        $dich_vu_danh_sach_dich_nhom_dich_vu->delete();
+        $nhom_dich_vu->delete();
 
         return response()->json(['message' => 'Đã xóa nhóm dịch vụ.']);
     }
