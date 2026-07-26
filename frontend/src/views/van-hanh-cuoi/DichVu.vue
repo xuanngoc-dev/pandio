@@ -6,6 +6,9 @@
       <el-tab-pane label="Dịch vụ" name="dich-vu">
         <DanhSachDichVuLe />
       </el-tab-pane>
+      <el-tab-pane label="Nhóm dịch vụ (combo)" name="nhom-dich-vu">
+        <NhomDichVu />
+      </el-tab-pane>
       <el-tab-pane label="Loại dịch vụ" name="loai-dich-vu">
         <LoaiDichVu />
       </el-tab-pane>
@@ -16,6 +19,7 @@
 <script setup>
 import { ref } from 'vue'
 import DanhSachDichVuLe from './dich-vu/DanhSachDichVuLe.vue'
+import NhomDichVu from './dich-vu/NhomDichVu.vue'
 import LoaiDichVu from './dich-vu/LoaiDichVu.vue'
 
 const activeTab = ref('dich-vu')
