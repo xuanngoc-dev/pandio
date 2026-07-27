@@ -17,6 +17,7 @@
   },
   {
     "header": "VẬN HÀNH CƯỚI",
+    "abbr": "VHC",
     "items": [
       {
         "index": "/van-hanh-cuoi/hop-dong-sddv",
@@ -64,6 +65,7 @@
   },
   {
     "header": "KHÁCH HÀNG",
+    "abbr": "KH",
     "items": [
       {
         "index": "/khach-hang",
@@ -93,6 +95,7 @@
   },
   {
     "header": "NHÂN SỰ",
+    "abbr": "NS",
     "items": [
       {
         "index": "/nhan-su/cham-cong-nghi-phep",
@@ -116,6 +119,7 @@
   },
   {
     "header": "TÀI CHÍNH",
+    "abbr": "TC",
     "items": [
       {
         "index": "/tai-chinh/ke-toan-thue",
@@ -127,6 +131,7 @@
   },
   {
     "header": "HỆ THỐNG",
+    "abbr": "HT",
     "items": [
       {
         "index": "/he-thong/cau-hinh-quan-tri",
@@ -144,6 +149,7 @@
   },
   {
     "header": "PANDIO SAAS",
+    "abbr": "PS",
     "items": [
       {
         "index": "/pandio-saas/kinh-doanh",

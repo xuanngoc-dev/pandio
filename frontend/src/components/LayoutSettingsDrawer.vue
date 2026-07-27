@@ -35,12 +35,25 @@
 
         <div class="settings-row">
           <div class="settings-row__meta">
+            <span class="settings-row__label">Hiện tên nhóm menu</span>
+            <span class="settings-row__desc">
+              Hiện tiêu đề nhóm; khi thu gọn hiện viết tắt (vd: KH)
+            </span>
+          </div>
+          <el-switch v-model="layoutStore.menuGroupHeaderVisible" />
+        </div>
+
+        <div class="settings-row">
+          <div class="settings-row__meta">
             <span class="settings-row__label">Đẩy nội dung khi mở menu</span>
             <span class="settings-row__desc">
               Bật: thu hẹp phần nội dung. Tắt: menu phủ lên như drawer
             </span>
           </div>
-          <el-switch v-model="layoutStore.sidebarPushContent" />
+          <el-switch
+            :model-value="layoutStore.sidebarPushContent"
+            @change="onSidebarPushContentChange"
+          />
         </div>
       </section>
 
@@ -131,6 +144,10 @@ const navbarMode = computed({
 function onDarkChange(val) {
   document.documentElement.classList.toggle('dark', val)
   localStorage.setItem('darkMode', val ? '1' : '0')
+}
+
+function onSidebarPushContentChange(val) {
+  layoutStore.sidebarPushContent = val
 }
 </script>
 

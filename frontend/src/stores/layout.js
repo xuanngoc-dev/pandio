@@ -8,6 +8,8 @@ const defaults = {
   menuGroupCollapsible: false,
   /** Chỉ mở một nhóm menu tại một thời điểm */
   menuUniqueOpened: true,
+  /** Hiện tên / viết tắt nhóm menu */
+  menuGroupHeaderVisible: true,
   /** Navbar cố định (true) hoặc cuộn theo trang (false) */
   navbarFixed: true,
   /** Sidebar cố định khi cuộn */
@@ -34,6 +36,7 @@ export const useLayoutStore = defineStore('layout', () => {
 
   const menuGroupCollapsible = ref(saved.menuGroupCollapsible)
   const menuUniqueOpened = ref(saved.menuUniqueOpened)
+  const menuGroupHeaderVisible = ref(saved.menuGroupHeaderVisible)
   const navbarFixed = ref(saved.navbarFixed)
   const sidebarFixed = ref(saved.sidebarFixed)
   const sidebarPushContent = ref(saved.sidebarPushContent)
@@ -44,6 +47,7 @@ export const useLayoutStore = defineStore('layout', () => {
       JSON.stringify({
         menuGroupCollapsible: menuGroupCollapsible.value,
         menuUniqueOpened: menuUniqueOpened.value,
+        menuGroupHeaderVisible: menuGroupHeaderVisible.value,
         navbarFixed: navbarFixed.value,
         sidebarFixed: sidebarFixed.value,
         sidebarPushContent: sidebarPushContent.value,
@@ -55,6 +59,7 @@ export const useLayoutStore = defineStore('layout', () => {
     [
       menuGroupCollapsible,
       menuUniqueOpened,
+      menuGroupHeaderVisible,
       navbarFixed,
       sidebarFixed,
       sidebarPushContent,
@@ -65,6 +70,7 @@ export const useLayoutStore = defineStore('layout', () => {
   function reset() {
     menuGroupCollapsible.value = defaults.menuGroupCollapsible
     menuUniqueOpened.value = defaults.menuUniqueOpened
+    menuGroupHeaderVisible.value = defaults.menuGroupHeaderVisible
     navbarFixed.value = defaults.navbarFixed
     sidebarFixed.value = defaults.sidebarFixed
     sidebarPushContent.value = defaults.sidebarPushContent
@@ -73,6 +79,7 @@ export const useLayoutStore = defineStore('layout', () => {
   return {
     menuGroupCollapsible,
     menuUniqueOpened,
+    menuGroupHeaderVisible,
     navbarFixed,
     sidebarFixed,
     sidebarPushContent,

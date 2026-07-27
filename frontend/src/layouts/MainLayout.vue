@@ -2,25 +2,32 @@
   <el-container
     class="main-layout"
     :class="{
-      'is-navbar-fixed': layoutStore.navbarFixed,
-      'is-sidebar-fixed': layoutStore.sidebarFixed,
+      'is-navbar-fixed': navbarFixed,
+      'is-sidebar-fixed': sidebarFixed,
       'is-sidebar-overlay': isSidebarOverlay,
     }"
   >
     <!-- Sidebar: slot giữ chỗ trong flow; panel có thể phủ như drawer -->
-    <div class="aside-slot" :style="{ width: asideSlotWidth }">
+    <div
+      :key="asideMountKey"
+      class="aside-slot"
+      :style="{ width: asideSlotWidth }"
+    >
       <el-aside
         :width="asidePanelWidth"
         class="aside"
         :class="{
-          'is-fixed': layoutStore.sidebarFixed || isSidebarOverlayExpanded,
+          'is-fixed': sidebarFixed || isSidebarOverlayExpanded,
           'is-collapsed': collapsed,
           'is-overlay-expanded': isSidebarOverlayExpanded,
+          'is-hover-expanded': hoverExpanded,
         }"
+        @mouseenter="onAsideEnter"
+        @mouseleave="onAsideLeave"
       >
         <div class="brand">
           <el-icon :size="22"><Monitor /></el-icon>
-          <span v-show="!collapsed" class="brand-text">Pandio</span>
+          <span class="brand-text" :class="{ 'is-hidden': collapsed }">Pandio</span>
         </div>
 
         <div class="aside-menu">
@@ -30,22 +37,22 @@
     </div>
 
     <div
-      v-if="isSidebarOverlayExpanded"
+      v-if="showAsideMask"
       class="aside-mask"
       aria-hidden="true"
-      @click="collapsed = true"
+      @click="pinCollapse"
     />
 
     <el-container class="content-shell">
       <!-- Header -->
       <el-header
         class="header"
-        :class="{ 'is-fixed': layoutStore.navbarFixed }"
+        :class="{ 'is-fixed': navbarFixed }"
       >
         <div class="header-left">
-          <el-button text @click="collapsed = !collapsed">
+          <el-button text @click="togglePinnedCollapse">
             <el-icon :size="20">
-              <Fold v-if="!collapsed" />
+              <Fold v-if="!pinnedCollapsed" />
               <Expand v-else />
             </el-icon>
           </el-button>
@@ -143,7 +150,8 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useLayoutStore } from '@/stores/layout'
@@ -170,28 +178,91 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const layoutStore = useLayoutStore()
+const { navbarFixed, sidebarFixed, sidebarPushContent } = storeToRefs(layoutStore)
 
-const collapsed = ref(false)
+/** Thu gọn do người dùng / viewport (trạng thái “ghim”) */
+const pinnedCollapsed = ref(false)
+/** Xổ tạm khi hover lúc đang thu gọn */
+const hoverExpanded = ref(false)
 const settingsOpen = ref(false)
 const notificationsOpen = ref(false)
 const searchOpen = ref(false)
 const unreadNotifications = ref(0)
 const isDark = ref(document.documentElement.classList.contains('dark'))
 const now = ref(new Date())
+/** Tăng khi đổi mode đẩy/overlay để remount sidebar sạch */
+const asideMountKey = ref(0)
 
 const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform)
 const searchShortcutLabel = isMac ? '⌘K' : 'Ctrl+K'
 
-/** Overlay (drawer): không đẩy content; luôn giữ chỗ 64px trong flow */
-const isSidebarOverlay = computed(() => !layoutStore.sidebarPushContent)
-const isSidebarOverlayExpanded = computed(
-  () => isSidebarOverlay.value && !collapsed.value
+/** Đang thu gọn về mặt hiển thị (ghim thu gọn và không đang hover) */
+const collapsed = computed(
+  () => pinnedCollapsed.value && !hoverExpanded.value
 )
+
+/** Overlay: mode drawer, hoặc xổ tạm bằng hover */
+const isSidebarOverlay = computed(() => !sidebarPushContent.value)
+const isSidebarOverlayExpanded = computed(() => {
+  if (hoverExpanded.value) return true
+  return isSidebarOverlay.value && !pinnedCollapsed.value
+})
+/** Mask chỉ khi mở hẳn kiểu drawer (không dùng khi hover) */
+const showAsideMask = computed(
+  () => isSidebarOverlay.value && !pinnedCollapsed.value
+)
+
 const asideSlotWidth = computed(() => {
+  // Hover xổ luôn overlay — slot giữ 64px khi đang ghim thu gọn
+  if (pinnedCollapsed.value) return '64px'
   if (isSidebarOverlay.value) return '64px'
-  return collapsed.value ? '64px' : '220px'
+  return '220px'
 })
 const asidePanelWidth = computed(() => (collapsed.value ? '64px' : '220px'))
+
+let hoverLeaveTimer = null
+
+function clearHoverLeaveTimer() {
+  if (hoverLeaveTimer != null) {
+    window.clearTimeout(hoverLeaveTimer)
+    hoverLeaveTimer = null
+  }
+}
+
+function onAsideEnter() {
+  if (!pinnedCollapsed.value) return
+  clearHoverLeaveTimer()
+  hoverExpanded.value = true
+}
+
+function onAsideLeave() {
+  if (!pinnedCollapsed.value) return
+  clearHoverLeaveTimer()
+  hoverLeaveTimer = window.setTimeout(() => {
+    hoverExpanded.value = false
+    hoverLeaveTimer = null
+  }, 180)
+}
+
+function togglePinnedCollapse() {
+  clearHoverLeaveTimer()
+  hoverExpanded.value = false
+  pinnedCollapsed.value = !pinnedCollapsed.value
+}
+
+function pinCollapse() {
+  clearHoverLeaveTimer()
+  hoverExpanded.value = false
+  pinnedCollapsed.value = true
+}
+
+watch(sidebarPushContent, async () => {
+  // Remount aside + SideMenu để el-aside/CSS mode áp dụng đúng ngay, không cần F5
+  clearHoverLeaveTimer()
+  hoverExpanded.value = false
+  asideMountKey.value += 1
+  await nextTick()
+})
 
 const pageTitle = computed(() => route.meta.title || 'Pandio')
 const userFullName = computed(() => String(authStore.user?.name || '').trim())
@@ -227,7 +298,9 @@ let mediaQuery = null
 let clockTimer = null
 
 function syncCollapseByViewport(e) {
-  collapsed.value = e.matches
+  clearHoverLeaveTimer()
+  hoverExpanded.value = false
+  pinnedCollapsed.value = e.matches
 }
 
 function onGlobalKeydown(event) {
@@ -260,7 +333,7 @@ onMounted(() => {
   }
 
   mediaQuery = window.matchMedia(`(max-width: ${COLLAPSE_BREAKPOINT - 1}px)`)
-  collapsed.value = mediaQuery.matches
+  pinnedCollapsed.value = mediaQuery.matches
   mediaQuery.addEventListener('change', syncCollapseByViewport)
   window.addEventListener('keydown', onGlobalKeydown)
 
@@ -272,6 +345,7 @@ onMounted(() => {
 onUnmounted(() => {
   mediaQuery?.removeEventListener('change', syncCollapseByViewport)
   window.removeEventListener('keydown', onGlobalKeydown)
+  clearHoverLeaveTimer()
   if (clockTimer != null) window.clearInterval(clockTimer)
 })
 </script>
@@ -291,7 +365,7 @@ onUnmounted(() => {
 .aside-slot {
   flex-shrink: 0;
   position: relative;
-  transition: width 0.2s ease;
+  transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .aside-mask {
@@ -299,12 +373,24 @@ onUnmounted(() => {
   inset: 0;
   z-index: 90;
   background: var(--el-overlay-color-lighter);
+  animation: aside-mask-in 0.2s ease;
+}
+
+@keyframes aside-mask-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .aside {
   border-right: 1px solid var(--el-border-color);
   background: var(--el-bg-color);
-  transition: width 0.2s ease;
+  transition:
+    width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
 
@@ -324,12 +410,35 @@ onUnmounted(() => {
     overflow: hidden;
     box-shadow: var(--el-box-shadow-dark);
   }
+
+  &.is-hover-expanded {
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+  }
 }
 
 .aside-menu {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--el-border-color) transparent;
+
+  &::-webkit-scrollbar {
+    width: 2px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: var(--el-border-color);
+    border-radius: 2px;
+
+    &:hover {
+      background-color: var(--el-text-color-secondary);
+    }
+  }
 }
 
 .brand {
@@ -345,10 +454,32 @@ onUnmounted(() => {
   border-bottom: 1px solid var(--el-border-color);
   overflow: hidden;
   white-space: nowrap;
+  transition: padding 0.28s cubic-bezier(0.4, 0, 0.2, 1), justify-content 0.28s ease;
 
   .aside.is-collapsed & {
     justify-content: center;
     padding: 0;
+  }
+}
+
+.brand-text {
+  display: inline-block;
+  max-width: 140px;
+  opacity: 1;
+  transform: translateX(0);
+  transition:
+    opacity 0.2s ease 0.06s,
+    transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    max-width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &.is-hidden {
+    max-width: 0;
+    opacity: 0;
+    transform: translateX(-6px);
+    transition:
+      opacity 0.15s ease,
+      transform 0.2s ease,
+      max-width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 
