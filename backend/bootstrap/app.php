@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\ApiExceptionHandler;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -26,17 +27,20 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
+            fn (Request $request) => ApiExceptionHandler::wantsApi($request),
         );
 
-        // Token thiếu / sai / hết hạn → chặn API, trả JSON rõ ràng
+        // Web (api-docs): guest chưa login → redirect form login
         $exceptions->render(function (AuthenticationException $e, Request $request) {
-            if ($request->is('api/*') || $request->expectsJson()) {
-                return response()->json([
-                    'message' => 'Token không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.',
-                ], 401);
+            if (ApiExceptionHandler::wantsApi($request)) {
+                return null; // để handler API xử lý JSON
             }
 
             return redirect()->guest(route('api-docs.login'));
+        });
+
+        // Mọi exception trên /api → JSON thống nhất cho FE
+        $exceptions->render(function (\Throwable $e, Request $request) {
+            return ApiExceptionHandler::render($e, $request);
         });
     })->create();

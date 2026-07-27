@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Models\DichVuDanhSachDichVuLe;
 use App\Models\LoaiHopDong;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
-class DichVuDanhSachDichVuLeController extends Controller
+class DichVuDanhSachDichVuLeController extends BaseApiController
 {
     /**
      * Danh sách dịch vụ lẻ — phân trang + tìm kiếm.
@@ -18,85 +17,100 @@ class DichVuDanhSachDichVuLeController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'page' => ['sometimes', 'integer', 'min:1'],
-            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
-            'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'trang_thai' => ['sometimes', 'nullable', Rule::in(['dang_su_dung', 'ngung_su_dung'])],
-            'loai_dich_vu_id' => ['sometimes', 'nullable', 'integer', 'exists:dich_vu_loai_dich_vu,id'],
-            'loai_hop_dong_id' => ['sometimes', 'nullable', 'integer', 'exists:loai_hop_dong,id'],
-        ]);
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'page' => ['sometimes', 'integer', 'min:1'],
+                'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+                'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
+                'trang_thai' => ['sometimes', 'nullable', Rule::in(['dang_su_dung', 'ngung_su_dung'])],
+                'loai_dich_vu_id' => ['sometimes', 'nullable', 'integer', 'exists:dich_vu_loai_dich_vu,id'],
+                'loai_hop_dong_id' => ['sometimes', 'nullable', 'integer', 'exists:loai_hop_dong,id'],
+            ]);
 
-        $perPage = $validated['per_page'] ?? 10;
-        $keyword = trim((string) ($validated['keyword'] ?? ''));
-        $trangThai = $validated['trang_thai'] ?? null;
-        $loaiDichVuId = $validated['loai_dich_vu_id'] ?? null;
-        $loaiHopDongId = $validated['loai_hop_dong_id'] ?? null;
+            $perPage = $validated['per_page'] ?? 10;
+            $keyword = trim((string) ($validated['keyword'] ?? ''));
+            $trangThai = $validated['trang_thai'] ?? null;
+            $loaiDichVuId = $validated['loai_dich_vu_id'] ?? null;
+            $loaiHopDongId = $validated['loai_hop_dong_id'] ?? null;
 
-        $query = DichVuDanhSachDichVuLe::query()
-            ->with('loaiDichVu:id,ten_dich_vu')
-            ->when($keyword !== '', function ($q) use ($keyword) {
-                $q->where(function ($inner) use ($keyword) {
-                    $inner->where('ma_dich_vu', 'like', "%{$keyword}%")
-                        ->orWhere('ten_dich_vu', 'like', "%{$keyword}%")
-                        ->orWhere('mo_ta', 'like', "%{$keyword}%");
-                });
-            })
-            ->when($trangThai, fn ($q) => $q->where('trang_thai', $trangThai))
-            ->when($loaiDichVuId, fn ($q) => $q->where('loai_dich_vu_id', $loaiDichVuId))
-            ->when($loaiHopDongId, fn ($q) => $q->whereJsonContains('loai_hop_dong_ids', (int) $loaiHopDongId))
-            ->orderByDesc('id');
+            $query = DichVuDanhSachDichVuLe::query()
+                ->with('loaiDichVu:id,ten_dich_vu')
+                ->when($keyword !== '', function ($q) use ($keyword) {
+                    $q->where(function ($inner) use ($keyword) {
+                        $inner->where('ma_dich_vu', 'like', "%{$keyword}%")
+                            ->orWhere('ten_dich_vu', 'like', "%{$keyword}%")
+                            ->orWhere('mo_ta', 'like', "%{$keyword}%");
+                    });
+                })
+                ->when($trangThai, fn ($q) => $q->where('trang_thai', $trangThai))
+                ->when($loaiDichVuId, fn ($q) => $q->where('loai_dich_vu_id', $loaiDichVuId))
+                ->when($loaiHopDongId, fn ($q) => $q->whereJsonContains('loai_hop_dong_ids', (int) $loaiHopDongId))
+                ->orderByDesc('id');
 
-        $paginator = $query->paginate($perPage);
-        $loaiHopDongMap = LoaiHopDong::query()
-            ->pluck('ten_hop_dong', 'id')
-            ->all();
-
-        $paginator->getCollection()->transform(function (DichVuDanhSachDichVuLe $item) use ($loaiHopDongMap) {
-            $ids = $item->loai_hop_dong_ids ?? [];
-            $item->loai_hop_dong_labels = collect($ids)
-                ->map(fn ($id) => $loaiHopDongMap[$id] ?? null)
-                ->filter()
-                ->values()
+            $paginator = $query->paginate($perPage);
+            $loaiHopDongMap = LoaiHopDong::query()
+                ->pluck('ten_hop_dong', 'id')
                 ->all();
 
-            return $item;
-        });
+            $paginator->getCollection()->transform(function (DichVuDanhSachDichVuLe $item) use ($loaiHopDongMap) {
+                $ids = $item->loai_hop_dong_ids ?? [];
+                $item->loai_hop_dong_labels = collect($ids)
+                    ->map(fn ($id) => $loaiHopDongMap[$id] ?? null)
+                    ->filter()
+                    ->values()
+                    ->all();
 
-        return response()->json($paginator);
+                return $item;
+            });
+
+            return response()->json($paginator);
+
+        }, 'lấy danh sách dịch vụ lẻ');
     }
 
     public function show(DichVuDanhSachDichVuLe $dich_vu_danh_sach_dich_vu_le): JsonResponse
     {
-        $dich_vu_danh_sach_dich_vu_le->load('loaiDichVu:id,ten_dich_vu');
+        return $this->handleApi(function () use ($dich_vu_danh_sach_dich_vu_le) {
+            $dich_vu_danh_sach_dich_vu_le->load('loaiDichVu:id,ten_dich_vu');
 
-        return response()->json($dich_vu_danh_sach_dich_vu_le);
+            return response()->json($dich_vu_danh_sach_dich_vu_le);
+
+        }, 'lấy chi tiết dịch vụ lẻ');
     }
 
     public function store(Request $request): JsonResponse
     {
-        $validated = $this->validatePayload($request);
+        return $this->handleApi(function () use ($request) {
+            $validated = $this->validatePayload($request);
 
-        $dichVu = DichVuDanhSachDichVuLe::create($validated);
-        $dichVu->load('loaiDichVu:id,ten_dich_vu');
+            $dichVu = DichVuDanhSachDichVuLe::create($validated);
+            $dichVu->load('loaiDichVu:id,ten_dich_vu');
 
-        return response()->json($dichVu, 201);
+            return response()->json($dichVu, 201);
+
+        }, 'tạo dịch vụ lẻ');
     }
 
     public function update(Request $request, DichVuDanhSachDichVuLe $dich_vu_danh_sach_dich_vu_le): JsonResponse
     {
-        $validated = $this->validatePayload($request, $dich_vu_danh_sach_dich_vu_le->id);
+        return $this->handleApi(function () use ($request, $dich_vu_danh_sach_dich_vu_le) {
+            $validated = $this->validatePayload($request, $dich_vu_danh_sach_dich_vu_le->id);
 
-        $dich_vu_danh_sach_dich_vu_le->update($validated);
+            $dich_vu_danh_sach_dich_vu_le->update($validated);
 
-        return response()->json($dich_vu_danh_sach_dich_vu_le->fresh()->load('loaiDichVu:id,ten_dich_vu'));
+            return response()->json($dich_vu_danh_sach_dich_vu_le->fresh()->load('loaiDichVu:id,ten_dich_vu'));
+
+        }, 'cập nhật dịch vụ lẻ');
     }
 
     public function destroy(DichVuDanhSachDichVuLe $dich_vu_danh_sach_dich_vu_le): JsonResponse
     {
-        $dich_vu_danh_sach_dich_vu_le->delete();
+        return $this->handleApi(function () use ($dich_vu_danh_sach_dich_vu_le) {
+            $dich_vu_danh_sach_dich_vu_le->delete();
 
-        return response()->json(['message' => 'Đã xóa dịch vụ.']);
+            return response()->json(['message' => 'Đã xóa dịch vụ.']);
+
+        }, 'xóa dịch vụ lẻ');
     }
 
     private function validatePayload(Request $request, ?int $ignoreId = null): array

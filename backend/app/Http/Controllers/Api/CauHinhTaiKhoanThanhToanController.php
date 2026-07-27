@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Models\CauHinhTaiKhoanThanhToan;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
-class CauHinhTaiKhoanThanhToanController extends Controller
+class CauHinhTaiKhoanThanhToanController extends BaseApiController
 {
     /**
      * Danh sách tài khoản thanh toán — phân trang + tìm kiếm.
@@ -18,31 +17,34 @@ class CauHinhTaiKhoanThanhToanController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'page' => ['sometimes', 'integer', 'min:1'],
-            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
-            'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'mac_dinh' => ['sometimes', 'nullable', 'string', Rule::in(['co', 'khong'])],
-        ]);
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'page' => ['sometimes', 'integer', 'min:1'],
+                'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+                'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
+                'mac_dinh' => ['sometimes', 'nullable', 'string', Rule::in(['co', 'khong'])],
+            ]);
 
-        $perPage = $validated['per_page'] ?? 10;
-        $keyword = trim((string) ($validated['keyword'] ?? ''));
-        $macDinh = $validated['mac_dinh'] ?? null;
+            $perPage = $validated['per_page'] ?? 10;
+            $keyword = trim((string) ($validated['keyword'] ?? ''));
+            $macDinh = $validated['mac_dinh'] ?? null;
 
-        $query = CauHinhTaiKhoanThanhToan::query()
-            ->when($keyword !== '', function ($q) use ($keyword) {
-                $q->where(function ($inner) use ($keyword) {
-                    $inner->where('ngan_hang', 'like', "%{$keyword}%")
-                        ->orWhere('so_tai_khoan', 'like', "%{$keyword}%")
-                        ->orWhere('chu_tai_khoan', 'like', "%{$keyword}%")
-                        ->orWhere('chi_nhanh', 'like', "%{$keyword}%");
-                });
-            })
-            ->when($macDinh, fn ($q) => $q->where('mac_dinh', $macDinh))
-            ->orderByDesc('created_at')
-            ->orderByDesc('id');
+            $query = CauHinhTaiKhoanThanhToan::query()
+                ->when($keyword !== '', function ($q) use ($keyword) {
+                    $q->where(function ($inner) use ($keyword) {
+                        $inner->where('ngan_hang', 'like', "%{$keyword}%")
+                            ->orWhere('so_tai_khoan', 'like', "%{$keyword}%")
+                            ->orWhere('chu_tai_khoan', 'like', "%{$keyword}%")
+                            ->orWhere('chi_nhanh', 'like', "%{$keyword}%");
+                    });
+                })
+                ->when($macDinh, fn ($q) => $q->where('mac_dinh', $macDinh))
+                ->orderByDesc('created_at')
+                ->orderByDesc('id');
 
-        return response()->json($query->paginate($perPage));
+            return response()->json($query->paginate($perPage));
+
+        }, 'lấy danh sách tài khoản thanh toán');
     }
 
     /**
@@ -50,7 +52,10 @@ class CauHinhTaiKhoanThanhToanController extends Controller
      */
     public function show(CauHinhTaiKhoanThanhToan $cau_hinh_tai_khoan_thanh_toan): JsonResponse
     {
-        return response()->json($cau_hinh_tai_khoan_thanh_toan);
+        return $this->handleApi(function () use ($cau_hinh_tai_khoan_thanh_toan) {
+            return response()->json($cau_hinh_tai_khoan_thanh_toan);
+
+        }, 'lấy chi tiết tài khoản thanh toán');
     }
 
     /**
@@ -58,17 +63,20 @@ class CauHinhTaiKhoanThanhToanController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        $validated = $this->validatePayload($request);
+        return $this->handleApi(function () use ($request) {
+            $validated = $this->validatePayload($request);
 
-        $taiKhoan = DB::transaction(function () use ($validated) {
-            if (($validated['mac_dinh'] ?? 'khong') === 'co') {
-                CauHinhTaiKhoanThanhToan::query()->update(['mac_dinh' => 'khong']);
-            }
+            $taiKhoan = DB::transaction(function () use ($validated) {
+                if (($validated['mac_dinh'] ?? 'khong') === 'co') {
+                    CauHinhTaiKhoanThanhToan::query()->update(['mac_dinh' => 'khong']);
+                }
 
-            return CauHinhTaiKhoanThanhToan::create($validated);
-        });
+                return CauHinhTaiKhoanThanhToan::create($validated);
+            });
 
-        return response()->json($taiKhoan, 201);
+            return response()->json($taiKhoan, 201);
+
+        }, 'tạo tài khoản thanh toán');
     }
 
     /**
@@ -76,21 +84,24 @@ class CauHinhTaiKhoanThanhToanController extends Controller
      */
     public function update(Request $request, CauHinhTaiKhoanThanhToan $cau_hinh_tai_khoan_thanh_toan): JsonResponse
     {
-        $validated = $this->validatePayload($request);
+        return $this->handleApi(function () use ($request, $cau_hinh_tai_khoan_thanh_toan) {
+            $validated = $this->validatePayload($request);
 
-        $taiKhoan = DB::transaction(function () use ($cau_hinh_tai_khoan_thanh_toan, $validated) {
-            if (($validated['mac_dinh'] ?? 'khong') === 'co') {
-                CauHinhTaiKhoanThanhToan::query()
-                    ->where('id', '!=', $cau_hinh_tai_khoan_thanh_toan->id)
-                    ->update(['mac_dinh' => 'khong']);
-            }
+            $taiKhoan = DB::transaction(function () use ($cau_hinh_tai_khoan_thanh_toan, $validated) {
+                if (($validated['mac_dinh'] ?? 'khong') === 'co') {
+                    CauHinhTaiKhoanThanhToan::query()
+                        ->where('id', '!=', $cau_hinh_tai_khoan_thanh_toan->id)
+                        ->update(['mac_dinh' => 'khong']);
+                }
 
-            $cau_hinh_tai_khoan_thanh_toan->update($validated);
+                $cau_hinh_tai_khoan_thanh_toan->update($validated);
 
-            return $cau_hinh_tai_khoan_thanh_toan->fresh();
-        });
+                return $cau_hinh_tai_khoan_thanh_toan->fresh();
+            });
 
-        return response()->json($taiKhoan);
+            return response()->json($taiKhoan);
+
+        }, 'cập nhật tài khoản thanh toán');
     }
 
     /**
@@ -98,9 +109,12 @@ class CauHinhTaiKhoanThanhToanController extends Controller
      */
     public function destroy(CauHinhTaiKhoanThanhToan $cau_hinh_tai_khoan_thanh_toan): JsonResponse
     {
-        $cau_hinh_tai_khoan_thanh_toan->delete();
+        return $this->handleApi(function () use ($cau_hinh_tai_khoan_thanh_toan) {
+            $cau_hinh_tai_khoan_thanh_toan->delete();
 
-        return response()->json(['message' => 'Đã xóa tài khoản thanh toán.']);
+            return response()->json(['message' => 'Đã xóa tài khoản thanh toán.']);
+
+        }, 'xóa tài khoản thanh toán');
     }
 
     /**

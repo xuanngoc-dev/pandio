@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Models\HopDongChoThueTrangPhuc;
 use App\Models\HopDongChoThueTrangPhucSanPhamChoThue;
 use Carbon\Carbon;
@@ -11,7 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
-class HopDongChoThueTrangPhucController extends Controller
+class HopDongChoThueTrangPhucController extends BaseApiController
 {
     /**
      * Danh sách hợp đồng cho thuê trang phục — phân trang + tìm kiếm.
@@ -20,34 +19,37 @@ class HopDongChoThueTrangPhucController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'page' => ['sometimes', 'integer', 'min:1'],
-            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
-            'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'trang_thai' => ['sometimes', 'nullable', 'string', 'max:50'],
-        ]);
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'page' => ['sometimes', 'integer', 'min:1'],
+                'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+                'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
+                'trang_thai' => ['sometimes', 'nullable', 'string', 'max:50'],
+            ]);
 
-        $perPage = $validated['per_page'] ?? 10;
-        $keyword = trim((string) ($validated['keyword'] ?? ''));
-        $trangThai = $validated['trang_thai'] ?? null;
+            $perPage = $validated['per_page'] ?? 10;
+            $keyword = trim((string) ($validated['keyword'] ?? ''));
+            $trangThai = $validated['trang_thai'] ?? null;
 
-        $query = HopDongChoThueTrangPhuc::query()
-            ->with([
-                'nguoiChoThueUser:id,name,phone',
-                'sanPhamChoThue.sanPham:id,ma_san_pham,ten_san_pham,gia_cho_thue,hinh_anh',
-            ])
-            ->when($keyword !== '', function ($q) use ($keyword) {
-                $q->where(function ($inner) use ($keyword) {
-                    $inner->where('ma_hop_dong', 'like', "%{$keyword}%")
-                        ->orWhere('ten_khach_hang', 'like', "%{$keyword}%")
-                        ->orWhere('sdt_khach_hang', 'like', "%{$keyword}%");
-                });
-            })
-            ->when($trangThai, fn ($q) => $q->where('trang_thai', $trangThai))
-            ->orderByDesc('ngay_thue')
-            ->orderByDesc('id');
+            $query = HopDongChoThueTrangPhuc::query()
+                ->with([
+                    'nguoiChoThueUser:id,name,phone',
+                    'sanPhamChoThue.sanPham:id,ma_san_pham,ten_san_pham,gia_cho_thue,hinh_anh',
+                ])
+                ->when($keyword !== '', function ($q) use ($keyword) {
+                    $q->where(function ($inner) use ($keyword) {
+                        $inner->where('ma_hop_dong', 'like', "%{$keyword}%")
+                            ->orWhere('ten_khach_hang', 'like', "%{$keyword}%")
+                            ->orWhere('sdt_khach_hang', 'like', "%{$keyword}%");
+                    });
+                })
+                ->when($trangThai, fn ($q) => $q->where('trang_thai', $trangThai))
+                ->orderByDesc('ngay_thue')
+                ->orderByDesc('id');
 
-        return response()->json($query->paginate($perPage));
+            return response()->json($query->paginate($perPage));
+
+        }, 'lấy danh sách hợp đồng cho thuê trang phục');
     }
 
     /**
@@ -55,12 +57,15 @@ class HopDongChoThueTrangPhucController extends Controller
      */
     public function show(HopDongChoThueTrangPhuc $hop_dong_cho_thue_trang_phuc): JsonResponse
     {
-        $hop_dong_cho_thue_trang_phuc->load([
-            'nguoiChoThueUser:id,name,phone',
-            'sanPhamChoThue.sanPham:id,ma_san_pham,ten_san_pham,gia_cho_thue,hinh_anh',
-        ]);
+        return $this->handleApi(function () use ($hop_dong_cho_thue_trang_phuc) {
+            $hop_dong_cho_thue_trang_phuc->load([
+                'nguoiChoThueUser:id,name,phone',
+                'sanPhamChoThue.sanPham:id,ma_san_pham,ten_san_pham,gia_cho_thue,hinh_anh',
+            ]);
 
-        return response()->json($hop_dong_cho_thue_trang_phuc);
+            return response()->json($hop_dong_cho_thue_trang_phuc);
+
+        }, 'lấy chi tiết hợp đồng cho thuê trang phục');
     }
 
     /**
@@ -68,25 +73,28 @@ class HopDongChoThueTrangPhucController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        $validated = $this->validatePayload($request);
-        $validated = $this->applyCalculatedFields($validated);
-        $validated['nguoi_cho_thue'] = $request->user()->id;
-        $sanPhamItems = $validated['san_pham_cho_thue'];
-        unset($validated['san_pham_cho_thue']);
+        return $this->handleApi(function () use ($request) {
+            $validated = $this->validatePayload($request);
+            $validated = $this->applyCalculatedFields($validated);
+            $validated['nguoi_cho_thue'] = $request->user()->id;
+            $sanPhamItems = $validated['san_pham_cho_thue'];
+            unset($validated['san_pham_cho_thue']);
 
-        $hopDong = DB::transaction(function () use ($validated, $sanPhamItems) {
-            $hopDong = HopDongChoThueTrangPhuc::create($validated);
-            $this->syncSanPhamChoThue($hopDong, $sanPhamItems);
+            $hopDong = DB::transaction(function () use ($validated, $sanPhamItems) {
+                $hopDong = HopDongChoThueTrangPhuc::create($validated);
+                $this->syncSanPhamChoThue($hopDong, $sanPhamItems);
 
-            return $hopDong;
-        });
+                return $hopDong;
+            });
 
-        $hopDong->load([
-            'nguoiChoThueUser:id,name,phone',
-            'sanPhamChoThue.sanPham:id,ma_san_pham,ten_san_pham,gia_cho_thue,hinh_anh',
-        ]);
+            $hopDong->load([
+                'nguoiChoThueUser:id,name,phone',
+                'sanPhamChoThue.sanPham:id,ma_san_pham,ten_san_pham,gia_cho_thue,hinh_anh',
+            ]);
 
-        return response()->json($hopDong, 201);
+            return response()->json($hopDong, 201);
+
+        }, 'tạo hợp đồng cho thuê trang phục');
     }
 
     /**
@@ -94,21 +102,24 @@ class HopDongChoThueTrangPhucController extends Controller
      */
     public function update(Request $request, HopDongChoThueTrangPhuc $hop_dong_cho_thue_trang_phuc): JsonResponse
     {
-        $validated = $this->validatePayload($request, $hop_dong_cho_thue_trang_phuc->id);
-        $validated = $this->applyCalculatedFields($validated);
-        unset($validated['nguoi_cho_thue']);
-        $sanPhamItems = $validated['san_pham_cho_thue'];
-        unset($validated['san_pham_cho_thue']);
+        return $this->handleApi(function () use ($request, $hop_dong_cho_thue_trang_phuc) {
+            $validated = $this->validatePayload($request, $hop_dong_cho_thue_trang_phuc->id);
+            $validated = $this->applyCalculatedFields($validated);
+            unset($validated['nguoi_cho_thue']);
+            $sanPhamItems = $validated['san_pham_cho_thue'];
+            unset($validated['san_pham_cho_thue']);
 
-        DB::transaction(function () use ($hop_dong_cho_thue_trang_phuc, $validated, $sanPhamItems) {
-            $hop_dong_cho_thue_trang_phuc->update($validated);
-            $this->syncSanPhamChoThue($hop_dong_cho_thue_trang_phuc, $sanPhamItems);
-        });
+            DB::transaction(function () use ($hop_dong_cho_thue_trang_phuc, $validated, $sanPhamItems) {
+                $hop_dong_cho_thue_trang_phuc->update($validated);
+                $this->syncSanPhamChoThue($hop_dong_cho_thue_trang_phuc, $sanPhamItems);
+            });
 
-        return response()->json($hop_dong_cho_thue_trang_phuc->fresh()->load([
-            'nguoiChoThueUser:id,name,phone',
-            'sanPhamChoThue.sanPham:id,ma_san_pham,ten_san_pham,gia_cho_thue,hinh_anh',
-        ]));
+            return response()->json($hop_dong_cho_thue_trang_phuc->fresh()->load([
+                'nguoiChoThueUser:id,name,phone',
+                'sanPhamChoThue.sanPham:id,ma_san_pham,ten_san_pham,gia_cho_thue,hinh_anh',
+            ]));
+
+        }, 'cập nhật hợp đồng cho thuê trang phục');
     }
 
     /**
@@ -116,9 +127,12 @@ class HopDongChoThueTrangPhucController extends Controller
      */
     public function destroy(HopDongChoThueTrangPhuc $hop_dong_cho_thue_trang_phuc): JsonResponse
     {
-        $hop_dong_cho_thue_trang_phuc->delete();
+        return $this->handleApi(function () use ($hop_dong_cho_thue_trang_phuc) {
+            $hop_dong_cho_thue_trang_phuc->delete();
 
-        return response()->json(['message' => 'Đã xóa hợp đồng cho thuê trang phục.']);
+            return response()->json(['message' => 'Đã xóa hợp đồng cho thuê trang phục.']);
+
+        }, 'xóa hợp đồng cho thuê trang phục');
     }
 
     /**

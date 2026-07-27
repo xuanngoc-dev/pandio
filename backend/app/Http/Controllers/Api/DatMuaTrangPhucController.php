@@ -2,13 +2,12 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Models\DatMuaTrangPhuc;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
-class DatMuaTrangPhucController extends Controller
+class DatMuaTrangPhucController extends BaseApiController
 {
     /**
      * Danh sách đặt mua trang phục — phân trang + tìm kiếm.
@@ -17,31 +16,34 @@ class DatMuaTrangPhucController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'page' => ['sometimes', 'integer', 'min:1'],
-            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
-            'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
-        ]);
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'page' => ['sometimes', 'integer', 'min:1'],
+                'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+                'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
+            ]);
 
-        $perPage = $validated['per_page'] ?? 10;
-        $keyword = trim((string) ($validated['keyword'] ?? ''));
+            $perPage = $validated['per_page'] ?? 10;
+            $keyword = trim((string) ($validated['keyword'] ?? ''));
 
-        $query = DatMuaTrangPhuc::query()
-            ->with('nhaCungCap:id,ma_nha_cung_cap,ten_nha_cung_cap')
-            ->when($keyword !== '', function ($q) use ($keyword) {
-                $q->where(function ($inner) use ($keyword) {
-                    $inner->where('loai_don_hang', 'like', "%{$keyword}%")
-                        ->orWhere('nguon_hang_hoa', 'like', "%{$keyword}%")
-                        ->orWhereHas('nhaCungCap', function ($ncc) use ($keyword) {
-                            $ncc->where('ma_nha_cung_cap', 'like', "%{$keyword}%")
-                                ->orWhere('ten_nha_cung_cap', 'like', "%{$keyword}%");
-                        });
-                });
-            })
-            ->orderByDesc('ngay_dat')
-            ->orderByDesc('id');
+            $query = DatMuaTrangPhuc::query()
+                ->with('nhaCungCap:id,ma_nha_cung_cap,ten_nha_cung_cap')
+                ->when($keyword !== '', function ($q) use ($keyword) {
+                    $q->where(function ($inner) use ($keyword) {
+                        $inner->where('loai_don_hang', 'like', "%{$keyword}%")
+                            ->orWhere('nguon_hang_hoa', 'like', "%{$keyword}%")
+                            ->orWhereHas('nhaCungCap', function ($ncc) use ($keyword) {
+                                $ncc->where('ma_nha_cung_cap', 'like', "%{$keyword}%")
+                                    ->orWhere('ten_nha_cung_cap', 'like', "%{$keyword}%");
+                            });
+                    });
+                })
+                ->orderByDesc('ngay_dat')
+                ->orderByDesc('id');
 
-        return response()->json($query->paginate($perPage));
+            return response()->json($query->paginate($perPage));
+
+        }, 'lấy danh sách đặt mua trang phục');
     }
 
     /**
@@ -49,9 +51,12 @@ class DatMuaTrangPhucController extends Controller
      */
     public function show(DatMuaTrangPhuc $dat_mua_trang_phuc): JsonResponse
     {
-        $dat_mua_trang_phuc->load('nhaCungCap:id,ma_nha_cung_cap,ten_nha_cung_cap');
+        return $this->handleApi(function () use ($dat_mua_trang_phuc) {
+            $dat_mua_trang_phuc->load('nhaCungCap:id,ma_nha_cung_cap,ten_nha_cung_cap');
 
-        return response()->json($dat_mua_trang_phuc);
+            return response()->json($dat_mua_trang_phuc);
+
+        }, 'lấy chi tiết đặt mua trang phục');
     }
 
     /**
@@ -59,13 +64,16 @@ class DatMuaTrangPhucController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        $validated = $this->validatePayload($request);
-        $validated = $this->applyCalculatedFields($validated);
+        return $this->handleApi(function () use ($request) {
+            $validated = $this->validatePayload($request);
+            $validated = $this->applyCalculatedFields($validated);
 
-        $datMua = DatMuaTrangPhuc::create($validated);
-        $datMua->load('nhaCungCap:id,ma_nha_cung_cap,ten_nha_cung_cap');
+            $datMua = DatMuaTrangPhuc::create($validated);
+            $datMua->load('nhaCungCap:id,ma_nha_cung_cap,ten_nha_cung_cap');
 
-        return response()->json($datMua, 201);
+            return response()->json($datMua, 201);
+
+        }, 'tạo đặt mua trang phục');
     }
 
     /**
@@ -73,12 +81,15 @@ class DatMuaTrangPhucController extends Controller
      */
     public function update(Request $request, DatMuaTrangPhuc $dat_mua_trang_phuc): JsonResponse
     {
-        $validated = $this->validatePayload($request);
-        $validated = $this->applyCalculatedFields($validated);
+        return $this->handleApi(function () use ($request, $dat_mua_trang_phuc) {
+            $validated = $this->validatePayload($request);
+            $validated = $this->applyCalculatedFields($validated);
 
-        $dat_mua_trang_phuc->update($validated);
+            $dat_mua_trang_phuc->update($validated);
 
-        return response()->json($dat_mua_trang_phuc->fresh()->load('nhaCungCap:id,ma_nha_cung_cap,ten_nha_cung_cap'));
+            return response()->json($dat_mua_trang_phuc->fresh()->load('nhaCungCap:id,ma_nha_cung_cap,ten_nha_cung_cap'));
+
+        }, 'cập nhật đặt mua trang phục');
     }
 
     /**
@@ -86,9 +97,12 @@ class DatMuaTrangPhucController extends Controller
      */
     public function destroy(DatMuaTrangPhuc $dat_mua_trang_phuc): JsonResponse
     {
-        $dat_mua_trang_phuc->delete();
+        return $this->handleApi(function () use ($dat_mua_trang_phuc) {
+            $dat_mua_trang_phuc->delete();
 
-        return response()->json(['message' => 'Đã xóa đơn đặt mua trang phục.']);
+            return response()->json(['message' => 'Đã xóa đơn đặt mua trang phục.']);
+
+        }, 'xóa đặt mua trang phục');
     }
 
     /**

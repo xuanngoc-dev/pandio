@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Models\XinNghiPhep;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
-class XinNghiPhepController extends Controller
+class XinNghiPhepController extends BaseApiController
 {
     private const LOAI_NGHI_PHEP = [
         'di_muon',
@@ -30,47 +29,50 @@ class XinNghiPhepController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'page' => ['sometimes', 'integer', 'min:1'],
-            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
-            'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'user_id' => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
-            'loai_nghi_phep' => ['sometimes', 'nullable', 'string', Rule::in(self::LOAI_NGHI_PHEP)],
-            'trang_thai' => ['sometimes', 'nullable', 'string', Rule::in(self::TRANG_THAI)],
-        ]);
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'page' => ['sometimes', 'integer', 'min:1'],
+                'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+                'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
+                'user_id' => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
+                'loai_nghi_phep' => ['sometimes', 'nullable', 'string', Rule::in(self::LOAI_NGHI_PHEP)],
+                'trang_thai' => ['sometimes', 'nullable', 'string', Rule::in(self::TRANG_THAI)],
+            ]);
 
-        $perPage = $validated['per_page'] ?? 10;
-        $keyword = trim((string) ($validated['keyword'] ?? ''));
+            $perPage = $validated['per_page'] ?? 10;
+            $keyword = trim((string) ($validated['keyword'] ?? ''));
 
-        $query = XinNghiPhep::query()
-            ->with([
-                'user:id,name,email',
-                'nguoiDuyet:id,name,email',
-            ])
-            ->when($keyword !== '', function ($q) use ($keyword) {
-                $q->where(function ($inner) use ($keyword) {
-                    $inner->where('ly_do', 'like', "%{$keyword}%")
-                        ->orWhereHas('user', function ($userQuery) use ($keyword) {
-                            $userQuery->where('name', 'like', "%{$keyword}%")
-                                ->orWhere('email', 'like', "%{$keyword}%");
-                        });
-                });
-            })
-            ->when(
-                ! empty($validated['user_id']),
-                fn ($q) => $q->where('user_id', $validated['user_id'])
-            )
-            ->when(
-                ! empty($validated['loai_nghi_phep']),
-                fn ($q) => $q->where('loai_nghi_phep', $validated['loai_nghi_phep'])
-            )
-            ->when(
-                ! empty($validated['trang_thai']),
-                fn ($q) => $q->where('trang_thai', $validated['trang_thai'])
-            )
-            ->orderByDesc('id');
+            $query = XinNghiPhep::query()
+                ->with([
+                    'user:id,name,email',
+                    'nguoiDuyet:id,name,email',
+                ])
+                ->when($keyword !== '', function ($q) use ($keyword) {
+                    $q->where(function ($inner) use ($keyword) {
+                        $inner->where('ly_do', 'like', "%{$keyword}%")
+                            ->orWhereHas('user', function ($userQuery) use ($keyword) {
+                                $userQuery->where('name', 'like', "%{$keyword}%")
+                                    ->orWhere('email', 'like', "%{$keyword}%");
+                            });
+                    });
+                })
+                ->when(
+                    ! empty($validated['user_id']),
+                    fn ($q) => $q->where('user_id', $validated['user_id'])
+                )
+                ->when(
+                    ! empty($validated['loai_nghi_phep']),
+                    fn ($q) => $q->where('loai_nghi_phep', $validated['loai_nghi_phep'])
+                )
+                ->when(
+                    ! empty($validated['trang_thai']),
+                    fn ($q) => $q->where('trang_thai', $validated['trang_thai'])
+                )
+                ->orderByDesc('id');
 
-        return response()->json($query->paginate($perPage));
+            return response()->json($query->paginate($perPage));
+
+        }, 'lấy danh sách đơn xin nghỉ phép');
     }
 
     /**
@@ -78,12 +80,15 @@ class XinNghiPhepController extends Controller
      */
     public function show(XinNghiPhep $xin_nghi_phep): JsonResponse
     {
-        $xin_nghi_phep->load([
-            'user:id,name,email',
-            'nguoiDuyet:id,name,email',
-        ]);
+        return $this->handleApi(function () use ($xin_nghi_phep) {
+            $xin_nghi_phep->load([
+                'user:id,name,email',
+                'nguoiDuyet:id,name,email',
+            ]);
 
-        return response()->json($xin_nghi_phep);
+            return response()->json($xin_nghi_phep);
+
+        }, 'lấy chi tiết đơn xin nghỉ phép');
     }
 
     /**
@@ -91,17 +96,20 @@ class XinNghiPhepController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        $validated = $this->validatePayload($request);
-        $validated['trang_thai'] = 'cho_duyet';
-        $validated['nguoi_duyet_id'] = null;
+        return $this->handleApi(function () use ($request) {
+            $validated = $this->validatePayload($request);
+            $validated['trang_thai'] = 'cho_duyet';
+            $validated['nguoi_duyet_id'] = null;
 
-        $xinNghiPhep = XinNghiPhep::create($validated);
-        $xinNghiPhep->load([
-            'user:id,name,email',
-            'nguoiDuyet:id,name,email',
-        ]);
+            $xinNghiPhep = XinNghiPhep::create($validated);
+            $xinNghiPhep->load([
+                'user:id,name,email',
+                'nguoiDuyet:id,name,email',
+            ]);
 
-        return response()->json($xinNghiPhep, 201);
+            return response()->json($xinNghiPhep, 201);
+
+        }, 'tạo đơn xin nghỉ phép');
     }
 
     /**
@@ -109,15 +117,18 @@ class XinNghiPhepController extends Controller
      */
     public function update(Request $request, XinNghiPhep $xin_nghi_phep): JsonResponse
     {
-        $validated = $this->validatePayload($request);
-        unset($validated['trang_thai'], $validated['nguoi_duyet_id']);
+        return $this->handleApi(function () use ($request, $xin_nghi_phep) {
+            $validated = $this->validatePayload($request);
+            unset($validated['trang_thai'], $validated['nguoi_duyet_id']);
 
-        $xin_nghi_phep->update($validated);
+            $xin_nghi_phep->update($validated);
 
-        return response()->json($xin_nghi_phep->fresh([
-            'user:id,name,email',
-            'nguoiDuyet:id,name,email',
-        ]));
+            return response()->json($xin_nghi_phep->fresh([
+                'user:id,name,email',
+                'nguoiDuyet:id,name,email',
+            ]));
+
+        }, 'cập nhật đơn xin nghỉ phép');
     }
 
     /**
@@ -125,21 +136,24 @@ class XinNghiPhepController extends Controller
      */
     public function duyet(XinNghiPhep $xin_nghi_phep): JsonResponse
     {
-        if ($xin_nghi_phep->trang_thai !== 'cho_duyet') {
-            throw ValidationException::withMessages([
-                'trang_thai' => ['Chỉ có thể duyệt đơn đang chờ duyệt.'],
+        return $this->handleApi(function () use ($xin_nghi_phep) {
+            if ($xin_nghi_phep->trang_thai !== 'cho_duyet') {
+                throw ValidationException::withMessages([
+                    'trang_thai' => ['Chỉ có thể duyệt đơn đang chờ duyệt.'],
+                ]);
+            }
+
+            $xin_nghi_phep->update([
+                'trang_thai' => 'da_duyet',
+                'nguoi_duyet_id' => auth()->id(),
             ]);
-        }
 
-        $xin_nghi_phep->update([
-            'trang_thai' => 'da_duyet',
-            'nguoi_duyet_id' => auth()->id(),
-        ]);
+            return response()->json($xin_nghi_phep->fresh([
+                'user:id,name,email',
+                'nguoiDuyet:id,name,email',
+            ]));
 
-        return response()->json($xin_nghi_phep->fresh([
-            'user:id,name,email',
-            'nguoiDuyet:id,name,email',
-        ]));
+        }, 'duyệt đơn xin nghỉ phép');
     }
 
     /**
@@ -147,21 +161,24 @@ class XinNghiPhepController extends Controller
      */
     public function tuChoi(XinNghiPhep $xin_nghi_phep): JsonResponse
     {
-        if ($xin_nghi_phep->trang_thai !== 'cho_duyet') {
-            throw ValidationException::withMessages([
-                'trang_thai' => ['Chỉ có thể từ chối đơn đang chờ duyệt.'],
+        return $this->handleApi(function () use ($xin_nghi_phep) {
+            if ($xin_nghi_phep->trang_thai !== 'cho_duyet') {
+                throw ValidationException::withMessages([
+                    'trang_thai' => ['Chỉ có thể từ chối đơn đang chờ duyệt.'],
+                ]);
+            }
+
+            $xin_nghi_phep->update([
+                'trang_thai' => 'tu_choi',
+                'nguoi_duyet_id' => auth()->id(),
             ]);
-        }
 
-        $xin_nghi_phep->update([
-            'trang_thai' => 'tu_choi',
-            'nguoi_duyet_id' => auth()->id(),
-        ]);
+            return response()->json($xin_nghi_phep->fresh([
+                'user:id,name,email',
+                'nguoiDuyet:id,name,email',
+            ]));
 
-        return response()->json($xin_nghi_phep->fresh([
-            'user:id,name,email',
-            'nguoiDuyet:id,name,email',
-        ]));
+        }, 'từ chối đơn xin nghỉ phép');
     }
 
     /**
@@ -169,9 +186,12 @@ class XinNghiPhepController extends Controller
      */
     public function destroy(XinNghiPhep $xin_nghi_phep): JsonResponse
     {
-        $xin_nghi_phep->delete();
+        return $this->handleApi(function () use ($xin_nghi_phep) {
+            $xin_nghi_phep->delete();
 
-        return response()->json(['message' => 'Đã xóa đơn xin nghỉ phép.']);
+            return response()->json(['message' => 'Đã xóa đơn xin nghỉ phép.']);
+
+        }, 'xóa đơn xin nghỉ phép');
     }
 
     /**

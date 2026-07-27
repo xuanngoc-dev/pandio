@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Models\CauHinhFormDanhGiaMau;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
-class CauHinhFormDanhGiaMauController extends Controller
+class CauHinhFormDanhGiaMauController extends BaseApiController
 {
     /**
      * Danh sách form đánh giá mẫu — phân trang + tìm kiếm.
@@ -18,25 +17,28 @@ class CauHinhFormDanhGiaMauController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'page' => ['sometimes', 'integer', 'min:1'],
-            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
-            'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
-        ]);
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'page' => ['sometimes', 'integer', 'min:1'],
+                'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+                'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
+            ]);
 
-        $perPage = $validated['per_page'] ?? 10;
-        $keyword = trim((string) ($validated['keyword'] ?? ''));
+            $perPage = $validated['per_page'] ?? 10;
+            $keyword = trim((string) ($validated['keyword'] ?? ''));
 
-        $query = CauHinhFormDanhGiaMau::query()
-            ->when($keyword !== '', function ($q) use ($keyword) {
-                $q->where(function ($inner) use ($keyword) {
-                    $inner->where('ten_form', 'like', "%{$keyword}%")
-                        ->orWhere('slug', 'like', "%{$keyword}%");
-                });
-            })
-            ->orderByDesc('id');
+            $query = CauHinhFormDanhGiaMau::query()
+                ->when($keyword !== '', function ($q) use ($keyword) {
+                    $q->where(function ($inner) use ($keyword) {
+                        $inner->where('ten_form', 'like', "%{$keyword}%")
+                            ->orWhere('slug', 'like', "%{$keyword}%");
+                    });
+                })
+                ->orderByDesc('id');
 
-        return response()->json($query->paginate($perPage));
+            return response()->json($query->paginate($perPage));
+
+        }, 'lấy danh sách form đánh giá mẫu');
     }
 
     /**
@@ -44,7 +46,10 @@ class CauHinhFormDanhGiaMauController extends Controller
      */
     public function show(CauHinhFormDanhGiaMau $cau_hinh_form_danh_gia_mau): JsonResponse
     {
-        return response()->json($cau_hinh_form_danh_gia_mau);
+        return $this->handleApi(function () use ($cau_hinh_form_danh_gia_mau) {
+            return response()->json($cau_hinh_form_danh_gia_mau);
+
+        }, 'lấy chi tiết form đánh giá mẫu');
     }
 
     /**
@@ -52,16 +57,19 @@ class CauHinhFormDanhGiaMauController extends Controller
      */
     public function showBySlug(string $slug): JsonResponse
     {
-        $item = CauHinhFormDanhGiaMau::query()
-            ->where('slug', $slug)
-            ->firstOrFail();
+        return $this->handleApi(function () use ($slug) {
+            $item = CauHinhFormDanhGiaMau::query()
+                ->where('slug', $slug)
+                ->firstOrFail();
 
-        return response()->json([
-            'id' => $item->id,
-            'ten_form' => $item->ten_form,
-            'slug' => $item->slug,
-            'cau_hoi' => $item->cau_hoi ?? [],
-        ]);
+            return response()->json([
+                'id' => $item->id,
+                'ten_form' => $item->ten_form,
+                'slug' => $item->slug,
+                'cau_hoi' => $item->cau_hoi ?? [],
+            ]);
+
+        }, 'lấy form đánh giá mẫu theo slug');
     }
 
     /**
@@ -69,12 +77,15 @@ class CauHinhFormDanhGiaMauController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        $validated = $this->validatePayload($request);
-        $validated['slug'] = $this->uniqueSlugFromTenForm($validated['ten_form']);
+        return $this->handleApi(function () use ($request) {
+            $validated = $this->validatePayload($request);
+            $validated['slug'] = $this->uniqueSlugFromTenForm($validated['ten_form']);
 
-        $item = CauHinhFormDanhGiaMau::create($validated);
+            $item = CauHinhFormDanhGiaMau::create($validated);
 
-        return response()->json($item, 201);
+            return response()->json($item, 201);
+
+        }, 'tạo form đánh giá mẫu');
     }
 
     /**
@@ -82,15 +93,18 @@ class CauHinhFormDanhGiaMauController extends Controller
      */
     public function update(Request $request, CauHinhFormDanhGiaMau $cau_hinh_form_danh_gia_mau): JsonResponse
     {
-        $validated = $this->validatePayload($request);
-        $validated['slug'] = $this->uniqueSlugFromTenForm(
-            $validated['ten_form'],
-            $cau_hinh_form_danh_gia_mau->id
-        );
+        return $this->handleApi(function () use ($request, $cau_hinh_form_danh_gia_mau) {
+            $validated = $this->validatePayload($request);
+            $validated['slug'] = $this->uniqueSlugFromTenForm(
+                $validated['ten_form'],
+                $cau_hinh_form_danh_gia_mau->id
+            );
 
-        $cau_hinh_form_danh_gia_mau->update($validated);
+            $cau_hinh_form_danh_gia_mau->update($validated);
 
-        return response()->json($cau_hinh_form_danh_gia_mau->fresh());
+            return response()->json($cau_hinh_form_danh_gia_mau->fresh());
+
+        }, 'cập nhật form đánh giá mẫu');
     }
 
     /**
@@ -98,9 +112,12 @@ class CauHinhFormDanhGiaMauController extends Controller
      */
     public function destroy(CauHinhFormDanhGiaMau $cau_hinh_form_danh_gia_mau): JsonResponse
     {
-        $cau_hinh_form_danh_gia_mau->delete();
+        return $this->handleApi(function () use ($cau_hinh_form_danh_gia_mau) {
+            $cau_hinh_form_danh_gia_mau->delete();
 
-        return response()->json(['message' => 'Đã xóa form đánh giá mẫu.']);
+            return response()->json(['message' => 'Đã xóa form đánh giá mẫu.']);
+
+        }, 'xóa form đánh giá mẫu');
     }
 
     /**

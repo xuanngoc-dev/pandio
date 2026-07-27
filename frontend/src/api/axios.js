@@ -128,6 +128,10 @@ api.interceptors.response.use(
       ElMessage.error('Không thể kết nối tới máy chủ.')
     } else if (status === 403) {
       ElMessage.error(message || 'Bạn không có quyền thực hiện thao tác này.')
+    } else if (status === 404) {
+      ElMessage.error(message || 'Không tìm thấy dữ liệu.')
+    } else if (status === 400 || status === 405 || status === 409 || status === 429) {
+      ElMessage.error(message || 'Yêu cầu không hợp lệ.')
     } else if (status >= 500) {
       ElMessage.error(message || 'Lỗi máy chủ. Vui lòng thử lại sau.')
     } else if (status && status !== 401 && message) {

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\ApiDocs\EndpointSchemaExtractor;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route as RouteInstance;
@@ -94,9 +95,11 @@ class ApiDocsController extends Controller
      */
     public function index(Request $request): View
     {
+        $schemaExtractor = new EndpointSchemaExtractor;
+
         $routes = collect(Route::getRoutes())
             ->filter(fn (RouteInstance $route) => str_starts_with($route->uri(), 'api/'))
-            ->flatMap(function (RouteInstance $route) {
+            ->flatMap(function (RouteInstance $route) use ($schemaExtractor) {
                 $action = $route->getAction();
                 $controller = $action['controller'] ?? null;
                 $middleware = collect($route->gatherMiddleware())
@@ -113,16 +116,28 @@ class ApiDocsController extends Controller
 
                 return collect($route->methods())
                     ->reject(fn (string $method) => $method === 'HEAD')
-                    ->map(fn (string $method) => [
-                        'method' => $method,
-                        'uri' => '/'.$route->uri(),
-                        'name' => $route->getName(),
-                        'middleware' => $middleware,
-                        'action' => is_string($controller) ? $controller : null,
-                        'auth_required' => $authRequired,
-                        'path_params' => $pathParams,
-                        'has_body' => in_array($method, ['POST', 'PUT', 'PATCH'], true),
-                    ]);
+                    ->map(function (string $method) use ($controller, $middleware, $authRequired, $pathParams, $route, $schemaExtractor) {
+                        $schema = $schemaExtractor->extract(
+                            is_string($controller) ? $controller : null,
+                            $method
+                        );
+
+                        return [
+                            'method' => $method,
+                            'uri' => '/'.$route->uri(),
+                            'name' => $route->getName(),
+                            'middleware' => $middleware,
+                            'action' => is_string($controller) ? $controller : null,
+                            'auth_required' => $authRequired,
+                            'path_params' => $pathParams,
+                            'has_body' => in_array($method, ['POST', 'PUT', 'PATCH'], true),
+                            'description' => $schema['description'],
+                            'query_params' => $schema['query_params'],
+                            'body_params' => $schema['body_params'],
+                            'query_example' => $schema['query_example'],
+                            'body_example' => $schema['body_example'],
+                        ];
+                    });
             })
             ->sortBy(['uri', 'method'])
             ->values();

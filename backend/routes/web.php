@@ -13,6 +13,6 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
-    Route::get('/api-docs', [ApiDocsController::class, 'index'])->name('api-docs');
+Route::get('/api-docs', [ApiDocsController::class, 'index'])->name('api-docs');
     Route::post('/api-docs/logout', [ApiDocsController::class, 'logout'])->name('api-docs.logout');
 });

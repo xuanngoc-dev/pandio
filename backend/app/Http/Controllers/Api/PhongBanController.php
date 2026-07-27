@@ -2,13 +2,12 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Models\PhongBan;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
-class PhongBanController extends Controller
+class PhongBanController extends BaseApiController
 {
     /**
      * Danh sách phòng ban — phân trang + tìm kiếm.
@@ -17,26 +16,29 @@ class PhongBanController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'page' => ['sometimes', 'integer', 'min:1'],
-            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
-            'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
-        ]);
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'page' => ['sometimes', 'integer', 'min:1'],
+                'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+                'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
+            ]);
 
-        $perPage = $validated['per_page'] ?? 10;
-        $keyword = trim((string) ($validated['keyword'] ?? ''));
+            $perPage = $validated['per_page'] ?? 10;
+            $keyword = trim((string) ($validated['keyword'] ?? ''));
 
-        $query = PhongBan::query()
-            ->when($keyword !== '', function ($q) use ($keyword) {
-                $q->where(function ($inner) use ($keyword) {
-                    $inner->where('ten_phong_ban', 'like', "%{$keyword}%")
-                        ->orWhere('ma_phong_ban', 'like', "%{$keyword}%")
-                        ->orWhere('truong_phong', 'like', "%{$keyword}%");
-                });
-            })
-            ->orderByDesc('id');
+            $query = PhongBan::query()
+                ->when($keyword !== '', function ($q) use ($keyword) {
+                    $q->where(function ($inner) use ($keyword) {
+                        $inner->where('ten_phong_ban', 'like', "%{$keyword}%")
+                            ->orWhere('ma_phong_ban', 'like', "%{$keyword}%")
+                            ->orWhere('truong_phong', 'like', "%{$keyword}%");
+                    });
+                })
+                ->orderByDesc('id');
 
-        return response()->json($query->paginate($perPage));
+            return response()->json($query->paginate($perPage));
+
+        }, 'lấy danh sách phòng ban');
     }
 
     /**
@@ -44,7 +46,10 @@ class PhongBanController extends Controller
      */
     public function show(PhongBan $phong_ban): JsonResponse
     {
-        return response()->json($phong_ban);
+        return $this->handleApi(function () use ($phong_ban) {
+            return response()->json($phong_ban);
+
+        }, 'lấy chi tiết phòng ban');
     }
 
     /**
@@ -52,17 +57,20 @@ class PhongBanController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'ten_phong_ban' => ['required', 'string', 'max:255'],
-            'ma_phong_ban' => ['required', 'string', 'max:50', 'unique:phong_ban,ma_phong_ban'],
-            'truong_phong' => ['nullable', 'string', 'max:255'],
-            'mo_ta' => ['nullable', 'string'],
-            'ghi_chu' => ['nullable', 'string'],
-        ]);
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'ten_phong_ban' => ['required', 'string', 'max:255'],
+                'ma_phong_ban' => ['required', 'string', 'max:50', 'unique:phong_ban,ma_phong_ban'],
+                'truong_phong' => ['nullable', 'string', 'max:255'],
+                'mo_ta' => ['nullable', 'string'],
+                'ghi_chu' => ['nullable', 'string'],
+            ]);
 
-        $phongBan = PhongBan::create($validated);
+            $phongBan = PhongBan::create($validated);
 
-        return response()->json($phongBan, 201);
+            return response()->json($phongBan, 201);
+
+        }, 'tạo phòng ban');
     }
 
     /**
@@ -70,22 +78,25 @@ class PhongBanController extends Controller
      */
     public function update(Request $request, PhongBan $phong_ban): JsonResponse
     {
-        $validated = $request->validate([
-            'ten_phong_ban' => ['required', 'string', 'max:255'],
-            'ma_phong_ban' => [
-                'required',
-                'string',
-                'max:50',
-                Rule::unique('phong_ban', 'ma_phong_ban')->ignore($phong_ban->id),
-            ],
-            'truong_phong' => ['nullable', 'string', 'max:255'],
-            'mo_ta' => ['nullable', 'string'],
-            'ghi_chu' => ['nullable', 'string'],
-        ]);
+        return $this->handleApi(function () use ($request, $phong_ban) {
+            $validated = $request->validate([
+                'ten_phong_ban' => ['required', 'string', 'max:255'],
+                'ma_phong_ban' => [
+                    'required',
+                    'string',
+                    'max:50',
+                    Rule::unique('phong_ban', 'ma_phong_ban')->ignore($phong_ban->id),
+                ],
+                'truong_phong' => ['nullable', 'string', 'max:255'],
+                'mo_ta' => ['nullable', 'string'],
+                'ghi_chu' => ['nullable', 'string'],
+            ]);
 
-        $phong_ban->update($validated);
+            $phong_ban->update($validated);
 
-        return response()->json($phong_ban->fresh());
+            return response()->json($phong_ban->fresh());
+
+        }, 'cập nhật phòng ban');
     }
 
     /**
@@ -93,8 +104,11 @@ class PhongBanController extends Controller
      */
     public function destroy(PhongBan $phong_ban): JsonResponse
     {
-        $phong_ban->delete();
+        return $this->handleApi(function () use ($phong_ban) {
+            $phong_ban->delete();
 
-        return response()->json(['message' => 'Đã xóa phòng ban.']);
+            return response()->json(['message' => 'Đã xóa phòng ban.']);
+
+        }, 'xóa phòng ban');
     }
 }

@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Models\CauHinhChiNhanh;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-class CauHinhChiNhanhController extends Controller
+class CauHinhChiNhanhController extends BaseApiController
 {
     /**
      * Danh sách chi nhánh — phân trang + tìm kiếm.
@@ -16,28 +15,31 @@ class CauHinhChiNhanhController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'page' => ['sometimes', 'integer', 'min:1'],
-            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
-            'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
-        ]);
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'page' => ['sometimes', 'integer', 'min:1'],
+                'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+                'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
+            ]);
 
-        $perPage = $validated['per_page'] ?? 10;
-        $keyword = trim((string) ($validated['keyword'] ?? ''));
+            $perPage = $validated['per_page'] ?? 10;
+            $keyword = trim((string) ($validated['keyword'] ?? ''));
 
-        $query = CauHinhChiNhanh::query()
-            ->when($keyword !== '', function ($q) use ($keyword) {
-                $q->where(function ($inner) use ($keyword) {
-                    $inner->where('ten_chi_nhanh', 'like', "%{$keyword}%")
-                        ->orWhere('dia_chi', 'like', "%{$keyword}%")
-                        ->orWhere('so_dien_thoai', 'like', "%{$keyword}%")
-                        ->orWhere('email', 'like', "%{$keyword}%")
-                        ->orWhere('truong_chi_nhanh', 'like', "%{$keyword}%");
-                });
-            })
-            ->orderByDesc('id');
+            $query = CauHinhChiNhanh::query()
+                ->when($keyword !== '', function ($q) use ($keyword) {
+                    $q->where(function ($inner) use ($keyword) {
+                        $inner->where('ten_chi_nhanh', 'like', "%{$keyword}%")
+                            ->orWhere('dia_chi', 'like', "%{$keyword}%")
+                            ->orWhere('so_dien_thoai', 'like', "%{$keyword}%")
+                            ->orWhere('email', 'like', "%{$keyword}%")
+                            ->orWhere('truong_chi_nhanh', 'like', "%{$keyword}%");
+                    });
+                })
+                ->orderByDesc('id');
 
-        return response()->json($query->paginate($perPage));
+            return response()->json($query->paginate($perPage));
+
+        }, 'lấy danh sách chi nhánh');
     }
 
     /**
@@ -45,7 +47,10 @@ class CauHinhChiNhanhController extends Controller
      */
     public function show(CauHinhChiNhanh $cau_hinh_chi_nhanh): JsonResponse
     {
-        return response()->json($cau_hinh_chi_nhanh);
+        return $this->handleApi(function () use ($cau_hinh_chi_nhanh) {
+            return response()->json($cau_hinh_chi_nhanh);
+
+        }, 'lấy chi tiết chi nhánh');
     }
 
     /**
@@ -53,11 +58,14 @@ class CauHinhChiNhanhController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        $validated = $this->validatePayload($request);
+        return $this->handleApi(function () use ($request) {
+            $validated = $this->validatePayload($request);
 
-        $chiNhanh = CauHinhChiNhanh::create($validated);
+            $chiNhanh = CauHinhChiNhanh::create($validated);
 
-        return response()->json($chiNhanh, 201);
+            return response()->json($chiNhanh, 201);
+
+        }, 'tạo chi nhánh');
     }
 
     /**
@@ -65,11 +73,14 @@ class CauHinhChiNhanhController extends Controller
      */
     public function update(Request $request, CauHinhChiNhanh $cau_hinh_chi_nhanh): JsonResponse
     {
-        $validated = $this->validatePayload($request);
+        return $this->handleApi(function () use ($request, $cau_hinh_chi_nhanh) {
+            $validated = $this->validatePayload($request);
 
-        $cau_hinh_chi_nhanh->update($validated);
+            $cau_hinh_chi_nhanh->update($validated);
 
-        return response()->json($cau_hinh_chi_nhanh->fresh());
+            return response()->json($cau_hinh_chi_nhanh->fresh());
+
+        }, 'cập nhật chi nhánh');
     }
 
     /**
@@ -77,9 +88,12 @@ class CauHinhChiNhanhController extends Controller
      */
     public function destroy(CauHinhChiNhanh $cau_hinh_chi_nhanh): JsonResponse
     {
-        $cau_hinh_chi_nhanh->delete();
+        return $this->handleApi(function () use ($cau_hinh_chi_nhanh) {
+            $cau_hinh_chi_nhanh->delete();
 
-        return response()->json(['message' => 'Đã xóa chi nhánh.']);
+            return response()->json(['message' => 'Đã xóa chi nhánh.']);
+
+        }, 'xóa chi nhánh');
     }
 
     /**

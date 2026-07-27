@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Models\VaiTro;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-class VaiTroController extends Controller
+class VaiTroController extends BaseApiController
 {
     /**
      * Danh sách vai trò — phân trang + tìm kiếm.
@@ -16,25 +15,28 @@ class VaiTroController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'page' => ['sometimes', 'integer', 'min:1'],
-            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
-            'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
-        ]);
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'page' => ['sometimes', 'integer', 'min:1'],
+                'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+                'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
+            ]);
 
-        $perPage = $validated['per_page'] ?? 10;
-        $keyword = trim((string) ($validated['keyword'] ?? ''));
+            $perPage = $validated['per_page'] ?? 10;
+            $keyword = trim((string) ($validated['keyword'] ?? ''));
 
-        $query = VaiTro::query()
-            ->when($keyword !== '', function ($q) use ($keyword) {
-                $q->where(function ($inner) use ($keyword) {
-                    $inner->where('ten_vai_tro', 'like', "%{$keyword}%")
-                        ->orWhere('ghi_chu', 'like', "%{$keyword}%");
-                });
-            })
-            ->orderByDesc('id');
+            $query = VaiTro::query()
+                ->when($keyword !== '', function ($q) use ($keyword) {
+                    $q->where(function ($inner) use ($keyword) {
+                        $inner->where('ten_vai_tro', 'like', "%{$keyword}%")
+                            ->orWhere('ghi_chu', 'like', "%{$keyword}%");
+                    });
+                })
+                ->orderByDesc('id');
 
-        return response()->json($query->paginate($perPage));
+            return response()->json($query->paginate($perPage));
+
+        }, 'lấy danh sách vai trò');
     }
 
     /**
@@ -42,7 +44,10 @@ class VaiTroController extends Controller
      */
     public function show(VaiTro $vai_tro): JsonResponse
     {
-        return response()->json($vai_tro);
+        return $this->handleApi(function () use ($vai_tro) {
+            return response()->json($vai_tro);
+
+        }, 'lấy chi tiết vai trò');
     }
 
     /**
@@ -50,11 +55,14 @@ class VaiTroController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        $validated = $this->validatePayload($request);
+        return $this->handleApi(function () use ($request) {
+            $validated = $this->validatePayload($request);
 
-        $item = VaiTro::create($validated);
+            $item = VaiTro::create($validated);
 
-        return response()->json($item, 201);
+            return response()->json($item, 201);
+
+        }, 'tạo vai trò');
     }
 
     /**
@@ -62,11 +70,14 @@ class VaiTroController extends Controller
      */
     public function update(Request $request, VaiTro $vai_tro): JsonResponse
     {
-        $validated = $this->validatePayload($request);
+        return $this->handleApi(function () use ($request, $vai_tro) {
+            $validated = $this->validatePayload($request);
 
-        $vai_tro->update($validated);
+            $vai_tro->update($validated);
 
-        return response()->json($vai_tro->fresh());
+            return response()->json($vai_tro->fresh());
+
+        }, 'cập nhật vai trò');
     }
 
     /**
@@ -74,9 +85,12 @@ class VaiTroController extends Controller
      */
     public function destroy(VaiTro $vai_tro): JsonResponse
     {
-        $vai_tro->delete();
+        return $this->handleApi(function () use ($vai_tro) {
+            $vai_tro->delete();
 
-        return response()->json(['message' => 'Đã xóa vai trò.']);
+            return response()->json(['message' => 'Đã xóa vai trò.']);
+
+        }, 'xóa vai trò');
     }
 
     /**

@@ -2,13 +2,12 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Models\CauHinhCaLamViec;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
-class CauHinhCaLamViecController extends Controller
+class CauHinhCaLamViecController extends BaseApiController
 {
     /**
      * Danh sách ca làm việc — phân trang + tìm kiếm.
@@ -17,29 +16,32 @@ class CauHinhCaLamViecController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'page' => ['sometimes', 'integer', 'min:1'],
-            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
-            'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'trang_thai' => ['sometimes', 'nullable', 'string', Rule::in(['co', 'khong'])],
-        ]);
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'page' => ['sometimes', 'integer', 'min:1'],
+                'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+                'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
+                'trang_thai' => ['sometimes', 'nullable', 'string', Rule::in(['co', 'khong'])],
+            ]);
 
-        $perPage = $validated['per_page'] ?? 10;
-        $keyword = trim((string) ($validated['keyword'] ?? ''));
-        $trangThai = $validated['trang_thai'] ?? null;
+            $perPage = $validated['per_page'] ?? 10;
+            $keyword = trim((string) ($validated['keyword'] ?? ''));
+            $trangThai = $validated['trang_thai'] ?? null;
 
-        $query = CauHinhCaLamViec::query()
-            ->when($keyword !== '', function ($q) use ($keyword) {
-                $q->where(function ($inner) use ($keyword) {
-                    $inner->where('ten_ca', 'like', "%{$keyword}%")
-                        ->orWhere('ghi_chu', 'like', "%{$keyword}%");
-                });
-            })
-            ->when($trangThai, fn ($q) => $q->where('trang_thai', $trangThai))
-            ->orderBy('gio_bat_dau')
-            ->orderByDesc('id');
+            $query = CauHinhCaLamViec::query()
+                ->when($keyword !== '', function ($q) use ($keyword) {
+                    $q->where(function ($inner) use ($keyword) {
+                        $inner->where('ten_ca', 'like', "%{$keyword}%")
+                            ->orWhere('ghi_chu', 'like', "%{$keyword}%");
+                    });
+                })
+                ->when($trangThai, fn ($q) => $q->where('trang_thai', $trangThai))
+                ->orderBy('gio_bat_dau')
+                ->orderByDesc('id');
 
-        return response()->json($query->paginate($perPage));
+            return response()->json($query->paginate($perPage));
+
+        }, 'lấy danh sách ca làm việc');
     }
 
     /**
@@ -47,7 +49,10 @@ class CauHinhCaLamViecController extends Controller
      */
     public function show(CauHinhCaLamViec $cau_hinh_ca_lam_viec): JsonResponse
     {
-        return response()->json($cau_hinh_ca_lam_viec);
+        return $this->handleApi(function () use ($cau_hinh_ca_lam_viec) {
+            return response()->json($cau_hinh_ca_lam_viec);
+
+        }, 'lấy chi tiết ca làm việc');
     }
 
     /**
@@ -55,11 +60,14 @@ class CauHinhCaLamViecController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        $validated = $this->validatePayload($request);
+        return $this->handleApi(function () use ($request) {
+            $validated = $this->validatePayload($request);
 
-        $item = CauHinhCaLamViec::create($validated);
+            $item = CauHinhCaLamViec::create($validated);
 
-        return response()->json($item, 201);
+            return response()->json($item, 201);
+
+        }, 'tạo ca làm việc');
     }
 
     /**
@@ -67,11 +75,14 @@ class CauHinhCaLamViecController extends Controller
      */
     public function update(Request $request, CauHinhCaLamViec $cau_hinh_ca_lam_viec): JsonResponse
     {
-        $validated = $this->validatePayload($request);
+        return $this->handleApi(function () use ($request, $cau_hinh_ca_lam_viec) {
+            $validated = $this->validatePayload($request);
 
-        $cau_hinh_ca_lam_viec->update($validated);
+            $cau_hinh_ca_lam_viec->update($validated);
 
-        return response()->json($cau_hinh_ca_lam_viec->fresh());
+            return response()->json($cau_hinh_ca_lam_viec->fresh());
+
+        }, 'cập nhật ca làm việc');
     }
 
     /**
@@ -79,9 +90,12 @@ class CauHinhCaLamViecController extends Controller
      */
     public function destroy(CauHinhCaLamViec $cau_hinh_ca_lam_viec): JsonResponse
     {
-        $cau_hinh_ca_lam_viec->delete();
+        return $this->handleApi(function () use ($cau_hinh_ca_lam_viec) {
+            $cau_hinh_ca_lam_viec->delete();
 
-        return response()->json(['message' => 'Đã xóa ca làm việc.']);
+            return response()->json(['message' => 'Đã xóa ca làm việc.']);
+
+        }, 'xóa ca làm việc');
     }
 
     /**

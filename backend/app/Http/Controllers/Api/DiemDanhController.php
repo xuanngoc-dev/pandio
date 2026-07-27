@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Models\CauHinhJson;
 use App\Models\DangKyCaLamViec;
 use App\Models\DiemDanh;
@@ -13,7 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
-class DiemDanhController extends Controller
+class DiemDanhController extends BaseApiController
 {
     private const TIMEZONE = 'Asia/Ho_Chi_Minh';
 
@@ -26,54 +25,57 @@ class DiemDanhController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'page' => ['sometimes', 'integer', 'min:1'],
-            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
-            'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'user_id' => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
-            'ngay_lam' => ['sometimes', 'nullable', 'date'],
-            'tu_ngay' => ['sometimes', 'nullable', 'date'],
-            'den_ngay' => ['sometimes', 'nullable', 'date'],
-        ]);
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'page' => ['sometimes', 'integer', 'min:1'],
+                'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+                'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
+                'user_id' => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
+                'ngay_lam' => ['sometimes', 'nullable', 'date'],
+                'tu_ngay' => ['sometimes', 'nullable', 'date'],
+                'den_ngay' => ['sometimes', 'nullable', 'date'],
+            ]);
 
-        $perPage = $validated['per_page'] ?? 10;
-        $keyword = trim((string) ($validated['keyword'] ?? ''));
+            $perPage = $validated['per_page'] ?? 10;
+            $keyword = trim((string) ($validated['keyword'] ?? ''));
 
-        $query = DiemDanh::query()
-            ->with([
-                'user:id,name,email',
-                'caLam:id,ten_ca,gio_bat_dau,gio_ket_thuc',
-            ])
-            ->when($keyword !== '', function ($q) use ($keyword) {
-                $q->where(function ($inner) use ($keyword) {
-                    $inner->where('ly_do', 'like', "%{$keyword}%")
-                        ->orWhere('ghi_chu', 'like', "%{$keyword}%")
-                        ->orWhereHas('user', function ($userQuery) use ($keyword) {
-                            $userQuery->where('name', 'like', "%{$keyword}%")
-                                ->orWhere('email', 'like', "%{$keyword}%");
-                        });
-                });
-            })
-            ->when(
-                ! empty($validated['user_id']),
-                fn ($q) => $q->where('user_id', $validated['user_id'])
-            )
-            ->when(
-                ! empty($validated['ngay_lam']),
-                fn ($q) => $q->whereDate('ngay_lam', $validated['ngay_lam'])
-            )
-            ->when(
-                ! empty($validated['tu_ngay']),
-                fn ($q) => $q->whereDate('ngay_lam', '>=', $validated['tu_ngay'])
-            )
-            ->when(
-                ! empty($validated['den_ngay']),
-                fn ($q) => $q->whereDate('ngay_lam', '<=', $validated['den_ngay'])
-            )
-            ->orderByDesc('ngay_lam')
-            ->orderByDesc('id');
+            $query = DiemDanh::query()
+                ->with([
+                    'user:id,name,email',
+                    'caLam:id,ten_ca,gio_bat_dau,gio_ket_thuc',
+                ])
+                ->when($keyword !== '', function ($q) use ($keyword) {
+                    $q->where(function ($inner) use ($keyword) {
+                        $inner->where('ly_do', 'like', "%{$keyword}%")
+                            ->orWhere('ghi_chu', 'like', "%{$keyword}%")
+                            ->orWhereHas('user', function ($userQuery) use ($keyword) {
+                                $userQuery->where('name', 'like', "%{$keyword}%")
+                                    ->orWhere('email', 'like', "%{$keyword}%");
+                            });
+                    });
+                })
+                ->when(
+                    ! empty($validated['user_id']),
+                    fn ($q) => $q->where('user_id', $validated['user_id'])
+                )
+                ->when(
+                    ! empty($validated['ngay_lam']),
+                    fn ($q) => $q->whereDate('ngay_lam', $validated['ngay_lam'])
+                )
+                ->when(
+                    ! empty($validated['tu_ngay']),
+                    fn ($q) => $q->whereDate('ngay_lam', '>=', $validated['tu_ngay'])
+                )
+                ->when(
+                    ! empty($validated['den_ngay']),
+                    fn ($q) => $q->whereDate('ngay_lam', '<=', $validated['den_ngay'])
+                )
+                ->orderByDesc('ngay_lam')
+                ->orderByDesc('id');
 
-        return response()->json($query->paginate($perPage));
+            return response()->json($query->paginate($perPage));
+
+        }, 'lấy danh sách điểm danh');
     }
 
     /**
@@ -81,30 +83,33 @@ class DiemDanhController extends Controller
      */
     public function today(Request $request): JsonResponse
     {
-        $today = $this->todayDate();
-        $userId = (int) $request->user()->id;
+        return $this->handleApi(function () use ($request) {
+            $today = $this->todayDate();
+            $userId = (int) $request->user()->id;
 
-        $diemDanh = DiemDanh::query()
-            ->with([
-                'user:id,name,email',
-                'caLam:id,ten_ca,gio_bat_dau,gio_ket_thuc',
-            ])
-            ->where('user_id', $userId)
-            ->whereDate('ngay_lam', $today)
-            ->first();
+            $diemDanh = DiemDanh::query()
+                ->with([
+                    'user:id,name,email',
+                    'caLam:id,ten_ca,gio_bat_dau,gio_ket_thuc',
+                ])
+                ->where('user_id', $userId)
+                ->whereDate('ngay_lam', $today)
+                ->first();
 
-        $dangKy = $this->findDangKyCaHomNay($userId, $today);
+            $dangKy = $this->findDangKyCaHomNay($userId, $today);
 
-        return response()->json([
-            'ngay_lam' => $today->toDateString(),
-            'has_dang_ky_ca' => $dangKy !== null,
-            'dang_ky_ca' => $dangKy,
-            'diem_danh' => $diemDanh,
-            'can_checkin' => $diemDanh === null || $diemDanh->gio_vao === null,
-            'can_checkout' => $diemDanh !== null
-                && $diemDanh->gio_vao !== null
-                && $diemDanh->gio_ra === null,
-        ]);
+            return response()->json([
+                'ngay_lam' => $today->toDateString(),
+                'has_dang_ky_ca' => $dangKy !== null,
+                'dang_ky_ca' => $dangKy,
+                'diem_danh' => $diemDanh,
+                'can_checkin' => $diemDanh === null || $diemDanh->gio_vao === null,
+                'can_checkout' => $diemDanh !== null
+                    && $diemDanh->gio_vao !== null
+                    && $diemDanh->gio_ra === null,
+            ]);
+
+        }, 'lấy điểm danh hôm nay');
     }
 
     /**
@@ -112,80 +117,83 @@ class DiemDanhController extends Controller
      */
     public function checkin(Request $request): JsonResponse
     {
-        $clientIp = $this->resolveClientIp($request);
+        return $this->handleApi(function () use ($request) {
+            $clientIp = $this->resolveClientIp($request);
 
-        $user = $request->user();
-        $now = Carbon::now(self::TIMEZONE);
-        $today = $now->copy()->startOfDay();
+            $user = $request->user();
+            $now = Carbon::now(self::TIMEZONE);
+            $today = $now->copy()->startOfDay();
 
-        $dangKy = $this->resolveDangKyCaHomNay((int) $user->id, $today);
-        $caLam = $dangKy?->caLam;
-        $chuaDangKyCa = $caLam === null;
+            $dangKy = $this->resolveDangKyCaHomNay((int) $user->id, $today);
+            $caLam = $dangKy?->caLam;
+            $chuaDangKyCa = $caLam === null;
 
-        $existing = DiemDanh::query()
-            ->where('user_id', $user->id)
-            ->whereDate('ngay_lam', $today)
-            ->first();
+            $existing = DiemDanh::query()
+                ->where('user_id', $user->id)
+                ->whereDate('ngay_lam', $today)
+                ->first();
 
-        if ($existing && $existing->gio_vao) {
-            throw ValidationException::withMessages([
-                'checkin' => ['Bạn đã checkin hôm nay rồi.'],
+            if ($existing && $existing->gio_vao) {
+                throw ValidationException::withMessages([
+                    'checkin' => ['Bạn đã checkin hôm nay rồi.'],
+                ]);
+            }
+
+            if ($chuaDangKyCa) {
+                $payload = [
+                    'user_id' => $user->id,
+                    'ngay_lam' => $today->toDateString(),
+                    'ca_lam_id' => null,
+                    'gio_vao' => $now->format('Y-m-d H:i:s'),
+                    'di_muon' => 'khong',
+                    'thoi_gian_di_muon' => 0,
+                    'tien_phat_di_muon' => 0,
+                    'ly_do' => null,
+                    'ghi_chu' => self::GHI_CHU_CHUA_DANG_KY_CA,
+                    'ip_checkin' => $clientIp,
+                ];
+            } else {
+                $gioBatDau = $this->combineDateAndTime($today, $caLam->gio_bat_dau);
+                $lateMinutes = max(0, (int) $gioBatDau->diffInMinutes($now, false));
+
+                $waiveLate = $this->hasApprovedLeave((int) $user->id, $today, 'di_muon');
+                $lyDo = $this->resolveLyDo((int) $user->id, $today);
+
+                $diMuon = (! $waiveLate && $lateMinutes > 0) ? 'co' : 'khong';
+                $thoiGianDiMuon = $diMuon === 'co' ? $lateMinutes : 0;
+                $tienPhatDiMuon = $diMuon === 'co'
+                    ? $this->tinhTienPhat($user, $caLam, $thoiGianDiMuon)
+                    : 0;
+
+                $payload = [
+                    'user_id' => $user->id,
+                    'ngay_lam' => $today->toDateString(),
+                    'ca_lam_id' => $caLam->id,
+                    'gio_vao' => $now->format('Y-m-d H:i:s'),
+                    'di_muon' => $diMuon,
+                    'thoi_gian_di_muon' => $thoiGianDiMuon,
+                    'tien_phat_di_muon' => $tienPhatDiMuon,
+                    'ly_do' => $lyDo,
+                    'ghi_chu' => null,
+                    'ip_checkin' => $clientIp,
+                ];
+            }
+
+            if ($existing) {
+                $existing->update($payload);
+                $diemDanh = $existing->fresh();
+            } else {
+                $diemDanh = DiemDanh::create($payload);
+            }
+
+            $diemDanh->load([
+                'user:id,name,email',
+                'caLam:id,ten_ca,gio_bat_dau,gio_ket_thuc',
             ]);
-        }
 
-        if ($chuaDangKyCa) {
-            $payload = [
-                'user_id' => $user->id,
-                'ngay_lam' => $today->toDateString(),
-                'ca_lam_id' => null,
-                'gio_vao' => $now->format('Y-m-d H:i:s'),
-                'di_muon' => 'khong',
-                'thoi_gian_di_muon' => 0,
-                'tien_phat_di_muon' => 0,
-                'ly_do' => null,
-                'ghi_chu' => self::GHI_CHU_CHUA_DANG_KY_CA,
-                'ip_checkin' => $clientIp,
-            ];
-        } else {
-            $gioBatDau = $this->combineDateAndTime($today, $caLam->gio_bat_dau);
-            $lateMinutes = max(0, (int) $gioBatDau->diffInMinutes($now, false));
+            return response()->json($diemDanh, 201);
 
-            $waiveLate = $this->hasApprovedLeave((int) $user->id, $today, 'di_muon');
-            $lyDo = $this->resolveLyDo((int) $user->id, $today);
-
-            $diMuon = (! $waiveLate && $lateMinutes > 0) ? 'co' : 'khong';
-            $thoiGianDiMuon = $diMuon === 'co' ? $lateMinutes : 0;
-            $tienPhatDiMuon = $diMuon === 'co'
-                ? $this->tinhTienPhat($user, $caLam, $thoiGianDiMuon)
-                : 0;
-
-            $payload = [
-                'user_id' => $user->id,
-                'ngay_lam' => $today->toDateString(),
-                'ca_lam_id' => $caLam->id,
-                'gio_vao' => $now->format('Y-m-d H:i:s'),
-                'di_muon' => $diMuon,
-                'thoi_gian_di_muon' => $thoiGianDiMuon,
-                'tien_phat_di_muon' => $tienPhatDiMuon,
-                'ly_do' => $lyDo,
-                'ghi_chu' => null,
-                'ip_checkin' => $clientIp,
-            ];
-        }
-
-        if ($existing) {
-            $existing->update($payload);
-            $diemDanh = $existing->fresh();
-        } else {
-            $diemDanh = DiemDanh::create($payload);
-        }
-
-        $diemDanh->load([
-            'user:id,name,email',
-            'caLam:id,ten_ca,gio_bat_dau,gio_ket_thuc',
-        ]);
-
-        return response()->json($diemDanh, 201);
+        }, 'checkin điểm danh');
     }
 
     /**
@@ -193,105 +201,108 @@ class DiemDanhController extends Controller
      */
     public function checkout(Request $request): JsonResponse
     {
-        $clientIp = $this->resolveClientIp($request);
+        return $this->handleApi(function () use ($request) {
+            $clientIp = $this->resolveClientIp($request);
 
-        $user = $request->user();
-        $now = Carbon::now(self::TIMEZONE);
-        $today = $now->copy()->startOfDay();
+            $user = $request->user();
+            $now = Carbon::now(self::TIMEZONE);
+            $today = $now->copy()->startOfDay();
 
-        $diemDanh = DiemDanh::query()
-            ->where('user_id', $user->id)
-            ->whereDate('ngay_lam', $today)
-            ->first();
+            $diemDanh = DiemDanh::query()
+                ->where('user_id', $user->id)
+                ->whereDate('ngay_lam', $today)
+                ->first();
 
-        if (! $diemDanh || ! $diemDanh->gio_vao) {
-            throw ValidationException::withMessages([
-                'checkout' => ['Bạn chưa checkin hôm nay.'],
-            ]);
-        }
-
-        if ($diemDanh->gio_ra) {
-            throw ValidationException::withMessages([
-                'checkout' => ['Bạn đã checkout hôm nay rồi.'],
-            ]);
-        }
-
-        $gioVao = Carbon::parse($diemDanh->gio_vao, self::TIMEZONE);
-        if ($now->lt($gioVao)) {
-            throw ValidationException::withMessages([
-                'checkout' => ['Giờ checkout không hợp lệ.'],
-            ]);
-        }
-
-        $chuaDangKyCa = $diemDanh->ca_lam_id === null;
-
-        if ($chuaDangKyCa) {
-            $phutLam = (int) $gioVao->diffInMinutes($now);
-            $gioLamCoBan = round($phutLam / 60, 2);
-            $gioLamTangCa = 0.0;
-            [$luongCoBan, $luongTangCa] = $this->tinhLuong($user, $gioLamCoBan, $gioLamTangCa);
-
-            $diemDanh->update([
-                'gio_ra' => $now->format('Y-m-d H:i:s'),
-                've_som' => 'khong',
-                'thoi_gian_ve_som' => 0,
-                'tien_phat_ve_som' => 0,
-                'ghi_chu' => $diemDanh->ghi_chu ?: self::GHI_CHU_CHUA_DANG_KY_CA,
-                'ip_checkout' => $clientIp,
-                'gio_lam_co_ban' => $gioLamCoBan,
-                'gio_lam_tang_ca' => $gioLamTangCa,
-                'luong_co_ban' => $luongCoBan,
-                'luong_tang_ca' => $luongTangCa,
-            ]);
-        } else {
-            $dangKy = $this->resolveDangKyCaHomNay((int) $user->id, $today);
-            $caLam = $dangKy?->caLam ?? $diemDanh->caLam;
-
-            if (! $caLam) {
+            if (! $diemDanh || ! $diemDanh->gio_vao) {
                 throw ValidationException::withMessages([
-                    'ca_lam' => ['Không tìm thấy ca làm để checkout.'],
+                    'checkout' => ['Bạn chưa checkin hôm nay.'],
                 ]);
             }
 
-            $gioKetThuc = $this->combineDateAndTime($today, $caLam->gio_ket_thuc);
-            $earlyMinutes = max(0, (int) $now->diffInMinutes($gioKetThuc, false));
+            if ($diemDanh->gio_ra) {
+                throw ValidationException::withMessages([
+                    'checkout' => ['Bạn đã checkout hôm nay rồi.'],
+                ]);
+            }
 
-            $waiveEarly = $this->hasApprovedLeave((int) $user->id, $today, 've_som');
-            $veSom = (! $waiveEarly && $earlyMinutes > 0) ? 'co' : 'khong';
-            $thoiGianVeSom = $veSom === 'co' ? $earlyMinutes : 0;
-            $tienPhatVeSom = $veSom === 'co'
-                ? $this->tinhTienPhat($user, $caLam, $thoiGianVeSom)
-                : 0;
+            $gioVao = Carbon::parse($diemDanh->gio_vao, self::TIMEZONE);
+            if ($now->lt($gioVao)) {
+                throw ValidationException::withMessages([
+                    'checkout' => ['Giờ checkout không hợp lệ.'],
+                ]);
+            }
 
-            [$gioLamCoBan, $gioLamTangCa] = $this->tinhGioLam($gioVao, $now, $caLam);
-            [$luongCoBan, $luongTangCa] = $this->tinhLuong($user, $gioLamCoBan, $gioLamTangCa);
+            $chuaDangKyCa = $diemDanh->ca_lam_id === null;
 
-            $lyDo = $diemDanh->ly_do ?: $this->resolveLyDo((int) $user->id, $today);
+            if ($chuaDangKyCa) {
+                $phutLam = (int) $gioVao->diffInMinutes($now);
+                $gioLamCoBan = round($phutLam / 60, 2);
+                $gioLamTangCa = 0.0;
+                [$luongCoBan, $luongTangCa] = $this->tinhLuong($user, $gioLamCoBan, $gioLamTangCa);
 
-            $diemDanh->update([
-                'ca_lam_id' => $caLam->id,
-                'gio_ra' => $now->format('Y-m-d H:i:s'),
-                've_som' => $veSom,
-                'thoi_gian_ve_som' => $thoiGianVeSom,
-                'tien_phat_ve_som' => $tienPhatVeSom,
-                'ly_do' => $lyDo,
-                'ip_checkout' => $clientIp,
-                'gio_lam_co_ban' => $gioLamCoBan,
-                'gio_lam_tang_ca' => $gioLamTangCa,
-                'luong_co_ban' => $luongCoBan,
-                'luong_tang_ca' => $luongTangCa,
+                $diemDanh->update([
+                    'gio_ra' => $now->format('Y-m-d H:i:s'),
+                    've_som' => 'khong',
+                    'thoi_gian_ve_som' => 0,
+                    'tien_phat_ve_som' => 0,
+                    'ghi_chu' => $diemDanh->ghi_chu ?: self::GHI_CHU_CHUA_DANG_KY_CA,
+                    'ip_checkout' => $clientIp,
+                    'gio_lam_co_ban' => $gioLamCoBan,
+                    'gio_lam_tang_ca' => $gioLamTangCa,
+                    'luong_co_ban' => $luongCoBan,
+                    'luong_tang_ca' => $luongTangCa,
+                ]);
+            } else {
+                $dangKy = $this->resolveDangKyCaHomNay((int) $user->id, $today);
+                $caLam = $dangKy?->caLam ?? $diemDanh->caLam;
+
+                if (! $caLam) {
+                    throw ValidationException::withMessages([
+                        'ca_lam' => ['Không tìm thấy ca làm để checkout.'],
+                    ]);
+                }
+
+                $gioKetThuc = $this->combineDateAndTime($today, $caLam->gio_ket_thuc);
+                $earlyMinutes = max(0, (int) $now->diffInMinutes($gioKetThuc, false));
+
+                $waiveEarly = $this->hasApprovedLeave((int) $user->id, $today, 've_som');
+                $veSom = (! $waiveEarly && $earlyMinutes > 0) ? 'co' : 'khong';
+                $thoiGianVeSom = $veSom === 'co' ? $earlyMinutes : 0;
+                $tienPhatVeSom = $veSom === 'co'
+                    ? $this->tinhTienPhat($user, $caLam, $thoiGianVeSom)
+                    : 0;
+
+                [$gioLamCoBan, $gioLamTangCa] = $this->tinhGioLam($gioVao, $now, $caLam);
+                [$luongCoBan, $luongTangCa] = $this->tinhLuong($user, $gioLamCoBan, $gioLamTangCa);
+
+                $lyDo = $diemDanh->ly_do ?: $this->resolveLyDo((int) $user->id, $today);
+
+                $diemDanh->update([
+                    'ca_lam_id' => $caLam->id,
+                    'gio_ra' => $now->format('Y-m-d H:i:s'),
+                    've_som' => $veSom,
+                    'thoi_gian_ve_som' => $thoiGianVeSom,
+                    'tien_phat_ve_som' => $tienPhatVeSom,
+                    'ly_do' => $lyDo,
+                    'ip_checkout' => $clientIp,
+                    'gio_lam_co_ban' => $gioLamCoBan,
+                    'gio_lam_tang_ca' => $gioLamTangCa,
+                    'luong_co_ban' => $luongCoBan,
+                    'luong_tang_ca' => $luongTangCa,
+                ]);
+            }
+
+            $diemDanh->load([
+                'user:id,name,email',
+                'caLam:id,ten_ca,gio_bat_dau,gio_ket_thuc',
             ]);
-        }
 
-        $diemDanh->load([
-            'user:id,name,email',
-            'caLam:id,ten_ca,gio_bat_dau,gio_ket_thuc',
-        ]);
+            return response()->json($diemDanh->fresh([
+                'user:id,name,email',
+                'caLam:id,ten_ca,gio_bat_dau,gio_ket_thuc',
+            ]));
 
-        return response()->json($diemDanh->fresh([
-            'user:id,name,email',
-            'caLam:id,ten_ca,gio_bat_dau,gio_ket_thuc',
-        ]));
+        }, 'checkout điểm danh');
     }
 
     private function todayDate(): Carbon

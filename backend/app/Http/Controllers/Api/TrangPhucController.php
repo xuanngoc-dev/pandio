@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Models\TrangPhuc;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
-class TrangPhucController extends Controller
+class TrangPhucController extends BaseApiController
 {
     /**
      * Danh sách trang phục — phân trang + tìm kiếm.
@@ -18,41 +17,44 @@ class TrangPhucController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'page' => ['sometimes', 'integer', 'min:1'],
-            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
-            'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'danh_muc' => ['sometimes', 'nullable', 'integer', 'exists:danh_muc_trang_phuc,id'],
-            'nha_cung_cap' => ['sometimes', 'nullable', 'integer', 'exists:nha_cung_cap_trang_phuc,id'],
-            'chi_nhanh' => ['sometimes', 'nullable', 'integer', 'exists:cau_hinh_chi_nhanh,id'],
-            'trang_thai' => ['sometimes', 'nullable', Rule::in([0, 1, '0', '1'])],
-        ]);
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'page' => ['sometimes', 'integer', 'min:1'],
+                'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+                'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
+                'danh_muc' => ['sometimes', 'nullable', 'integer', 'exists:danh_muc_trang_phuc,id'],
+                'nha_cung_cap' => ['sometimes', 'nullable', 'integer', 'exists:nha_cung_cap_trang_phuc,id'],
+                'chi_nhanh' => ['sometimes', 'nullable', 'integer', 'exists:cau_hinh_chi_nhanh,id'],
+                'trang_thai' => ['sometimes', 'nullable', Rule::in([0, 1, '0', '1'])],
+            ]);
 
-        $perPage = $validated['per_page'] ?? 10;
-        $keyword = trim((string) ($validated['keyword'] ?? ''));
+            $perPage = $validated['per_page'] ?? 10;
+            $keyword = trim((string) ($validated['keyword'] ?? ''));
 
-        $query = TrangPhuc::query()
-            ->with([
-                'danhMucTrangPhuc:id,ten_danh_muc,ma_danh_muc',
-                'nhaCungCapTrangPhuc:id,ten_nha_cung_cap,ma_nha_cung_cap',
-                'cauHinhChiNhanh:id,ten_chi_nhanh',
-            ])
-            ->when($keyword !== '', function ($q) use ($keyword) {
-                $q->where(function ($inner) use ($keyword) {
-                    $inner->where('ma_san_pham', 'like', "%{$keyword}%")
-                        ->orWhere('ten_san_pham', 'like', "%{$keyword}%")
-                        ->orWhere('ghi_chu', 'like', "%{$keyword}%");
-                });
-            })
-            ->when(isset($validated['danh_muc']), fn ($q) => $q->where('danh_muc', $validated['danh_muc']))
-            ->when(isset($validated['nha_cung_cap']), fn ($q) => $q->where('nha_cung_cap', $validated['nha_cung_cap']))
-            ->when(isset($validated['chi_nhanh']), fn ($q) => $q->where('chi_nhanh', $validated['chi_nhanh']))
-            ->when(array_key_exists('trang_thai', $validated) && $validated['trang_thai'] !== null, function ($q) use ($validated) {
-                $q->where('trang_thai', (int) $validated['trang_thai']);
-            })
-            ->orderByDesc('id');
+            $query = TrangPhuc::query()
+                ->with([
+                    'danhMucTrangPhuc:id,ten_danh_muc,ma_danh_muc',
+                    'nhaCungCapTrangPhuc:id,ten_nha_cung_cap,ma_nha_cung_cap',
+                    'cauHinhChiNhanh:id,ten_chi_nhanh',
+                ])
+                ->when($keyword !== '', function ($q) use ($keyword) {
+                    $q->where(function ($inner) use ($keyword) {
+                        $inner->where('ma_san_pham', 'like', "%{$keyword}%")
+                            ->orWhere('ten_san_pham', 'like', "%{$keyword}%")
+                            ->orWhere('ghi_chu', 'like', "%{$keyword}%");
+                    });
+                })
+                ->when(isset($validated['danh_muc']), fn ($q) => $q->where('danh_muc', $validated['danh_muc']))
+                ->when(isset($validated['nha_cung_cap']), fn ($q) => $q->where('nha_cung_cap', $validated['nha_cung_cap']))
+                ->when(isset($validated['chi_nhanh']), fn ($q) => $q->where('chi_nhanh', $validated['chi_nhanh']))
+                ->when(array_key_exists('trang_thai', $validated) && $validated['trang_thai'] !== null, function ($q) use ($validated) {
+                    $q->where('trang_thai', (int) $validated['trang_thai']);
+                })
+                ->orderByDesc('id');
 
-        return response()->json($query->paginate($perPage));
+            return response()->json($query->paginate($perPage));
+
+        }, 'lấy danh sách trang phục');
     }
 
     /**
@@ -60,13 +62,16 @@ class TrangPhucController extends Controller
      */
     public function show(TrangPhuc $trang_phuc): JsonResponse
     {
-        $trang_phuc->load([
-            'danhMucTrangPhuc:id,ten_danh_muc,ma_danh_muc',
-            'nhaCungCapTrangPhuc:id,ten_nha_cung_cap,ma_nha_cung_cap',
-            'cauHinhChiNhanh:id,ten_chi_nhanh',
-        ]);
+        return $this->handleApi(function () use ($trang_phuc) {
+            $trang_phuc->load([
+                'danhMucTrangPhuc:id,ten_danh_muc,ma_danh_muc',
+                'nhaCungCapTrangPhuc:id,ten_nha_cung_cap,ma_nha_cung_cap',
+                'cauHinhChiNhanh:id,ten_chi_nhanh',
+            ]);
 
-        return response()->json($trang_phuc);
+            return response()->json($trang_phuc);
+
+        }, 'lấy chi tiết trang phục');
     }
 
     /**
@@ -74,21 +79,24 @@ class TrangPhucController extends Controller
      */
     public function uploadHinhAnh(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'hinh_anh' => ['required', 'image', 'mimes:jpeg,jpg,png,webp,gif', 'max:2048'],
-        ], [
-            'hinh_anh.required' => 'Vui lòng chọn hình ảnh.',
-            'hinh_anh.image' => 'File phải là hình ảnh.',
-            'hinh_anh.mimes' => 'Chỉ chấp nhận jpeg, jpg, png, webp, gif.',
-            'hinh_anh.max' => 'Hình ảnh tối đa 2MB.',
-        ]);
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'hinh_anh' => ['required', 'image', 'mimes:jpeg,jpg,png,webp,gif', 'max:2048'],
+            ], [
+                'hinh_anh.required' => 'Vui lòng chọn hình ảnh.',
+                'hinh_anh.image' => 'File phải là hình ảnh.',
+                'hinh_anh.mimes' => 'Chỉ chấp nhận jpeg, jpg, png, webp, gif.',
+                'hinh_anh.max' => 'Hình ảnh tối đa 2MB.',
+            ]);
 
-        $path = $validated['hinh_anh']->store('trang-phuc', 'public');
+            $path = $validated['hinh_anh']->store('trang-phuc', 'public');
 
-        return response()->json([
-            'path' => $path,
-            'url' => Storage::disk('public')->url($path),
-        ], 201);
+            return response()->json([
+                'path' => $path,
+                'url' => Storage::disk('public')->url($path),
+            ], 201);
+
+        }, 'upload hình ảnh trang phục');
     }
 
     /**
@@ -96,16 +104,19 @@ class TrangPhucController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        $validated = $this->validatePayload($request);
+        return $this->handleApi(function () use ($request) {
+            $validated = $this->validatePayload($request);
 
-        $trangPhuc = TrangPhuc::create($validated);
-        $trangPhuc->load([
-            'danhMucTrangPhuc:id,ten_danh_muc,ma_danh_muc',
-            'nhaCungCapTrangPhuc:id,ten_nha_cung_cap,ma_nha_cung_cap',
-            'cauHinhChiNhanh:id,ten_chi_nhanh',
-        ]);
+            $trangPhuc = TrangPhuc::create($validated);
+            $trangPhuc->load([
+                'danhMucTrangPhuc:id,ten_danh_muc,ma_danh_muc',
+                'nhaCungCapTrangPhuc:id,ten_nha_cung_cap,ma_nha_cung_cap',
+                'cauHinhChiNhanh:id,ten_chi_nhanh',
+            ]);
 
-        return response()->json($trangPhuc, 201);
+            return response()->json($trangPhuc, 201);
+
+        }, 'tạo trang phục');
     }
 
     /**
@@ -113,15 +124,18 @@ class TrangPhucController extends Controller
      */
     public function update(Request $request, TrangPhuc $trang_phuc): JsonResponse
     {
-        $validated = $this->validatePayload($request, $trang_phuc);
+        return $this->handleApi(function () use ($request, $trang_phuc) {
+            $validated = $this->validatePayload($request, $trang_phuc);
 
-        $trang_phuc->update($validated);
+            $trang_phuc->update($validated);
 
-        return response()->json($trang_phuc->fresh()->load([
-            'danhMucTrangPhuc:id,ten_danh_muc,ma_danh_muc',
-            'nhaCungCapTrangPhuc:id,ten_nha_cung_cap,ma_nha_cung_cap',
-            'cauHinhChiNhanh:id,ten_chi_nhanh',
-        ]));
+            return response()->json($trang_phuc->fresh()->load([
+                'danhMucTrangPhuc:id,ten_danh_muc,ma_danh_muc',
+                'nhaCungCapTrangPhuc:id,ten_nha_cung_cap,ma_nha_cung_cap',
+                'cauHinhChiNhanh:id,ten_chi_nhanh',
+            ]));
+
+        }, 'cập nhật trang phục');
     }
 
     /**
@@ -129,13 +143,16 @@ class TrangPhucController extends Controller
      */
     public function destroy(TrangPhuc $trang_phuc): JsonResponse
     {
-        if ($trang_phuc->hinh_anh) {
-            Storage::disk('public')->delete($trang_phuc->hinh_anh);
-        }
+        return $this->handleApi(function () use ($trang_phuc) {
+            if ($trang_phuc->hinh_anh) {
+                Storage::disk('public')->delete($trang_phuc->hinh_anh);
+            }
 
-        $trang_phuc->delete();
+            $trang_phuc->delete();
 
-        return response()->json(['message' => 'Đã xóa trang phục.']);
+            return response()->json(['message' => 'Đã xóa trang phục.']);
+
+        }, 'xóa trang phục');
     }
 
     /**
