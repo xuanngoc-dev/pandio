@@ -74,7 +74,7 @@
                   inactive-value="khong"
                   :loading="togglingId === row.id"
                   :disabled="togglingId === row.id"
-                  @change="(val) => toggleStatus(row, val)"
+                  :before-change="() => toggleStatus(row)"
                 />
                 <span
                   class="status-label"
@@ -236,8 +236,10 @@ const rules = {
   trang_thai: [{ required: true, message: 'Vui lòng chọn trạng thái', trigger: 'change' }],
 }
 
-async function toggleStatus(row, value) {
-  const previous = value === 'co' ? 'khong' : 'co'
+async function toggleStatus(row) {
+  if (!row?.id) return false
+
+  const value = row.trang_thai === 'co' ? 'khong' : 'co'
   togglingId.value = row.id
 
   try {
@@ -250,8 +252,9 @@ async function toggleStatus(row, value) {
     })
     row.trang_thai = value
     ElMessage.success(value === 'co' ? 'Đã bật ca làm việc.' : 'Đã tắt ca làm việc.')
+    return true
   } catch {
-    row.trang_thai = previous
+    return false
   } finally {
     togglingId.value = null
   }

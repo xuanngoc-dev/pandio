@@ -65,7 +65,7 @@
                   inactive-value="ngung_hoat_dong"
                   :loading="togglingId === row.id"
                   :disabled="togglingId === row.id"
-                  @change="(val) => toggleStatus(row, val)"
+                  :before-change="() => toggleStatus(row)"
                 />
                 <span
                   class="status-label"
@@ -515,8 +515,10 @@ function validateSelectOptions() {
   return true
 }
 
-async function toggleStatus(row, value) {
-  const previous = value === 'hoat_dong' ? 'ngung_hoat_dong' : 'hoat_dong'
+async function toggleStatus(row) {
+  if (!row?.id) return false
+
+  const value = row.trang_thai === 'hoat_dong' ? 'ngung_hoat_dong' : 'hoat_dong'
   togglingId.value = row.id
 
   try {
@@ -530,8 +532,9 @@ async function toggleStatus(row, value) {
     ElMessage.success(
       value === 'hoat_dong' ? 'Đã bật loại hợp đồng.' : 'Đã ngừng loại hợp đồng.',
     )
+    return true
   } catch {
-    row.trang_thai = previous
+    return false
   } finally {
     togglingId.value = null
   }

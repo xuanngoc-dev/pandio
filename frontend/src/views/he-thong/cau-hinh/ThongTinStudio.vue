@@ -93,12 +93,12 @@
                 <template #default="{ row }">
                   <div class="status-cell">
                     <el-switch
-                      v-model="row.mac_dinh"
+                      :model-value="row.mac_dinh"
                       active-value="co"
                       inactive-value="khong"
                       :loading="studio.togglingId === row.id"
                       :disabled="studio.togglingId === row.id"
-                      @change="(val) => toggleStudioMacDinh(row, val)"
+                      :before-change="() => toggleStudioMacDinh(row)"
                     />
                     <span
                       class="status-label"
@@ -197,12 +197,12 @@
                 <template #default="{ row }">
                   <div class="status-cell">
                     <el-switch
-                      v-model="row.mac_dinh"
+                      :model-value="row.mac_dinh"
                       active-value="co"
                       inactive-value="khong"
                       :loading="payment.togglingId === row.id"
                       :disabled="payment.togglingId === row.id"
-                      @change="(val) => togglePaymentMacDinh(row, val)"
+                      :before-change="() => togglePaymentMacDinh(row)"
                     />
                     <span
                       class="status-label"
@@ -567,8 +567,10 @@ function onPaymentSearch() {
   loadPayments()
 }
 
-async function toggleStudioMacDinh(row, value) {
-  const previous = value === 'co' ? 'khong' : 'co'
+async function toggleStudioMacDinh(row) {
+  if (!row?.id) return false
+
+  const value = row.mac_dinh === 'co' ? 'khong' : 'co'
   studio.togglingId = row.id
 
   try {
@@ -582,17 +584,26 @@ async function toggleStudioMacDinh(row, value) {
       ma_so_thue: row.ma_so_thue || null,
       mac_dinh: value,
     })
+    if (value === 'co') {
+      studio.items.forEach((item) => {
+        item.mac_dinh = item.id === row.id ? 'co' : 'khong'
+      })
+    } else {
+      row.mac_dinh = 'khong'
+    }
     ElMessage.success(value === 'co' ? 'Đã đặt làm studio mặc định.' : 'Đã bỏ mặc định.')
-    await loadStudios()
+    return true
   } catch {
-    row.mac_dinh = previous
+    return false
   } finally {
     studio.togglingId = null
   }
 }
 
-async function togglePaymentMacDinh(row, value) {
-  const previous = value === 'co' ? 'khong' : 'co'
+async function togglePaymentMacDinh(row) {
+  if (!row?.id) return false
+
+  const value = row.mac_dinh === 'co' ? 'khong' : 'co'
   payment.togglingId = row.id
 
   try {
@@ -603,12 +614,19 @@ async function togglePaymentMacDinh(row, value) {
       chi_nhanh: row.chi_nhanh || null,
       mac_dinh: value,
     })
+    if (value === 'co') {
+      payment.items.forEach((item) => {
+        item.mac_dinh = item.id === row.id ? 'co' : 'khong'
+      })
+    } else {
+      row.mac_dinh = 'khong'
+    }
     ElMessage.success(
       value === 'co' ? 'Đã đặt làm tài khoản mặc định.' : 'Đã bỏ mặc định.',
     )
-    await loadPayments()
+    return true
   } catch {
-    row.mac_dinh = previous
+    return false
   } finally {
     payment.togglingId = null
   }
