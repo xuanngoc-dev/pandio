@@ -4,26 +4,37 @@
     :class="{
       'is-navbar-fixed': layoutStore.navbarFixed,
       'is-sidebar-fixed': layoutStore.sidebarFixed,
+      'is-sidebar-overlay': isSidebarOverlay,
     }"
   >
-    <!-- Sidebar -->
-    <el-aside
-      :width="collapsed ? '64px' : '220px'"
-      class="aside"
-      :class="{
-        'is-fixed': layoutStore.sidebarFixed,
-        'is-collapsed': collapsed,
-      }"
-    >
-      <div class="brand">
-        <el-icon :size="22"><Monitor /></el-icon>
-        <span v-show="!collapsed" class="brand-text">Pandio</span>
-      </div>
+    <!-- Sidebar: slot giữ chỗ trong flow; panel có thể phủ như drawer -->
+    <div class="aside-slot" :style="{ width: asideSlotWidth }">
+      <el-aside
+        :width="asidePanelWidth"
+        class="aside"
+        :class="{
+          'is-fixed': layoutStore.sidebarFixed || isSidebarOverlayExpanded,
+          'is-collapsed': collapsed,
+          'is-overlay-expanded': isSidebarOverlayExpanded,
+        }"
+      >
+        <div class="brand">
+          <el-icon :size="22"><Monitor /></el-icon>
+          <span v-show="!collapsed" class="brand-text">Pandio</span>
+        </div>
 
-      <div class="aside-menu">
-        <SideMenu :collapsed="collapsed" />
-      </div>
-    </el-aside>
+        <div class="aside-menu">
+          <SideMenu :collapsed="collapsed" />
+        </div>
+      </el-aside>
+    </div>
+
+    <div
+      v-if="isSidebarOverlayExpanded"
+      class="aside-mask"
+      aria-hidden="true"
+      @click="collapsed = true"
+    />
 
     <el-container class="content-shell">
       <!-- Header -->
@@ -171,6 +182,17 @@ const now = ref(new Date())
 const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform)
 const searchShortcutLabel = isMac ? '⌘K' : 'Ctrl+K'
 
+/** Overlay (drawer): không đẩy content; luôn giữ chỗ 64px trong flow */
+const isSidebarOverlay = computed(() => !layoutStore.sidebarPushContent)
+const isSidebarOverlayExpanded = computed(
+  () => isSidebarOverlay.value && !collapsed.value
+)
+const asideSlotWidth = computed(() => {
+  if (isSidebarOverlay.value) return '64px'
+  return collapsed.value ? '64px' : '220px'
+})
+const asidePanelWidth = computed(() => (collapsed.value ? '64px' : '220px'))
+
 const pageTitle = computed(() => route.meta.title || 'Pandio')
 const userFullName = computed(() => String(authStore.user?.name || '').trim())
 const userShortName = computed(() => {
@@ -257,12 +279,26 @@ onUnmounted(() => {
 <style scoped lang="scss">
 .main-layout {
   min-height: 100vh;
+  position: relative;
 
   &.is-navbar-fixed,
   &.is-sidebar-fixed {
     height: 100vh;
     overflow: hidden;
   }
+}
+
+.aside-slot {
+  flex-shrink: 0;
+  position: relative;
+  transition: width 0.2s ease;
+}
+
+.aside-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: var(--el-overlay-color-lighter);
 }
 
 .aside {
@@ -277,6 +313,16 @@ onUnmounted(() => {
     position: sticky;
     top: 0;
     overflow: hidden;
+  }
+
+  &.is-overlay-expanded {
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    z-index: 100;
+    overflow: hidden;
+    box-shadow: var(--el-box-shadow-dark);
   }
 }
 

@@ -12,6 +12,8 @@ const defaults = {
   navbarFixed: true,
   /** Sidebar cố định khi cuộn */
   sidebarFixed: true,
+  /** Mở rộng menu có đẩy content-shell (true) hoặc phủ như drawer (false) */
+  sidebarPushContent: true,
 }
 
 function loadSettings() {
@@ -34,6 +36,7 @@ export const useLayoutStore = defineStore('layout', () => {
   const menuUniqueOpened = ref(saved.menuUniqueOpened)
   const navbarFixed = ref(saved.navbarFixed)
   const sidebarFixed = ref(saved.sidebarFixed)
+  const sidebarPushContent = ref(saved.sidebarPushContent)
 
   function persist() {
     localStorage.setItem(
@@ -43,12 +46,19 @@ export const useLayoutStore = defineStore('layout', () => {
         menuUniqueOpened: menuUniqueOpened.value,
         navbarFixed: navbarFixed.value,
         sidebarFixed: sidebarFixed.value,
+        sidebarPushContent: sidebarPushContent.value,
       })
     )
   }
 
   watch(
-    [menuGroupCollapsible, menuUniqueOpened, navbarFixed, sidebarFixed],
+    [
+      menuGroupCollapsible,
+      menuUniqueOpened,
+      navbarFixed,
+      sidebarFixed,
+      sidebarPushContent,
+    ],
     persist
   )
 
@@ -57,6 +67,7 @@ export const useLayoutStore = defineStore('layout', () => {
     menuUniqueOpened.value = defaults.menuUniqueOpened
     navbarFixed.value = defaults.navbarFixed
     sidebarFixed.value = defaults.sidebarFixed
+    sidebarPushContent.value = defaults.sidebarPushContent
   }
 
   return {
@@ -64,6 +75,7 @@ export const useLayoutStore = defineStore('layout', () => {
     menuUniqueOpened,
     navbarFixed,
     sidebarFixed,
+    sidebarPushContent,
     reset,
   }
 })

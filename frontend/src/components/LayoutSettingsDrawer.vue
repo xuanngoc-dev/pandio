@@ -32,6 +32,16 @@
             :disabled="!layoutStore.menuGroupCollapsible"
           />
         </div>
+
+        <div class="settings-row">
+          <div class="settings-row__meta">
+            <span class="settings-row__label">Đẩy nội dung khi mở menu</span>
+            <span class="settings-row__desc">
+              Bật: thu hẹp phần nội dung. Tắt: menu phủ lên như drawer
+            </span>
+          </div>
+          <el-switch v-model="layoutStore.sidebarPushContent" />
+        </div>
       </section>
 
       <section class="settings-section">
