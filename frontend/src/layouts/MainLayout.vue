@@ -41,18 +41,24 @@
           <span class="page-title">{{ pageTitle }}</span>
         </div>
 
-        <button
-          type="button"
-          class="header-search"
-          aria-label="Tìm kiếm nhanh"
-          @click="searchOpen = true"
-        >
-          <el-icon :size="16"><Search /></el-icon>
-          <span class="header-search__placeholder">Tìm kiếm nhanh...</span>
-          <kbd class="header-search__kbd">{{ searchShortcutLabel }}</kbd>
-        </button>
-
         <div class="header-right">
+          <div class="header-datetime" :title="nowFullLabel">
+            <span class="header-datetime__weekday">{{ nowWeekday }}</span>
+            <span class="header-datetime__time">{{ nowTime }}</span>
+            <span class="header-datetime__date">{{ nowDate }}</span>
+          </div>
+
+          <button
+            type="button"
+            class="header-search"
+            aria-label="Tìm kiếm nhanh"
+            @click="searchOpen = true"
+          >
+            <el-icon :size="16"><Search /></el-icon>
+            <span class="header-search__placeholder">Tìm kiếm nhanh...</span>
+            <kbd class="header-search__kbd">{{ searchShortcutLabel }}</kbd>
+          </button>
+
           <el-switch
             v-model="isDark"
             inline-prompt
@@ -83,7 +89,10 @@
             <el-dropdown trigger="click" @command="onCommand">
               <span class="user-trigger">
                 <el-avatar :size="32">{{ avatarLetter }}</el-avatar>
-                <span class="user-name">{{ authStore.user?.name }}</span>
+                <span class="user-name" :title="userFullName">
+                  <span class="user-name__full">{{ userFullName }}</span>
+                  <span class="user-name__short">{{ userShortName }}</span>
+                </span>
                 <el-icon><ArrowDown /></el-icon>
               </span>
               <template #dropdown>
@@ -136,6 +145,16 @@ import QuickSearchModal from '@/components/QuickSearchModal.vue'
 /** Dưới breakpoint này sidebar tự chuyển sang collapsed */
 const COLLAPSE_BREAKPOINT = 992
 
+const WEEKDAYS = [
+  'Chủ Nhật',
+  'Thứ Hai',
+  'Thứ Ba',
+  'Thứ Tư',
+  'Thứ Năm',
+  'Thứ Sáu',
+  'Thứ Bảy',
+]
+
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
@@ -147,16 +166,43 @@ const notificationsOpen = ref(false)
 const searchOpen = ref(false)
 const unreadNotifications = ref(0)
 const isDark = ref(document.documentElement.classList.contains('dark'))
+const now = ref(new Date())
 
 const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform)
 const searchShortcutLabel = isMac ? '⌘K' : 'Ctrl+K'
 
 const pageTitle = computed(() => route.meta.title || 'Pandio')
+const userFullName = computed(() => String(authStore.user?.name || '').trim())
+const userShortName = computed(() => {
+  const parts = userFullName.value.split(/\s+/).filter(Boolean)
+  return parts.length ? parts[parts.length - 1] : 'User'
+})
 const avatarLetter = computed(() =>
-  (authStore.user?.name || 'U').charAt(0).toUpperCase()
+  (userShortName.value || 'U').charAt(0).toUpperCase()
+)
+
+const nowWeekday = computed(() => WEEKDAYS[now.value.getDay()])
+const nowTime = computed(() =>
+  now.value.toLocaleTimeString('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  })
+)
+const nowDate = computed(() =>
+  now.value.toLocaleDateString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
+)
+const nowFullLabel = computed(
+  () => `${nowWeekday.value}, ${nowTime.value} — ${nowDate.value}`
 )
 
 let mediaQuery = null
+let clockTimer = null
 
 function syncCollapseByViewport(e) {
   collapsed.value = e.matches
@@ -195,11 +241,16 @@ onMounted(() => {
   collapsed.value = mediaQuery.matches
   mediaQuery.addEventListener('change', syncCollapseByViewport)
   window.addEventListener('keydown', onGlobalKeydown)
+
+  clockTimer = window.setInterval(() => {
+    now.value = new Date()
+  }, 1000)
 })
 
 onUnmounted(() => {
   mediaQuery?.removeEventListener('change', syncCollapseByViewport)
   window.removeEventListener('keydown', onGlobalKeydown)
+  if (clockTimer != null) window.clearInterval(clockTimer)
 })
 </script>
 
@@ -289,14 +340,13 @@ onUnmounted(() => {
 }
 
 .header-search {
-  flex: 1;
-  max-width: 420px;
+  flex: 0 1 280px;
+  max-width: 280px;
   min-width: 0;
-  margin: 0 auto;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 12px;
+  gap: 6px;
+  padding: 5px 10px;
   border: 1px solid var(--el-border-color);
   border-radius: 8px;
   background: var(--el-fill-color-light);
@@ -314,7 +364,7 @@ onUnmounted(() => {
   flex: 1;
   min-width: 0;
   text-align: left;
-  font-size: 13px;
+  font-size: 12px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -326,10 +376,39 @@ onUnmounted(() => {
   border-radius: 4px;
   border: 1px solid var(--el-border-color);
   background: var(--el-bg-color);
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1.4;
   color: var(--el-text-color-placeholder);
   font-family: inherit;
+}
+
+.header-datetime {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-shrink: 0;
+  padding: 4px 2px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--el-text-color-regular);
+}
+
+.header-datetime__weekday {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.header-datetime__time {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--el-color-primary);
+}
+
+.header-datetime__date {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
 }
 
 .header-left,
@@ -342,15 +421,29 @@ onUnmounted(() => {
 
 .header-right {
   margin-left: auto;
+  gap: 10px;
 }
 
 @media (max-width: 991px) {
   .header-search {
-    max-width: 220px;
+    flex-basis: 40px;
+    max-width: 40px;
+    justify-content: center;
+    padding: 6px;
   }
 
   .header-search__placeholder,
   .header-search__kbd {
+    display: none;
+  }
+
+  .header-datetime__weekday {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .header-datetime {
     display: none;
   }
 }
@@ -374,10 +467,44 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   cursor: pointer;
+  max-width: 220px;
 }
 
 .user-name {
+  flex: 1;
+  min-width: 0;
+  max-width: 160px;
   font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-name__full {
+  display: inline;
+}
+
+.user-name__short {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .user-trigger {
+    max-width: 120px;
+  }
+
+  .user-name {
+    max-width: 72px;
+  }
+
+  .user-name__full {
+    display: none;
+  }
+
+  .user-name__short {
+    display: inline;
+  }
 }
 
 .main {
