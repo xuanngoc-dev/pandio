@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\DichVuDanhSachDichVuLeController;
 use App\Http\Controllers\Api\DichVuLoaiDichVuController;
 use App\Http\Controllers\Api\DatMuaTrangPhucController;
 use App\Http\Controllers\Api\HopDongChoThueTrangPhucController;
+use App\Http\Controllers\Api\KhachHangNoteKhachMoiController;
 use App\Http\Controllers\Api\NhaCungCapTrangPhucController;
 use App\Http\Controllers\Api\TrangPhucController;
 use App\Http\Controllers\Api\DangKyCaLamViecController;
@@ -124,6 +125,9 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
 
     // Report quảng cáo
     Route::apiResource('report-quang-cao', ReportQuangCaoController::class);
+
+    // Note khách mới (lịch khách hàng)
+    Route::apiResource('khach-hang-note-khach-moi', KhachHangNoteKhachMoiController::class);
 
     // Dịch vụ
     Route::apiResource('dich-vu-loai-dich-vu', DichVuLoaiDichVuController::class);
