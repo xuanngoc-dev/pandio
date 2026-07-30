@@ -8,11 +8,11 @@ Route::get('/', function () {
 });
 
 Route::middleware('guest')->group(function () {
-    Route::get('/api-docs/login', [ApiDocsController::class, 'showLogin'])->name('api-docs.login');
-    Route::post('/api-docs/login', [ApiDocsController::class, 'login'])->name('api-docs.login.submit');
+    Route::get('/login', [ApiDocsController::class, 'showLogin'])->name('api-docs.login');
+    Route::post('/login', [ApiDocsController::class, 'login'])->name('api-docs.login.submit');
 });
 
 Route::middleware('auth')->group(function () {
-Route::get('/api-docs', [ApiDocsController::class, 'index'])->name('api-docs');
-    Route::post('/api-docs/logout', [ApiDocsController::class, 'logout'])->name('api-docs.logout');
+Route::get('/', [ApiDocsController::class, 'index'])->name('api-docs');
+    Route::post('/logout', [ApiDocsController::class, 'logout'])->name('api-docs.logout');
 });

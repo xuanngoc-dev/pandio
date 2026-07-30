@@ -56,7 +56,7 @@
               <Expand v-else />
             </el-icon>
           </el-button>
-          <span class="page-title">{{ pageTitle }}</span>
+          <!-- <span class="page-title">{{ pageTitle }}</span> -->
         </div>
 
         <div class="header-right">

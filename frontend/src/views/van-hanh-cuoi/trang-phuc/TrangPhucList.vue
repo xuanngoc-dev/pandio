@@ -122,6 +122,11 @@
             {{ tinhTrangLabel(row.tinh_trang) }}
           </template>
         </CustomTableColumn>
+        <CustomTableColumn label="Ngày nhập" width="120" align="center">
+          <template #default="{ row }">
+            {{ formatDate(row.created_at) }}
+          </template>
+        </CustomTableColumn>
         <CustomTableColumn label="Trạng thái" width="150" align="center">
           <template #default="{ row }">
             <div class="status-cell">
@@ -504,6 +509,13 @@ const imagePreviewUrl = computed(() => {
 
 function formatMoney(value) {
   return new Intl.NumberFormat('vi-VN').format(Number(value) || 0)
+}
+
+function formatDate(value) {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return date.toLocaleDateString('vi-VN')
 }
 
 function tinhTrangLabel(value) {

@@ -1,6 +1,6 @@
 <template>
   <div class="trang-phuc-page">
-    <h2 class="page-title">Trang phục</h2>
+    <!-- <h2 class="page-title">Trang phục</h2> -->
 
     <el-tabs v-model="activeTab" class="page-tabs">
       <el-tab-pane label="Trang phục" name="trang-phuc">
@@ -32,7 +32,7 @@ const activeTab = ref('trang-phuc')
 <style scoped lang="scss">
 .trang-phuc-page {
   .page-title {
-    margin: 0 0 16px;
+    margin: 0;
     font-size: 20px;
     font-weight: 600;
     color: var(--el-text-color-primary);

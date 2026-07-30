@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\DiemDanhController;
 use App\Http\Controllers\Api\IpDiemDanhController;
 use App\Http\Controllers\Api\LoaiHopDongController;
 use App\Http\Controllers\Api\PhongBanController;
+use App\Http\Controllers\Api\ReportQuangCaoController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\VaiTroController;
 use App\Http\Controllers\Api\XinNghiPhepController;
@@ -120,6 +121,9 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
     Route::apiResource('nha-cung-cap-trang-phuc', NhaCungCapTrangPhucController::class);
     Route::apiResource('dat-mua-trang-phuc', DatMuaTrangPhucController::class);
     Route::apiResource('hop-dong-cho-thue-trang-phuc', HopDongChoThueTrangPhucController::class);
+
+    // Report quảng cáo
+    Route::apiResource('report-quang-cao', ReportQuangCaoController::class);
 
     // Dịch vụ
     Route::apiResource('dich-vu-loai-dich-vu', DichVuLoaiDichVuController::class);
