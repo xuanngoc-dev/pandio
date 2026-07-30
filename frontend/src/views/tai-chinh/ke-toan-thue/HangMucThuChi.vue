@@ -1,12 +1,12 @@
 <template>
-  <div class="loai-dich-vu">
+  <div class="hang-muc-thu-chi">
     <CustomCard shadow="hover" class="filter-card">
       <div class="toolbar">
         <CustomInput
           v-model="keyword"
-          placeholder="Tìm theo tên loại dịch vụ..."
+          placeholder="Tìm theo tên hạng mục, ghi chú..."
           clearable
-          style="max-width: 300px"
+          style="max-width: 320px"
           @clear="onSearch"
           @keyup.enter="onSearch"
         >
@@ -21,7 +21,7 @@
           style="width: 180px"
           @change="onSearch"
         >
-          <CustomOption label="Đang hoạt động" value="dang_hoat_dong" />
+          <CustomOption label="Hoạt động" value="hoat_dong" />
           <CustomOption label="Ngừng hoạt động" value="ngung_hoat_dong" />
         </CustomSelect>
         <CustomButton type="primary" plain @click="onSearch">
@@ -34,12 +34,14 @@
     <CustomCard shadow="hover" class="table-card">
       <template #header>
         <div class="card-header">
-          <span class="card-title">Danh sách loại dịch vụ</span>
+          <span class="card-title">Danh sách hạng mục thu chi</span>
           <BulkActionBar :actions="bulkActions" @action="onBulkAction">
-            <CustomButton type="primary" @click="openCreate">
-              <CustomIcon><Plus /></CustomIcon>
-              Thêm loại dịch vụ
-            </CustomButton>
+            <CustomTooltip content="Thêm hạng mục thu chi mới" placement="top">
+              <CustomButton type="primary" @click="openCreate">
+                <CustomIcon><Plus /></CustomIcon>
+                Thêm hạng mục
+              </CustomButton>
+            </CustomTooltip>
           </BulkActionBar>
         </div>
       </template>
@@ -58,17 +60,30 @@
             {{ (page - 1) * perPage + $index + 1 }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn prop="ten_dich_vu" label="Tên loại dịch vụ" min-width="220" />
-        <CustomTableColumn prop="mo_ta" label="Mô tả" min-width="260" show-overflow-tooltip>
+        <CustomTableColumn prop="ten_hang_muc" label="Tên hạng mục" min-width="220" />
+        <CustomTableColumn prop="ghi_chu" label="Ghi chú" min-width="240" show-overflow-tooltip>
           <template #default="{ row }">
-            {{ row.mo_ta || '—' }}
+            {{ row.ghi_chu || '—' }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Trạng thái" width="150" align="center">
+        <CustomTableColumn label="Trạng thái" width="200" align="center">
           <template #default="{ row }">
-            <CustomTag :type="row.trang_thai === 'dang_hoat_dong' ? 'success' : 'info'">
-              {{ trangThaiLabel(row.trang_thai) }}
-            </CustomTag>
+            <div class="status-cell">
+              <el-switch
+                :model-value="row.trang_thai"
+                active-value="hoat_dong"
+                inactive-value="ngung_hoat_dong"
+                :loading="togglingId === row.id"
+                :disabled="togglingId === row.id"
+                :before-change="() => toggleStatus(row)"
+              />
+              <span
+                class="status-label"
+                :class="row.trang_thai === 'hoat_dong' ? 'is-active' : 'is-inactive'"
+              >
+                {{ row.trang_thai === 'hoat_dong' ? 'Hoạt động' : 'Ngừng hoạt động' }}
+              </span>
+            </div>
           </template>
         </CustomTableColumn>
         <CustomTableColumn label="Thao tác" width="100" fixed="right" align="center">
@@ -96,32 +111,32 @@
 
     <CustomDialog
       v-model="dialogVisible"
-      :title="editingId ? 'Sửa loại dịch vụ' : 'Thêm loại dịch vụ'"
+      :title="editingId ? 'Sửa hạng mục thu chi' : 'Thêm hạng mục thu chi'"
       :width="640"
     >
       <CustomForm ref="formRef" :model="form" :rules="rules">
         <CustomRow :gutter="16">
           <CustomCol :span="24">
-            <CustomFormItem label="Tên loại dịch vụ" prop="ten_dich_vu">
-              <CustomInput v-model="form.ten_dich_vu" placeholder="Nhập tên loại dịch vụ" />
+            <CustomFormItem label="Tên hạng mục" prop="ten_hang_muc">
+              <CustomInput v-model="form.ten_hang_muc" placeholder="VD: Chi phí quảng cáo, Thu hợp đồng..." />
             </CustomFormItem>
           </CustomCol>
           <CustomCol :span="24">
-            <CustomFormItem label="Mô tả" prop="mo_ta">
-              <CustomInput
-                v-model="form.mo_ta"
-                type="textarea"
-                :rows="3"
-                placeholder="Mô tả (tuỳ chọn)"
-              />
-            </CustomFormItem>
-          </CustomCol>
-          <CustomCol :xs="24" :sm="12">
             <CustomFormItem label="Trạng thái" prop="trang_thai">
               <CustomSelect v-model="form.trang_thai" style="width: 100%">
-                <CustomOption label="Đang hoạt động" value="dang_hoat_dong" />
+                <CustomOption label="Hoạt động" value="hoat_dong" />
                 <CustomOption label="Ngừng hoạt động" value="ngung_hoat_dong" />
               </CustomSelect>
+            </CustomFormItem>
+          </CustomCol>
+          <CustomCol :span="24">
+            <CustomFormItem label="Ghi chú" prop="ghi_chu">
+              <CustomInput
+                v-model="form.ghi_chu"
+                type="textarea"
+                :rows="3"
+                placeholder="Ghi chú (tuỳ chọn)"
+              />
             </CustomFormItem>
           </CustomCol>
         </CustomRow>
@@ -139,11 +154,11 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Edit, Plus, Search } from '@element-plus/icons-vue'
 import {
-  createDichVuLoaiDichVu,
-  deleteDichVuLoaiDichVu,
-  fetchDichVuLoaiDichVu,
-  updateDichVuLoaiDichVu,
-} from '@/api/dichVuLoaiDichVu'
+  createHangMucLoaiThuChu,
+  deleteHangMucLoaiThuChu,
+  fetchHangMucLoaiThuChu,
+  updateHangMucLoaiThuChu,
+} from '@/api/hangMucLoaiThuChu'
 import BulkActionBar from '@/components/BulkActionBar.vue'
 import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
 import {
@@ -160,12 +175,11 @@ import {
   CustomSelect,
   CustomTable,
   CustomTableColumn,
-  CustomTag,
   CustomTooltip,
 } from '@/components/element'
 import Pagination from '@/components/Pagination.vue'
 
-const ACTIVE = 'dang_hoat_dong'
+const ACTIVE = 'hoat_dong'
 const INACTIVE = 'ngung_hoat_dong'
 
 const items = ref([])
@@ -180,6 +194,7 @@ const filterTrangThai = ref('')
 const dialogVisible = ref(false)
 const editingId = ref(null)
 const formRef = ref(null)
+const togglingId = ref(null)
 const bulkActivating = ref(false)
 const bulkDeactivating = ref(false)
 const bulkDeleting = ref(false)
@@ -202,8 +217,8 @@ const bulkActions = computed(() => {
       badgeType: 'success',
       loading: bulkActivating.value,
       tooltip: activeCount
-        ? `Bật ${activeCount} loại dịch vụ đang ngừng`
-        : 'Chọn loại dịch vụ ngừng hoạt động để bật',
+        ? `Bật ${activeCount} hạng mục đang ngừng`
+        : 'Chọn hạng mục ngừng hoạt động để bật',
     },
     {
       key: 'deactivate',
@@ -213,8 +228,8 @@ const bulkActions = computed(() => {
       badgeType: 'warning',
       loading: bulkDeactivating.value,
       tooltip: inactiveCount
-        ? `Tắt ${inactiveCount} loại dịch vụ đang hoạt động`
-        : 'Chọn loại dịch vụ đang hoạt động để tắt',
+        ? `Tắt ${inactiveCount} hạng mục đang hoạt động`
+        : 'Chọn hạng mục đang hoạt động để tắt',
     },
     {
       key: 'delete',
@@ -224,42 +239,30 @@ const bulkActions = computed(() => {
       badgeType: 'danger',
       loading: bulkDeleting.value,
       tooltip: selectedCount.value
-        ? `Xóa ${selectedCount.value} loại dịch vụ đã chọn`
-        : 'Chọn loại dịch vụ để xóa',
+        ? `Xóa ${selectedCount.value} hạng mục đã chọn`
+        : 'Chọn hạng mục để xóa',
     },
   ]
 })
 
 const emptyForm = () => ({
-  ten_dich_vu: '',
-  mo_ta: '',
+  ten_hang_muc: '',
+  ghi_chu: '',
   trang_thai: ACTIVE,
 })
 
 const form = reactive(emptyForm())
 
 const rules = {
-  ten_dich_vu: [{ required: true, message: 'Vui lòng nhập tên loại dịch vụ', trigger: 'blur' }],
+  ten_hang_muc: [{ required: true, message: 'Vui lòng nhập tên hạng mục', trigger: 'blur' }],
   trang_thai: [{ required: true, message: 'Vui lòng chọn trạng thái', trigger: 'change' }],
-}
-
-function trangThaiLabel(value) {
-  return value === ACTIVE ? 'Đang hoạt động' : 'Ngừng hoạt động'
-}
-
-function statusPayload(row, trangThai) {
-  return {
-    ten_dich_vu: row.ten_dich_vu,
-    mo_ta: row.mo_ta || null,
-    trang_thai: trangThai,
-  }
 }
 
 async function loadItems() {
   loading.value = true
   clearSelection()
   try {
-    const { data } = await fetchDichVuLoaiDichVu({
+    const { data } = await fetchHangMucLoaiThuChu({
       page: page.value,
       per_page: perPage.value,
       keyword: keyword.value.trim() || undefined,
@@ -290,9 +293,9 @@ function openCreate() {
 function openEdit(row) {
   editingId.value = row.id
   Object.assign(form, {
-    ten_dich_vu: row.ten_dich_vu,
-    mo_ta: row.mo_ta || '',
-    trang_thai: row.trang_thai,
+    ten_hang_muc: row.ten_hang_muc || '',
+    ghi_chu: row.ghi_chu || '',
+    trang_thai: row.trang_thai || ACTIVE,
   })
   dialogVisible.value = true
 }
@@ -303,25 +306,47 @@ async function save() {
 
   saving.value = true
   const payload = {
-    ten_dich_vu: form.ten_dich_vu.trim(),
-    mo_ta: form.mo_ta?.trim() || null,
+    ten_hang_muc: form.ten_hang_muc.trim(),
+    ghi_chu: form.ghi_chu?.trim() || null,
     trang_thai: form.trang_thai,
   }
 
   try {
     if (editingId.value) {
-      await updateDichVuLoaiDichVu(editingId.value, payload)
-      ElMessage.success('Đã cập nhật loại dịch vụ.')
+      await updateHangMucLoaiThuChu(editingId.value, payload)
+      ElMessage.success('Đã cập nhật hạng mục thu chi.')
     } else {
-      await createDichVuLoaiDichVu(payload)
-      ElMessage.success('Đã thêm loại dịch vụ.')
+      await createHangMucLoaiThuChu(payload)
+      ElMessage.success('Đã thêm hạng mục thu chi.')
     }
     dialogVisible.value = false
     await loadItems()
   } catch {
-    // Lỗi đã được axios interceptor xử lý
+    // interceptor
   } finally {
     saving.value = false
+  }
+}
+
+async function toggleStatus(row) {
+  if (!row?.id) return false
+
+  const next = row.trang_thai === ACTIVE ? INACTIVE : ACTIVE
+  togglingId.value = row.id
+
+  try {
+    await updateHangMucLoaiThuChu(row.id, {
+      ten_hang_muc: row.ten_hang_muc,
+      ghi_chu: row.ghi_chu || null,
+      trang_thai: next,
+    })
+    row.trang_thai = next
+    ElMessage.success(next === ACTIVE ? 'Đã bật hạng mục.' : 'Đã tắt hạng mục.')
+    return true
+  } catch {
+    return false
+  } finally {
+    togglingId.value = null
   }
 }
 
@@ -337,7 +362,7 @@ async function bulkSetStatus(target) {
   if (!ids.length) return
 
   const label = target === ACTIVE ? 'Bật' : 'Tắt'
-  await ElMessageBox.confirm(`${label} ${ids.length} loại dịch vụ đã chọn?`, 'Xác nhận', {
+  await ElMessageBox.confirm(`${label} ${ids.length} hạng mục đã chọn?`, 'Xác nhận', {
     type: 'warning',
     confirmButtonText: label,
     cancelButtonText: 'Hủy',
@@ -349,9 +374,13 @@ async function bulkSetStatus(target) {
     const rows = items.value.filter((item) => ids.includes(item.id))
     await runBulk(ids, async (id) => {
       const row = rows.find((item) => item.id === id)
-      await updateDichVuLoaiDichVu(id, statusPayload(row, target))
+      await updateHangMucLoaiThuChu(id, {
+        ten_hang_muc: row?.ten_hang_muc,
+        ghi_chu: row?.ghi_chu || null,
+        trang_thai: target,
+      })
     })
-    ElMessage.success(`Đã ${label.toLowerCase()} ${ids.length} loại dịch vụ.`)
+    ElMessage.success(`Đã ${label.toLowerCase()} ${ids.length} hạng mục.`)
     await loadItems()
   } catch {
     // interceptor
@@ -364,7 +393,7 @@ async function bulkRemove() {
   const ids = selectedIds.value
   if (!ids.length) return
 
-  await ElMessageBox.confirm(`Xóa ${ids.length} loại dịch vụ đã chọn?`, 'Xác nhận', {
+  await ElMessageBox.confirm(`Xóa ${ids.length} hạng mục đã chọn?`, 'Xác nhận', {
     type: 'warning',
     confirmButtonText: 'Xóa',
     cancelButtonText: 'Hủy',
@@ -372,8 +401,8 @@ async function bulkRemove() {
 
   bulkDeleting.value = true
   try {
-    await runBulk(ids, (id) => deleteDichVuLoaiDichVu(id))
-    ElMessage.success(`Đã xóa ${ids.length} loại dịch vụ.`)
+    await runBulk(ids, (id) => deleteHangMucLoaiThuChu(id))
+    ElMessage.success(`Đã xóa ${ids.length} hạng mục.`)
     await loadItems()
   } catch {
     // interceptor
@@ -383,18 +412,18 @@ async function bulkRemove() {
 }
 
 async function remove(row) {
-  await ElMessageBox.confirm(`Xóa loại dịch vụ "${row.ten_dich_vu}"?`, 'Xác nhận', {
+  await ElMessageBox.confirm(`Xóa hạng mục "${row.ten_hang_muc}"?`, 'Xác nhận', {
     type: 'warning',
     confirmButtonText: 'Xóa',
     cancelButtonText: 'Hủy',
   })
 
   try {
-    await deleteDichVuLoaiDichVu(row.id)
-    ElMessage.success('Đã xóa loại dịch vụ.')
+    await deleteHangMucLoaiThuChu(row.id)
+    ElMessage.success('Đã xóa hạng mục thu chi.')
     await loadItems()
   } catch {
-    // Lỗi đã được axios interceptor xử lý
+    // interceptor
   }
 }
 
@@ -402,7 +431,7 @@ onMounted(loadItems)
 </script>
 
 <style scoped lang="scss">
-.loai-dich-vu {
+.hang-muc-thu-chi {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -413,6 +442,7 @@ onMounted(loadItems)
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .card-title {
@@ -424,11 +454,32 @@ onMounted(loadItems)
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
+  align-items: center;
 }
 
 .action-btns {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
+
+.status-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-label {
+  font-size: 13px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.status-label.is-active {
+  color: var(--el-color-success);
+}
+
+.status-label.is-inactive {
+  color: var(--el-text-color-secondary);
 }
 </style>

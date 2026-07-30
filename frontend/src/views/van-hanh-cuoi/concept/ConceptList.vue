@@ -50,14 +50,24 @@
       <template #header>
         <div class="card-header">
           <span class="card-title">Danh sách concept</span>
-          <CustomButton type="primary" @click="openCreate">
-            <CustomIcon><Plus /></CustomIcon>
-            Thêm concept
-          </CustomButton>
+          <BulkActionBar :actions="bulkActions" @action="onBulkAction">
+            <CustomButton type="primary" @click="openCreate">
+              <CustomIcon><Plus /></CustomIcon>
+              Thêm concept
+            </CustomButton>
+          </BulkActionBar>
         </div>
       </template>
 
-      <CustomTable v-loading="loading" :data="items" stripe style="width: 100%">
+      <CustomTable
+        v-loading="loading"
+        :data="items"
+        stripe
+        row-key="id"
+        style="width: 100%"
+        @selection-change="onSelectionChange"
+      >
+        <CustomTableColumn type="selection" width="48" align="center" />
         <CustomTableColumn label="STT" width="60" align="center">
           <template #default="{ $index }">
             {{ (page - 1) * perPage + $index + 1 }}
@@ -255,6 +265,8 @@ import {
   uploadConceptHinhAnh,
 } from '@/api/concept'
 import { fetchDanhMucConcept } from '@/api/danhMucConcept'
+import BulkActionBar from '@/components/BulkActionBar.vue'
+import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
 import {
   CustomButton,
   CustomCard,
@@ -274,11 +286,17 @@ import {
 import Pagination from '@/components/Pagination.vue'
 import { mediaUrl } from '@/utils/media'
 
+const ACTIVE = 'dang_su_dung'
+const INACTIVE = 'ngung_su_dung'
+
 const items = ref([])
 const danhMucOptions = ref([])
 const loading = ref(false)
 const saving = ref(false)
 const togglingId = ref(null)
+const bulkActivating = ref(false)
+const bulkDeactivating = ref(false)
+const bulkDeleting = ref(false)
 const page = ref(1)
 const perPage = ref(10)
 const total = ref(0)
@@ -291,6 +309,52 @@ const editingId = ref(null)
 const formRef = ref(null)
 const pendingImageFile = ref(null)
 const pendingPreviewUrl = ref('')
+
+const { selectedCount, onSelectionChange, clearSelection, countByStatus, idsByStatus, selectedIds } =
+  useBulkSelection(
+    () => true,
+    (row) => row.trang_thai,
+  )
+
+const bulkActions = computed(() => {
+  const activeCount = countByStatus(INACTIVE)
+  const inactiveCount = countByStatus(ACTIVE)
+  return [
+    {
+      key: 'activate',
+      label: 'Bật',
+      type: 'success',
+      badge: activeCount,
+      badgeType: 'success',
+      loading: bulkActivating.value,
+      tooltip: activeCount
+        ? `Bật ${activeCount} concept đang ngừng`
+        : 'Chọn concept ngừng sử dụng để bật',
+    },
+    {
+      key: 'deactivate',
+      label: 'Tắt',
+      type: 'warning',
+      badge: inactiveCount,
+      badgeType: 'warning',
+      loading: bulkDeactivating.value,
+      tooltip: inactiveCount
+        ? `Tắt ${inactiveCount} concept đang dùng`
+        : 'Chọn concept đang sử dụng để tắt',
+    },
+    {
+      key: 'delete',
+      label: 'Xóa',
+      type: 'danger',
+      badge: selectedCount.value,
+      badgeType: 'danger',
+      loading: bulkDeleting.value,
+      tooltip: selectedCount.value
+        ? `Xóa ${selectedCount.value} concept đã chọn`
+        : 'Chọn concept để xóa',
+    },
+  ]
+})
 
 const emptyForm = () => ({
   hinh_anh: '',
@@ -348,6 +412,7 @@ async function loadDanhMucOptions() {
 
 async function loadItems() {
   loading.value = true
+  clearSelection()
   try {
     const { data } = await fetchConcept({
       page: page.value,
@@ -435,7 +500,7 @@ async function save() {
 async function toggleStatus(row) {
   if (!row?.id) return false
 
-  const value = row.trang_thai === 'dang_su_dung' ? 'ngung_su_dung' : 'dang_su_dung'
+  const value = row.trang_thai === ACTIVE ? INACTIVE : ACTIVE
 
   togglingId.value = row.id
   try {
@@ -456,6 +521,71 @@ async function toggleStatus(row) {
     return false
   } finally {
     togglingId.value = null
+  }
+}
+
+async function onBulkAction(key) {
+  if (key === 'activate') await bulkSetStatus(ACTIVE)
+  else if (key === 'deactivate') await bulkSetStatus(INACTIVE)
+  else if (key === 'delete') await bulkRemove()
+}
+
+async function bulkSetStatus(target) {
+  const fromStatus = target === ACTIVE ? INACTIVE : ACTIVE
+  const ids = idsByStatus(fromStatus)
+  if (!ids.length) return
+
+  const label = target === ACTIVE ? 'Bật' : 'Tắt'
+  await ElMessageBox.confirm(`${label} ${ids.length} concept đã chọn?`, 'Xác nhận', {
+    type: 'warning',
+    confirmButtonText: label,
+    cancelButtonText: 'Hủy',
+  })
+
+  const loadingRef = target === ACTIVE ? bulkActivating : bulkDeactivating
+  loadingRef.value = true
+  try {
+    const rows = items.value.filter((item) => ids.includes(item.id))
+    await runBulk(ids, async (id) => {
+      const row = rows.find((item) => item.id === id)
+      await updateConcept(id, {
+        hinh_anh: row?.hinh_anh,
+        loai_concept: row?.loai_concept,
+        ma_concept: row?.ma_concept,
+        ten_concept: row?.ten_concept,
+        dia_diem: row?.dia_diem,
+        trang_thai: target,
+        mo_ta: row?.mo_ta,
+      })
+    })
+    ElMessage.success(`Đã ${label.toLowerCase()} ${ids.length} concept.`)
+    await loadItems()
+  } catch {
+    // interceptor
+  } finally {
+    loadingRef.value = false
+  }
+}
+
+async function bulkRemove() {
+  const ids = selectedIds.value
+  if (!ids.length) return
+
+  await ElMessageBox.confirm(`Xóa ${ids.length} concept đã chọn?`, 'Xác nhận', {
+    type: 'warning',
+    confirmButtonText: 'Xóa',
+    cancelButtonText: 'Hủy',
+  })
+
+  bulkDeleting.value = true
+  try {
+    await runBulk(ids, (id) => deleteConcept(id))
+    ElMessage.success(`Đã xóa ${ids.length} concept.`)
+    await loadItems()
+  } catch {
+    // interceptor
+  } finally {
+    bulkDeleting.value = false
   }
 }
 
@@ -493,6 +623,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .card-title {

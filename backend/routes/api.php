@@ -17,8 +17,10 @@ use App\Http\Controllers\Api\DichVuDanhSachDichVuLeController;
 use App\Http\Controllers\Api\DichVuLoaiDichVuController;
 use App\Http\Controllers\Api\DatMuaTrangPhucController;
 use App\Http\Controllers\Api\HopDongChoThueTrangPhucController;
+use App\Http\Controllers\Api\HangMucLoaiThuChuController;
 use App\Http\Controllers\Api\KhachHangNoteKhachMoiController;
 use App\Http\Controllers\Api\NhaCungCapTrangPhucController;
+use App\Http\Controllers\Api\PhieuThuChiController;
 use App\Http\Controllers\Api\TrangPhucController;
 use App\Http\Controllers\Api\DangKyCaLamViecController;
 use App\Http\Controllers\Api\DiemDanhController;
@@ -128,6 +130,12 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
 
     // Note khách mới (lịch khách hàng)
     Route::apiResource('khach-hang-note-khach-moi', KhachHangNoteKhachMoiController::class);
+
+    // Tài chính — kế toán thuế
+    Route::apiResource('hang-muc-loai-thu-chu', HangMucLoaiThuChuController::class);
+    Route::post('/phieu-thu-chi/bulk-delete', [PhieuThuChiController::class, 'bulkDestroy']);
+    Route::post('/phieu-thu-chi/bulk-update-status', [PhieuThuChiController::class, 'bulkUpdateStatus']);
+    Route::apiResource('phieu-thu-chi', PhieuThuChiController::class);
 
     // Dịch vụ
     Route::apiResource('dich-vu-loai-dich-vu', DichVuLoaiDichVuController::class);

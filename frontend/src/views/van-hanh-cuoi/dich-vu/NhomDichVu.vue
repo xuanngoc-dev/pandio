@@ -50,14 +50,24 @@
       <template #header>
         <div class="card-header">
           <span class="card-title">Danh sách nhóm dịch vụ (combo)</span>
-          <CustomButton type="primary" @click="openCreate">
-            <CustomIcon><Plus /></CustomIcon>
-            Thêm nhóm dịch vụ
-          </CustomButton>
+          <BulkActionBar :actions="bulkActions" @action="onBulkAction">
+            <CustomButton type="primary" @click="openCreate">
+              <CustomIcon><Plus /></CustomIcon>
+              Thêm nhóm dịch vụ
+            </CustomButton>
+          </BulkActionBar>
         </div>
       </template>
 
-      <CustomTable v-loading="loading" :data="items" stripe style="width: 100%">
+      <CustomTable
+        v-loading="loading"
+        :data="items"
+        stripe
+        row-key="id"
+        style="width: 100%"
+        @selection-change="onSelectionChange"
+      >
+        <CustomTableColumn type="selection" width="48" align="center" />
         <CustomTableColumn label="STT" width="60" align="center">
           <template #default="{ $index }">
             {{ (page - 1) * perPage + $index + 1 }}
@@ -275,7 +285,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Check, Delete, Edit, Plus, Search } from '@element-plus/icons-vue'
 import {
@@ -286,6 +296,8 @@ import {
 } from '@/api/dichVuDanhSachDichNhomDichVu'
 import { fetchDichVuDanhSachDichVuLe } from '@/api/dichVuDanhSachDichVuLe'
 import { fetchLoaiHopDong } from '@/api/loaiHopDong'
+import BulkActionBar from '@/components/BulkActionBar.vue'
+import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
 import {
   CustomButton,
   CustomCard,
@@ -305,6 +317,9 @@ import {
 } from '@/components/element'
 import Pagination from '@/components/Pagination.vue'
 
+const ACTIVE = 'dang_su_dung'
+const INACTIVE = 'ngung_su_dung'
+
 const items = ref([])
 const loading = ref(false)
 const saving = ref(false)
@@ -323,6 +338,55 @@ const dialogVisible = ref(false)
 const editingId = ref(null)
 const formRef = ref(null)
 const giaKhuyenMaiSynced = ref(true)
+const bulkActivating = ref(false)
+const bulkDeactivating = ref(false)
+const bulkDeleting = ref(false)
+
+const { selectedCount, onSelectionChange, clearSelection, countByStatus, idsByStatus, selectedIds } =
+  useBulkSelection(
+    () => true,
+    (row) => row.trang_thai,
+  )
+
+const bulkActions = computed(() => {
+  const activeCount = countByStatus(INACTIVE)
+  const inactiveCount = countByStatus(ACTIVE)
+  return [
+    {
+      key: 'activate',
+      label: 'Bật',
+      type: 'success',
+      badge: activeCount,
+      badgeType: 'success',
+      loading: bulkActivating.value,
+      tooltip: activeCount
+        ? `Bật ${activeCount} nhóm dịch vụ đang ngừng`
+        : 'Chọn nhóm dịch vụ ngừng sử dụng để bật',
+    },
+    {
+      key: 'deactivate',
+      label: 'Tắt',
+      type: 'warning',
+      badge: inactiveCount,
+      badgeType: 'warning',
+      loading: bulkDeactivating.value,
+      tooltip: inactiveCount
+        ? `Tắt ${inactiveCount} nhóm dịch vụ đang sử dụng`
+        : 'Chọn nhóm dịch vụ đang sử dụng để tắt',
+    },
+    {
+      key: 'delete',
+      label: 'Xóa',
+      type: 'danger',
+      badge: selectedCount.value,
+      badgeType: 'danger',
+      loading: bulkDeleting.value,
+      tooltip: selectedCount.value
+        ? `Xóa ${selectedCount.value} nhóm dịch vụ đã chọn`
+        : 'Chọn nhóm dịch vụ để xóa',
+    },
+  ]
+})
 
 const emptyForm = () => ({
   ma_nhom: '',
@@ -333,7 +397,7 @@ const emptyForm = () => ({
   gia_khuyen_mai: 0,
   so_diem_chup: 0,
   so_anh_chinh_sua: 0,
-  trang_thai: 'dang_su_dung',
+  trang_thai: ACTIVE,
   ghi_chu: '',
 })
 
@@ -386,7 +450,24 @@ function formatMoney(value) {
 }
 
 function trangThaiLabel(value) {
-  return value === 'dang_su_dung' ? 'Đang sử dụng' : 'Ngừng sử dụng'
+  return value === ACTIVE ? 'Đang sử dụng' : 'Ngừng sử dụng'
+}
+
+function statusPayload(row, trangThai) {
+  return {
+    ma_nhom: row.ma_nhom,
+    ten_nhom: row.ten_nhom,
+    loai_hop_dong_id: row.loai_hop_dong_id,
+    dich_vu_le_ids: row.dich_vu_le_ids?.length ? row.dich_vu_le_ids : [],
+    gia_goc: Number(row.gia_goc) || 0,
+    gia_khuyen_mai: row.gia_khuyen_mai != null && row.gia_khuyen_mai !== ''
+      ? Number(row.gia_khuyen_mai)
+      : null,
+    so_diem_chup: Number(row.so_diem_chup) || 0,
+    so_anh_chinh_sua: Number(row.so_anh_chinh_sua) || 0,
+    trang_thai: trangThai,
+    ghi_chu: row.ghi_chu || null,
+  }
 }
 
 function formatDichVuLe(row) {
@@ -459,6 +540,7 @@ function onLoaiHopDongChange(loaiHopDongId) {
 
 async function loadItems() {
   loading.value = true
+  clearSelection()
   try {
     const { data } = await fetchDichVuDanhSachDichNhomDichVu({
       page: page.value,
@@ -546,6 +628,63 @@ async function save() {
     // Lỗi đã được axios interceptor xử lý
   } finally {
     saving.value = false
+  }
+}
+
+async function onBulkAction(key) {
+  if (key === 'activate') await bulkSetStatus(ACTIVE)
+  else if (key === 'deactivate') await bulkSetStatus(INACTIVE)
+  else if (key === 'delete') await bulkRemove()
+}
+
+async function bulkSetStatus(target) {
+  const fromStatus = target === ACTIVE ? INACTIVE : ACTIVE
+  const ids = idsByStatus(fromStatus)
+  if (!ids.length) return
+
+  const label = target === ACTIVE ? 'Bật' : 'Tắt'
+  await ElMessageBox.confirm(`${label} ${ids.length} nhóm dịch vụ đã chọn?`, 'Xác nhận', {
+    type: 'warning',
+    confirmButtonText: label,
+    cancelButtonText: 'Hủy',
+  })
+
+  const loadingRef = target === ACTIVE ? bulkActivating : bulkDeactivating
+  loadingRef.value = true
+  try {
+    const rows = items.value.filter((item) => ids.includes(item.id))
+    await runBulk(ids, async (id) => {
+      const row = rows.find((item) => item.id === id)
+      await updateDichVuDanhSachDichNhomDichVu(id, statusPayload(row, target))
+    })
+    ElMessage.success(`Đã ${label.toLowerCase()} ${ids.length} nhóm dịch vụ.`)
+    await loadItems()
+  } catch {
+    // interceptor
+  } finally {
+    loadingRef.value = false
+  }
+}
+
+async function bulkRemove() {
+  const ids = selectedIds.value
+  if (!ids.length) return
+
+  await ElMessageBox.confirm(`Xóa ${ids.length} nhóm dịch vụ đã chọn?`, 'Xác nhận', {
+    type: 'warning',
+    confirmButtonText: 'Xóa',
+    cancelButtonText: 'Hủy',
+  })
+
+  bulkDeleting.value = true
+  try {
+    await runBulk(ids, (id) => deleteDichVuDanhSachDichNhomDichVu(id))
+    ElMessage.success(`Đã xóa ${ids.length} nhóm dịch vụ.`)
+    await loadItems()
+  } catch {
+    // interceptor
+  } finally {
+    bulkDeleting.value = false
   }
 }
 

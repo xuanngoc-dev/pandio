@@ -65,14 +65,24 @@
       <template #header>
         <div class="card-header">
           <span class="card-title">Danh sách trang phục</span>
-          <CustomButton type="primary" @click="openCreate">
-            <CustomIcon><Plus /></CustomIcon>
-            Thêm trang phục
-          </CustomButton>
+          <BulkActionBar :actions="bulkActions" @action="onBulkAction">
+            <CustomButton type="primary" @click="openCreate">
+              <CustomIcon><Plus /></CustomIcon>
+              Thêm trang phục
+            </CustomButton>
+          </BulkActionBar>
         </div>
       </template>
 
-      <CustomTable v-loading="loading" :data="items" stripe style="width: 100%">
+      <CustomTable
+        v-loading="loading"
+        :data="items"
+        stripe
+        row-key="id"
+        style="width: 100%"
+        @selection-change="onSelectionChange"
+      >
+        <CustomTableColumn type="selection" width="48" align="center" />
         <CustomTableColumn label="STT" width="60" align="center">
           <template #default="{ $index }">
             {{ (page - 1) * perPage + $index + 1 }}
@@ -409,6 +419,8 @@ import {
   updateTrangPhuc,
   uploadTrangPhucHinhAnh,
 } from '@/api/trangPhuc'
+import BulkActionBar from '@/components/BulkActionBar.vue'
+import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
 import {
   CustomButton,
   CustomCard,
@@ -427,6 +439,9 @@ import {
 } from '@/components/element'
 import Pagination from '@/components/Pagination.vue'
 import { mediaUrl } from '@/utils/media'
+
+const ACTIVE = 1
+const INACTIVE = 0
 
 const phanLoaiChiPhiOptions = [
   { value: 'dau_tu_tai_san', label: 'Đầu tư tài sản' },
@@ -460,6 +475,55 @@ const editingId = ref(null)
 const formRef = ref(null)
 const pendingImageFile = ref(null)
 const pendingPreviewUrl = ref('')
+const bulkActivating = ref(false)
+const bulkDeactivating = ref(false)
+const bulkDeleting = ref(false)
+
+const { selectedCount, onSelectionChange, clearSelection, countByStatus, idsByStatus, selectedIds } =
+  useBulkSelection(
+    () => true,
+    (row) => Number(row.trang_thai),
+  )
+
+const bulkActions = computed(() => {
+  const activeCount = countByStatus(INACTIVE)
+  const inactiveCount = countByStatus(ACTIVE)
+  return [
+    {
+      key: 'activate',
+      label: 'Bật',
+      type: 'success',
+      badge: activeCount,
+      badgeType: 'success',
+      loading: bulkActivating.value,
+      tooltip: activeCount
+        ? `Bật ${activeCount} trang phục đang ngừng`
+        : 'Chọn trang phục ngừng hoạt động để bật',
+    },
+    {
+      key: 'deactivate',
+      label: 'Tắt',
+      type: 'warning',
+      badge: inactiveCount,
+      badgeType: 'warning',
+      loading: bulkDeactivating.value,
+      tooltip: inactiveCount
+        ? `Tắt ${inactiveCount} trang phục đang hoạt động`
+        : 'Chọn trang phục đang hoạt động để tắt',
+    },
+    {
+      key: 'delete',
+      label: 'Xóa',
+      type: 'danger',
+      badge: selectedCount.value,
+      badgeType: 'danger',
+      loading: bulkDeleting.value,
+      tooltip: selectedCount.value
+        ? `Xóa ${selectedCount.value} trang phục đã chọn`
+        : 'Chọn trang phục để xóa',
+    },
+  ]
+})
 
 const emptyThongTinThemRow = () => ({
   ten_thuoc_tinh: '',
@@ -595,8 +659,27 @@ async function loadOptions() {
   }
 }
 
+function statusPayload(row, trangThai) {
+  return {
+    hinh_anh: row.hinh_anh,
+    ma_san_pham: row.ma_san_pham,
+    ten_san_pham: row.ten_san_pham,
+    danh_muc: resolveFkId(row.danh_muc),
+    nha_cung_cap: resolveFkId(row.nha_cung_cap),
+    chi_nhanh: resolveFkId(row.chi_nhanh),
+    gia_tri: row.gia_tri,
+    gia_cho_thue: row.gia_cho_thue,
+    phan_loai_chi_phi: row.phan_loai_chi_phi,
+    tinh_trang: row.tinh_trang,
+    ghi_chu: row.ghi_chu,
+    trang_thai: trangThai,
+    thong_tin_them: row.thong_tin_them,
+  }
+}
+
 async function loadItems() {
   loading.value = true
+  clearSelection()
   try {
     const { data } = await fetchTrangPhuc({
       page: page.value,
@@ -705,25 +788,11 @@ async function save() {
 async function toggleStatus(row) {
   if (!row?.id) return false
 
-  const value = Number(row.trang_thai) === 1 ? 0 : 1
+  const value = Number(row.trang_thai) === ACTIVE ? INACTIVE : ACTIVE
 
   togglingId.value = row.id
   try {
-    await updateTrangPhuc(row.id, {
-      hinh_anh: row.hinh_anh,
-      ma_san_pham: row.ma_san_pham,
-      ten_san_pham: row.ten_san_pham,
-      danh_muc: resolveFkId(row.danh_muc),
-      nha_cung_cap: resolveFkId(row.nha_cung_cap),
-      chi_nhanh: resolveFkId(row.chi_nhanh),
-      gia_tri: row.gia_tri,
-      gia_cho_thue: row.gia_cho_thue,
-      phan_loai_chi_phi: row.phan_loai_chi_phi,
-      tinh_trang: row.tinh_trang,
-      ghi_chu: row.ghi_chu,
-      trang_thai: value,
-      thong_tin_them: row.thong_tin_them,
-    })
+    await updateTrangPhuc(row.id, statusPayload(row, value))
     row.trang_thai = value
     ElMessage.success('Đã cập nhật trạng thái.')
     return true
@@ -731,6 +800,63 @@ async function toggleStatus(row) {
     return false
   } finally {
     togglingId.value = null
+  }
+}
+
+async function onBulkAction(key) {
+  if (key === 'activate') await bulkSetStatus(ACTIVE)
+  else if (key === 'deactivate') await bulkSetStatus(INACTIVE)
+  else if (key === 'delete') await bulkRemove()
+}
+
+async function bulkSetStatus(target) {
+  const fromStatus = target === ACTIVE ? INACTIVE : ACTIVE
+  const ids = idsByStatus(fromStatus)
+  if (!ids.length) return
+
+  const label = target === ACTIVE ? 'Bật' : 'Tắt'
+  await ElMessageBox.confirm(`${label} ${ids.length} trang phục đã chọn?`, 'Xác nhận', {
+    type: 'warning',
+    confirmButtonText: label,
+    cancelButtonText: 'Hủy',
+  })
+
+  const loadingRef = target === ACTIVE ? bulkActivating : bulkDeactivating
+  loadingRef.value = true
+  try {
+    const rows = items.value.filter((item) => ids.includes(item.id))
+    await runBulk(ids, async (id) => {
+      const row = rows.find((item) => item.id === id)
+      await updateTrangPhuc(id, statusPayload(row, target))
+    })
+    ElMessage.success(`Đã ${label.toLowerCase()} ${ids.length} trang phục.`)
+    await loadItems()
+  } catch {
+    // interceptor
+  } finally {
+    loadingRef.value = false
+  }
+}
+
+async function bulkRemove() {
+  const ids = selectedIds.value
+  if (!ids.length) return
+
+  await ElMessageBox.confirm(`Xóa ${ids.length} trang phục đã chọn?`, 'Xác nhận', {
+    type: 'warning',
+    confirmButtonText: 'Xóa',
+    cancelButtonText: 'Hủy',
+  })
+
+  bulkDeleting.value = true
+  try {
+    await runBulk(ids, (id) => deleteTrangPhuc(id))
+    ElMessage.success(`Đã xóa ${ids.length} trang phục.`)
+    await loadItems()
+  } catch {
+    // interceptor
+  } finally {
+    bulkDeleting.value = false
   }
 }
 

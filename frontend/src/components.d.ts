@@ -11,6 +11,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    BulkActionBar: typeof import('./components/BulkActionBar.vue')['default']
     CustomButton: typeof import('./components/element/CustomButton.vue')['default']
     CustomCard: typeof import('./components/element/CustomCard.vue')['default']
     CustomCol: typeof import('./components/element/CustomCol.vue')['default']

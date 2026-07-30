@@ -39,14 +39,24 @@
       <template #header>
         <div class="card-header">
           <span class="card-title">Danh sách hợp đồng cho thuê trang phục</span>
-          <CustomButton type="primary" @click="openCreate">
-            <CustomIcon><Plus /></CustomIcon>
-            Thêm hợp đồng
-          </CustomButton>
+          <BulkActionBar :actions="bulkActions" @action="onBulkAction">
+            <CustomButton type="primary" @click="openCreate">
+              <CustomIcon><Plus /></CustomIcon>
+              Thêm hợp đồng
+            </CustomButton>
+          </BulkActionBar>
         </div>
       </template>
 
-      <CustomTable v-loading="loading" :data="items" stripe style="width: 100%">
+      <CustomTable
+        v-loading="loading"
+        :data="items"
+        stripe
+        row-key="id"
+        style="width: 100%"
+        @selection-change="onSelectionChange"
+      >
+        <CustomTableColumn type="selection" width="48" align="center" />
         <CustomTableColumn label="STT" width="60" align="center">
           <template #default="{ $index }">
             {{ (page - 1) * perPage + $index + 1 }}
@@ -405,6 +415,8 @@ import {
 } from '@/api/hopDongChoThueTrangPhuc'
 import { fetchTrangPhuc } from '@/api/trangPhuc'
 import { fetchUsers } from '@/api/users'
+import BulkActionBar from '@/components/BulkActionBar.vue'
+import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
 import {
   CustomButton,
   CustomCard,
@@ -455,6 +467,23 @@ let sanPhamSearchTimer = null
 const dialogVisible = ref(false)
 const editingId = ref(null)
 const formRef = ref(null)
+const bulkDeleting = ref(false)
+
+const { selectedCount, onSelectionChange, clearSelection, selectedIds } = useBulkSelection()
+
+const bulkActions = computed(() => [
+  {
+    key: 'delete',
+    label: 'Xóa',
+    type: 'danger',
+    badge: selectedCount.value,
+    badgeType: 'danger',
+    loading: bulkDeleting.value,
+    tooltip: selectedCount.value
+      ? `Xóa ${selectedCount.value} hợp đồng đã chọn`
+      : 'Chọn hợp đồng để xóa',
+  },
+])
 
 const emptySanPhamItem = (sanPhamId) => ({
   san_pham_id: sanPhamId,
@@ -641,6 +670,7 @@ async function loadTrangPhucOptions() {
 
 async function loadItems() {
   loading.value = true
+  clearSelection()
   try {
     const { data } = await fetchHopDongChoThueTrangPhuc({
       page: page.value,
@@ -755,6 +785,32 @@ async function save() {
     // Lỗi đã được axios interceptor xử lý
   } finally {
     saving.value = false
+  }
+}
+
+async function onBulkAction(key) {
+  if (key === 'delete') await bulkRemove()
+}
+
+async function bulkRemove() {
+  const ids = selectedIds.value
+  if (!ids.length) return
+
+  await ElMessageBox.confirm(`Xóa ${ids.length} hợp đồng đã chọn?`, 'Xác nhận', {
+    type: 'warning',
+    confirmButtonText: 'Xóa',
+    cancelButtonText: 'Hủy',
+  })
+
+  bulkDeleting.value = true
+  try {
+    await runBulk(ids, (id) => deleteHopDongChoThueTrangPhuc(id))
+    ElMessage.success(`Đã xóa ${ids.length} hợp đồng.`)
+    await loadItems()
+  } catch {
+    // interceptor
+  } finally {
+    bulkDeleting.value = false
   }
 }
 

@@ -59,14 +59,24 @@
       <template #header>
         <div class="card-header">
           <span class="card-title">Note khách mới</span>
-          <CustomButton type="primary" @click="openCreate">
-            <CustomIcon><Plus /></CustomIcon>
-            Thêm note khách
-          </CustomButton>
+          <BulkActionBar :actions="bulkActions" @action="onBulkAction">
+            <CustomButton type="primary" @click="openCreate">
+              <CustomIcon><Plus /></CustomIcon>
+              Thêm note khách
+            </CustomButton>
+          </BulkActionBar>
         </div>
       </template>
 
-      <CustomTable v-loading="loading" :data="items" stripe style="width: 100%">
+      <CustomTable
+        v-loading="loading"
+        :data="items"
+        stripe
+        row-key="id"
+        style="width: 100%"
+        @selection-change="onSelectionChange"
+      >
+        <CustomTableColumn type="selection" width="48" align="center" fixed />
         <CustomTableColumn label="STT" width="60" align="center" fixed>
           <template #default="{ $index }">
             {{ (page - 1) * perPage + $index + 1 }}
@@ -300,7 +310,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Edit, Plus, Search } from '@element-plus/icons-vue'
 import {
@@ -311,6 +321,8 @@ import {
 } from '@/api/noteKhachMoi'
 import { fetchUsers } from '@/api/users'
 import { useAuthStore } from '@/stores/auth'
+import BulkActionBar from '@/components/BulkActionBar.vue'
+import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
 import {
   CustomButton,
   CustomCard,
@@ -370,6 +382,23 @@ const userOptions = ref([])
 const dialogVisible = ref(false)
 const editingId = ref(null)
 const formRef = ref(null)
+const bulkDeleting = ref(false)
+
+const { selectedCount, onSelectionChange, clearSelection, selectedIds } = useBulkSelection()
+
+const bulkActions = computed(() => [
+  {
+    key: 'delete',
+    label: 'Xóa',
+    type: 'danger',
+    badge: selectedCount.value,
+    badgeType: 'danger',
+    loading: bulkDeleting.value,
+    tooltip: selectedCount.value
+      ? `Xóa ${selectedCount.value} note đã chọn`
+      : 'Chọn note để xóa',
+  },
+])
 
 const emptyForm = () => ({
   ten_khach: '',
@@ -459,6 +488,7 @@ async function loadUserOptions() {
 
 async function loadItems() {
   loading.value = true
+  clearSelection()
   try {
     const { data } = await fetchNoteKhachMoi({
       page: page.value,
@@ -545,6 +575,32 @@ async function save() {
     // Lỗi đã được axios interceptor xử lý
   } finally {
     saving.value = false
+  }
+}
+
+async function onBulkAction(key) {
+  if (key === 'delete') await bulkRemove()
+}
+
+async function bulkRemove() {
+  const ids = selectedIds.value
+  if (!ids.length) return
+
+  await ElMessageBox.confirm(`Xóa ${ids.length} note đã chọn?`, 'Xác nhận', {
+    type: 'warning',
+    confirmButtonText: 'Xóa',
+    cancelButtonText: 'Hủy',
+  })
+
+  bulkDeleting.value = true
+  try {
+    await runBulk(ids, (id) => deleteNoteKhachMoi(id))
+    ElMessage.success(`Đã xóa ${ids.length} note.`)
+    await loadItems()
+  } catch {
+    // interceptor
+  } finally {
+    bulkDeleting.value = false
   }
 }
 

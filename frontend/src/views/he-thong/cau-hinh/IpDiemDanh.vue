@@ -36,14 +36,24 @@
         <template #header>
           <div class="card-header">
             <span class="card-title">Danh sách IP điểm danh</span>
-            <CustomButton type="primary" @click="openCreate">
-              <CustomIcon><Plus /></CustomIcon>
-              Thêm IP
-            </CustomButton>
+            <BulkActionBar :actions="bulkActions" @action="onBulkAction">
+              <CustomButton type="primary" @click="openCreate">
+                <CustomIcon><Plus /></CustomIcon>
+                Thêm IP
+              </CustomButton>
+            </BulkActionBar>
           </div>
         </template>
 
-        <CustomTable v-loading="loading" :data="items" stripe style="width: 100%">
+        <CustomTable
+          v-loading="loading"
+          :data="items"
+          stripe
+          row-key="id"
+          style="width: 100%"
+          @selection-change="onSelectionChange"
+        >
+          <CustomTableColumn type="selection" width="48" align="center" />
           <CustomTableColumn label="STT" width="60" align="center">
             <template #default="{ $index }">
               {{ (page - 1) * perPage + $index + 1 }}
@@ -146,7 +156,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Edit, Plus, Search } from '@element-plus/icons-vue'
 import {
@@ -155,6 +165,8 @@ import {
   fetchIpDiemDanh,
   updateIpDiemDanh,
 } from '@/api/ipDiemDanh'
+import BulkActionBar from '@/components/BulkActionBar.vue'
+import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
 import {
   CustomButton,
   CustomCard,
@@ -174,10 +186,16 @@ import {
 import Pagination from '@/components/Pagination.vue'
 import ConfigSettingPage from './ConfigSettingPage.vue'
 
+const ACTIVE = 'active'
+const INACTIVE = 'inactive'
+
 const items = ref([])
 const loading = ref(false)
 const saving = ref(false)
 const togglingId = ref(null)
+const bulkActivating = ref(false)
+const bulkDeactivating = ref(false)
+const bulkDeleting = ref(false)
 const page = ref(1)
 const perPage = ref(10)
 const total = ref(0)
@@ -187,6 +205,52 @@ const trangThaiFilter = ref('')
 const dialogVisible = ref(false)
 const editingId = ref(null)
 const formRef = ref(null)
+
+const { selectedCount, onSelectionChange, clearSelection, countByStatus, idsByStatus, selectedIds } =
+  useBulkSelection(
+    () => true,
+    (row) => row.trang_thai,
+  )
+
+const bulkActions = computed(() => {
+  const activeCount = countByStatus(INACTIVE)
+  const inactiveCount = countByStatus(ACTIVE)
+  return [
+    {
+      key: 'activate',
+      label: 'Bật',
+      type: 'success',
+      badge: activeCount,
+      badgeType: 'success',
+      loading: bulkActivating.value,
+      tooltip: activeCount
+        ? `Bật ${activeCount} IP đang tắt`
+        : 'Chọn IP không hoạt động để bật',
+    },
+    {
+      key: 'deactivate',
+      label: 'Tắt',
+      type: 'warning',
+      badge: inactiveCount,
+      badgeType: 'warning',
+      loading: bulkDeactivating.value,
+      tooltip: inactiveCount
+        ? `Tắt ${inactiveCount} IP đang hoạt động`
+        : 'Chọn IP đang hoạt động để tắt',
+    },
+    {
+      key: 'delete',
+      label: 'Xóa',
+      type: 'danger',
+      badge: selectedCount.value,
+      badgeType: 'danger',
+      loading: bulkDeleting.value,
+      tooltip: selectedCount.value
+        ? `Xóa ${selectedCount.value} IP đã chọn`
+        : 'Chọn IP để xóa',
+    },
+  ]
+})
 
 const emptyForm = () => ({
   ten_ip: '',
@@ -226,6 +290,7 @@ async function toggleStatus(row, value) {
 
 async function loadItems() {
   loading.value = true
+  clearSelection()
   try {
     const { data } = await fetchIpDiemDanh({
       page: page.value,
@@ -241,6 +306,68 @@ async function loadItems() {
     total.value = 0
   } finally {
     loading.value = false
+  }
+}
+
+async function onBulkAction(key) {
+  if (key === 'activate') await bulkSetStatus(ACTIVE)
+  else if (key === 'deactivate') await bulkSetStatus(INACTIVE)
+  else if (key === 'delete') await bulkRemove()
+}
+
+async function bulkSetStatus(target) {
+  const fromStatus = target === ACTIVE ? INACTIVE : ACTIVE
+  const ids = idsByStatus(fromStatus)
+  if (!ids.length) return
+
+  const label = target === ACTIVE ? 'Bật' : 'Tắt'
+  await ElMessageBox.confirm(`${label} ${ids.length} IP đã chọn?`, 'Xác nhận', {
+    type: 'warning',
+    confirmButtonText: label,
+    cancelButtonText: 'Hủy',
+  })
+
+  const loadingRef = target === ACTIVE ? bulkActivating : bulkDeactivating
+  loadingRef.value = true
+  try {
+    const rows = items.value.filter((item) => ids.includes(item.id))
+    await runBulk(ids, async (id) => {
+      const row = rows.find((item) => item.id === id)
+      await updateIpDiemDanh(id, {
+        ten_ip: row?.ten_ip,
+        dia_chi_ip: row?.dia_chi_ip,
+        ghi_chu: row?.ghi_chu || null,
+        trang_thai: target,
+      })
+    })
+    ElMessage.success(`Đã ${label.toLowerCase()} ${ids.length} IP.`)
+    await loadItems()
+  } catch {
+    // interceptor
+  } finally {
+    loadingRef.value = false
+  }
+}
+
+async function bulkRemove() {
+  const ids = selectedIds.value
+  if (!ids.length) return
+
+  await ElMessageBox.confirm(`Xóa ${ids.length} IP đã chọn?`, 'Xác nhận', {
+    type: 'warning',
+    confirmButtonText: 'Xóa',
+    cancelButtonText: 'Hủy',
+  })
+
+  bulkDeleting.value = true
+  try {
+    await runBulk(ids, (id) => deleteIpDiemDanh(id))
+    ElMessage.success(`Đã xóa ${ids.length} IP.`)
+    await loadItems()
+  } catch {
+    // interceptor
+  } finally {
+    bulkDeleting.value = false
   }
 }
 
@@ -326,6 +453,7 @@ onMounted(loadItems)
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .card-title {

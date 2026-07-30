@@ -25,14 +25,24 @@
       <template #header>
         <div class="card-header">
           <span class="card-title">Danh sách đặt mua trang phục</span>
-          <CustomButton type="primary" @click="openCreate">
-            <CustomIcon><Plus /></CustomIcon>
-            Thêm đơn đặt mua
-          </CustomButton>
+          <BulkActionBar :actions="bulkActions" @action="onBulkAction">
+            <CustomButton type="primary" @click="openCreate">
+              <CustomIcon><Plus /></CustomIcon>
+              Thêm đơn đặt mua
+            </CustomButton>
+          </BulkActionBar>
         </div>
       </template>
 
-      <CustomTable v-loading="loading" :data="items" stripe style="width: 100%">
+      <CustomTable
+        v-loading="loading"
+        :data="items"
+        stripe
+        row-key="id"
+        style="width: 100%"
+        @selection-change="onSelectionChange"
+      >
+        <CustomTableColumn type="selection" width="48" align="center" />
         <CustomTableColumn label="STT" width="60" align="center">
           <template #default="{ $index }">
             {{ (page - 1) * perPage + $index + 1 }}
@@ -262,6 +272,8 @@ import {
   updateDatMuaTrangPhuc,
 } from '@/api/datMuaTrangPhuc'
 import { fetchNhaCungCapTrangPhuc } from '@/api/nhaCungCapTrangPhuc'
+import BulkActionBar from '@/components/BulkActionBar.vue'
+import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
 import {
   CustomButton,
   CustomCard,
@@ -303,6 +315,23 @@ const nhaCungCapOptions = ref([])
 const dialogVisible = ref(false)
 const editingId = ref(null)
 const formRef = ref(null)
+const bulkDeleting = ref(false)
+
+const { selectedCount, onSelectionChange, clearSelection, selectedIds } = useBulkSelection()
+
+const bulkActions = computed(() => [
+  {
+    key: 'delete',
+    label: 'Xóa',
+    type: 'danger',
+    badge: selectedCount.value,
+    badgeType: 'danger',
+    loading: bulkDeleting.value,
+    tooltip: selectedCount.value
+      ? `Xóa ${selectedCount.value} đơn đặt mua đã chọn`
+      : 'Chọn đơn đặt mua để xóa',
+  },
+])
 
 const emptyMatHangRow = () => ({
   ten_mat_hang: '',
@@ -393,6 +422,7 @@ async function loadNhaCungCapOptions() {
 
 async function loadItems() {
   loading.value = true
+  clearSelection()
   try {
     const { data } = await fetchDatMuaTrangPhuc({
       page: page.value,
@@ -479,6 +509,32 @@ async function save() {
     // Lỗi đã được axios interceptor xử lý
   } finally {
     saving.value = false
+  }
+}
+
+async function onBulkAction(key) {
+  if (key === 'delete') await bulkRemove()
+}
+
+async function bulkRemove() {
+  const ids = selectedIds.value
+  if (!ids.length) return
+
+  await ElMessageBox.confirm(`Xóa ${ids.length} đơn đặt mua đã chọn?`, 'Xác nhận', {
+    type: 'warning',
+    confirmButtonText: 'Xóa',
+    cancelButtonText: 'Hủy',
+  })
+
+  bulkDeleting.value = true
+  try {
+    await runBulk(ids, (id) => deleteDatMuaTrangPhuc(id))
+    ElMessage.success(`Đã xóa ${ids.length} đơn đặt mua.`)
+    await loadItems()
+  } catch {
+    // interceptor
+  } finally {
+    bulkDeleting.value = false
   }
 }
 

@@ -36,14 +36,24 @@
         <template #header>
           <div class="card-header">
             <span class="card-title">Danh sách loại hợp đồng khách hàng</span>
-            <CustomButton type="primary" @click="openCreate">
-              <CustomIcon><Plus /></CustomIcon>
-              Thêm loại hợp đồng
-            </CustomButton>
+            <BulkActionBar :actions="bulkActions" @action="onBulkAction">
+              <CustomButton type="primary" @click="openCreate">
+                <CustomIcon><Plus /></CustomIcon>
+                Thêm loại hợp đồng
+              </CustomButton>
+            </BulkActionBar>
           </div>
         </template>
 
-        <CustomTable v-loading="loading" :data="items" stripe style="width: 100%">
+        <CustomTable
+          v-loading="loading"
+          :data="items"
+          stripe
+          row-key="id"
+          style="width: 100%"
+          @selection-change="onSelectionChange"
+        >
+          <CustomTableColumn type="selection" width="48" align="center" />
           <CustomTableColumn label="STT" width="60" align="center">
             <template #default="{ $index }">
               {{ (page - 1) * perPage + $index + 1 }}
@@ -279,7 +289,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Edit, Plus, Search } from '@element-plus/icons-vue'
 import {
@@ -288,6 +298,8 @@ import {
   fetchLoaiHopDong,
   updateLoaiHopDong,
 } from '@/api/loaiHopDong'
+import BulkActionBar from '@/components/BulkActionBar.vue'
+import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
 import {
   CustomButton,
   CustomCard,
@@ -306,6 +318,9 @@ import {
 } from '@/components/element'
 import Pagination from '@/components/Pagination.vue'
 import ConfigSettingPage from './ConfigSettingPage.vue'
+
+const ACTIVE = 'hoat_dong'
+const INACTIVE = 'ngung_hoat_dong'
 
 const KIEU_CO_TUY_CHON = ['select', 'radio', 'checkbox_group']
 
@@ -368,6 +383,9 @@ const items = ref([])
 const loading = ref(false)
 const saving = ref(false)
 const togglingId = ref(null)
+const bulkActivating = ref(false)
+const bulkDeactivating = ref(false)
+const bulkDeleting = ref(false)
 const page = ref(1)
 const perPage = ref(10)
 const total = ref(0)
@@ -378,10 +396,56 @@ const dialogVisible = ref(false)
 const editingId = ref(null)
 const formRef = ref(null)
 
+const { selectedCount, onSelectionChange, clearSelection, countByStatus, idsByStatus, selectedIds } =
+  useBulkSelection(
+    () => true,
+    (row) => row.trang_thai,
+  )
+
+const bulkActions = computed(() => {
+  const activeCount = countByStatus(INACTIVE)
+  const inactiveCount = countByStatus(ACTIVE)
+  return [
+    {
+      key: 'activate',
+      label: 'Bật',
+      type: 'success',
+      badge: activeCount,
+      badgeType: 'success',
+      loading: bulkActivating.value,
+      tooltip: activeCount
+        ? `Bật ${activeCount} loại hợp đồng đang ngừng`
+        : 'Chọn loại hợp đồng ngừng hoạt động để bật',
+    },
+    {
+      key: 'deactivate',
+      label: 'Tắt',
+      type: 'warning',
+      badge: inactiveCount,
+      badgeType: 'warning',
+      loading: bulkDeactivating.value,
+      tooltip: inactiveCount
+        ? `Tắt ${inactiveCount} loại hợp đồng đang hoạt động`
+        : 'Chọn loại hợp đồng đang hoạt động để tắt',
+    },
+    {
+      key: 'delete',
+      label: 'Xóa',
+      type: 'danger',
+      badge: selectedCount.value,
+      badgeType: 'danger',
+      loading: bulkDeleting.value,
+      tooltip: selectedCount.value
+        ? `Xóa ${selectedCount.value} loại hợp đồng đã chọn`
+        : 'Chọn loại hợp đồng để xóa',
+    },
+  ]
+})
+
 const emptyForm = () => ({
   ten_hop_dong: '',
   ma_hop_dong: '',
-  trang_thai: 'hoat_dong',
+  trang_thai: ACTIVE,
   truong: [],
 })
 
@@ -518,7 +582,7 @@ function validateSelectOptions() {
 async function toggleStatus(row) {
   if (!row?.id) return false
 
-  const value = row.trang_thai === 'hoat_dong' ? 'ngung_hoat_dong' : 'hoat_dong'
+  const value = row.trang_thai === ACTIVE ? INACTIVE : ACTIVE
   togglingId.value = row.id
 
   try {
@@ -530,7 +594,7 @@ async function toggleStatus(row) {
     })
     row.trang_thai = value
     ElMessage.success(
-      value === 'hoat_dong' ? 'Đã bật loại hợp đồng.' : 'Đã ngừng loại hợp đồng.',
+      value === ACTIVE ? 'Đã bật loại hợp đồng.' : 'Đã ngừng loại hợp đồng.',
     )
     return true
   } catch {
@@ -542,6 +606,7 @@ async function toggleStatus(row) {
 
 async function loadItems() {
   loading.value = true
+  clearSelection()
   try {
     const { data } = await fetchLoaiHopDong({
       page: page.value,
@@ -557,6 +622,68 @@ async function loadItems() {
     total.value = 0
   } finally {
     loading.value = false
+  }
+}
+
+async function onBulkAction(key) {
+  if (key === 'activate') await bulkSetStatus(ACTIVE)
+  else if (key === 'deactivate') await bulkSetStatus(INACTIVE)
+  else if (key === 'delete') await bulkRemove()
+}
+
+async function bulkSetStatus(target) {
+  const fromStatus = target === ACTIVE ? INACTIVE : ACTIVE
+  const ids = idsByStatus(fromStatus)
+  if (!ids.length) return
+
+  const label = target === ACTIVE ? 'Bật' : 'Tắt'
+  await ElMessageBox.confirm(`${label} ${ids.length} loại hợp đồng đã chọn?`, 'Xác nhận', {
+    type: 'warning',
+    confirmButtonText: label,
+    cancelButtonText: 'Hủy',
+  })
+
+  const loadingRef = target === ACTIVE ? bulkActivating : bulkDeactivating
+  loadingRef.value = true
+  try {
+    const rows = items.value.filter((item) => ids.includes(item.id))
+    await runBulk(ids, async (id) => {
+      const row = rows.find((item) => item.id === id)
+      await updateLoaiHopDong(id, {
+        ten_hop_dong: row?.ten_hop_dong,
+        ma_hop_dong: row?.ma_hop_dong,
+        noi_dung: row?.noi_dung || { truong: [] },
+        trang_thai: target,
+      })
+    })
+    ElMessage.success(`Đã ${label.toLowerCase()} ${ids.length} loại hợp đồng.`)
+    await loadItems()
+  } catch {
+    // interceptor
+  } finally {
+    loadingRef.value = false
+  }
+}
+
+async function bulkRemove() {
+  const ids = selectedIds.value
+  if (!ids.length) return
+
+  await ElMessageBox.confirm(`Xóa ${ids.length} loại hợp đồng đã chọn?`, 'Xác nhận', {
+    type: 'warning',
+    confirmButtonText: 'Xóa',
+    cancelButtonText: 'Hủy',
+  })
+
+  bulkDeleting.value = true
+  try {
+    await runBulk(ids, (id) => deleteLoaiHopDong(id))
+    ElMessage.success(`Đã xóa ${ids.length} loại hợp đồng.`)
+    await loadItems()
+  } catch {
+    // interceptor
+  } finally {
+    bulkDeleting.value = false
   }
 }
 
@@ -576,7 +703,7 @@ function openEdit(row) {
   Object.assign(form, {
     ten_hop_dong: row.ten_hop_dong,
     ma_hop_dong: row.ma_hop_dong,
-    trang_thai: row.trang_thai || 'hoat_dong',
+    trang_thai: row.trang_thai || ACTIVE,
     truong: parseNoiDung(row.noi_dung),
   })
   dialogVisible.value = true
@@ -648,6 +775,7 @@ onMounted(loadItems)
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .card-title {

@@ -25,14 +25,24 @@
       <template #header>
         <div class="card-header">
           <span class="card-title">Danh sách danh mục trang phục</span>
-          <CustomButton type="primary" @click="openCreate">
-            <CustomIcon><Plus /></CustomIcon>
-            Thêm danh mục
-          </CustomButton>
+          <BulkActionBar :actions="bulkActions" @action="onBulkAction">
+            <CustomButton type="primary" @click="openCreate">
+              <CustomIcon><Plus /></CustomIcon>
+              Thêm danh mục
+            </CustomButton>
+          </BulkActionBar>
         </div>
       </template>
 
-      <CustomTable v-loading="loading" :data="items" stripe style="width: 100%">
+      <CustomTable
+        v-loading="loading"
+        :data="items"
+        stripe
+        row-key="id"
+        style="width: 100%"
+        @selection-change="onSelectionChange"
+      >
+        <CustomTableColumn type="selection" width="48" align="center" />
         <CustomTableColumn label="STT" width="60" align="center">
           <template #default="{ $index }">
             {{ (page - 1) * perPage + $index + 1 }}
@@ -110,7 +120,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Edit, Plus, Search } from '@element-plus/icons-vue'
 import {
@@ -119,6 +129,8 @@ import {
   fetchDanhMucTrangPhuc,
   updateDanhMucTrangPhuc,
 } from '@/api/danhMucTrangPhuc'
+import BulkActionBar from '@/components/BulkActionBar.vue'
+import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
 import {
   CustomButton,
   CustomCard,
@@ -146,6 +158,23 @@ const keyword = ref('')
 const dialogVisible = ref(false)
 const editingId = ref(null)
 const formRef = ref(null)
+const bulkDeleting = ref(false)
+
+const { selectedCount, onSelectionChange, clearSelection, selectedIds } = useBulkSelection()
+
+const bulkActions = computed(() => [
+  {
+    key: 'delete',
+    label: 'Xóa',
+    type: 'danger',
+    badge: selectedCount.value,
+    badgeType: 'danger',
+    loading: bulkDeleting.value,
+    tooltip: selectedCount.value
+      ? `Xóa ${selectedCount.value} danh mục đã chọn`
+      : 'Chọn danh mục để xóa',
+  },
+])
 
 const emptyForm = () => ({
   ma_danh_muc: '',
@@ -162,6 +191,7 @@ const rules = {
 
 async function loadItems() {
   loading.value = true
+  clearSelection()
   try {
     const { data } = await fetchDanhMucTrangPhuc({
       page: page.value,
@@ -225,6 +255,32 @@ async function save() {
     // Lỗi đã được axios interceptor xử lý
   } finally {
     saving.value = false
+  }
+}
+
+async function onBulkAction(key) {
+  if (key === 'delete') await bulkRemove()
+}
+
+async function bulkRemove() {
+  const ids = selectedIds.value
+  if (!ids.length) return
+
+  await ElMessageBox.confirm(`Xóa ${ids.length} danh mục đã chọn?`, 'Xác nhận', {
+    type: 'warning',
+    confirmButtonText: 'Xóa',
+    cancelButtonText: 'Hủy',
+  })
+
+  bulkDeleting.value = true
+  try {
+    await runBulk(ids, (id) => deleteDanhMucTrangPhuc(id))
+    ElMessage.success(`Đã xóa ${ids.length} danh mục.`)
+    await loadItems()
+  } catch {
+    // interceptor
+  } finally {
+    bulkDeleting.value = false
   }
 }
 
