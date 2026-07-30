@@ -49,7 +49,8 @@ export function bulkDeletePhieuThuChi(ids) {
  * Cập nhật trạng thái nhiều phiếu thu chi.
  * @param {number[]} ids
  * @param {string} trang_thai
+ * @param {string} ghi_chu
  */
-export function bulkUpdateStatusPhieuThuChi(ids, trang_thai) {
-  return api.post('/phieu-thu-chi/bulk-update-status', { ids, trang_thai })
+export function bulkUpdateStatusPhieuThuChi(ids, trang_thai, ghi_chu) {
+  return api.post('/phieu-thu-chi/bulk-update-status', { ids, trang_thai, ghi_chu })
 }

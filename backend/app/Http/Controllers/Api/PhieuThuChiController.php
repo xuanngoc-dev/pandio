@@ -155,10 +155,12 @@ class PhieuThuChiController extends BaseApiController
                 'ids' => ['required', 'array', 'min:1'],
                 'ids.*' => ['integer', 'exists:phieu_thu_chi,id'],
                 'trang_thai' => ['required', Rule::in(['cho_duyet', 'da_duyet', 'tu_choi'])],
+                'ghi_chu' => ['required', 'string', 'max:2000'],
             ]);
 
             $payload = [
                 'trang_thai' => $validated['trang_thai'],
+                'ghi_chu' => $validated['ghi_chu'],
                 'ngay_cap_nhat_trang_thai' => now(),
             ];
 

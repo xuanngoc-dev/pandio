@@ -149,9 +149,37 @@
             {{ row.ghi_chu || '—' }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Thao tác" width="100" fixed="right" align="center">
+        <CustomTableColumn label="Thao tác" width="160" fixed="right" align="center">
           <template #default="{ row }">
             <div class="action-btns">
+              <CustomTooltip
+                :content="isLockedRow(row) ? 'Phiếu đã duyệt/từ chối không thể duyệt' : 'Duyệt'"
+                placement="top"
+              >
+                <span class="btn-wrap">
+                  <CustomButton
+                    type="success"
+                    link
+                    :icon="CircleCheck"
+                    :disabled="isLockedRow(row)"
+                    @click="openStatusModal('da_duyet', [row.id])"
+                  />
+                </span>
+              </CustomTooltip>
+              <CustomTooltip
+                :content="isLockedRow(row) ? 'Phiếu đã duyệt/từ chối không thể từ chối' : 'Từ chối'"
+                placement="top"
+              >
+                <span class="btn-wrap">
+                  <CustomButton
+                    type="warning"
+                    link
+                    :icon="CircleClose"
+                    :disabled="isLockedRow(row)"
+                    @click="openStatusModal('tu_choi', [row.id])"
+                  />
+                </span>
+              </CustomTooltip>
               <CustomTooltip
                 :content="isLockedRow(row) ? 'Phiếu đã duyệt/từ chối không thể sửa' : 'Sửa'"
                 placement="top"
@@ -306,13 +334,44 @@
         <CustomButton type="primary" :loading="saving" @click="save">Lưu</CustomButton>
       </template>
     </CustomDialog>
+
+    <CustomDialog
+      v-model="statusDialogVisible"
+      :title="statusModalTitle"
+      :width="520"
+    >
+      <CustomForm ref="statusFormRef" :model="statusForm" :rules="statusRules" label-position="top">
+        <CustomFormItem label="Ghi chú / Lý do" prop="ghi_chu">
+          <CustomInput
+            v-model="statusForm.ghi_chu"
+            type="textarea"
+            :rows="4"
+            :placeholder="
+              statusForm.trang_thai === 'da_duyet'
+                ? 'Nhập ghi chú khi duyệt...'
+                : 'Nhập lý do từ chối...'
+            "
+          />
+        </CustomFormItem>
+      </CustomForm>
+      <template #footer>
+        <CustomButton @click="statusDialogVisible = false">Hủy</CustomButton>
+        <CustomButton
+          :type="statusForm.trang_thai === 'da_duyet' ? 'success' : 'warning'"
+          :loading="statusSaving"
+          @click="confirmStatusChange"
+        >
+          {{ statusForm.trang_thai === 'da_duyet' ? 'Duyệt' : 'Từ chối' }}
+        </CustomButton>
+      </template>
+    </CustomDialog>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Delete, Edit, Plus, Search } from '@element-plus/icons-vue'
+import { Delete, Edit, Plus, Search, CircleCheck, CircleClose } from '@element-plus/icons-vue'
 import { fetchHangMucLoaiThuChu } from '@/api/hangMucLoaiThuChu'
 import {
   bulkDeletePhieuThuChi,
@@ -374,6 +433,26 @@ const bulkApproving = ref(false)
 const bulkRejecting = ref(false)
 const bulkDeleting = ref(false)
 
+const statusDialogVisible = ref(false)
+const statusSaving = ref(false)
+const statusFormRef = ref(null)
+const statusForm = reactive({
+  trang_thai: 'da_duyet',
+  ghi_chu: '',
+  ids: [],
+})
+const statusRules = {
+  ghi_chu: [{ required: true, message: 'Vui lòng nhập ghi chú / lý do', trigger: 'blur' }],
+}
+
+const statusModalTitle = computed(() => {
+  const count = statusForm.ids?.length || 0
+  if (statusForm.trang_thai === 'da_duyet') {
+    return count > 1 ? `Duyệt ${count} phiếu` : 'Duyệt phiếu'
+  }
+  return count > 1 ? `Từ chối ${count} phiếu` : 'Từ chối phiếu'
+})
+
 const selectedCount = computed(() => selectedRows.value.length)
 const selectedChoDuyetRows = computed(() =>
   selectedRows.value.filter((row) => row.trang_thai === 'cho_duyet'),
@@ -422,7 +501,60 @@ function onBulkAction(key) {
     return
   }
   if (key === 'da_duyet' || key === 'tu_choi') {
-    bulkUpdateStatus(key)
+    openStatusModal(key, selectedChoDuyetIds())
+  }
+}
+
+function openStatusModal(trangThai, ids = []) {
+  const targetIds = (ids || []).filter(Boolean)
+  if (!targetIds.length || !trangThai) return
+
+  statusForm.trang_thai = trangThai
+  statusForm.ghi_chu = ''
+  statusForm.ids = targetIds
+  statusDialogVisible.value = true
+}
+
+async function confirmStatusChange() {
+  const valid = await statusFormRef.value?.validate().catch(() => false)
+  if (!valid) return
+
+  const ids = statusForm.ids || []
+  const trangThai = statusForm.trang_thai
+  const ghiChu = statusForm.ghi_chu.trim()
+  if (!ids.length || !trangThai || !ghiChu) return
+
+  const label = trangThaiLabel(trangThai)
+  const loadingRef = trangThai === 'da_duyet' ? bulkApproving : bulkRejecting
+  statusSaving.value = true
+  loadingRef.value = true
+
+  try {
+    if (ids.length === 1) {
+      const row = items.value.find((item) => item.id === ids[0])
+      if (!row || isLockedRow(row)) {
+        ElMessage.warning('Phiếu không thể thay đổi trạng thái.')
+        return
+      }
+      await updatePhieuThuChi(row.id, {
+        loai: row.loai,
+        hang_muc_id: row.hang_muc_id || null,
+        so_tien: Number(row.so_tien) || 0,
+        ly_do: row.ly_do || null,
+        trang_thai: trangThai,
+        ghi_chu: ghiChu,
+      })
+    } else {
+      await bulkUpdateStatusPhieuThuChi(ids, trangThai, ghiChu)
+    }
+    ElMessage.success(`Đã ${label.toLowerCase()} ${ids.length} phiếu.`)
+    statusDialogVisible.value = false
+    await loadItems()
+  } catch {
+    // interceptor
+  } finally {
+    statusSaving.value = false
+    loadingRef.value = false
   }
 }
 
@@ -543,34 +675,6 @@ function selectedIds() {
 
 function selectedChoDuyetIds() {
   return selectedChoDuyetRows.value.map((row) => row.id).filter(Boolean)
-}
-
-async function bulkUpdateStatus(trangThai) {
-  const ids = selectedChoDuyetIds()
-  if (!ids.length || !trangThai) return
-
-  const label = trangThaiLabel(trangThai)
-  await ElMessageBox.confirm(
-    `${label} ${ids.length} phiếu chờ duyệt đã chọn?`,
-    'Xác nhận',
-    {
-      type: 'warning',
-      confirmButtonText: label,
-      cancelButtonText: 'Hủy',
-    },
-  )
-
-  const loadingRef = trangThai === 'da_duyet' ? bulkApproving : bulkRejecting
-  loadingRef.value = true
-  try {
-    await bulkUpdateStatusPhieuThuChi(ids, trangThai)
-    ElMessage.success(`Đã ${label.toLowerCase()} ${ids.length} phiếu.`)
-    await loadItems()
-  } catch {
-    // interceptor
-  } finally {
-    loadingRef.value = false
-  }
 }
 
 async function bulkRemove() {
