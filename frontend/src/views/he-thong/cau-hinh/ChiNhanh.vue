@@ -27,10 +27,13 @@
           <div class="card-header">
             <span class="card-title">Danh sách chi nhánh</span>
             <BulkActionBar :actions="bulkActions" @action="onBulkAction">
-              <CustomButton type="primary" @click="openCreate">
-                <CustomIcon><Plus /></CustomIcon>
-                Thêm chi nhánh
-              </CustomButton>
+              <TableColumnConfig :settings="columnSettings" />
+              <CustomTooltip content="Thêm mới" placement="top">
+                <CustomButton type="primary" @click="openCreate">
+                  <CustomIcon><Plus /></CustomIcon>
+                  Thêm
+                </CustomButton>
+              </CustomTooltip>
             </BulkActionBar>
           </div>
         </template>
@@ -49,15 +52,42 @@
               {{ (page - 1) * perPage + $index + 1 }}
             </template>
           </CustomTableColumn>
-          <CustomTableColumn prop="ten_chi_nhanh" label="Tên chi nhánh" min-width="180" />
-          <CustomTableColumn prop="dia_chi" label="Địa chỉ" min-width="220" show-overflow-tooltip />
-          <CustomTableColumn prop="so_dien_thoai" label="Số điện thoại" min-width="140" />
-          <CustomTableColumn prop="email" label="Email" min-width="180" show-overflow-tooltip>
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('ten_chi_nhanh')"
+            prop="ten_chi_nhanh"
+            label="Tên chi nhánh"
+            min-width="180"
+          />
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('dia_chi')"
+            prop="dia_chi"
+            label="Địa chỉ"
+            min-width="220"
+            show-overflow-tooltip
+          />
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('so_dien_thoai')"
+            prop="so_dien_thoai"
+            label="Số điện thoại"
+            min-width="140"
+          />
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('email')"
+            prop="email"
+            label="Email"
+            min-width="180"
+            show-overflow-tooltip
+          >
             <template #default="{ row }">
               {{ row.email || '—' }}
             </template>
           </CustomTableColumn>
-          <CustomTableColumn prop="truong_chi_nhanh" label="Trưởng chi nhánh" min-width="160" />
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('truong_chi_nhanh')"
+            prop="truong_chi_nhanh"
+            label="Trưởng chi nhánh"
+            min-width="160"
+          />
           <CustomTableColumn label="Thao tác" width="100" fixed="right" align="center">
             <template #default="{ row }">
               <div class="action-btns">
@@ -140,7 +170,9 @@ import {
   updateChiNhanh,
 } from '@/api/chiNhanh'
 import BulkActionBar from '@/components/BulkActionBar.vue'
+import TableColumnConfig from '@/components/TableColumnConfig.vue'
 import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
+import { useTableColumns } from '@/composables/useTableColumns'
 import {
   CustomButton,
   CustomCard,
@@ -157,6 +189,15 @@ import {
 } from '@/components/element'
 import Pagination from '@/components/Pagination.vue'
 import ConfigSettingPage from './ConfigSettingPage.vue'
+
+const tableColumns = [
+  { key: 'ten_chi_nhanh', label: 'Tên chi nhánh' },
+  { key: 'dia_chi', label: 'Địa chỉ' },
+  { key: 'so_dien_thoai', label: 'Số điện thoại' },
+  { key: 'email', label: 'Email' },
+  { key: 'truong_chi_nhanh', label: 'Trưởng chi nhánh' },
+]
+const columnSettings = useTableColumns('he-thong.chi-nhanh', tableColumns)
 
 const items = ref([])
 const loading = ref(false)

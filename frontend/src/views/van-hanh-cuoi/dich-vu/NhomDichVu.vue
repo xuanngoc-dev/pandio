@@ -51,10 +51,13 @@
         <div class="card-header">
           <span class="card-title">Danh sách nhóm dịch vụ (combo)</span>
           <BulkActionBar :actions="bulkActions" @action="onBulkAction">
-            <CustomButton type="primary" @click="openCreate">
-              <CustomIcon><Plus /></CustomIcon>
-              Thêm nhóm dịch vụ
-            </CustomButton>
+            <TableColumnConfig :settings="columnSettings" />
+            <CustomTooltip content="Thêm mới" placement="top">
+              <CustomButton type="primary" @click="openCreate">
+                <CustomIcon><Plus /></CustomIcon>
+                Thêm
+              </CustomButton>
+            </CustomTooltip>
           </BulkActionBar>
         </div>
       </template>
@@ -73,39 +76,83 @@
             {{ (page - 1) * perPage + $index + 1 }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn prop="ma_nhom" label="Mã nhóm" width="120" />
-        <CustomTableColumn prop="ten_nhom" label="Tên nhóm" min-width="180" />
-        <CustomTableColumn label="Loại hợp đồng" min-width="160">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ma_nhom')"
+          prop="ma_nhom"
+          label="Mã nhóm"
+          width="120"
+        />
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ten_nhom')"
+          prop="ten_nhom"
+          label="Tên nhóm"
+          min-width="180"
+        />
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('loai_hop_dong')"
+          label="Loại hợp đồng"
+          min-width="160"
+        >
           <template #default="{ row }">
             {{ row.loai_hop_dong?.ten_hop_dong || '—' }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Dịch vụ lẻ trong combo" min-width="220" show-overflow-tooltip>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('dich_vu_le')"
+          label="Dịch vụ lẻ trong combo"
+          min-width="220"
+          show-overflow-tooltip
+        >
           <template #default="{ row }">
             {{ formatDichVuLe(row) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Số điểm chụp" width="120" align="center">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('so_diem_chup')"
+          label="Số điểm chụp"
+          width="120"
+          align="center"
+        >
           <template #default="{ row }">
             {{ row.so_diem_chup ?? 0 }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Số ảnh chỉnh sửa" width="140" align="center">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('so_anh_chinh_sua')"
+          label="Số ảnh chỉnh sửa"
+          width="140"
+          align="center"
+        >
           <template #default="{ row }">
             {{ row.so_anh_chinh_sua ?? 0 }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Giá gốc" width="130" align="right">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('gia_goc')"
+          label="Giá gốc"
+          width="130"
+          align="right"
+        >
           <template #default="{ row }">
             {{ formatMoney(row.gia_goc) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Giá KM" width="130" align="right">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('gia_khuyen_mai')"
+          label="Giá KM"
+          width="130"
+          align="right"
+        >
           <template #default="{ row }">
             {{ row.gia_khuyen_mai != null ? formatMoney(row.gia_khuyen_mai) : '—' }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Trạng thái" width="130" align="center">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('trang_thai')"
+          label="Trạng thái"
+          width="130"
+          align="center"
+        >
           <template #default="{ row }">
             <CustomTag :type="row.trang_thai === 'dang_su_dung' ? 'success' : 'info'">
               {{ trangThaiLabel(row.trang_thai) }}
@@ -297,7 +344,9 @@ import {
 import { fetchDichVuDanhSachDichVuLe } from '@/api/dichVuDanhSachDichVuLe'
 import { fetchLoaiHopDong } from '@/api/loaiHopDong'
 import BulkActionBar from '@/components/BulkActionBar.vue'
+import TableColumnConfig from '@/components/TableColumnConfig.vue'
 import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
+import { useTableColumns } from '@/composables/useTableColumns'
 import {
   CustomButton,
   CustomCard,
@@ -319,6 +368,19 @@ import Pagination from '@/components/Pagination.vue'
 
 const ACTIVE = 'dang_su_dung'
 const INACTIVE = 'ngung_su_dung'
+
+const tableColumns = [
+  { key: 'ma_nhom', label: 'Mã nhóm' },
+  { key: 'ten_nhom', label: 'Tên nhóm' },
+  { key: 'loai_hop_dong', label: 'Loại hợp đồng' },
+  { key: 'dich_vu_le', label: 'Dịch vụ lẻ trong combo' },
+  { key: 'so_diem_chup', label: 'Số điểm chụp' },
+  { key: 'so_anh_chinh_sua', label: 'Số ảnh chỉnh sửa' },
+  { key: 'gia_goc', label: 'Giá gốc' },
+  { key: 'gia_khuyen_mai', label: 'Giá KM' },
+  { key: 'trang_thai', label: 'Trạng thái' },
+]
+const columnSettings = useTableColumns('van-hanh-cuoi.nhom-dich-vu', tableColumns)
 
 const items = ref([])
 const loading = ref(false)

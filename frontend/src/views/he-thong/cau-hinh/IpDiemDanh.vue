@@ -37,10 +37,13 @@
           <div class="card-header">
             <span class="card-title">Danh sách IP điểm danh</span>
             <BulkActionBar :actions="bulkActions" @action="onBulkAction">
-              <CustomButton type="primary" @click="openCreate">
-                <CustomIcon><Plus /></CustomIcon>
-                Thêm IP
-              </CustomButton>
+              <TableColumnConfig :settings="columnSettings" />
+              <CustomTooltip content="Thêm mới" placement="top">
+                <CustomButton type="primary" @click="openCreate">
+                  <CustomIcon><Plus /></CustomIcon>
+                  Thêm
+                </CustomButton>
+              </CustomTooltip>
             </BulkActionBar>
           </div>
         </template>
@@ -59,14 +62,36 @@
               {{ (page - 1) * perPage + $index + 1 }}
             </template>
           </CustomTableColumn>
-          <CustomTableColumn prop="ten_ip" label="Tên IP" min-width="160" />
-          <CustomTableColumn prop="dia_chi_ip" label="Địa chỉ IP" min-width="160" />
-          <CustomTableColumn prop="ghi_chu" label="Ghi chú" min-width="200" show-overflow-tooltip>
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('ten_ip')"
+            prop="ten_ip"
+            label="Tên IP"
+            min-width="160"
+          />
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('dia_chi_ip')"
+            prop="dia_chi_ip"
+            label="Địa chỉ IP"
+            min-width="160"
+          />
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('ghi_chu')"
+            prop="ghi_chu"
+            label="Ghi chú"
+            min-width="200"
+            show-overflow-tooltip
+          >
             <template #default="{ row }">
               {{ row.ghi_chu || '—' }}
             </template>
           </CustomTableColumn>
-          <CustomTableColumn prop="trang_thai" label="Trạng thái" width="180" align="center">
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('trang_thai')"
+            prop="trang_thai"
+            label="Trạng thái"
+            width="180"
+            align="center"
+          >
             <template #default="{ row }">
               <div class="status-cell">
                 <el-switch
@@ -166,7 +191,9 @@ import {
   updateIpDiemDanh,
 } from '@/api/ipDiemDanh'
 import BulkActionBar from '@/components/BulkActionBar.vue'
+import TableColumnConfig from '@/components/TableColumnConfig.vue'
 import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
+import { useTableColumns } from '@/composables/useTableColumns'
 import {
   CustomButton,
   CustomCard,
@@ -188,6 +215,14 @@ import ConfigSettingPage from './ConfigSettingPage.vue'
 
 const ACTIVE = 'active'
 const INACTIVE = 'inactive'
+
+const tableColumns = [
+  { key: 'ten_ip', label: 'Tên IP' },
+  { key: 'dia_chi_ip', label: 'Địa chỉ IP' },
+  { key: 'ghi_chu', label: 'Ghi chú' },
+  { key: 'trang_thai', label: 'Trạng thái' },
+]
+const columnSettings = useTableColumns('he-thong.ip-diem-danh', tableColumns)
 
 const items = ref([])
 const loading = ref(false)

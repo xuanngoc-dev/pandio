@@ -27,10 +27,13 @@
           <div class="card-header">
             <span class="card-title">Danh sách phòng ban</span>
             <BulkActionBar :actions="bulkActions" @action="onBulkAction">
-              <CustomButton type="primary" @click="openCreate">
-                <CustomIcon><Plus /></CustomIcon>
-                Thêm phòng ban
-              </CustomButton>
+              <TableColumnConfig :settings="columnSettings" />
+              <CustomTooltip content="Thêm mới" placement="top">
+                <CustomButton type="primary" @click="openCreate">
+                  <CustomIcon><Plus /></CustomIcon>
+                  Thêm
+                </CustomButton>
+              </CustomTooltip>
             </BulkActionBar>
           </div>
         </template>
@@ -49,19 +52,46 @@
               {{ (page - 1) * perPage + $index + 1 }}
             </template>
           </CustomTableColumn>
-          <CustomTableColumn prop="ma_phong_ban" label="Mã" width="120" />
-          <CustomTableColumn prop="ten_phong_ban" label="Tên phòng ban" min-width="180" />
-          <CustomTableColumn prop="truong_phong" label="Trưởng phòng" min-width="160">
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('ma_phong_ban')"
+            prop="ma_phong_ban"
+            label="Mã"
+            width="120"
+          />
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('ten_phong_ban')"
+            prop="ten_phong_ban"
+            label="Tên phòng ban"
+            min-width="180"
+          />
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('truong_phong')"
+            prop="truong_phong"
+            label="Trưởng phòng"
+            min-width="160"
+          >
             <template #default="{ row }">
               {{ row.truong_phong || '—' }}
             </template>
           </CustomTableColumn>
-          <CustomTableColumn prop="mo_ta" label="Mô tả" min-width="200" show-overflow-tooltip>
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('mo_ta')"
+            prop="mo_ta"
+            label="Mô tả"
+            min-width="200"
+            show-overflow-tooltip
+          >
             <template #default="{ row }">
               {{ row.mo_ta || '—' }}
             </template>
           </CustomTableColumn>
-          <CustomTableColumn prop="ghi_chu" label="Ghi chú" min-width="160" show-overflow-tooltip>
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('ghi_chu')"
+            prop="ghi_chu"
+            label="Ghi chú"
+            min-width="160"
+            show-overflow-tooltip
+          >
             <template #default="{ row }">
               {{ row.ghi_chu || '—' }}
             </template>
@@ -157,7 +187,9 @@ import {
   updatePhongBan,
 } from '@/api/phongBan'
 import BulkActionBar from '@/components/BulkActionBar.vue'
+import TableColumnConfig from '@/components/TableColumnConfig.vue'
 import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
+import { useTableColumns } from '@/composables/useTableColumns'
 import {
   CustomButton,
   CustomCard,
@@ -174,6 +206,15 @@ import {
 } from '@/components/element'
 import Pagination from '@/components/Pagination.vue'
 import ConfigSettingPage from './ConfigSettingPage.vue'
+
+const tableColumns = [
+  { key: 'ma_phong_ban', label: 'Mã' },
+  { key: 'ten_phong_ban', label: 'Tên phòng ban' },
+  { key: 'truong_phong', label: 'Trưởng phòng' },
+  { key: 'mo_ta', label: 'Mô tả' },
+  { key: 'ghi_chu', label: 'Ghi chú' },
+]
+const columnSettings = useTableColumns('he-thong.phong-ban', tableColumns)
 
 const departments = ref([])
 const loading = ref(false)

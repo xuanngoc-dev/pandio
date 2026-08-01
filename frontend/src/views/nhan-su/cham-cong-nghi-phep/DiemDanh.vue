@@ -4,19 +4,22 @@
       <template #header>
         <div class="card-header">
           <span class="card-title">Điểm danh hôm nay</span>
-          <CustomButton
-            v-if="!alreadyDone"
-            :type="canCheckout ? 'warning' : 'primary'"
-            :loading="checking"
-            :disabled="!canCheckin && !canCheckout"
-            @click="onCheckInOut"
-          >
-            <CustomIcon>
-              <component :is="canCheckout ? SwitchButton : CircleCheck" />
-            </CustomIcon>
-            {{ canCheckout ? 'Checkout' : 'Checkin' }}
-          </CustomButton>
-          <CustomTag v-else type="success" effect="light">Đã checkout</CustomTag>
+          <div class="card-header-actions">
+            <TableColumnConfig :settings="columnSettings" />
+            <CustomButton
+              v-if="!alreadyDone"
+              :type="canCheckout ? 'warning' : 'primary'"
+              :loading="checking"
+              :disabled="!canCheckin && !canCheckout"
+              @click="onCheckInOut"
+            >
+              <CustomIcon>
+                <component :is="canCheckout ? SwitchButton : CircleCheck" />
+              </CustomIcon>
+              {{ canCheckout ? 'Checkout' : 'Checkin' }}
+            </CustomButton>
+            <CustomTag v-else type="success" effect="light">Đã checkout</CustomTag>
+          </div>
         </div>
       </template>
 
@@ -33,27 +36,53 @@
             {{ (page - 1) * perPage + $index + 1 }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Họ tên" min-width="150" fixed="left" show-overflow-tooltip>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ho_ten')"
+          label="Họ tên"
+          min-width="150"
+          fixed="left"
+          show-overflow-tooltip
+        >
           <template #default="{ row }">
             {{ row.user?.name || '—' }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Ca làm" min-width="160" show-overflow-tooltip>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ca_lam')"
+          label="Ca làm"
+          min-width="160"
+          show-overflow-tooltip
+        >
           <template #default="{ row }">
             {{ formatCaLam(row.ca_lam) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Giờ vào" width="110" align="center">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('gio_vao')"
+          label="Giờ vào"
+          width="110"
+          align="center"
+        >
           <template #default="{ row }">
             {{ formatTime(row.gio_vao) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Giờ ra" width="110" align="center">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('gio_ra')"
+          label="Giờ ra"
+          width="110"
+          align="center"
+        >
           <template #default="{ row }">
             {{ formatTime(row.gio_ra) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Đi muộn" width="100" align="center">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('di_muon')"
+          label="Đi muộn"
+          width="100"
+          align="center"
+        >
           <template #default="{ row }">
             <CustomTag
               v-if="row.di_muon === 'co'"
@@ -66,7 +95,12 @@
             <span v-else>—</span>
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Về sớm" width="100" align="center">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ve_som')"
+          label="Về sớm"
+          width="100"
+          align="center"
+        >
           <template #default="{ row }">
             <CustomTag
               v-if="row.ve_som === 'co'"
@@ -79,42 +113,82 @@
             <span v-else>—</span>
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Phạt đi muộn" min-width="120" align="right">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('phat_di_muon')"
+          label="Phạt đi muộn"
+          min-width="120"
+          align="right"
+        >
           <template #default="{ row }">
             {{ formatMoney(row.tien_phat_di_muon) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Phạt về sớm" min-width="120" align="right">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('phat_ve_som')"
+          label="Phạt về sớm"
+          min-width="120"
+          align="right"
+        >
           <template #default="{ row }">
             {{ formatMoney(row.tien_phat_ve_som) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Lý do" min-width="160" show-overflow-tooltip>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ly_do')"
+          label="Lý do"
+          min-width="160"
+          show-overflow-tooltip
+        >
           <template #default="{ row }">
             {{ row.ly_do || '—' }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Giờ làm cơ bản" width="130" align="center">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('gio_lam_co_ban')"
+          label="Giờ làm cơ bản"
+          width="130"
+          align="center"
+        >
           <template #default="{ row }">
             {{ formatHours(row.gio_lam_co_ban) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Giờ làm tăng ca" width="130" align="center">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('gio_lam_tang_ca')"
+          label="Giờ làm tăng ca"
+          width="130"
+          align="center"
+        >
           <template #default="{ row }">
             {{ formatHours(row.gio_lam_tang_ca) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Lương cơ bản" min-width="130" align="right">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('luong_co_ban')"
+          label="Lương cơ bản"
+          min-width="130"
+          align="right"
+        >
           <template #default="{ row }">
             {{ formatMoney(row.luong_co_ban) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Lương tăng ca" min-width="130" align="right">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('luong_tang_ca')"
+          label="Lương tăng ca"
+          min-width="130"
+          align="right"
+        >
           <template #default="{ row }">
             {{ formatMoney(row.luong_tang_ca) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Ghi chú" min-width="160" show-overflow-tooltip>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ghi_chu')"
+          label="Ghi chú"
+          min-width="160"
+          show-overflow-tooltip
+        >
           <template #default="{ row }">
             {{ row.ghi_chu || '—' }}
           </template>
@@ -144,6 +218,8 @@ import {
   getDiemDanhToday,
 } from '@/api/diemDanh'
 import { getCauHinhJson } from '@/api/cauHinhJson'
+import TableColumnConfig from '@/components/TableColumnConfig.vue'
+import { useTableColumns } from '@/composables/useTableColumns'
 import {
   CustomButton,
   CustomCard,
@@ -153,6 +229,24 @@ import {
   CustomTag,
 } from '@/components/element'
 import Pagination from '@/components/Pagination.vue'
+
+const tableColumns = [
+  { key: 'ho_ten', label: 'Họ tên' },
+  { key: 'ca_lam', label: 'Ca làm' },
+  { key: 'gio_vao', label: 'Giờ vào' },
+  { key: 'gio_ra', label: 'Giờ ra' },
+  { key: 'di_muon', label: 'Đi muộn' },
+  { key: 've_som', label: 'Về sớm' },
+  { key: 'phat_di_muon', label: 'Phạt đi muộn' },
+  { key: 'phat_ve_som', label: 'Phạt về sớm' },
+  { key: 'ly_do', label: 'Lý do' },
+  { key: 'gio_lam_co_ban', label: 'Giờ làm cơ bản' },
+  { key: 'gio_lam_tang_ca', label: 'Giờ làm tăng ca' },
+  { key: 'luong_co_ban', label: 'Lương cơ bản' },
+  { key: 'luong_tang_ca', label: 'Lương tăng ca' },
+  { key: 'ghi_chu', label: 'Ghi chú' },
+]
+const columnSettings = useTableColumns('nhan-su.diem-danh', tableColumns)
 
 const items = ref([])
 const loading = ref(false)
@@ -292,6 +386,12 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+}
+
+.card-header-actions {
+  display: flex;
+  align-items: center;
   gap: 12px;
 }
 

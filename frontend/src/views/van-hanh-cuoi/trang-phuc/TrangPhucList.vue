@@ -66,10 +66,13 @@
         <div class="card-header">
           <span class="card-title">Danh sách trang phục</span>
           <BulkActionBar :actions="bulkActions" @action="onBulkAction">
-            <CustomButton type="primary" @click="openCreate">
-              <CustomIcon><Plus /></CustomIcon>
-              Thêm trang phục
-            </CustomButton>
+            <TableColumnConfig :settings="columnSettings" />
+            <CustomTooltip content="Thêm mới" placement="top">
+              <CustomButton type="primary" @click="openCreate">
+                <CustomIcon><Plus /></CustomIcon>
+                Thêm
+              </CustomButton>
+            </CustomTooltip>
           </BulkActionBar>
         </div>
       </template>
@@ -88,7 +91,12 @@
             {{ (page - 1) * perPage + $index + 1 }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Hình ảnh" width="90" align="center">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('hinh_anh')"
+          label="Hình ảnh"
+          width="90"
+          align="center"
+        >
           <template #default="{ row }">
             <el-avatar
               v-if="row.hinh_anh"
@@ -100,44 +108,90 @@
             <span v-else class="no-image">—</span>
           </template>
         </CustomTableColumn>
-        <CustomTableColumn prop="ma_san_pham" label="Mã SP" width="120" />
-        <CustomTableColumn prop="ten_san_pham" label="Tên sản phẩm" min-width="180" />
-        <CustomTableColumn label="Danh mục" min-width="150">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ma_san_pham')"
+          prop="ma_san_pham"
+          label="Mã SP"
+          width="120"
+        />
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ten_san_pham')"
+          prop="ten_san_pham"
+          label="Tên sản phẩm"
+          min-width="180"
+        />
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('danh_muc')"
+          label="Danh mục"
+          min-width="150"
+        >
           <template #default="{ row }">
             {{ row.danh_muc_trang_phuc?.ten_danh_muc || '—' }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Nhà cung cấp" min-width="160">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('nha_cung_cap')"
+          label="Nhà cung cấp"
+          min-width="160"
+        >
           <template #default="{ row }">
             {{ row.nha_cung_cap_trang_phuc?.ten_nha_cung_cap || '—' }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Chi nhánh" min-width="140">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('chi_nhanh')"
+          label="Chi nhánh"
+          min-width="140"
+        >
           <template #default="{ row }">
             {{ row.cau_hinh_chi_nhanh?.ten_chi_nhanh || '—' }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Giá trị" width="120" align="right">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('gia_tri')"
+          label="Giá trị"
+          width="120"
+          align="right"
+        >
           <template #default="{ row }">
             {{ formatMoney(row.gia_tri) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Giá cho thuê" width="130" align="right">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('gia_cho_thue')"
+          label="Giá cho thuê"
+          width="130"
+          align="right"
+        >
           <template #default="{ row }">
             {{ formatMoney(row.gia_cho_thue) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Tình trạng" width="130">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('tinh_trang')"
+          label="Tình trạng"
+          width="130"
+        >
           <template #default="{ row }">
             {{ tinhTrangLabel(row.tinh_trang) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Ngày nhập" width="120" align="center">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ngay_nhap')"
+          label="Ngày nhập"
+          width="120"
+          align="center"
+        >
           <template #default="{ row }">
             {{ formatDate(row.created_at) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Trạng thái" width="150" align="center">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('trang_thai')"
+          label="Trạng thái"
+          width="150"
+          align="center"
+        >
           <template #default="{ row }">
             <div class="status-cell">
               <el-switch
@@ -420,7 +474,9 @@ import {
   uploadTrangPhucHinhAnh,
 } from '@/api/trangPhuc'
 import BulkActionBar from '@/components/BulkActionBar.vue'
+import TableColumnConfig from '@/components/TableColumnConfig.vue'
 import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
+import { useTableColumns } from '@/composables/useTableColumns'
 import {
   CustomButton,
   CustomCard,
@@ -442,6 +498,21 @@ import { mediaUrl } from '@/utils/media'
 
 const ACTIVE = 1
 const INACTIVE = 0
+
+const tableColumns = [
+  { key: 'hinh_anh', label: 'Hình ảnh' },
+  { key: 'ma_san_pham', label: 'Mã SP' },
+  { key: 'ten_san_pham', label: 'Tên sản phẩm' },
+  { key: 'danh_muc', label: 'Danh mục' },
+  { key: 'nha_cung_cap', label: 'Nhà cung cấp' },
+  { key: 'chi_nhanh', label: 'Chi nhánh' },
+  { key: 'gia_tri', label: 'Giá trị' },
+  { key: 'gia_cho_thue', label: 'Giá cho thuê' },
+  { key: 'tinh_trang', label: 'Tình trạng' },
+  { key: 'ngay_nhap', label: 'Ngày nhập' },
+  { key: 'trang_thai', label: 'Trạng thái' },
+]
+const columnSettings = useTableColumns('van-hanh-cuoi.trang-phuc-list', tableColumns)
 
 const phanLoaiChiPhiOptions = [
   { value: 'dau_tu_tai_san', label: 'Đầu tư tài sản' },

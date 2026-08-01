@@ -26,10 +26,13 @@
         <div class="card-header">
           <span class="card-title">Danh sách đặt mua trang phục</span>
           <BulkActionBar :actions="bulkActions" @action="onBulkAction">
-            <CustomButton type="primary" @click="openCreate">
-              <CustomIcon><Plus /></CustomIcon>
-              Thêm đơn đặt mua
-            </CustomButton>
+            <TableColumnConfig :settings="columnSettings" />
+            <CustomTooltip content="Thêm mới" placement="top">
+              <CustomButton type="primary" @click="openCreate">
+                <CustomIcon><Plus /></CustomIcon>
+                Thêm
+              </CustomButton>
+            </CustomTooltip>
           </BulkActionBar>
         </div>
       </template>
@@ -48,32 +51,59 @@
             {{ (page - 1) * perPage + $index + 1 }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Nhà cung cấp" min-width="180">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('nha_cung_cap')"
+          label="Nhà cung cấp"
+          min-width="180"
+        >
           <template #default="{ row }">
             {{ row.nha_cung_cap?.ten_nha_cung_cap || '—' }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Loại đơn hàng" width="160">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('loai_don_hang')"
+          label="Loại đơn hàng"
+          width="160"
+        >
           <template #default="{ row }">
             {{ loaiDonHangLabel(row.loai_don_hang) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Nguồn hàng hóa" width="130">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('nguon_hang_hoa')"
+          label="Nguồn hàng hóa"
+          width="130"
+        >
           <template #default="{ row }">
             {{ nguonHangHoaLabel(row.nguon_hang_hoa) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Ngày đặt" width="120" align="center">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ngay_dat')"
+          label="Ngày đặt"
+          width="120"
+          align="center"
+        >
           <template #default="{ row }">
             {{ formatDate(row.ngay_dat) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Tổng tiền hàng" width="140" align="right">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('tong_tien_hang')"
+          label="Tổng tiền hàng"
+          width="140"
+          align="right"
+        >
           <template #default="{ row }">
             {{ formatMoney(row.tong_tien_hang) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Dư nợ" width="140" align="right">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('du_no')"
+          label="Dư nợ"
+          width="140"
+          align="right"
+        >
           <template #default="{ row }">
             {{ formatMoney(row.du_no) }}
           </template>
@@ -273,7 +303,9 @@ import {
 } from '@/api/datMuaTrangPhuc'
 import { fetchNhaCungCapTrangPhuc } from '@/api/nhaCungCapTrangPhuc'
 import BulkActionBar from '@/components/BulkActionBar.vue'
+import TableColumnConfig from '@/components/TableColumnConfig.vue'
 import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
+import { useTableColumns } from '@/composables/useTableColumns'
 import {
   CustomButton,
   CustomCard,
@@ -302,6 +334,16 @@ const nguonHangHoaOptions = [
   { value: 'trong_nuoc', label: 'Trong nước' },
   { value: 'nhap_khau', label: 'Nhập khẩu' },
 ]
+
+const tableColumns = [
+  { key: 'nha_cung_cap', label: 'Nhà cung cấp' },
+  { key: 'loai_don_hang', label: 'Loại đơn hàng' },
+  { key: 'nguon_hang_hoa', label: 'Nguồn hàng hóa' },
+  { key: 'ngay_dat', label: 'Ngày đặt' },
+  { key: 'tong_tien_hang', label: 'Tổng tiền hàng' },
+  { key: 'du_no', label: 'Dư nợ' },
+]
+const columnSettings = useTableColumns('van-hanh-cuoi.dat-mua-trang-phuc', tableColumns)
 
 const items = ref([])
 const loading = ref(false)

@@ -36,10 +36,13 @@
         <div class="card-header">
           <span class="card-title">Danh sách loại dịch vụ</span>
           <BulkActionBar :actions="bulkActions" @action="onBulkAction">
-            <CustomButton type="primary" @click="openCreate">
-              <CustomIcon><Plus /></CustomIcon>
-              Thêm loại dịch vụ
-            </CustomButton>
+            <TableColumnConfig :settings="columnSettings" />
+            <CustomTooltip content="Thêm mới" placement="top">
+              <CustomButton type="primary" @click="openCreate">
+                <CustomIcon><Plus /></CustomIcon>
+                Thêm
+              </CustomButton>
+            </CustomTooltip>
           </BulkActionBar>
         </div>
       </template>
@@ -58,13 +61,29 @@
             {{ (page - 1) * perPage + $index + 1 }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn prop="ten_dich_vu" label="Tên loại dịch vụ" min-width="220" />
-        <CustomTableColumn prop="mo_ta" label="Mô tả" min-width="260" show-overflow-tooltip>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ten_dich_vu')"
+          prop="ten_dich_vu"
+          label="Tên loại dịch vụ"
+          min-width="220"
+        />
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('mo_ta')"
+          prop="mo_ta"
+          label="Mô tả"
+          min-width="260"
+          show-overflow-tooltip
+        >
           <template #default="{ row }">
             {{ row.mo_ta || '—' }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Trạng thái" width="150" align="center">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('trang_thai')"
+          label="Trạng thái"
+          width="150"
+          align="center"
+        >
           <template #default="{ row }">
             <CustomTag :type="row.trang_thai === 'dang_hoat_dong' ? 'success' : 'info'">
               {{ trangThaiLabel(row.trang_thai) }}
@@ -145,7 +164,9 @@ import {
   updateDichVuLoaiDichVu,
 } from '@/api/dichVuLoaiDichVu'
 import BulkActionBar from '@/components/BulkActionBar.vue'
+import TableColumnConfig from '@/components/TableColumnConfig.vue'
 import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
+import { useTableColumns } from '@/composables/useTableColumns'
 import {
   CustomButton,
   CustomCard,
@@ -167,6 +188,13 @@ import Pagination from '@/components/Pagination.vue'
 
 const ACTIVE = 'dang_hoat_dong'
 const INACTIVE = 'ngung_hoat_dong'
+
+const tableColumns = [
+  { key: 'ten_dich_vu', label: 'Tên loại dịch vụ' },
+  { key: 'mo_ta', label: 'Mô tả' },
+  { key: 'trang_thai', label: 'Trạng thái' },
+]
+const columnSettings = useTableColumns('van-hanh-cuoi.loai-dich-vu', tableColumns)
 
 const items = ref([])
 const loading = ref(false)

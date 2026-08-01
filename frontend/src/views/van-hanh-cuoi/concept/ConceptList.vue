@@ -51,10 +51,13 @@
         <div class="card-header">
           <span class="card-title">Danh sách concept</span>
           <BulkActionBar :actions="bulkActions" @action="onBulkAction">
-            <CustomButton type="primary" @click="openCreate">
-              <CustomIcon><Plus /></CustomIcon>
-              Thêm concept
-            </CustomButton>
+            <TableColumnConfig :settings="columnSettings" />
+            <CustomTooltip content="Thêm mới" placement="top">
+              <CustomButton type="primary" @click="openCreate">
+                <CustomIcon><Plus /></CustomIcon>
+                Thêm
+              </CustomButton>
+            </CustomTooltip>
           </BulkActionBar>
         </div>
       </template>
@@ -73,7 +76,12 @@
             {{ (page - 1) * perPage + $index + 1 }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Hình ảnh" width="90" align="center">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('hinh_anh')"
+          label="Hình ảnh"
+          width="90"
+          align="center"
+        >
           <template #default="{ row }">
             <el-avatar
               v-if="row.hinh_anh"
@@ -85,19 +93,44 @@
             <span v-else class="no-image">—</span>
           </template>
         </CustomTableColumn>
-        <CustomTableColumn prop="ma_concept" label="Mã" width="120" />
-        <CustomTableColumn prop="ten_concept" label="Tên concept" min-width="180" />
-        <CustomTableColumn label="Loại" min-width="160">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ma_concept')"
+          prop="ma_concept"
+          label="Mã"
+          width="120"
+        />
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ten_concept')"
+          prop="ten_concept"
+          label="Tên concept"
+          min-width="180"
+        />
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('loai')"
+          label="Loại"
+          min-width="160"
+        >
           <template #default="{ row }">
             {{ row.danh_muc?.ten_danh_muc || '—' }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn prop="dia_diem" label="Địa điểm" min-width="160">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('dia_diem')"
+          prop="dia_diem"
+          label="Địa điểm"
+          min-width="160"
+        >
           <template #default="{ row }">
             {{ row.dia_diem || '—' }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn prop="trang_thai" label="Trạng thái" width="180" align="center">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('trang_thai')"
+          prop="trang_thai"
+          label="Trạng thái"
+          width="180"
+          align="center"
+        >
           <template #default="{ row }">
             <div class="status-cell">
               <el-switch
@@ -117,7 +150,13 @@
             </div>
           </template>
         </CustomTableColumn>
-        <CustomTableColumn prop="mo_ta" label="Mô tả" min-width="200" show-overflow-tooltip>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('mo_ta')"
+          prop="mo_ta"
+          label="Mô tả"
+          min-width="200"
+          show-overflow-tooltip
+        >
           <template #default="{ row }">
             {{ row.mo_ta || '—' }}
           </template>
@@ -266,7 +305,9 @@ import {
 } from '@/api/concept'
 import { fetchDanhMucConcept } from '@/api/danhMucConcept'
 import BulkActionBar from '@/components/BulkActionBar.vue'
+import TableColumnConfig from '@/components/TableColumnConfig.vue'
 import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
+import { useTableColumns } from '@/composables/useTableColumns'
 import {
   CustomButton,
   CustomCard,
@@ -288,6 +329,17 @@ import { mediaUrl } from '@/utils/media'
 
 const ACTIVE = 'dang_su_dung'
 const INACTIVE = 'ngung_su_dung'
+
+const tableColumns = [
+  { key: 'hinh_anh', label: 'Hình ảnh' },
+  { key: 'ma_concept', label: 'Mã' },
+  { key: 'ten_concept', label: 'Tên concept' },
+  { key: 'loai', label: 'Loại' },
+  { key: 'dia_diem', label: 'Địa điểm' },
+  { key: 'trang_thai', label: 'Trạng thái' },
+  { key: 'mo_ta', label: 'Mô tả' },
+]
+const columnSettings = useTableColumns('van-hanh-cuoi.concept-list', tableColumns)
 
 const items = ref([])
 const danhMucOptions = ref([])

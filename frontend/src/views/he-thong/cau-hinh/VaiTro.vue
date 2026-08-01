@@ -27,10 +27,13 @@
           <div class="card-header">
             <span class="card-title">Danh sách vai trò</span>
             <BulkActionBar :actions="bulkActions" @action="onBulkAction">
-              <CustomButton type="primary" @click="openCreate">
-                <CustomIcon><Plus /></CustomIcon>
-                Thêm vai trò
-              </CustomButton>
+              <TableColumnConfig :settings="columnSettings" />
+              <CustomTooltip content="Thêm mới" placement="top">
+                <CustomButton type="primary" @click="openCreate">
+                  <CustomIcon><Plus /></CustomIcon>
+                  Thêm
+                </CustomButton>
+              </CustomTooltip>
             </BulkActionBar>
           </div>
         </template>
@@ -49,18 +52,40 @@
               {{ (page - 1) * perPage + $index + 1 }}
             </template>
           </CustomTableColumn>
-          <CustomTableColumn prop="ten_vai_tro" label="Tên vai trò" min-width="180" show-overflow-tooltip />
-          <CustomTableColumn prop="ghi_chu" label="Ghi chú" min-width="200" show-overflow-tooltip>
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('ten_vai_tro')"
+            prop="ten_vai_tro"
+            label="Tên vai trò"
+            min-width="180"
+            show-overflow-tooltip
+          />
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('ghi_chu')"
+            prop="ghi_chu"
+            label="Ghi chú"
+            min-width="200"
+            show-overflow-tooltip
+          >
             <template #default="{ row }">
               {{ row.ghi_chu || '—' }}
             </template>
           </CustomTableColumn>
-          <CustomTableColumn label="Menu" width="100" align="center">
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('danh_sach_menu')"
+            label="Menu"
+            width="100"
+            align="center"
+          >
             <template #default="{ row }">
               {{ countList(row.danh_sach_menu) }}
             </template>
           </CustomTableColumn>
-          <CustomTableColumn label="Cấu hình" width="110" align="center">
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('cau_hinh')"
+            label="Cấu hình"
+            width="110"
+            align="center"
+          >
             <template #default="{ row }">
               {{ countList(row.cau_hinh) }}
             </template>
@@ -175,7 +200,9 @@ import {
 import { cauHinhSections } from '@/data/cauHinhQuanTri'
 import menuGroups from '@/data/menu.json'
 import BulkActionBar from '@/components/BulkActionBar.vue'
+import TableColumnConfig from '@/components/TableColumnConfig.vue'
 import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
+import { useTableColumns } from '@/composables/useTableColumns'
 import {
   CustomButton,
   CustomCard,
@@ -192,6 +219,14 @@ import {
 } from '@/components/element'
 import Pagination from '@/components/Pagination.vue'
 import ConfigSettingPage from './ConfigSettingPage.vue'
+
+const tableColumns = [
+  { key: 'ten_vai_tro', label: 'Tên vai trò' },
+  { key: 'ghi_chu', label: 'Ghi chú' },
+  { key: 'danh_sach_menu', label: 'Menu' },
+  { key: 'cau_hinh', label: 'Cấu hình' },
+]
+const columnSettings = useTableColumns('he-thong.vai-tro', tableColumns)
 
 const items = ref([])
 const loading = ref(false)

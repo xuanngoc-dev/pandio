@@ -84,6 +84,7 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SideMenu: typeof import('./components/SideMenu.vue')['default']
+    TableColumnConfig: typeof import('./components/TableColumnConfig.vue')['default']
     TermsPrivacyModal: typeof import('./components/TermsPrivacyModal.vue')['default']
   }
   export interface GlobalDirectives {

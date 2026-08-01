@@ -37,10 +37,13 @@
           <div class="card-header">
             <span class="card-title">Danh sách loại hợp đồng khách hàng</span>
             <BulkActionBar :actions="bulkActions" @action="onBulkAction">
-              <CustomButton type="primary" @click="openCreate">
-                <CustomIcon><Plus /></CustomIcon>
-                Thêm loại hợp đồng
-              </CustomButton>
+              <TableColumnConfig :settings="columnSettings" />
+              <CustomTooltip content="Thêm mới" placement="top">
+                <CustomButton type="primary" @click="openCreate">
+                  <CustomIcon><Plus /></CustomIcon>
+                  Thêm
+                </CustomButton>
+              </CustomTooltip>
             </BulkActionBar>
           </div>
         </template>
@@ -59,14 +62,36 @@
               {{ (page - 1) * perPage + $index + 1 }}
             </template>
           </CustomTableColumn>
-          <CustomTableColumn prop="ma_hop_dong" label="Mã" width="140" />
-          <CustomTableColumn prop="ten_hop_dong" label="Tên hợp đồng" min-width="200" show-overflow-tooltip />
-          <CustomTableColumn label="Số trường" width="100" align="center">
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('ma_hop_dong')"
+            prop="ma_hop_dong"
+            label="Mã"
+            width="140"
+          />
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('ten_hop_dong')"
+            prop="ten_hop_dong"
+            label="Tên hợp đồng"
+            min-width="200"
+            show-overflow-tooltip
+          />
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('so_truong')"
+            label="Số trường"
+            width="100"
+            align="center"
+          >
             <template #default="{ row }">
               {{ countFields(row.noi_dung) }}
             </template>
           </CustomTableColumn>
-          <CustomTableColumn prop="trang_thai" label="Trạng thái" width="190" align="center">
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('trang_thai')"
+            prop="trang_thai"
+            label="Trạng thái"
+            width="190"
+            align="center"
+          >
             <template #default="{ row }">
               <div class="status-cell">
                 <el-switch
@@ -299,7 +324,9 @@ import {
   updateLoaiHopDong,
 } from '@/api/loaiHopDong'
 import BulkActionBar from '@/components/BulkActionBar.vue'
+import TableColumnConfig from '@/components/TableColumnConfig.vue'
 import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
+import { useTableColumns } from '@/composables/useTableColumns'
 import {
   CustomButton,
   CustomCard,
@@ -378,6 +405,14 @@ function hasFieldOptions(kieu) {
 
 let fieldKeySeed = 0
 let optionKeySeed = 0
+
+const tableColumns = [
+  { key: 'ma_hop_dong', label: 'Mã' },
+  { key: 'ten_hop_dong', label: 'Tên hợp đồng' },
+  { key: 'so_truong', label: 'Số trường' },
+  { key: 'trang_thai', label: 'Trạng thái' },
+]
+const columnSettings = useTableColumns('he-thong.tuy-chinh-truong-hop-dong', tableColumns)
 
 const items = ref([])
 const loading = ref(false)

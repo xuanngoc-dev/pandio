@@ -36,10 +36,11 @@
         <div class="card-header">
           <span class="card-title">Danh sách hạng mục thu chi</span>
           <BulkActionBar :actions="bulkActions" @action="onBulkAction">
-            <CustomTooltip content="Thêm hạng mục thu chi mới" placement="top">
+            <TableColumnConfig :settings="columnSettings" />
+            <CustomTooltip content="Thêm mới" placement="top">
               <CustomButton type="primary" @click="openCreate">
                 <CustomIcon><Plus /></CustomIcon>
-                Thêm hạng mục
+                Thêm
               </CustomButton>
             </CustomTooltip>
           </BulkActionBar>
@@ -60,13 +61,29 @@
             {{ (page - 1) * perPage + $index + 1 }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn prop="ten_hang_muc" label="Tên hạng mục" min-width="220" />
-        <CustomTableColumn prop="ghi_chu" label="Ghi chú" min-width="240" show-overflow-tooltip>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ten_hang_muc')"
+          prop="ten_hang_muc"
+          label="Tên hạng mục"
+          min-width="220"
+        />
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ghi_chu')"
+          prop="ghi_chu"
+          label="Ghi chú"
+          min-width="240"
+          show-overflow-tooltip
+        >
           <template #default="{ row }">
             {{ row.ghi_chu || '—' }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Trạng thái" width="200" align="center">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('trang_thai')"
+          label="Trạng thái"
+          width="200"
+          align="center"
+        >
           <template #default="{ row }">
             <div class="status-cell">
               <el-switch
@@ -160,7 +177,9 @@ import {
   updateHangMucLoaiThuChu,
 } from '@/api/hangMucLoaiThuChu'
 import BulkActionBar from '@/components/BulkActionBar.vue'
+import TableColumnConfig from '@/components/TableColumnConfig.vue'
 import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
+import { useTableColumns } from '@/composables/useTableColumns'
 import {
   CustomButton,
   CustomCard,
@@ -178,6 +197,13 @@ import {
   CustomTooltip,
 } from '@/components/element'
 import Pagination from '@/components/Pagination.vue'
+
+const tableColumns = [
+  { key: 'ten_hang_muc', label: 'Tên hạng mục' },
+  { key: 'ghi_chu', label: 'Ghi chú' },
+  { key: 'trang_thai', label: 'Trạng thái' },
+]
+const columnSettings = useTableColumns('tai-chinh.hang-muc-thu-chi', tableColumns)
 
 const ACTIVE = 'hoat_dong'
 const INACTIVE = 'ngung_hoat_dong'

@@ -35,10 +35,15 @@
       <template #header>
         <div class="card-header">
           <span class="card-title">Danh sách nhân sự</span>
-          <CustomButton type="primary" @click="openCreate">
-            <CustomIcon><Plus /></CustomIcon>
-            Thêm nhân sự
-          </CustomButton>
+          <div class="card-header-actions">
+            <TableColumnConfig :settings="columnSettings" />
+            <CustomTooltip content="Thêm mới" placement="top">
+              <CustomButton type="primary" @click="openCreate">
+                <CustomIcon><Plus /></CustomIcon>
+                Thêm
+              </CustomButton>
+            </CustomTooltip>
+          </div>
         </div>
       </template>
 
@@ -168,7 +173,11 @@
           </template>
         </CustomTableColumn>
 
-        <CustomTableColumn label="Nhân viên" min-width="220">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('nhan_vien')"
+          label="Nhân viên"
+          min-width="220"
+        >
           <template #default="{ row }">
             <div class="cell-person">
               <el-avatar :size="40" :src="mediaUrl(nv(row).hinh_anh) || undefined" class="cell-avatar">
@@ -186,7 +195,11 @@
           </template>
         </CustomTableColumn>
 
-        <CustomTableColumn label="Liên hệ" min-width="180">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('lien_he')"
+          label="Liên hệ"
+          min-width="180"
+        >
           <template #default="{ row }">
             <div class="cell-stack">
               <span class="cell-primary">{{ row.email || '—' }}</span>
@@ -195,7 +208,11 @@
           </template>
         </CustomTableColumn>
 
-        <CustomTableColumn label="Công việc" min-width="200">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('cong_viec')"
+          label="Công việc"
+          min-width="200"
+        >
           <template #default="{ row }">
             <div class="cell-stack">
               <span class="cell-primary">{{ deptName(row) }}</span>
@@ -212,7 +229,11 @@
           </template>
         </CustomTableColumn>
 
-        <CustomTableColumn label="Ngày vào" width="120">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ngay_vao')"
+          label="Ngày vào"
+          width="120"
+        >
           <template #default="{ row }">
             <div class="cell-stack">
               <span class="cell-primary">{{ formatDate(nv(row).ngay_vao_cong_ty) }}</span>
@@ -223,7 +244,12 @@
           </template>
         </CustomTableColumn>
 
-        <CustomTableColumn label="Lương" min-width="140" align="right">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('luong')"
+          label="Lương"
+          min-width="140"
+          align="right"
+        >
           <template #default="{ row }">
             <div class="cell-stack cell-stack--right">
               <span class="cell-primary cell-money">{{ formatMoney(nv(row).luong_co_ban) }}</span>
@@ -232,7 +258,12 @@
           </template>
         </CustomTableColumn>
 
-        <CustomTableColumn label="BHXH" width="100" align="center">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('bhxh')"
+          label="BHXH"
+          width="100"
+          align="center"
+        >
           <template #default="{ row }">
             <CustomTag :type="nv(row).tham_gia_bao_hiem ? 'success' : 'info'" size="small">
               {{ nv(row).tham_gia_bao_hiem ? 'Có' : 'Không' }}
@@ -240,7 +271,11 @@
           </template>
         </CustomTableColumn>
 
-        <CustomTableColumn label="Tài khoản" width="130">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('tai_khoan')"
+          label="Tài khoản"
+          width="130"
+        >
           <template #default="{ row }">
             <div class="cell-stack">
               <CustomTag size="small" effect="plain">{{ roleLabel(row.role) }}</CustomTag>
@@ -620,6 +655,8 @@ import { createUser, deleteUser, fetchUsers, updateUser, uploadNhanVienHinh } fr
 import { fetchPhongBan } from '@/api/phongBan'
 import { mediaUrl } from '@/utils/media'
 import { formatInteger } from '@/utils/number'
+import TableColumnConfig from '@/components/TableColumnConfig.vue'
+import { useTableColumns } from '@/composables/useTableColumns'
 import {
   CustomButton,
   CustomCard,
@@ -639,6 +676,17 @@ import {
   CustomTooltip,
 } from '@/components/element'
 import Pagination from '@/components/Pagination.vue'
+
+const tableColumns = [
+  { key: 'nhan_vien', label: 'Nhân viên' },
+  { key: 'lien_he', label: 'Liên hệ' },
+  { key: 'cong_viec', label: 'Công việc' },
+  { key: 'ngay_vao', label: 'Ngày vào' },
+  { key: 'luong', label: 'Lương' },
+  { key: 'bhxh', label: 'BHXH' },
+  { key: 'tai_khoan', label: 'Tài khoản' },
+]
+const columnSettings = useTableColumns('nhan-su.employee-list', tableColumns)
 
 const route = useRoute()
 
@@ -1147,6 +1195,12 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+}
+
+.card-header-actions {
+  display: flex;
+  align-items: center;
   gap: 12px;
 }
 

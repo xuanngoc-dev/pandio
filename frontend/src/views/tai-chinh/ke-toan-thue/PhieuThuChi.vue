@@ -69,10 +69,11 @@
               :actions="bulkActions"
               @action="onBulkAction"
             >
-              <CustomTooltip content="Thêm phiếu thu chi mới" placement="top">
+              <TableColumnConfig :settings="columnSettings" />
+              <CustomTooltip content="Thêm mới" placement="top">
                 <CustomButton type="primary" @click="openCreate">
                   <CustomIcon><Plus /></CustomIcon>
-                  Thêm phiếu
+                  Thêm
                 </CustomButton>
               </CustomTooltip>
             </BulkActionBar>
@@ -100,51 +101,96 @@
             {{ (page - 1) * perPage + $index + 1 }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Loại" width="90" align="center">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('loai')"
+          label="Loại"
+          width="90"
+          align="center"
+        >
           <template #default="{ row }">
             <el-tag :type="row.loai === 'thu' ? 'success' : 'danger'" size="small">
               {{ row.loai === 'thu' ? 'Thu' : 'Chi' }}
             </el-tag>
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Hạng mục" min-width="160" show-overflow-tooltip>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('hang_muc')"
+          label="Hạng mục"
+          min-width="160"
+          show-overflow-tooltip
+        >
           <template #default="{ row }">
             {{ row.hang_muc?.ten_hang_muc || '—' }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Số tiền" width="140" align="right">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('so_tien')"
+          label="Số tiền"
+          width="140"
+          align="right"
+        >
           <template #default="{ row }">
             {{ formatMoney(row.so_tien) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Lý do" min-width="180" show-overflow-tooltip>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ly_do')"
+          label="Lý do"
+          min-width="180"
+          show-overflow-tooltip
+        >
           <template #default="{ row }">
             {{ row.ly_do || '—' }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Trạng thái" width="120" align="center">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('trang_thai')"
+          label="Trạng thái"
+          width="120"
+          align="center"
+        >
           <template #default="{ row }">
             <el-tag :type="trangThaiTagType(row.trang_thai)" size="small">
               {{ trangThaiLabel(row.trang_thai) }}
             </el-tag>
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Người tạo" min-width="130" show-overflow-tooltip>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('nguoi_tao')"
+          label="Người tạo"
+          min-width="130"
+          show-overflow-tooltip
+        >
           <template #default="{ row }">
             {{ row.nguoi_tao?.name || '—' }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Người duyệt" min-width="130" show-overflow-tooltip>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('nguoi_duyet')"
+          label="Người duyệt"
+          min-width="130"
+          show-overflow-tooltip
+        >
           <template #default="{ row }">
             {{ row.nguoi_duyet?.name || '—' }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Cập nhật TT" width="150" align="center">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('cap_nhat_tt')"
+          label="Cập nhật TT"
+          width="150"
+          align="center"
+        >
           <template #default="{ row }">
             {{ formatDateTime(row.ngay_cap_nhat_trang_thai) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Ghi chú" min-width="140" show-overflow-tooltip>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ghi_chu')"
+          label="Ghi chú"
+          min-width="140"
+          show-overflow-tooltip
+        >
           <template #default="{ row }">
             {{ row.ghi_chu || '—' }}
           </template>
@@ -385,6 +431,8 @@ import { fetchUsers } from '@/api/users'
 import { useAuthStore } from '@/stores/auth'
 import { formatInteger } from '@/utils/number'
 import BulkActionBar from '@/components/BulkActionBar.vue'
+import TableColumnConfig from '@/components/TableColumnConfig.vue'
+import { useTableColumns } from '@/composables/useTableColumns'
 import {
   CustomButton,
   CustomCard,
@@ -402,6 +450,19 @@ import {
   CustomTooltip,
 } from '@/components/element'
 import Pagination from '@/components/Pagination.vue'
+
+const tableColumns = [
+  { key: 'loai', label: 'Loại' },
+  { key: 'hang_muc', label: 'Hạng mục' },
+  { key: 'so_tien', label: 'Số tiền' },
+  { key: 'ly_do', label: 'Lý do' },
+  { key: 'trang_thai', label: 'Trạng thái' },
+  { key: 'nguoi_tao', label: 'Người tạo' },
+  { key: 'nguoi_duyet', label: 'Người duyệt' },
+  { key: 'cap_nhat_tt', label: 'Cập nhật TT' },
+  { key: 'ghi_chu', label: 'Ghi chú' },
+]
+const columnSettings = useTableColumns('tai-chinh.phieu-thu-chi', tableColumns)
 
 const authStore = useAuthStore()
 

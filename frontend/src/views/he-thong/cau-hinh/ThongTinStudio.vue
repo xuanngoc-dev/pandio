@@ -39,10 +39,15 @@
             <template #header>
               <div class="card-header">
                 <span class="card-title">Danh sách thông tin studio</span>
-                <CustomButton type="primary" @click="openStudioCreate">
-                  <CustomIcon><Plus /></CustomIcon>
-                  Thêm studio
-                </CustomButton>
+                <div class="header-actions">
+                  <TableColumnConfig :settings="studioColumnSettings" />
+                  <CustomTooltip content="Thêm mới" placement="top">
+                    <CustomButton type="primary" @click="openStudioCreate">
+                      <CustomIcon><Plus /></CustomIcon>
+                      Thêm
+                    </CustomButton>
+                  </CustomTooltip>
+                </div>
               </div>
             </template>
 
@@ -52,7 +57,12 @@
                   {{ (studio.page - 1) * studio.perPage + $index + 1 }}
                 </template>
               </CustomTableColumn>
-              <CustomTableColumn label="Logo" width="80" align="center">
+              <CustomTableColumn
+                v-if="studioColumnSettings.isColumnVisible('logo')"
+                label="Logo"
+                width="80"
+                align="center"
+              >
                 <template #default="{ row }">
                   <el-avatar
                     v-if="row.logo"
@@ -63,33 +73,72 @@
                   <span v-else>—</span>
                 </template>
               </CustomTableColumn>
-              <CustomTableColumn prop="ten_studio" label="Tên studio" min-width="160" />
-              <CustomTableColumn prop="khau_hieu" label="Khẩu hiệu" min-width="140" show-overflow-tooltip>
+              <CustomTableColumn
+                v-if="studioColumnSettings.isColumnVisible('ten_studio')"
+                prop="ten_studio"
+                label="Tên studio"
+                min-width="160"
+              />
+              <CustomTableColumn
+                v-if="studioColumnSettings.isColumnVisible('khau_hieu')"
+                prop="khau_hieu"
+                label="Khẩu hiệu"
+                min-width="140"
+                show-overflow-tooltip
+              >
                 <template #default="{ row }">
                   {{ row.khau_hieu || '—' }}
                 </template>
               </CustomTableColumn>
-              <CustomTableColumn prop="dia_chi" label="Địa chỉ" min-width="200" show-overflow-tooltip>
+              <CustomTableColumn
+                v-if="studioColumnSettings.isColumnVisible('dia_chi')"
+                prop="dia_chi"
+                label="Địa chỉ"
+                min-width="200"
+                show-overflow-tooltip
+              >
                 <template #default="{ row }">
                   {{ row.dia_chi || '—' }}
                 </template>
               </CustomTableColumn>
-              <CustomTableColumn prop="email" label="Email" min-width="160" show-overflow-tooltip>
+              <CustomTableColumn
+                v-if="studioColumnSettings.isColumnVisible('email')"
+                prop="email"
+                label="Email"
+                min-width="160"
+                show-overflow-tooltip
+              >
                 <template #default="{ row }">
                   {{ row.email || '—' }}
                 </template>
               </CustomTableColumn>
-              <CustomTableColumn prop="so_dien_thoai" label="Số điện thoại" width="140">
+              <CustomTableColumn
+                v-if="studioColumnSettings.isColumnVisible('so_dien_thoai')"
+                prop="so_dien_thoai"
+                label="Số điện thoại"
+                width="140"
+              >
                 <template #default="{ row }">
                   {{ row.so_dien_thoai || '—' }}
                 </template>
               </CustomTableColumn>
-              <CustomTableColumn prop="ma_so_thue" label="Mã số thuế" width="140">
+              <CustomTableColumn
+                v-if="studioColumnSettings.isColumnVisible('ma_so_thue')"
+                prop="ma_so_thue"
+                label="Mã số thuế"
+                width="140"
+              >
                 <template #default="{ row }">
                   {{ row.ma_so_thue || '—' }}
                 </template>
               </CustomTableColumn>
-              <CustomTableColumn prop="mac_dinh" label="Mặc định" width="160" align="center">
+              <CustomTableColumn
+                v-if="studioColumnSettings.isColumnVisible('mac_dinh')"
+                prop="mac_dinh"
+                label="Mặc định"
+                width="160"
+                align="center"
+              >
                 <template #default="{ row }">
                   <div class="status-cell">
                     <el-switch
@@ -172,10 +221,15 @@
             <template #header>
               <div class="card-header">
                 <span class="card-title">Danh sách tài khoản thanh toán</span>
-                <CustomButton type="primary" @click="openPaymentCreate">
-                  <CustomIcon><Plus /></CustomIcon>
-                  Thêm tài khoản
-                </CustomButton>
+                <div class="header-actions">
+                  <TableColumnConfig :settings="paymentColumnSettings" />
+                  <CustomTooltip content="Thêm mới" placement="top">
+                    <CustomButton type="primary" @click="openPaymentCreate">
+                      <CustomIcon><Plus /></CustomIcon>
+                      Thêm
+                    </CustomButton>
+                  </CustomTooltip>
+                </div>
               </div>
             </template>
 
@@ -185,15 +239,42 @@
                   {{ (payment.page - 1) * payment.perPage + $index + 1 }}
                 </template>
               </CustomTableColumn>
-              <CustomTableColumn prop="ngan_hang" label="Ngân hàng" min-width="160" />
-              <CustomTableColumn prop="so_tai_khoan" label="Số tài khoản" min-width="160" />
-              <CustomTableColumn prop="chu_tai_khoan" label="Chủ tài khoản" min-width="160" />
-              <CustomTableColumn prop="chi_nhanh" label="Chi nhánh" min-width="160" show-overflow-tooltip>
+              <CustomTableColumn
+                v-if="paymentColumnSettings.isColumnVisible('ngan_hang')"
+                prop="ngan_hang"
+                label="Ngân hàng"
+                min-width="160"
+              />
+              <CustomTableColumn
+                v-if="paymentColumnSettings.isColumnVisible('so_tai_khoan')"
+                prop="so_tai_khoan"
+                label="Số tài khoản"
+                min-width="160"
+              />
+              <CustomTableColumn
+                v-if="paymentColumnSettings.isColumnVisible('chu_tai_khoan')"
+                prop="chu_tai_khoan"
+                label="Chủ tài khoản"
+                min-width="160"
+              />
+              <CustomTableColumn
+                v-if="paymentColumnSettings.isColumnVisible('chi_nhanh')"
+                prop="chi_nhanh"
+                label="Chi nhánh"
+                min-width="160"
+                show-overflow-tooltip
+              >
                 <template #default="{ row }">
                   {{ row.chi_nhanh || '—' }}
                 </template>
               </CustomTableColumn>
-              <CustomTableColumn prop="mac_dinh" label="Mặc định" width="160" align="center">
+              <CustomTableColumn
+                v-if="paymentColumnSettings.isColumnVisible('mac_dinh')"
+                prop="mac_dinh"
+                label="Mặc định"
+                width="160"
+                align="center"
+              >
                 <template #default="{ row }">
                   <div class="status-cell">
                     <el-switch
@@ -406,8 +487,31 @@ import {
   CustomTooltip,
 } from '@/components/element'
 import Pagination from '@/components/Pagination.vue'
+import TableColumnConfig from '@/components/TableColumnConfig.vue'
+import { useTableColumns } from '@/composables/useTableColumns'
 import { mediaUrl } from '@/utils/media'
 import ConfigSettingPage from './ConfigSettingPage.vue'
+
+const studioTableColumns = [
+  { key: 'logo', label: 'Logo' },
+  { key: 'ten_studio', label: 'Tên studio' },
+  { key: 'khau_hieu', label: 'Khẩu hiệu' },
+  { key: 'dia_chi', label: 'Địa chỉ' },
+  { key: 'email', label: 'Email' },
+  { key: 'so_dien_thoai', label: 'Số điện thoại' },
+  { key: 'ma_so_thue', label: 'Mã số thuế' },
+  { key: 'mac_dinh', label: 'Mặc định' },
+]
+const studioColumnSettings = useTableColumns('he-thong.thong-tin-studio', studioTableColumns)
+
+const paymentTableColumns = [
+  { key: 'ngan_hang', label: 'Ngân hàng' },
+  { key: 'so_tai_khoan', label: 'Số tài khoản' },
+  { key: 'chu_tai_khoan', label: 'Chủ tài khoản' },
+  { key: 'chi_nhanh', label: 'Chi nhánh' },
+  { key: 'mac_dinh', label: 'Mặc định' },
+]
+const paymentColumnSettings = useTableColumns('he-thong.tai-khoan-thanh-toan', paymentTableColumns)
 
 const activeTab = ref('studio')
 const paymentLoaded = ref(false)
@@ -803,6 +907,12 @@ onMounted(loadStudios)
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+}
+
+.header-actions {
+  display: inline-flex;
+  align-items: center;
   gap: 12px;
 }
 

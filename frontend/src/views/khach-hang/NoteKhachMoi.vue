@@ -60,10 +60,13 @@
         <div class="card-header">
           <span class="card-title">Note khách mới</span>
           <BulkActionBar :actions="bulkActions" @action="onBulkAction">
-            <CustomButton type="primary" @click="openCreate">
-              <CustomIcon><Plus /></CustomIcon>
-              Thêm note khách
-            </CustomButton>
+            <TableColumnConfig :settings="columnSettings" />
+            <CustomTooltip content="Thêm mới" placement="top">
+              <CustomButton type="primary" @click="openCreate">
+                <CustomIcon><Plus /></CustomIcon>
+                Thêm
+              </CustomButton>
+            </CustomTooltip>
           </BulkActionBar>
         </div>
       </template>
@@ -82,55 +85,105 @@
             {{ (page - 1) * perPage + $index + 1 }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Khách hàng" min-width="160" fixed>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('khach_hang')"
+          label="Khách hàng"
+          min-width="160"
+          fixed
+        >
           <template #default="{ row }">
             <div>{{ row.ten_khach }}</div>
             <div class="sub-text">{{ row.sdt || '—' }}</div>
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Ngày hẹn" width="120" align="center">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ngay_hen')"
+          label="Ngày hẹn"
+          width="120"
+          align="center"
+        >
           <template #default="{ row }">
             {{ formatDate(row.ngay_hen_lich) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Ngày đến TT" width="120" align="center">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ngay_den_tt')"
+          label="Ngày đến TT"
+          width="120"
+          align="center"
+        >
           <template #default="{ row }">
             {{ formatDate(row.ngay_den_thuc_te) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Phụ trách sale" min-width="180" show-overflow-tooltip>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('phu_trach_sale')"
+          label="Phụ trách sale"
+          min-width="180"
+          show-overflow-tooltip
+        >
           <template #default="{ row }">
             {{ formatSaleNames(row) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Nguồn khách" width="120" show-overflow-tooltip>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('nguon_khach')"
+          label="Nguồn khách"
+          width="120"
+          show-overflow-tooltip
+        >
           <template #default="{ row }">
             {{ nguonKhachLabel(row.nguon_khach) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Trạng thái" width="120" align="center">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('trang_thai')"
+          label="Trạng thái"
+          width="120"
+          align="center"
+        >
           <template #default="{ row }">
             <el-tag :type="trangThaiTagType(row.trang_thai)" size="small">
               {{ trangThaiLabel(row.trang_thai) }}
             </el-tag>
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Tra cứu HĐ" min-width="120" show-overflow-tooltip>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('tra_cuu_hd')"
+          label="Tra cứu HĐ"
+          min-width="120"
+          show-overflow-tooltip
+        >
           <template #default="{ row }">
             {{ row.tra_cuu_hd || '—' }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Đặt cọc" width="120" show-overflow-tooltip>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('dat_coc')"
+          label="Đặt cọc"
+          width="120"
+          show-overflow-tooltip
+        >
           <template #default="{ row }">
             {{ hinhThucDatCocLabel(row.hinh_thuc_dat_coc) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Người tạo" min-width="130" show-overflow-tooltip>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('nguoi_tao')"
+          label="Người tạo"
+          min-width="130"
+          show-overflow-tooltip
+        >
           <template #default="{ row }">
             {{ row.nguoi_tao_user?.name || '—' }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Ghi chú" min-width="160" show-overflow-tooltip>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ghi_chu')"
+          label="Ghi chú"
+          min-width="160"
+          show-overflow-tooltip
+        >
           <template #default="{ row }">
             {{ row.ghi_chu || '—' }}
           </template>
@@ -322,7 +375,9 @@ import {
 import { fetchUsers } from '@/api/users'
 import { useAuthStore } from '@/stores/auth'
 import BulkActionBar from '@/components/BulkActionBar.vue'
+import TableColumnConfig from '@/components/TableColumnConfig.vue'
 import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
+import { useTableColumns } from '@/composables/useTableColumns'
 import {
   CustomButton,
   CustomCard,
@@ -340,6 +395,20 @@ import {
   CustomTooltip,
 } from '@/components/element'
 import Pagination from '@/components/Pagination.vue'
+
+const tableColumns = [
+  { key: 'khach_hang', label: 'Khách hàng' },
+  { key: 'ngay_hen', label: 'Ngày hẹn' },
+  { key: 'ngay_den_tt', label: 'Ngày đến TT' },
+  { key: 'phu_trach_sale', label: 'Phụ trách sale' },
+  { key: 'nguon_khach', label: 'Nguồn khách' },
+  { key: 'trang_thai', label: 'Trạng thái' },
+  { key: 'tra_cuu_hd', label: 'Tra cứu HĐ' },
+  { key: 'dat_coc', label: 'Đặt cọc' },
+  { key: 'nguoi_tao', label: 'Người tạo' },
+  { key: 'ghi_chu', label: 'Ghi chú' },
+]
+const columnSettings = useTableColumns('khach-hang.note-khach-moi', tableColumns)
 
 const authStore = useAuthStore()
 

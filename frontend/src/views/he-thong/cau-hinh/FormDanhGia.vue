@@ -27,10 +27,13 @@
           <div class="card-header">
             <span class="card-title">Danh sách form đánh giá mẫu</span>
             <BulkActionBar :actions="bulkActions" @action="onBulkAction">
-              <CustomButton type="primary" @click="openCreate">
-                <CustomIcon><Plus /></CustomIcon>
-                Thêm form
-              </CustomButton>
+              <TableColumnConfig :settings="columnSettings" />
+              <CustomTooltip content="Thêm mới" placement="top">
+                <CustomButton type="primary" @click="openCreate">
+                  <CustomIcon><Plus /></CustomIcon>
+                  Thêm
+                </CustomButton>
+              </CustomTooltip>
             </BulkActionBar>
           </div>
         </template>
@@ -49,8 +52,20 @@
               {{ (page - 1) * perPage + $index + 1 }}
             </template>
           </CustomTableColumn>
-          <CustomTableColumn prop="ten_form" label="Tên form" min-width="200" show-overflow-tooltip />
-          <CustomTableColumn prop="slug" label="Slug" min-width="180" show-overflow-tooltip>
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('ten_form')"
+            prop="ten_form"
+            label="Tên form"
+            min-width="200"
+            show-overflow-tooltip
+          />
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('slug')"
+            prop="slug"
+            label="Slug"
+            min-width="180"
+            show-overflow-tooltip
+          >
             <template #default="{ row }">
               <CustomTooltip content="Mở trang đánh giá khách hàng" placement="top">
                 <button type="button" class="slug-link" @click="openCustomerForm(row)">
@@ -59,7 +74,12 @@
               </CustomTooltip>
             </template>
           </CustomTableColumn>
-          <CustomTableColumn label="Số câu hỏi" width="110" align="center">
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('so_cau_hoi')"
+            label="Số câu hỏi"
+            width="110"
+            align="center"
+          >
             <template #default="{ row }">
               {{ countQuestions(row.cau_hoi) }}
             </template>
@@ -220,7 +240,9 @@ import {
   updateFormDanhGia,
 } from '@/api/formDanhGia'
 import BulkActionBar from '@/components/BulkActionBar.vue'
+import TableColumnConfig from '@/components/TableColumnConfig.vue'
 import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
+import { useTableColumns } from '@/composables/useTableColumns'
 import {
   CustomButton,
   CustomCard,
@@ -241,6 +263,13 @@ import Pagination from '@/components/Pagination.vue'
 import ConfigSettingPage from './ConfigSettingPage.vue'
 
 const router = useRouter()
+
+const tableColumns = [
+  { key: 'ten_form', label: 'Tên form' },
+  { key: 'slug', label: 'Slug' },
+  { key: 'so_cau_hoi', label: 'Số câu hỏi' },
+]
+const columnSettings = useTableColumns('he-thong.form-danh-gia', tableColumns)
 
 const DEFAULT_THONG_TIN = [
   'Thợ chụp',

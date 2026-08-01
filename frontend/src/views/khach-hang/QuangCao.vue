@@ -46,10 +46,13 @@
         <div class="card-header">
           <span class="card-title">Report quảng cáo</span>
           <BulkActionBar :actions="bulkActions" @action="onBulkAction">
-            <CustomButton type="primary" @click="openCreate">
-              <CustomIcon><Plus /></CustomIcon>
-              Thêm report
-            </CustomButton>
+            <TableColumnConfig :settings="columnSettings" />
+            <CustomTooltip content="Thêm mới" placement="top">
+              <CustomButton type="primary" @click="openCreate">
+                <CustomIcon><Plus /></CustomIcon>
+                Thêm
+              </CustomButton>
+            </CustomTooltip>
           </BulkActionBar>
         </div>
       </template>
@@ -68,63 +71,150 @@
             {{ (page - 1) * perPage + $index + 1 }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn prop="ngay" label="Ngày" width="110" fixed>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ngay')"
+          prop="ngay"
+          label="Ngày"
+          width="110"
+          fixed
+        >
           <template #default="{ row }">
             {{ formatDate(row.ngay) }}
           </template>
         </CustomTableColumn>
 
-        <CustomTableColumn label="CPQC TikTok" width="120" align="right">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('cpqc_tiktok')"
+          label="CPQC TikTok"
+          width="120"
+          align="right"
+        >
           <template #default="{ row }">{{ formatNum(row.cpqc_tiktok) }}</template>
         </CustomTableColumn>
-        <CustomTableColumn label="CPQC FB" width="110" align="right">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('cpqc_fb')"
+          label="CPQC FB"
+          width="110"
+          align="right"
+        >
           <template #default="{ row }">{{ formatNum(row.cpqc_fb) }}</template>
         </CustomTableColumn>
-        <CustomTableColumn label="CPQC Google" width="120" align="right">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('cpqc_google')"
+          label="CPQC Google"
+          width="120"
+          align="right"
+        >
           <template #default="{ row }">{{ formatNum(row.cpqc_google) }}</template>
         </CustomTableColumn>
 
-        <CustomTableColumn label="Inbox TikTok" width="110" align="right">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('inbox_tiktok')"
+          label="Inbox TikTok"
+          width="110"
+          align="right"
+        >
           <template #default="{ row }">{{ formatNum(row.inbox_tiktok) }}</template>
         </CustomTableColumn>
-        <CustomTableColumn label="CPI TikTok" width="110" align="right">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('cpi_tiktok')"
+          label="CPI TikTok"
+          width="110"
+          align="right"
+        >
           <template #default="{ row }">{{ formatNum(row.cpi_tiktok) }}</template>
         </CustomTableColumn>
-        <CustomTableColumn label="Inbox FB" width="100" align="right">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('inbox_fb')"
+          label="Inbox FB"
+          width="100"
+          align="right"
+        >
           <template #default="{ row }">{{ formatNum(row.inbox_fb) }}</template>
         </CustomTableColumn>
-        <CustomTableColumn label="CPI FB" width="100" align="right">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('cpi_fb')"
+          label="CPI FB"
+          width="100"
+          align="right"
+        >
           <template #default="{ row }">{{ formatNum(row.cpi_fb) }}</template>
         </CustomTableColumn>
 
-        <CustomTableColumn label="KH TikTok" width="100" align="right">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('kh_tiktok')"
+          label="KH TikTok"
+          width="100"
+          align="right"
+        >
           <template #default="{ row }">{{ formatNum(row.kh_tiktok) }}</template>
         </CustomTableColumn>
-        <CustomTableColumn label="KH FB" width="90" align="right">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('kh_fb')"
+          label="KH FB"
+          width="90"
+          align="right"
+        >
           <template #default="{ row }">{{ formatNum(row.kh_fb) }}</template>
         </CustomTableColumn>
-        <CustomTableColumn label="KH Google" width="100" align="right">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('kh_google')"
+          label="KH Google"
+          width="100"
+          align="right"
+        >
           <template #default="{ row }">{{ formatNum(row.kh_google) }}</template>
         </CustomTableColumn>
 
-        <CustomTableColumn label="TCPL TikTok" width="110" align="right">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('tcpl_tiktok')"
+          label="TCPL TikTok"
+          width="110"
+          align="right"
+        >
           <template #default="{ row }">{{ formatNum(row.tcpl_tiktok) }}</template>
         </CustomTableColumn>
-        <CustomTableColumn label="CPL FB" width="100" align="right">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('cpl_fb')"
+          label="CPL FB"
+          width="100"
+          align="right"
+        >
           <template #default="{ row }">{{ formatNum(row.cpl_fb) }}</template>
         </CustomTableColumn>
-        <CustomTableColumn label="CPL Google" width="110" align="right">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('cpl_google')"
+          label="CPL Google"
+          width="110"
+          align="right"
+        >
           <template #default="{ row }">{{ formatNum(row.cpl_google) }}</template>
         </CustomTableColumn>
 
-        <CustomTableColumn label="Lịch hẹn" width="100" align="right">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('lich_hen')"
+          label="Lịch hẹn"
+          width="100"
+          align="right"
+        >
           <template #default="{ row }">{{ formatNum(row.lich_hen) }}</template>
         </CustomTableColumn>
-        <CustomTableColumn label="Khách đến từ hẹn" width="140" align="right">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('khach_den_tu_hen')"
+          label="Khách đến từ hẹn"
+          width="140"
+          align="right"
+        >
           <template #default="{ row }">{{ formatNum(row.khach_den_tu_hen) }}</template>
         </CustomTableColumn>
 
-        <CustomTableColumn prop="ghi_chu" label="Ghi chú" min-width="160" show-overflow-tooltip>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ghi_chu')"
+          prop="ghi_chu"
+          label="Ghi chú"
+          min-width="160"
+          show-overflow-tooltip
+        >
           <template #default="{ row }">
             {{ row.ghi_chu || '—' }}
           </template>
@@ -209,7 +299,9 @@ import {
 } from '@/api/reportQuangCao'
 import { formatInteger } from '@/utils/number'
 import BulkActionBar from '@/components/BulkActionBar.vue'
+import TableColumnConfig from '@/components/TableColumnConfig.vue'
 import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
+import { useTableColumns } from '@/composables/useTableColumns'
 import {
   CustomButton,
   CustomCard,
@@ -225,6 +317,27 @@ import {
   CustomTooltip,
 } from '@/components/element'
 import Pagination from '@/components/Pagination.vue'
+
+const tableColumns = [
+  { key: 'ngay', label: 'Ngày' },
+  { key: 'cpqc_tiktok', label: 'CPQC TikTok' },
+  { key: 'cpqc_fb', label: 'CPQC FB' },
+  { key: 'cpqc_google', label: 'CPQC Google' },
+  { key: 'inbox_tiktok', label: 'Inbox TikTok' },
+  { key: 'cpi_tiktok', label: 'CPI TikTok' },
+  { key: 'inbox_fb', label: 'Inbox FB' },
+  { key: 'cpi_fb', label: 'CPI FB' },
+  { key: 'kh_tiktok', label: 'KH TikTok' },
+  { key: 'kh_fb', label: 'KH FB' },
+  { key: 'kh_google', label: 'KH Google' },
+  { key: 'tcpl_tiktok', label: 'TCPL TikTok' },
+  { key: 'cpl_fb', label: 'CPL FB' },
+  { key: 'cpl_google', label: 'CPL Google' },
+  { key: 'lich_hen', label: 'Lịch hẹn' },
+  { key: 'khach_den_tu_hen', label: 'Khách đến từ hẹn' },
+  { key: 'ghi_chu', label: 'Ghi chú' },
+]
+const columnSettings = useTableColumns('khach-hang.quang-cao', tableColumns)
 
 const NUMBER_FIELDS = [
   'cpqc_tiktok',

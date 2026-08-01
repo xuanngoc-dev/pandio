@@ -53,10 +53,15 @@
       <template #header>
         <div class="card-header">
           <span class="card-title">Danh sách xin nghỉ phép</span>
-          <CustomButton type="primary" @click="openCreate">
-            <CustomIcon><Plus /></CustomIcon>
-            Thêm đơn nghỉ
-          </CustomButton>
+          <div class="card-header-actions">
+            <TableColumnConfig :settings="columnSettings" />
+            <CustomTooltip content="Thêm mới" placement="top">
+              <CustomButton type="primary" @click="openCreate">
+                <CustomIcon><Plus /></CustomIcon>
+                Thêm
+              </CustomButton>
+            </CustomTooltip>
+          </div>
         </div>
       </template>
 
@@ -66,39 +71,74 @@
             {{ (page - 1) * perPage + $index + 1 }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Nhân viên" min-width="160" show-overflow-tooltip>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('nhan_vien')"
+          label="Nhân viên"
+          min-width="160"
+          show-overflow-tooltip
+        >
           <template #default="{ row }">
             {{ row.user?.name || '—' }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Loại nghỉ" min-width="140">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('loai_nghi')"
+          label="Loại nghỉ"
+          min-width="140"
+        >
           <template #default="{ row }">
             {{ loaiLabel(row.loai_nghi_phep) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Buổi nghỉ" width="110" align="center">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('buoi_nghi')"
+          label="Buổi nghỉ"
+          width="110"
+          align="center"
+        >
           <template #default="{ row }">
             {{ buoiLabel(row.buoi_nghi) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Thời gian" min-width="160" align="center">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('thoi_gian')"
+          label="Thời gian"
+          min-width="160"
+          align="center"
+        >
           <template #default="{ row }">
             {{ formatThoiGian(row) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn prop="ly_do" label="Lý do" min-width="180" show-overflow-tooltip>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ly_do')"
+          prop="ly_do"
+          label="Lý do"
+          min-width="180"
+          show-overflow-tooltip
+        >
           <template #default="{ row }">
             {{ row.ly_do || '—' }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Trạng thái" width="130" align="center">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('trang_thai')"
+          label="Trạng thái"
+          width="130"
+          align="center"
+        >
           <template #default="{ row }">
             <CustomTag :type="trangThaiTagType(row.trang_thai)" effect="light">
               {{ trangThaiLabel(row.trang_thai) }}
             </CustomTag>
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Người duyệt" min-width="140" show-overflow-tooltip>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('nguoi_duyet')"
+          label="Người duyệt"
+          min-width="140"
+          show-overflow-tooltip
+        >
           <template #default="{ row }">
             {{ row.nguoi_duyet?.name || '—' }}
           </template>
@@ -289,6 +329,8 @@ import {
   tuChoiXinNghiPhep,
   updateXinNghiPhep,
 } from '@/api/xinNghiPhep'
+import TableColumnConfig from '@/components/TableColumnConfig.vue'
+import { useTableColumns } from '@/composables/useTableColumns'
 import {
   CustomButton,
   CustomCard,
@@ -307,6 +349,17 @@ import {
   CustomTooltip,
 } from '@/components/element'
 import Pagination from '@/components/Pagination.vue'
+
+const tableColumns = [
+  { key: 'nhan_vien', label: 'Nhân viên' },
+  { key: 'loai_nghi', label: 'Loại nghỉ' },
+  { key: 'buoi_nghi', label: 'Buổi nghỉ' },
+  { key: 'thoi_gian', label: 'Thời gian' },
+  { key: 'ly_do', label: 'Lý do' },
+  { key: 'trang_thai', label: 'Trạng thái' },
+  { key: 'nguoi_duyet', label: 'Người duyệt' },
+]
+const columnSettings = useTableColumns('nhan-su.nghi-phep', tableColumns)
 
 const LOAI_NGHI_PHEP_OPTIONS = [
   { value: 'di_muon', label: 'Đi muộn' },
@@ -595,6 +648,12 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+}
+
+.card-header-actions {
+  display: flex;
+  align-items: center;
   gap: 12px;
 }
 

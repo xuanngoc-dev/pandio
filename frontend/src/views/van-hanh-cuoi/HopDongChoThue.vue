@@ -40,10 +40,13 @@
         <div class="card-header">
           <span class="card-title">Danh sách hợp đồng cho thuê trang phục</span>
           <BulkActionBar :actions="bulkActions" @action="onBulkAction">
-            <CustomButton type="primary" @click="openCreate">
-              <CustomIcon><Plus /></CustomIcon>
-              Thêm hợp đồng
-            </CustomButton>
+            <TableColumnConfig :settings="columnSettings" />
+            <CustomTooltip content="Thêm mới" placement="top">
+              <CustomButton type="primary" @click="openCreate">
+                <CustomIcon><Plus /></CustomIcon>
+                Thêm
+              </CustomButton>
+            </CustomTooltip>
           </BulkActionBar>
         </div>
       </template>
@@ -62,40 +65,84 @@
             {{ (page - 1) * perPage + $index + 1 }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Mã HĐ" prop="ma_hop_dong" min-width="140" />
-        <CustomTableColumn label="Khách hàng" min-width="160">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ma_hop_dong')"
+          label="Mã HĐ"
+          prop="ma_hop_dong"
+          min-width="140"
+        />
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('khach_hang')"
+          label="Khách hàng"
+          min-width="160"
+        >
           <template #default="{ row }">
             <div>{{ row.ten_khach_hang }}</div>
             <div class="sub-text">{{ row.sdt_khach_hang }}</div>
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Ngày thuê" width="120" align="center">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ngay_thue')"
+          label="Ngày thuê"
+          width="120"
+          align="center"
+        >
           <template #default="{ row }">
             {{ formatDate(row.ngay_thue) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Ngày trả DK" width="120" align="center">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ngay_tra_du_kien')"
+          label="Ngày trả DK"
+          width="120"
+          align="center"
+        >
           <template #default="{ row }">
             {{ formatDate(row.ngay_tra_du_kien) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Số ngày" width="90" align="center" prop="so_ngay_thue" />
-        <CustomTableColumn label="Tổng tiền" width="130" align="right">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('so_ngay_thue')"
+          label="Số ngày"
+          width="90"
+          align="center"
+          prop="so_ngay_thue"
+        />
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('tong_tien')"
+          label="Tổng tiền"
+          width="130"
+          align="right"
+        >
           <template #default="{ row }">
             {{ formatMoney(row.tong_tien) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Người cho thuê" min-width="140">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('nguoi_cho_thue')"
+          label="Người cho thuê"
+          min-width="140"
+        >
           <template #default="{ row }">
             {{ row.nguoi_cho_thue_user?.name || '—' }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Sản phẩm" width="90" align="center">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('san_pham')"
+          label="Sản phẩm"
+          width="90"
+          align="center"
+        >
           <template #default="{ row }">
             {{ row.san_pham_cho_thue?.length || 0 }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Trạng thái" width="130" align="center">
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('trang_thai')"
+          label="Trạng thái"
+          width="130"
+          align="center"
+        >
           <template #default="{ row }">
             <el-tag :type="trangThaiTagType(row.trang_thai)" size="small">
               {{ trangThaiLabel(row.trang_thai) }}
@@ -416,7 +463,9 @@ import {
 import { fetchTrangPhuc } from '@/api/trangPhuc'
 import { fetchUsers } from '@/api/users'
 import BulkActionBar from '@/components/BulkActionBar.vue'
+import TableColumnConfig from '@/components/TableColumnConfig.vue'
 import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
+import { useTableColumns } from '@/composables/useTableColumns'
 import {
   CustomButton,
   CustomCard,
@@ -439,6 +488,19 @@ import { mediaUrl } from '@/utils/media'
 import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
+
+const tableColumns = [
+  { key: 'ma_hop_dong', label: 'Mã HĐ' },
+  { key: 'khach_hang', label: 'Khách hàng' },
+  { key: 'ngay_thue', label: 'Ngày thuê' },
+  { key: 'ngay_tra_du_kien', label: 'Ngày trả DK' },
+  { key: 'so_ngay_thue', label: 'Số ngày' },
+  { key: 'tong_tien', label: 'Tổng tiền' },
+  { key: 'nguoi_cho_thue', label: 'Người cho thuê' },
+  { key: 'san_pham', label: 'Sản phẩm' },
+  { key: 'trang_thai', label: 'Trạng thái' },
+]
+const columnSettings = useTableColumns('van-hanh-cuoi.hop-dong-cho-thue', tableColumns)
 
 const trangThaiOptions = [
   { value: 'cho_xac_nhan', label: 'Chờ xác nhận' },

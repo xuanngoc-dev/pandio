@@ -37,10 +37,13 @@
           <div class="card-header">
             <span class="card-title">Danh sách ca làm việc</span>
             <BulkActionBar :actions="bulkActions" @action="onBulkAction">
-              <CustomButton type="primary" @click="openCreate">
-                <CustomIcon><Plus /></CustomIcon>
-                Thêm ca
-              </CustomButton>
+              <TableColumnConfig :settings="columnSettings" />
+              <CustomTooltip content="Thêm mới" placement="top">
+                <CustomButton type="primary" @click="openCreate">
+                  <CustomIcon><Plus /></CustomIcon>
+                  Thêm
+                </CustomButton>
+              </CustomTooltip>
             </BulkActionBar>
           </div>
         </template>
@@ -59,23 +62,53 @@
               {{ (page - 1) * perPage + $index + 1 }}
             </template>
           </CustomTableColumn>
-          <CustomTableColumn prop="ten_ca" label="Tên ca" min-width="160" show-overflow-tooltip />
-          <CustomTableColumn prop="gio_bat_dau" label="Giờ bắt đầu" min-width="120" align="center">
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('ten_ca')"
+            prop="ten_ca"
+            label="Tên ca"
+            min-width="160"
+            show-overflow-tooltip
+          />
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('gio_bat_dau')"
+            prop="gio_bat_dau"
+            label="Giờ bắt đầu"
+            min-width="120"
+            align="center"
+          >
             <template #default="{ row }">
               {{ formatTime(row.gio_bat_dau) }}
             </template>
           </CustomTableColumn>
-          <CustomTableColumn prop="gio_ket_thuc" label="Giờ kết thúc" min-width="120" align="center">
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('gio_ket_thuc')"
+            prop="gio_ket_thuc"
+            label="Giờ kết thúc"
+            min-width="120"
+            align="center"
+          >
             <template #default="{ row }">
               {{ formatTime(row.gio_ket_thuc) }}
             </template>
           </CustomTableColumn>
-          <CustomTableColumn prop="ghi_chu" label="Ghi chú" min-width="200" show-overflow-tooltip>
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('ghi_chu')"
+            prop="ghi_chu"
+            label="Ghi chú"
+            min-width="200"
+            show-overflow-tooltip
+          >
             <template #default="{ row }">
               {{ row.ghi_chu || '—' }}
             </template>
           </CustomTableColumn>
-          <CustomTableColumn prop="trang_thai" label="Trạng thái" width="180" align="center">
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('trang_thai')"
+            prop="trang_thai"
+            label="Trạng thái"
+            width="180"
+            align="center"
+          >
             <template #default="{ row }">
               <div class="status-cell">
                 <el-switch
@@ -192,7 +225,9 @@ import {
   updateCaLamViec,
 } from '@/api/caLamViec'
 import BulkActionBar from '@/components/BulkActionBar.vue'
+import TableColumnConfig from '@/components/TableColumnConfig.vue'
 import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
+import { useTableColumns } from '@/composables/useTableColumns'
 import {
   CustomButton,
   CustomCard,
@@ -214,6 +249,15 @@ import ConfigSettingPage from './ConfigSettingPage.vue'
 
 const ACTIVE = 'co'
 const INACTIVE = 'khong'
+
+const tableColumns = [
+  { key: 'ten_ca', label: 'Tên ca' },
+  { key: 'gio_bat_dau', label: 'Giờ bắt đầu' },
+  { key: 'gio_ket_thuc', label: 'Giờ kết thúc' },
+  { key: 'ghi_chu', label: 'Ghi chú' },
+  { key: 'trang_thai', label: 'Trạng thái' },
+]
+const columnSettings = useTableColumns('he-thong.ca-lam-viec', tableColumns)
 
 const items = ref([])
 const loading = ref(false)

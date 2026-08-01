@@ -65,6 +65,10 @@ defineEmits(['action'])
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 12px;
+
+  > * {
+    margin: 0;
+  }
 }
 
 .btn-wrap {

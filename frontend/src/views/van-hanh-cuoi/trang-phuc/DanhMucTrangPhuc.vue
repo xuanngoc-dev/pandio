@@ -26,10 +26,13 @@
         <div class="card-header">
           <span class="card-title">Danh sách danh mục trang phục</span>
           <BulkActionBar :actions="bulkActions" @action="onBulkAction">
-            <CustomButton type="primary" @click="openCreate">
-              <CustomIcon><Plus /></CustomIcon>
-              Thêm danh mục
-            </CustomButton>
+            <TableColumnConfig :settings="columnSettings" />
+            <CustomTooltip content="Thêm mới" placement="top">
+              <CustomButton type="primary" @click="openCreate">
+                <CustomIcon><Plus /></CustomIcon>
+                Thêm
+              </CustomButton>
+            </CustomTooltip>
           </BulkActionBar>
         </div>
       </template>
@@ -48,9 +51,25 @@
             {{ (page - 1) * perPage + $index + 1 }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn prop="ma_danh_muc" label="Mã" width="120" />
-        <CustomTableColumn prop="ten_danh_muc" label="Tên danh mục" min-width="200" />
-        <CustomTableColumn prop="mo_ta" label="Mô tả" min-width="260" show-overflow-tooltip>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ma_danh_muc')"
+          prop="ma_danh_muc"
+          label="Mã"
+          width="120"
+        />
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ten_danh_muc')"
+          prop="ten_danh_muc"
+          label="Tên danh mục"
+          min-width="200"
+        />
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('mo_ta')"
+          prop="mo_ta"
+          label="Mô tả"
+          min-width="260"
+          show-overflow-tooltip
+        >
           <template #default="{ row }">
             {{ row.mo_ta || '—' }}
           </template>
@@ -130,7 +149,9 @@ import {
   updateDanhMucTrangPhuc,
 } from '@/api/danhMucTrangPhuc'
 import BulkActionBar from '@/components/BulkActionBar.vue'
+import TableColumnConfig from '@/components/TableColumnConfig.vue'
 import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
+import { useTableColumns } from '@/composables/useTableColumns'
 import {
   CustomButton,
   CustomCard,
@@ -146,6 +167,13 @@ import {
   CustomTooltip,
 } from '@/components/element'
 import Pagination from '@/components/Pagination.vue'
+
+const tableColumns = [
+  { key: 'ma_danh_muc', label: 'Mã' },
+  { key: 'ten_danh_muc', label: 'Tên danh mục' },
+  { key: 'mo_ta', label: 'Mô tả' },
+]
+const columnSettings = useTableColumns('van-hanh-cuoi.danh-muc-trang-phuc', tableColumns)
 
 const items = ref([])
 const loading = ref(false)
