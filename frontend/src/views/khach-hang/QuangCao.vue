@@ -83,112 +83,169 @@
           </template>
         </CustomTableColumn>
 
+        <!-- CPQC -->
         <CustomTableColumn
-          v-if="columnSettings.isColumnVisible('cpqc_tiktok')"
-          label="CPQC TikTok"
-          width="120"
-          align="right"
+          v-if="isGroupVisible('cpqc_tiktok', 'cpqc_fb', 'cpqc_google')"
+          label="CPQC"
+          align="center"
         >
-          <template #default="{ row }">{{ formatNum(row.cpqc_tiktok) }}</template>
-        </CustomTableColumn>
-        <CustomTableColumn
-          v-if="columnSettings.isColumnVisible('cpqc_fb')"
-          label="CPQC FB"
-          width="110"
-          align="right"
-        >
-          <template #default="{ row }">{{ formatNum(row.cpqc_fb) }}</template>
-        </CustomTableColumn>
-        <CustomTableColumn
-          v-if="columnSettings.isColumnVisible('cpqc_google')"
-          label="CPQC Google"
-          width="120"
-          align="right"
-        >
-          <template #default="{ row }">{{ formatNum(row.cpqc_google) }}</template>
-        </CustomTableColumn>
-
-        <CustomTableColumn
-          v-if="columnSettings.isColumnVisible('inbox_tiktok')"
-          label="Inbox TikTok"
-          width="110"
-          align="right"
-        >
-          <template #default="{ row }">{{ formatNum(row.inbox_tiktok) }}</template>
-        </CustomTableColumn>
-        <CustomTableColumn
-          v-if="columnSettings.isColumnVisible('cpi_tiktok')"
-          label="CPI TikTok"
-          width="110"
-          align="right"
-        >
-          <template #default="{ row }">{{ formatNum(row.cpi_tiktok) }}</template>
-        </CustomTableColumn>
-        <CustomTableColumn
-          v-if="columnSettings.isColumnVisible('inbox_fb')"
-          label="Inbox FB"
-          width="100"
-          align="right"
-        >
-          <template #default="{ row }">{{ formatNum(row.inbox_fb) }}</template>
-        </CustomTableColumn>
-        <CustomTableColumn
-          v-if="columnSettings.isColumnVisible('cpi_fb')"
-          label="CPI FB"
-          width="100"
-          align="right"
-        >
-          <template #default="{ row }">{{ formatNum(row.cpi_fb) }}</template>
+          <CustomTableColumn label="Tổng" width="120" align="right">
+            <template #default="{ row }">
+              {{ formatNum(sumFields(row, ['cpqc_tiktok', 'cpqc_fb', 'cpqc_google'])) }}
+            </template>
+          </CustomTableColumn>
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('cpqc_tiktok')"
+            label="TikTok"
+            width="110"
+            align="right"
+          >
+            <template #default="{ row }">{{ formatNum(row.cpqc_tiktok) }}</template>
+          </CustomTableColumn>
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('cpqc_fb')"
+            label="FB"
+            width="100"
+            align="right"
+          >
+            <template #default="{ row }">{{ formatNum(row.cpqc_fb) }}</template>
+          </CustomTableColumn>
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('cpqc_google')"
+            label="Google"
+            width="110"
+            align="right"
+          >
+            <template #default="{ row }">{{ formatNum(row.cpqc_google) }}</template>
+          </CustomTableColumn>
         </CustomTableColumn>
 
+        <!-- Inbox -->
         <CustomTableColumn
-          v-if="columnSettings.isColumnVisible('kh_tiktok')"
-          label="KH TikTok"
-          width="100"
-          align="right"
+          v-if="isGroupVisible('inbox_tiktok', 'inbox_fb')"
+          label="Inbox"
+          align="center"
         >
-          <template #default="{ row }">{{ formatNum(row.kh_tiktok) }}</template>
-        </CustomTableColumn>
-        <CustomTableColumn
-          v-if="columnSettings.isColumnVisible('kh_fb')"
-          label="KH FB"
-          width="90"
-          align="right"
-        >
-          <template #default="{ row }">{{ formatNum(row.kh_fb) }}</template>
-        </CustomTableColumn>
-        <CustomTableColumn
-          v-if="columnSettings.isColumnVisible('kh_google')"
-          label="KH Google"
-          width="100"
-          align="right"
-        >
-          <template #default="{ row }">{{ formatNum(row.kh_google) }}</template>
+          <CustomTableColumn label="Tổng" width="100" align="right">
+            <template #default="{ row }">
+              {{ formatNum(sumFields(row, ['inbox_tiktok', 'inbox_fb'])) }}
+            </template>
+          </CustomTableColumn>
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('inbox_tiktok')"
+            label="TikTok"
+            width="100"
+            align="right"
+          >
+            <template #default="{ row }">{{ formatNum(row.inbox_tiktok) }}</template>
+          </CustomTableColumn>
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('inbox_fb')"
+            label="FB"
+            width="90"
+            align="right"
+          >
+            <template #default="{ row }">{{ formatNum(row.inbox_fb) }}</template>
+          </CustomTableColumn>
         </CustomTableColumn>
 
+        <!-- CPI -->
         <CustomTableColumn
-          v-if="columnSettings.isColumnVisible('tcpl_tiktok')"
-          label="TCPL TikTok"
-          width="110"
-          align="right"
+          v-if="isGroupVisible('cpi_tiktok', 'cpi_fb')"
+          label="CPI"
+          align="center"
         >
-          <template #default="{ row }">{{ formatNum(row.tcpl_tiktok) }}</template>
+          <CustomTableColumn label="Tổng" width="100" align="right">
+            <template #default="{ row }">{{ formatNum(cpiTong(row)) }}</template>
+          </CustomTableColumn>
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('cpi_tiktok')"
+            label="TikTok"
+            width="100"
+            align="right"
+          >
+            <template #default="{ row }">{{ formatNum(row.cpi_tiktok) }}</template>
+          </CustomTableColumn>
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('cpi_fb')"
+            label="FB"
+            width="90"
+            align="right"
+          >
+            <template #default="{ row }">{{ formatNum(row.cpi_fb) }}</template>
+          </CustomTableColumn>
         </CustomTableColumn>
+
+        <!-- KH -->
         <CustomTableColumn
-          v-if="columnSettings.isColumnVisible('cpl_fb')"
-          label="CPL FB"
-          width="100"
-          align="right"
+          v-if="isGroupVisible('kh_tiktok', 'kh_fb', 'kh_google')"
+          label="KH"
+          align="center"
         >
-          <template #default="{ row }">{{ formatNum(row.cpl_fb) }}</template>
+          <CustomTableColumn label="Tổng" width="100" align="right">
+            <template #default="{ row }">
+              {{ formatNum(sumFields(row, ['kh_tiktok', 'kh_fb', 'kh_google'])) }}
+            </template>
+          </CustomTableColumn>
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('kh_tiktok')"
+            label="TikTok"
+            width="90"
+            align="right"
+          >
+            <template #default="{ row }">{{ formatNum(row.kh_tiktok) }}</template>
+          </CustomTableColumn>
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('kh_fb')"
+            label="FB"
+            width="80"
+            align="right"
+          >
+            <template #default="{ row }">{{ formatNum(row.kh_fb) }}</template>
+          </CustomTableColumn>
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('kh_google')"
+            label="Google"
+            width="90"
+            align="right"
+          >
+            <template #default="{ row }">{{ formatNum(row.kh_google) }}</template>
+          </CustomTableColumn>
         </CustomTableColumn>
+
+        <!-- CPL -->
         <CustomTableColumn
-          v-if="columnSettings.isColumnVisible('cpl_google')"
-          label="CPL Google"
-          width="110"
-          align="right"
+          v-if="isGroupVisible('tcpl_tiktok', 'cpl_fb', 'cpl_google')"
+          label="CPL"
+          align="center"
         >
-          <template #default="{ row }">{{ formatNum(row.cpl_google) }}</template>
+          <CustomTableColumn label="Tổng" width="100" align="right">
+            <template #default="{ row }">{{ formatNum(cplTong(row)) }}</template>
+          </CustomTableColumn>
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('tcpl_tiktok')"
+            label="TikTok"
+            width="100"
+            align="right"
+          >
+            <template #default="{ row }">{{ formatNum(row.tcpl_tiktok) }}</template>
+          </CustomTableColumn>
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('cpl_fb')"
+            label="FB"
+            width="90"
+            align="right"
+          >
+            <template #default="{ row }">{{ formatNum(row.cpl_fb) }}</template>
+          </CustomTableColumn>
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('cpl_google')"
+            label="Google"
+            width="100"
+            align="right"
+          >
+            <template #default="{ row }">{{ formatNum(row.cpl_google) }}</template>
+          </CustomTableColumn>
         </CustomTableColumn>
 
         <CustomTableColumn
@@ -320,24 +377,28 @@ import Pagination from '@/components/Pagination.vue'
 
 const tableColumns = [
   { key: 'ngay', label: 'Ngày' },
-  { key: 'cpqc_tiktok', label: 'CPQC TikTok' },
-  { key: 'cpqc_fb', label: 'CPQC FB' },
-  { key: 'cpqc_google', label: 'CPQC Google' },
-  { key: 'inbox_tiktok', label: 'Inbox TikTok' },
-  { key: 'cpi_tiktok', label: 'CPI TikTok' },
-  { key: 'inbox_fb', label: 'Inbox FB' },
-  { key: 'cpi_fb', label: 'CPI FB' },
-  { key: 'kh_tiktok', label: 'KH TikTok' },
-  { key: 'kh_fb', label: 'KH FB' },
-  { key: 'kh_google', label: 'KH Google' },
-  { key: 'tcpl_tiktok', label: 'TCPL TikTok' },
-  { key: 'cpl_fb', label: 'CPL FB' },
-  { key: 'cpl_google', label: 'CPL Google' },
+  { key: 'cpqc_tiktok', label: 'CPQC · TikTok' },
+  { key: 'cpqc_fb', label: 'CPQC · FB' },
+  { key: 'cpqc_google', label: 'CPQC · Google' },
+  { key: 'inbox_tiktok', label: 'Inbox · TikTok' },
+  { key: 'inbox_fb', label: 'Inbox · FB' },
+  { key: 'cpi_tiktok', label: 'CPI · TikTok' },
+  { key: 'cpi_fb', label: 'CPI · FB' },
+  { key: 'kh_tiktok', label: 'KH · TikTok' },
+  { key: 'kh_fb', label: 'KH · FB' },
+  { key: 'kh_google', label: 'KH · Google' },
+  { key: 'tcpl_tiktok', label: 'CPL · TikTok' },
+  { key: 'cpl_fb', label: 'CPL · FB' },
+  { key: 'cpl_google', label: 'CPL · Google' },
   { key: 'lich_hen', label: 'Lịch hẹn' },
   { key: 'khach_den_tu_hen', label: 'Khách đến từ hẹn' },
   { key: 'ghi_chu', label: 'Ghi chú' },
 ]
 const columnSettings = useTableColumns('khach-hang.quang-cao', tableColumns)
+
+function isGroupVisible(...keys) {
+  return keys.some((key) => columnSettings.isColumnVisible(key))
+}
 
 const NUMBER_FIELDS = [
   'cpqc_tiktok',
@@ -460,6 +521,24 @@ function toNum(value) {
   if (value == null || value === '') return 0
   const n = Number(value)
   return Number.isNaN(n) ? 0 : n
+}
+
+function sumFields(row, keys) {
+  return keys.reduce((sum, key) => sum + toNum(row?.[key]), 0)
+}
+
+/** CPI tổng = tổng CPQC (TikTok+FB) / tổng Inbox */
+function cpiTong(row) {
+  const cost = sumFields(row, ['cpqc_tiktok', 'cpqc_fb'])
+  const inbox = sumFields(row, ['inbox_tiktok', 'inbox_fb'])
+  return inbox ? Math.round(cost / inbox) : 0
+}
+
+/** CPL tổng = tổng CPQC / tổng KH */
+function cplTong(row) {
+  const cost = sumFields(row, ['cpqc_tiktok', 'cpqc_fb', 'cpqc_google'])
+  const kh = sumFields(row, ['kh_tiktok', 'kh_fb', 'kh_google'])
+  return kh ? Math.round(cost / kh) : 0
 }
 
 async function loadItems() {
