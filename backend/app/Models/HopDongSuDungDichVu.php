@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'ma_hop_dong',
@@ -18,10 +19,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'nguoi_tham_gia_ids',
     'trang_thai',
     'tong_tien',
+    'phat_sinh',
     'chiet_khau',
     'ma_giam_gia',
     'khuyen_mai_theo_ma_giam_gia',
     'tien_coc',
+    'so_tien_thanh_toan_lan_1',
+    'so_tien_thanh_toan_lan_2',
+    'so_tien_thanh_toan_lan_3',
+    'thoi_gian_thanh_toan_lan_1',
+    'thoi_gian_thanh_toan_lan_2',
+    'thoi_gian_thanh_toan_lan_3',
     'hinh_thuc_coc',
     'han_thanh_toan_lan_2',
     'han_thanh_toan_lan_3',
@@ -43,9 +51,16 @@ class HopDongSuDungDichVu extends Model
             'thong_tin_hop_dong' => 'array',
             'nguoi_tham_gia_ids' => 'array',
             'tong_tien' => 'integer',
+            'phat_sinh' => 'integer',
             'chiet_khau' => 'integer',
             'khuyen_mai_theo_ma_giam_gia' => 'integer',
             'tien_coc' => 'integer',
+            'so_tien_thanh_toan_lan_1' => 'integer',
+            'so_tien_thanh_toan_lan_2' => 'integer',
+            'so_tien_thanh_toan_lan_3' => 'integer',
+            'thoi_gian_thanh_toan_lan_1' => 'date',
+            'thoi_gian_thanh_toan_lan_2' => 'date',
+            'thoi_gian_thanh_toan_lan_3' => 'date',
             'han_thanh_toan_lan_2' => 'date',
             'han_thanh_toan_lan_3' => 'date',
         ];
@@ -69,5 +84,25 @@ class HopDongSuDungDichVu extends Model
     public function nguoiTao(): BelongsTo
     {
         return $this->belongsTo(User::class, 'nguoi_tao_id');
+    }
+
+    public function combos(): HasMany
+    {
+        return $this->hasMany(HopDongDongSddvCombo::class, 'ma_hop_dong_id');
+    }
+
+    public function dichVu(): HasMany
+    {
+        return $this->hasMany(HopDongDongSddvDichVu::class, 'ma_hop_dong_id');
+    }
+
+    public function concepts(): HasMany
+    {
+        return $this->hasMany(HopDongDongSddvConcept::class, 'ma_hop_dong_id');
+    }
+
+    public function trangPhucs(): HasMany
+    {
+        return $this->hasMany(HopDongDongSddvTrangPhuc::class, 'ma_hop_dong_id');
     }
 }

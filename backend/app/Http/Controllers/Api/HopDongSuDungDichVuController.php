@@ -2,6 +2,10 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Models\HopDongDongSddvCombo;
+use App\Models\HopDongDongSddvConcept;
+use App\Models\HopDongDongSddvDichVu;
+use App\Models\HopDongDongSddvTrangPhuc;
 use App\Models\HopDongSuDungDichVu;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -39,10 +43,7 @@ class HopDongSuDungDichVuController extends BaseApiController
             $denNgay = $validated['den_ngay'] ?? null;
 
             $query = HopDongSuDungDichVu::query()
-                ->with([
-                    'loaiHopDong:id,ten_hop_dong,ma_hop_dong',
-                    'nguoiTao:id,name,phone',
-                ])
+                ->with($this->detailRelations())
                 ->when($keyword !== '', function ($q) use ($keyword) {
                     $q->where(function ($inner) use ($keyword) {
                         $inner->where('ma_hop_dong', 'like', "%{$keyword}%")
@@ -83,12 +84,7 @@ class HopDongSuDungDichVuController extends BaseApiController
     public function show(HopDongSuDungDichVu $hop_dong_su_dung_dich_vu): JsonResponse
     {
         return $this->handleApi(function () use ($hop_dong_su_dung_dich_vu) {
-            $hop_dong_su_dung_dich_vu->load([
-                'loaiHopDong:id,ten_hop_dong,ma_hop_dong',
-                'nguoiTao:id,name,phone',
-            ]);
-
-            return response()->json($hop_dong_su_dung_dich_vu);
+            return response()->json($this->loadDetail($hop_dong_su_dung_dich_vu));
 
         }, 'lấy chi tiết hợp đồng sử dụng dịch vụ');
     }
@@ -118,12 +114,7 @@ class HopDongSuDungDichVuController extends BaseApiController
                 return $hopDong;
             });
 
-            $hopDong->load([
-                'loaiHopDong:id,ten_hop_dong,ma_hop_dong',
-                'nguoiTao:id,name,phone',
-            ]);
-
-            return response()->json($hopDong, 201);
+            return response()->json($this->loadDetail($hopDong), 201);
 
         }, 'khởi tạo hợp đồng sử dụng dịch vụ');
     }
@@ -136,14 +127,16 @@ class HopDongSuDungDichVuController extends BaseApiController
         return $this->handleApi(function () use ($request) {
             $validated = $this->validatePayload($request);
             $validated['nguoi_tao_id'] = $request->user()->id;
+            [$combos, $dichVu, $concepts, $trangPhucs] = $this->extractNestedPayload($validated);
 
-            $hopDong = HopDongSuDungDichVu::create($validated);
-            $hopDong->load([
-                'loaiHopDong:id,ten_hop_dong,ma_hop_dong',
-                'nguoiTao:id,name,phone',
-            ]);
+            $hopDong = DB::transaction(function () use ($validated, $combos, $dichVu, $concepts, $trangPhucs) {
+                $hopDong = HopDongSuDungDichVu::create($validated);
+                $this->syncNestedRelations($hopDong, $combos, $dichVu, $concepts, $trangPhucs);
 
-            return response()->json($hopDong, 201);
+                return $hopDong;
+            });
+
+            return response()->json($this->loadDetail($hopDong), 201);
 
         }, 'tạo hợp đồng sử dụng dịch vụ');
     }
@@ -156,13 +149,16 @@ class HopDongSuDungDichVuController extends BaseApiController
         return $this->handleApi(function () use ($request, $hop_dong_su_dung_dich_vu) {
             $validated = $this->validatePayload($request, $hop_dong_su_dung_dich_vu->id, true);
             unset($validated['nguoi_tao_id'], $validated['ma_hop_dong']);
+            [$combos, $dichVu, $concepts, $trangPhucs] = $this->extractNestedPayload($validated);
 
-            $hop_dong_su_dung_dich_vu->update($validated);
+            DB::transaction(function () use ($hop_dong_su_dung_dich_vu, $validated, $combos, $dichVu, $concepts, $trangPhucs) {
+                if ($validated !== []) {
+                    $hop_dong_su_dung_dich_vu->update($validated);
+                }
+                $this->syncNestedRelations($hop_dong_su_dung_dich_vu, $combos, $dichVu, $concepts, $trangPhucs);
+            });
 
-            return response()->json($hop_dong_su_dung_dich_vu->fresh()->load([
-                'loaiHopDong:id,ten_hop_dong,ma_hop_dong',
-                'nguoiTao:id,name,phone',
-            ]));
+            return response()->json($this->loadDetail($hop_dong_su_dung_dich_vu->fresh()));
 
         }, 'cập nhật hợp đồng sử dụng dịch vụ');
     }
@@ -178,6 +174,26 @@ class HopDongSuDungDichVuController extends BaseApiController
             return response()->json(['message' => 'Đã xóa hợp đồng sử dụng dịch vụ.']);
 
         }, 'xóa hợp đồng sử dụng dịch vụ');
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function detailRelations(): array
+    {
+        return [
+            'loaiHopDong:id,ten_hop_dong,ma_hop_dong',
+            'nguoiTao:id,name,phone',
+            'combos.combo:id,ma_nhom,ten_nhom,gia_goc,gia_khuyen_mai',
+            'dichVu.dichVu:id,ma_dich_vu,ten_dich_vu,gia_goc,gia_khuyen_mai',
+            'concepts.concept:id,ma_concept,ten_concept,dia_diem,hinh_anh,trang_thai',
+            'trangPhucs.trangPhuc:id,ma_san_pham,ten_san_pham,gia_cho_thue,hinh_anh,trang_thai',
+        ];
+    }
+
+    private function loadDetail(HopDongSuDungDichVu $hopDong): HopDongSuDungDichVu
+    {
+        return $hopDong->load($this->detailRelations());
     }
 
     /**
@@ -209,10 +225,17 @@ class HopDongSuDungDichVuController extends BaseApiController
                 'hoan_thanh',
             ])],
             'tong_tien' => ['nullable', 'integer', 'min:0'],
+            'phat_sinh' => ['nullable', 'integer', 'min:0'],
             'chiet_khau' => ['nullable', 'integer', 'min:0'],
             'ma_giam_gia' => ['nullable', 'string', 'max:100'],
             'khuyen_mai_theo_ma_giam_gia' => ['nullable', 'integer', 'min:0'],
             'tien_coc' => ['nullable', 'integer', 'min:0'],
+            'so_tien_thanh_toan_lan_1' => ['nullable', 'integer', 'min:0'],
+            'so_tien_thanh_toan_lan_2' => ['nullable', 'integer', 'min:0'],
+            'so_tien_thanh_toan_lan_3' => ['nullable', 'integer', 'min:0'],
+            'thoi_gian_thanh_toan_lan_1' => ['nullable', 'date'],
+            'thoi_gian_thanh_toan_lan_2' => ['nullable', 'date'],
+            'thoi_gian_thanh_toan_lan_3' => ['nullable', 'date'],
             'hinh_thuc_coc' => ['nullable', 'string', Rule::in(['online', 'offline'])],
             'han_thanh_toan_lan_2' => ['nullable', 'date'],
             'han_thanh_toan_lan_3' => ['nullable', 'date'],
@@ -220,19 +243,37 @@ class HopDongSuDungDichVuController extends BaseApiController
             'yeu_cau_dac_biet' => ['nullable', 'string'],
             'ghi_chu_sale' => ['nullable', 'string'],
             'luot_gioi_thieu' => ['nullable', 'string', 'max:255'],
+            'combos' => [$isUpdate ? 'sometimes' : 'nullable', 'array'],
+            'combos.*.combo_id' => ['required', 'integer', 'exists:dich_vu_danh_sach_dich_nhom_dich_vu,id', 'distinct'],
+            'combos.*.so_luong' => ['required', 'integer', 'min:1', 'max:999'],
+            'combos.*.thanh_tien' => ['required', 'integer', 'min:0'],
+            'combos.*.ghi_chu' => ['nullable', 'string', 'max:100'],
+            'dich_vu' => [$isUpdate ? 'sometimes' : 'nullable', 'array'],
+            'dich_vu.*.dich_vu_id' => ['required', 'integer', 'exists:dich_vu_danh_sach_dich_vu_le,id', 'distinct'],
+            'dich_vu.*.so_luong' => ['required', 'integer', 'min:1', 'max:999'],
+            'dich_vu.*.thanh_tien' => ['required', 'integer', 'min:0'],
+            'dich_vu.*.ghi_chu' => ['nullable', 'string', 'max:100'],
+            'concepts' => [$isUpdate ? 'sometimes' : 'nullable', 'array'],
+            'concepts.*.concept_id' => ['required', 'integer', 'exists:concept,id', 'distinct'],
+            'trang_phucs' => [$isUpdate ? 'sometimes' : 'nullable', 'array'],
+            'trang_phucs.*.trang_phuc_id' => ['required', 'integer', 'exists:trang_phuc,id', 'distinct'],
+            'trang_phucs.*.ngay_bat_dau' => ['nullable', 'date'],
+            'trang_phucs.*.ngay_ket_thuc' => ['nullable', 'date', 'after_or_equal:trang_phucs.*.ngay_bat_dau'],
         ]);
 
-        if (array_key_exists('tong_tien', $validated)) {
-            $validated['tong_tien'] = (int) ($validated['tong_tien'] ?? 0);
-        }
-        if (array_key_exists('chiet_khau', $validated)) {
-            $validated['chiet_khau'] = (int) ($validated['chiet_khau'] ?? 0);
-        }
-        if (array_key_exists('khuyen_mai_theo_ma_giam_gia', $validated)) {
-            $validated['khuyen_mai_theo_ma_giam_gia'] = (int) ($validated['khuyen_mai_theo_ma_giam_gia'] ?? 0);
-        }
-        if (array_key_exists('tien_coc', $validated)) {
-            $validated['tien_coc'] = (int) ($validated['tien_coc'] ?? 0);
+        foreach ([
+            'tong_tien',
+            'phat_sinh',
+            'chiet_khau',
+            'khuyen_mai_theo_ma_giam_gia',
+            'tien_coc',
+            'so_tien_thanh_toan_lan_1',
+            'so_tien_thanh_toan_lan_2',
+            'so_tien_thanh_toan_lan_3',
+        ] as $moneyField) {
+            if (array_key_exists($moneyField, $validated)) {
+                $validated[$moneyField] = (int) ($validated[$moneyField] ?? 0);
+            }
         }
         if (! $isUpdate) {
             $validated['trang_thai'] = $validated['trang_thai'] ?? 'moi_tao';
@@ -244,7 +285,157 @@ class HopDongSuDungDichVuController extends BaseApiController
                 ->values()
                 ->all();
         }
+        if (array_key_exists('combos', $validated)) {
+            $validated['combos'] = collect($validated['combos'] ?? [])
+                ->map(fn ($item) => [
+                    'combo_id' => (int) $item['combo_id'],
+                    'so_luong' => (int) $item['so_luong'],
+                    'thanh_tien' => (int) $item['thanh_tien'],
+                    'ghi_chu' => isset($item['ghi_chu']) ? trim((string) $item['ghi_chu']) : null,
+                ])
+                ->values()
+                ->all();
+        }
+        if (array_key_exists('dich_vu', $validated)) {
+            $validated['dich_vu'] = collect($validated['dich_vu'] ?? [])
+                ->map(fn ($item) => [
+                    'dich_vu_id' => (int) $item['dich_vu_id'],
+                    'so_luong' => (int) $item['so_luong'],
+                    'thanh_tien' => (int) $item['thanh_tien'],
+                    'ghi_chu' => isset($item['ghi_chu']) ? trim((string) $item['ghi_chu']) : null,
+                ])
+                ->values()
+                ->all();
+        }
+        if (array_key_exists('concepts', $validated)) {
+            $validated['concepts'] = collect($validated['concepts'] ?? [])
+                ->map(fn ($item) => [
+                    'concept_id' => (int) $item['concept_id'],
+                ])
+                ->values()
+                ->all();
+        }
+        if (array_key_exists('trang_phucs', $validated)) {
+            $validated['trang_phucs'] = collect($validated['trang_phucs'] ?? [])
+                ->map(fn ($item) => [
+                    'trang_phuc_id' => (int) $item['trang_phuc_id'],
+                    'ngay_bat_dau' => $item['ngay_bat_dau'] ?? null,
+                    'ngay_ket_thuc' => $item['ngay_ket_thuc'] ?? null,
+                ])
+                ->values()
+                ->all();
+        }
 
         return $validated;
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array{0: ?array, 1: ?array, 2: ?array, 3: ?array}
+     */
+    private function extractNestedPayload(array &$validated): array
+    {
+        $combos = array_key_exists('combos', $validated) ? $validated['combos'] : null;
+        $dichVu = array_key_exists('dich_vu', $validated) ? $validated['dich_vu'] : null;
+        $concepts = array_key_exists('concepts', $validated) ? $validated['concepts'] : null;
+        $trangPhucs = array_key_exists('trang_phucs', $validated) ? $validated['trang_phucs'] : null;
+        unset($validated['combos'], $validated['dich_vu'], $validated['concepts'], $validated['trang_phucs']);
+
+        return [$combos, $dichVu, $concepts, $trangPhucs];
+    }
+
+    /**
+     * @param  ?array<int, mixed>  $combos
+     * @param  ?array<int, mixed>  $dichVu
+     * @param  ?array<int, mixed>  $concepts
+     * @param  ?array<int, mixed>  $trangPhucs
+     */
+    private function syncNestedRelations(
+        HopDongSuDungDichVu $hopDong,
+        ?array $combos,
+        ?array $dichVu,
+        ?array $concepts,
+        ?array $trangPhucs,
+    ): void {
+        if (is_array($combos)) {
+            $this->syncCombos($hopDong, $combos);
+        }
+        if (is_array($dichVu)) {
+            $this->syncDichVu($hopDong, $dichVu);
+        }
+        if (is_array($concepts)) {
+            $this->syncConcepts($hopDong, $concepts);
+        }
+        if (is_array($trangPhucs)) {
+            $this->syncTrangPhucs($hopDong, $trangPhucs);
+        }
+    }
+
+    /**
+     * @param  array<int, array{combo_id: int, so_luong: int, thanh_tien: int, ghi_chu: ?string}>  $items
+     */
+    private function syncCombos(HopDongSuDungDichVu $hopDong, array $items): void
+    {
+        $hopDong->combos()->delete();
+
+        foreach ($items as $item) {
+            HopDongDongSddvCombo::create([
+                'ma_hop_dong_id' => $hopDong->id,
+                'combo_id' => $item['combo_id'],
+                'so_luong' => $item['so_luong'],
+                'thanh_tien' => $item['thanh_tien'],
+                'ghi_chu' => $item['ghi_chu'] !== '' ? $item['ghi_chu'] : null,
+            ]);
+        }
+    }
+
+    /**
+     * @param  array<int, array{dich_vu_id: int, so_luong: int, thanh_tien: int, ghi_chu: ?string}>  $items
+     */
+    private function syncDichVu(HopDongSuDungDichVu $hopDong, array $items): void
+    {
+        $hopDong->dichVu()->delete();
+
+        foreach ($items as $item) {
+            HopDongDongSddvDichVu::create([
+                'ma_hop_dong_id' => $hopDong->id,
+                'dich_vu_id' => $item['dich_vu_id'],
+                'so_luong' => $item['so_luong'],
+                'thanh_tien' => $item['thanh_tien'],
+                'ghi_chu' => $item['ghi_chu'] !== '' ? $item['ghi_chu'] : null,
+            ]);
+        }
+    }
+
+    /**
+     * @param  array<int, array{concept_id: int}>  $items
+     */
+    private function syncConcepts(HopDongSuDungDichVu $hopDong, array $items): void
+    {
+        $hopDong->concepts()->delete();
+
+        foreach ($items as $item) {
+            HopDongDongSddvConcept::create([
+                'ma_hop_dong_id' => $hopDong->id,
+                'concept_id' => $item['concept_id'],
+            ]);
+        }
+    }
+
+    /**
+     * @param  array<int, array{trang_phuc_id: int, ngay_bat_dau: ?string, ngay_ket_thuc: ?string}>  $items
+     */
+    private function syncTrangPhucs(HopDongSuDungDichVu $hopDong, array $items): void
+    {
+        $hopDong->trangPhucs()->delete();
+
+        foreach ($items as $item) {
+            HopDongDongSddvTrangPhuc::create([
+                'ma_hop_dong_id' => $hopDong->id,
+                'trang_phuc_id' => $item['trang_phuc_id'],
+                'ngay_bat_dau' => $item['ngay_bat_dau'] ?: null,
+                'ngay_ket_thuc' => $item['ngay_ket_thuc'] ?: null,
+            ]);
+        }
     }
 }

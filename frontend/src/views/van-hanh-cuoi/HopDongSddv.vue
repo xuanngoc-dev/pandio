@@ -219,6 +219,7 @@ import { Delete, Document, Edit, Plus, Search } from '@element-plus/icons-vue'
 import {
   deleteHopDongSuDungDichVu,
   fetchHopDongSuDungDichVu,
+  getHopDongSuDungDichVu,
   khoiTaoHopDongSuDungDichVu,
 } from '@/api/hopDongSuDungDichVu'
 import { fetchLoaiHopDong } from '@/api/loaiHopDong'
@@ -402,14 +403,24 @@ function openDrafts() {
   draftModalVisible.value = true
 }
 
-function openEdit(row) {
-  currentHopDong.value = row
+async function openEdit(row) {
+  try {
+    const { data } = await getHopDongSuDungDichVu(row.id)
+    currentHopDong.value = data
+  } catch {
+    currentHopDong.value = row
+  }
   formModalVisible.value = true
 }
 
-function onContinueDraft(row) {
-  currentHopDong.value = row
+async function onContinueDraft(row) {
   draftModalVisible.value = false
+  try {
+    const { data } = await getHopDongSuDungDichVu(row.id)
+    currentHopDong.value = data
+  } catch {
+    currentHopDong.value = row
+  }
   formModalVisible.value = true
 }
 
