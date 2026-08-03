@@ -50,7 +50,12 @@ class HopDongSuDungDichVuController extends BaseApiController
                     });
                 })
                 ->when($loaiHopDongId, fn ($q) => $q->where('loai_hop_dong_id', $loaiHopDongId))
-                ->when($trangThai, fn ($q) => $q->where('trang_thai', $trangThai))
+                ->when(
+                    $trangThai,
+                    fn ($q) => $q->where('trang_thai', $trangThai),
+                    // Mặc định ẩn hợp đồng nháp / mới tạo
+                    fn ($q) => $q->whereNotIn('trang_thai', ['moi_tao', 'nhap']),
+                )
                 ->orderByDesc('id');
 
             return response()->json($query->paginate($perPage));

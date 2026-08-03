@@ -53,7 +53,7 @@
     <CustomCard shadow="hover" class="table-card">
       <template #header>
         <div class="card-header">
-          <span class="card-title">Danh sách hợp đồng sử dụng dịch vụ</span>
+          <span class="card-title">Danh sách hợp đồng</span>
           <BulkActionBar :actions="bulkActions" @action="onBulkAction">
             <TableColumnConfig :settings="columnSettings" />
             <CustomTooltip content="Thêm mới" placement="top">
@@ -374,7 +374,6 @@ async function openCreate() {
     const { data } = await khoiTaoHopDongSuDungDichVu()
     currentHopDong.value = data
     formModalVisible.value = true
-    await loadItems()
   } catch {
     // interceptor
   } finally {
