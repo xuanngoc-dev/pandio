@@ -14,7 +14,7 @@ class HopDongSuDungDichVuController extends BaseApiController
     /**
      * Danh sách hợp đồng sử dụng dịch vụ — phân trang + tìm kiếm.
      *
-     * Query: page, per_page, keyword, loai_hop_dong_id, trang_thai
+     * Query: page, per_page, keyword, loai_hop_dong_id, trang_thai, chi_nhap, tu_ngay, den_ngay
      */
     public function index(Request $request): JsonResponse
     {
@@ -25,12 +25,18 @@ class HopDongSuDungDichVuController extends BaseApiController
                 'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
                 'loai_hop_dong_id' => ['sometimes', 'nullable', 'integer', 'exists:loai_hop_dong,id'],
                 'trang_thai' => ['sometimes', 'nullable', 'string', 'max:50'],
+                'chi_nhap' => ['sometimes', 'boolean'],
+                'tu_ngay' => ['sometimes', 'nullable', 'date'],
+                'den_ngay' => ['sometimes', 'nullable', 'date', 'after_or_equal:tu_ngay'],
             ]);
 
             $perPage = $validated['per_page'] ?? 10;
             $keyword = trim((string) ($validated['keyword'] ?? ''));
             $loaiHopDongId = $validated['loai_hop_dong_id'] ?? null;
             $trangThai = $validated['trang_thai'] ?? null;
+            $chiNhap = $request->boolean('chi_nhap');
+            $tuNgay = $validated['tu_ngay'] ?? null;
+            $denNgay = $validated['den_ngay'] ?? null;
 
             $query = HopDongSuDungDichVu::query()
                 ->with([
@@ -50,12 +56,20 @@ class HopDongSuDungDichVuController extends BaseApiController
                     });
                 })
                 ->when($loaiHopDongId, fn ($q) => $q->where('loai_hop_dong_id', $loaiHopDongId))
-                ->when(
-                    $trangThai,
-                    fn ($q) => $q->where('trang_thai', $trangThai),
-                    // Mặc định ẩn hợp đồng nháp / mới tạo
-                    fn ($q) => $q->whereNotIn('trang_thai', ['moi_tao', 'nhap']),
-                )
+                ->when($tuNgay, fn ($q) => $q->whereDate('created_at', '>=', $tuNgay))
+                ->when($denNgay, fn ($q) => $q->whereDate('created_at', '<=', $denNgay))
+                ->when($chiNhap, function ($q) {
+                    // Nháp: moi_tao/nhap và đã chọn loại hợp đồng
+                    $q->whereIn('trang_thai', ['moi_tao', 'nhap'])
+                        ->whereNotNull('loai_hop_dong_id');
+                }, function ($q) use ($trangThai) {
+                    if ($trangThai) {
+                        $q->where('trang_thai', $trangThai);
+                    } else {
+                        // Mặc định ẩn hợp đồng nháp / mới tạo
+                        $q->whereNotIn('trang_thai', ['moi_tao', 'nhap']);
+                    }
+                })
                 ->orderByDesc('id');
 
             return response()->json($query->paginate($perPage));

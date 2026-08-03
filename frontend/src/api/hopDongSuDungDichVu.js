@@ -2,7 +2,16 @@ import api from '@/api/axios'
 
 /**
  * Danh sách hợp đồng sử dụng dịch vụ — phân trang.
- * @param {{ page?: number, per_page?: number, keyword?: string, loai_hop_dong_id?: number, trang_thai?: string }} params
+ * @param {{
+ *   page?: number,
+ *   per_page?: number,
+ *   keyword?: string,
+ *   loai_hop_dong_id?: number,
+ *   trang_thai?: string,
+ *   chi_nhap?: boolean|number,
+ *   tu_ngay?: string,
+ *   den_ngay?: string,
+ * }} params
  */
 export function fetchHopDongSuDungDichVu(params = {}) {
   return api.get('/hop-dong-su-dung-dich-vu', { params })

@@ -56,6 +56,12 @@
           <span class="card-title">Danh sách hợp đồng</span>
           <BulkActionBar :actions="bulkActions" @action="onBulkAction">
             <TableColumnConfig :settings="columnSettings" />
+            <CustomTooltip content="Danh sách hợp đồng nháp" placement="top">
+              <CustomButton @click="openDrafts">
+                <CustomIcon><Document /></CustomIcon>
+                Nháp
+              </CustomButton>
+            </CustomTooltip>
             <CustomTooltip content="Thêm mới" placement="top">
               <CustomButton type="primary" :loading="creating" @click="openCreate">
                 <CustomIcon><Plus /></CustomIcon>
@@ -190,10 +196,18 @@
       />
     </CustomCard>
 
+    <HopDongSddvDraftModal
+      ref="draftModalRef"
+      v-model="draftModalVisible"
+      @continue="onContinueDraft"
+      @changed="loadItems"
+    />
+
     <HopDongSddvFormModal
       v-model="formModalVisible"
       :hop-dong="currentHopDong"
       @saved="onFormSaved"
+      @closed="onFormClosed"
     />
   </div>
 </template>
@@ -201,7 +215,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Delete, Edit, Plus, Search } from '@element-plus/icons-vue'
+import { Delete, Document, Edit, Plus, Search } from '@element-plus/icons-vue'
 import {
   deleteHopDongSuDungDichVu,
   fetchHopDongSuDungDichVu,
@@ -225,6 +239,7 @@ import {
   CustomTooltip,
 } from '@/components/element'
 import Pagination from '@/components/Pagination.vue'
+import HopDongSddvDraftModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvDraftModal.vue'
 import HopDongSddvFormModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvFormModal.vue'
 
 const tableColumns = [
@@ -261,6 +276,8 @@ const loaiHopDongOptions = ref([])
 const bulkDeleting = ref(false)
 const creating = ref(false)
 const formModalVisible = ref(false)
+const draftModalVisible = ref(false)
+const draftModalRef = ref(null)
 const currentHopDong = ref(null)
 
 const { selectedCount, onSelectionChange, clearSelection, selectedIds } = useBulkSelection()
@@ -381,14 +398,33 @@ async function openCreate() {
   }
 }
 
+function openDrafts() {
+  draftModalVisible.value = true
+}
+
 function openEdit(row) {
   currentHopDong.value = row
+  formModalVisible.value = true
+}
+
+function onContinueDraft(row) {
+  currentHopDong.value = row
+  draftModalVisible.value = false
   formModalVisible.value = true
 }
 
 function onFormSaved(hopDong) {
   currentHopDong.value = hopDong
   loadItems()
+  if (draftModalVisible.value) {
+    draftModalRef.value?.reload?.()
+  }
+}
+
+function onFormClosed() {
+  if (draftModalVisible.value) {
+    draftModalRef.value?.reload?.()
+  }
 }
 
 async function onBulkAction(key) {

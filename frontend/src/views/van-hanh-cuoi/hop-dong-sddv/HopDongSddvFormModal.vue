@@ -238,26 +238,24 @@
     <template #footer>
       <div class="footer-actions">
         <CustomButton @click="visible = false">Đóng</CustomButton>
-        <div class="footer-actions__right">
-          <CustomButton v-if="activeStep > 0" @click="activeStep -= 1">Quay lại</CustomButton>
-          <CustomButton
-            v-if="activeStep === 0"
-            type="primary"
-            plain
-            :loading="saving"
-            @click="saveStep1(false)"
-          >
-            Lưu
-          </CustomButton>
-          <CustomButton
-            v-if="activeStep < steps.length - 1"
-            type="primary"
-            :loading="saving"
-            @click="onNext"
-          >
-            Tiếp tục
-          </CustomButton>
-        </div>
+        <CustomButton v-if="activeStep > 0" @click="activeStep -= 1">Quay lại</CustomButton>
+        <CustomButton
+          v-if="activeStep === 0"
+          type="primary"
+          plain
+          :loading="saving"
+          @click="saveStep1(false)"
+        >
+          Lưu
+        </CustomButton>
+        <CustomButton
+          v-if="activeStep < steps.length - 1"
+          type="primary"
+          :loading="saving"
+          @click="onNext"
+        >
+          Tiếp tục
+        </CustomButton>
       </div>
     </template>
   </CustomDialog>
@@ -744,13 +742,8 @@ watch(dynamicFields, () => {
 .footer-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.footer-actions__right {
-  display: flex;
-  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
 }
 </style>
