@@ -1,0 +1,49 @@
+import api from '@/api/axios'
+
+/**
+ * Danh sách hợp đồng sử dụng dịch vụ — phân trang.
+ * @param {{ page?: number, per_page?: number, keyword?: string, loai_hop_dong_id?: number, trang_thai?: string }} params
+ */
+export function fetchHopDongSuDungDichVu(params = {}) {
+  return api.get('/hop-dong-su-dung-dich-vu', { params })
+}
+
+/**
+ * Chi tiết hợp đồng sử dụng dịch vụ.
+ * @param {number|string} id
+ */
+export function getHopDongSuDungDichVu(id) {
+  return api.get(`/hop-dong-su-dung-dich-vu/${id}`)
+}
+
+/**
+ * Khởi tạo hợp đồng nháp + sinh mã HDSDDV_DDMMYYYY{id}.
+ */
+export function khoiTaoHopDongSuDungDichVu() {
+  return api.post('/hop-dong-su-dung-dich-vu/khoi-tao')
+}
+
+/**
+ * Tạo hợp đồng sử dụng dịch vụ.
+ * @param {object} payload
+ */
+export function createHopDongSuDungDichVu(payload) {
+  return api.post('/hop-dong-su-dung-dich-vu', payload)
+}
+
+/**
+ * Cập nhật hợp đồng sử dụng dịch vụ.
+ * @param {number|string} id
+ * @param {object} payload
+ */
+export function updateHopDongSuDungDichVu(id, payload) {
+  return api.put(`/hop-dong-su-dung-dich-vu/${id}`, payload)
+}
+
+/**
+ * Xóa hợp đồng sử dụng dịch vụ.
+ * @param {number|string} id
+ */
+export function deleteHopDongSuDungDichVu(id) {
+  return api.delete(`/hop-dong-su-dung-dich-vu/${id}`)
+}
