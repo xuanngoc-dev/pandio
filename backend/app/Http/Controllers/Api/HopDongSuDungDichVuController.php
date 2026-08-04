@@ -27,7 +27,7 @@ class HopDongSuDungDichVuController extends BaseApiController
                 'page' => ['sometimes', 'integer', 'min:1'],
                 'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
                 'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
-                'loai_hop_dong_id' => ['sometimes', 'nullable', 'integer', 'exists:loai_hop_dong,id'],
+                'loai_hop_dong_id' => ['sometimes', 'nullable', 'integer', 'exists:danh_muc_loai_hop_dong,id'],
                 'trang_thai' => ['sometimes', 'nullable', 'string', 'max:50'],
                 'chi_nhap' => ['sometimes', 'boolean'],
                 'tu_ngay' => ['sometimes', 'nullable', 'date'],
@@ -208,12 +208,13 @@ class HopDongSuDungDichVuController extends BaseApiController
 
         $validated = $request->validate([
             'ma_hop_dong' => [$isUpdate ? 'sometimes' : 'required', 'string', 'max:100', $maHopDongRule],
-            'loai_hop_dong_id' => [$isUpdate ? 'sometimes' : 'required', 'nullable', 'integer', 'exists:loai_hop_dong,id'],
+            'loai_hop_dong_id' => [$isUpdate ? 'sometimes' : 'required', 'nullable', 'integer', 'exists:danh_muc_loai_hop_dong,id'],
             'ten_khach_hang' => ['nullable', 'string', 'max:255'],
             'sdt_khach_hang' => ['nullable', 'string', 'max:20'],
             'dia_chi' => ['nullable', 'string', 'max:255'],
             'kenh_tiep_can' => ['nullable', 'string', 'max:255'],
             'thong_tin_hop_dong' => ['nullable', 'array'],
+            'thong_tin_dieu_phoi' => ['nullable', 'array'],
             'nguoi_tham_gia_ids' => ['nullable', 'array'],
             'nguoi_tham_gia_ids.*' => ['integer', 'exists:users,id'],
             'trang_thai' => ['sometimes', 'string', Rule::in([

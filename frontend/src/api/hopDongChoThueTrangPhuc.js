@@ -2,7 +2,15 @@ import api from '@/api/axios'
 
 /**
  * Danh sách hợp đồng cho thuê trang phục — phân trang.
- * @param {{ page?: number, per_page?: number, keyword?: string, trang_thai?: string }} params
+ * @param {{
+ *   page?: number,
+ *   per_page?: number,
+ *   keyword?: string,
+ *   trang_thai?: string,
+ *   chi_nhap?: boolean|number,
+ *   tu_ngay?: string,
+ *   den_ngay?: string,
+ * }} params
  */
 export function fetchHopDongChoThueTrangPhuc(params = {}) {
   return api.get('/hop-dong-cho-thue-trang-phuc', { params })
@@ -14,6 +22,13 @@ export function fetchHopDongChoThueTrangPhuc(params = {}) {
  */
 export function getHopDongChoThueTrangPhuc(id) {
   return api.get(`/hop-dong-cho-thue-trang-phuc/${id}`)
+}
+
+/**
+ * Khởi tạo hợp đồng nháp + sinh mã HDTTP_DDMMYYYY{id}.
+ */
+export function khoiTaoHopDongChoThueTrangPhuc() {
+  return api.post('/hop-dong-cho-thue-trang-phuc/khoi-tao')
 }
 
 /**

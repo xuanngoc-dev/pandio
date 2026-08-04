@@ -108,7 +108,7 @@ class LoaiHopDongController extends BaseApiController
                 'required',
                 'string',
                 'max:50',
-                Rule::unique('loai_hop_dong', 'ma_hop_dong')->ignore($ignoreId),
+                Rule::unique('danh_muc_loai_hop_dong', 'ma_hop_dong')->ignore($ignoreId),
             ],
             'noi_dung' => ['nullable', 'array'],
             'noi_dung.truong' => ['nullable', 'array'],
@@ -135,6 +135,7 @@ class LoaiHopDongController extends BaseApiController
                     'time',
                     'month',
                     'year',
+                    // Giữ để tương thích dữ liệu cũ; UI không còn cho chọn mới
                     'file',
                     'image',
                 ]),
@@ -143,6 +144,12 @@ class LoaiHopDongController extends BaseApiController
             'noi_dung.truong.*.options' => ['nullable', 'array'],
             'noi_dung.truong.*.options.*.label' => ['required_with:noi_dung.truong.*.options', 'string', 'max:255'],
             'noi_dung.truong.*.options.*.value' => ['required_with:noi_dung.truong.*.options', 'string', 'max:255'],
+            'thong_tin_dieu_phoi' => ['nullable', 'array'],
+            'thong_tin_dieu_phoi.*' => ['nullable', 'array'],
+            'thong_tin_dieu_phoi.*.name' => ['required', 'string', 'max:255'],
+            'thong_tin_dieu_phoi.*.value' => ['nullable', 'string'],
+            'thong_tin_dieu_phoi.*.required' => ['nullable', 'boolean'],
+            'thong_tin_dieu_phoi.*.note' => ['nullable', 'string'],
             'trang_thai' => ['required', Rule::in(['hoat_dong', 'ngung_hoat_dong'])],
         ]);
     }

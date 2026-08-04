@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'dia_chi',
     'kenh_tiep_can',
     'thong_tin_hop_dong',
+    'thong_tin_dieu_phoi',
     'nguoi_tao_id',
     'nguoi_tham_gia_ids',
     'trang_thai',
@@ -49,6 +50,7 @@ class HopDongSuDungDichVu extends Model
     {
         return [
             'thong_tin_hop_dong' => 'array',
+            'thong_tin_dieu_phoi' => 'array',
             'nguoi_tham_gia_ids' => 'array',
             'tong_tien' => 'integer',
             'phat_sinh' => 'integer',

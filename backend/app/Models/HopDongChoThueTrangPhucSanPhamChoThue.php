@@ -9,11 +9,24 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable([
     'hop_dong_id',
     'san_pham_id',
+    'ngay_bat_dau',
+    'ngay_ket_thuc',
     'ghi_chu',
 ])]
 class HopDongChoThueTrangPhucSanPhamChoThue extends Model
 {
     protected $table = 'hop_dong_cho_thue_trang_phuc_san_pham_cho_thue';
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'ngay_bat_dau' => 'date',
+            'ngay_ket_thuc' => 'date',
+        ];
+    }
 
     public function hopDong(): BelongsTo
     {

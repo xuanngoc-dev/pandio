@@ -39,7 +39,7 @@ export const cauHinhSections = [
         component: 'HopDongDatCoc',
       },
       {
-        label: 'Tuỳ chỉnh trường theo loại hợp đồng khách hàng',
+        label: 'Cấu hình thông tin hợp đồng',
         routeName: 'cau-hinh-tuy-chinh-truong-hop-dong',
         path: 'tuy-chinh-truong-hop-dong',
         component: 'TuyChinhTruongHopDong',

@@ -13,7 +13,7 @@ class TrangPhucController extends BaseApiController
     /**
      * Danh sách trang phục — phân trang + tìm kiếm.
      *
-     * Query: page, per_page, keyword, danh_muc, nha_cung_cap, chi_nhanh, trang_thai
+     * Query: page, per_page, keyword, danh_muc, nha_cung_cap, chi_nhanh, trang_thai, gia_tu, gia_den
      */
     public function index(Request $request): JsonResponse
     {
@@ -26,6 +26,8 @@ class TrangPhucController extends BaseApiController
                 'nha_cung_cap' => ['sometimes', 'nullable', 'integer', 'exists:nha_cung_cap_trang_phuc,id'],
                 'chi_nhanh' => ['sometimes', 'nullable', 'integer', 'exists:cau_hinh_chi_nhanh,id'],
                 'trang_thai' => ['sometimes', 'nullable', Rule::in([0, 1, '0', '1'])],
+                'gia_tu' => ['sometimes', 'nullable', 'integer', 'min:0'],
+                'gia_den' => ['sometimes', 'nullable', 'integer', 'min:0'],
             ]);
 
             $perPage = $validated['per_page'] ?? 10;
@@ -50,6 +52,8 @@ class TrangPhucController extends BaseApiController
                 ->when(array_key_exists('trang_thai', $validated) && $validated['trang_thai'] !== null, function ($q) use ($validated) {
                     $q->where('trang_thai', (int) $validated['trang_thai']);
                 })
+                ->when(isset($validated['gia_tu']), fn ($q) => $q->where('gia_cho_thue', '>=', (int) $validated['gia_tu']))
+                ->when(isset($validated['gia_den']), fn ($q) => $q->where('gia_cho_thue', '<=', (int) $validated['gia_den']))
                 ->orderByDesc('id');
 
             return response()->json($query->paginate($perPage));

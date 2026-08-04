@@ -8,6 +8,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class HopDongChoThueTrangPhucController extends BaseApiController
@@ -15,7 +16,7 @@ class HopDongChoThueTrangPhucController extends BaseApiController
     /**
      * Danh sách hợp đồng cho thuê trang phục — phân trang + tìm kiếm.
      *
-     * Query: page, per_page, keyword, trang_thai
+     * Query: page, per_page, keyword, trang_thai, chi_nhap, tu_ngay, den_ngay
      */
     public function index(Request $request): JsonResponse
     {
@@ -25,11 +26,17 @@ class HopDongChoThueTrangPhucController extends BaseApiController
                 'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
                 'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
                 'trang_thai' => ['sometimes', 'nullable', 'string', 'max:50'],
+                'chi_nhap' => ['sometimes', 'boolean'],
+                'tu_ngay' => ['sometimes', 'nullable', 'date'],
+                'den_ngay' => ['sometimes', 'nullable', 'date', 'after_or_equal:tu_ngay'],
             ]);
 
             $perPage = $validated['per_page'] ?? 10;
             $keyword = trim((string) ($validated['keyword'] ?? ''));
             $trangThai = $validated['trang_thai'] ?? null;
+            $chiNhap = $request->boolean('chi_nhap');
+            $tuNgay = $validated['tu_ngay'] ?? null;
+            $denNgay = $validated['den_ngay'] ?? null;
 
             $query = HopDongChoThueTrangPhuc::query()
                 ->with([
@@ -43,7 +50,17 @@ class HopDongChoThueTrangPhucController extends BaseApiController
                             ->orWhere('sdt_khach_hang', 'like', "%{$keyword}%");
                     });
                 })
-                ->when($trangThai, fn ($q) => $q->where('trang_thai', $trangThai))
+                ->when($tuNgay, fn ($q) => $q->whereDate('created_at', '>=', $tuNgay))
+                ->when($denNgay, fn ($q) => $q->whereDate('created_at', '<=', $denNgay))
+                ->when($chiNhap, function ($q) {
+                    $q->whereIn('trang_thai', ['moi_tao', 'nhap']);
+                }, function ($q) use ($trangThai) {
+                    if ($trangThai) {
+                        $q->where('trang_thai', $trangThai);
+                    } else {
+                        $q->whereNotIn('trang_thai', ['moi_tao', 'nhap']);
+                    }
+                })
                 ->orderByDesc('ngay_thue')
                 ->orderByDesc('id');
 
@@ -69,6 +86,48 @@ class HopDongChoThueTrangPhucController extends BaseApiController
     }
 
     /**
+     * Khởi tạo hợp đồng nháp + sinh mã HDTTP_DDMMYYYY{id}.
+     */
+    public function khoiTao(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $hopDong = DB::transaction(function () use ($request) {
+                $hopDong = HopDongChoThueTrangPhuc::create([
+                    'ma_hop_dong' => 'TEMP_'.Str::upper(Str::random(16)),
+                    'ten_khach_hang' => null,
+                    'sdt_khach_hang' => null,
+                    'ngay_thue' => null,
+                    'ngay_tra_du_kien' => null,
+                    'ngay_tra_chinh_thuc' => null,
+                    'so_ngay_thue' => 1,
+                    'tong_tien' => 0,
+                    'giam_gia' => 0,
+                    'tien_coc' => 0,
+                    'trang_thai' => 'moi_tao',
+                    'nguoi_cho_thue' => $request->user()->id,
+                    'nguoi_tham_gia' => [],
+                    'ghi_chu_sale' => null,
+                    'ghi_chu_khach' => null,
+                ]);
+
+                $hopDong->update([
+                    'ma_hop_dong' => HopDongChoThueTrangPhuc::buildMaHopDong($hopDong->id),
+                ]);
+
+                return $hopDong;
+            });
+
+            $hopDong->load([
+                'nguoiChoThueUser:id,name,phone',
+                'sanPhamChoThue.sanPham:id,ma_san_pham,ten_san_pham,gia_cho_thue,hinh_anh',
+            ]);
+
+            return response()->json($hopDong, 201);
+
+        }, 'khởi tạo hợp đồng cho thuê trang phục');
+    }
+
+    /**
      * Tạo hợp đồng cho thuê trang phục mới.
      */
     public function store(Request $request): JsonResponse
@@ -77,7 +136,7 @@ class HopDongChoThueTrangPhucController extends BaseApiController
             $validated = $this->validatePayload($request);
             $validated = $this->applyCalculatedFields($validated);
             $validated['nguoi_cho_thue'] = $request->user()->id;
-            $sanPhamItems = $validated['san_pham_cho_thue'];
+            $sanPhamItems = $validated['san_pham_cho_thue'] ?? [];
             unset($validated['san_pham_cho_thue']);
 
             $hopDong = DB::transaction(function () use ($validated, $sanPhamItems) {
@@ -103,15 +162,19 @@ class HopDongChoThueTrangPhucController extends BaseApiController
     public function update(Request $request, HopDongChoThueTrangPhuc $hop_dong_cho_thue_trang_phuc): JsonResponse
     {
         return $this->handleApi(function () use ($request, $hop_dong_cho_thue_trang_phuc) {
-            $validated = $this->validatePayload($request, $hop_dong_cho_thue_trang_phuc->id);
-            $validated = $this->applyCalculatedFields($validated);
-            unset($validated['nguoi_cho_thue']);
-            $sanPhamItems = $validated['san_pham_cho_thue'];
+            $validated = $this->validatePayload($request, $hop_dong_cho_thue_trang_phuc->id, true);
+            $validated = $this->applyCalculatedFields($validated, true);
+            unset($validated['nguoi_cho_thue'], $validated['ma_hop_dong']);
+            $sanPhamItems = $validated['san_pham_cho_thue'] ?? null;
             unset($validated['san_pham_cho_thue']);
 
             DB::transaction(function () use ($hop_dong_cho_thue_trang_phuc, $validated, $sanPhamItems) {
-                $hop_dong_cho_thue_trang_phuc->update($validated);
-                $this->syncSanPhamChoThue($hop_dong_cho_thue_trang_phuc, $sanPhamItems);
+                if ($validated !== []) {
+                    $hop_dong_cho_thue_trang_phuc->update($validated);
+                }
+                if ($sanPhamItems !== null) {
+                    $this->syncSanPhamChoThue($hop_dong_cho_thue_trang_phuc, $sanPhamItems);
+                }
             });
 
             return response()->json($hop_dong_cho_thue_trang_phuc->fresh()->load([
@@ -138,28 +201,50 @@ class HopDongChoThueTrangPhucController extends BaseApiController
     /**
      * @return array<string, mixed>
      */
-    private function validatePayload(Request $request, ?int $ignoreId = null): array
+    private function validatePayload(Request $request, ?int $ignoreId = null, bool $isUpdate = false): array
     {
         $maHopDongRule = Rule::unique('hop_dong_cho_thue_trang_phuc', 'ma_hop_dong');
         if ($ignoreId !== null) {
             $maHopDongRule = $maHopDongRule->ignore($ignoreId);
         }
 
+        $trangThai = $request->input('trang_thai');
+        $isDraft = in_array($trangThai, ['moi_tao', 'nhap'], true);
+        $required = $isDraft ? 'nullable' : 'required';
+
         return $request->validate([
-            'ma_hop_dong' => ['required', 'string', 'max:100', $maHopDongRule],
-            'ten_khach_hang' => ['required', 'string', 'max:255'],
-            'sdt_khach_hang' => ['required', 'string', 'max:20'],
-            'ngay_thue' => ['required', 'date'],
-            'ngay_tra_du_kien' => ['required', 'date', 'after_or_equal:ngay_thue'],
-            'ngay_tra_chinh_thuc' => ['nullable', 'date', 'after_or_equal:ngay_thue'],
+            'ma_hop_dong' => [$isUpdate ? 'sometimes' : 'required', 'string', 'max:100', $maHopDongRule],
+            'ten_khach_hang' => [$required, 'nullable', 'string', 'max:255'],
+            'sdt_khach_hang' => [$required, 'nullable', 'string', 'max:20'],
+            'ngay_thue' => [$required, 'nullable', 'date'],
+            'ngay_tra_du_kien' => [
+                $required,
+                'nullable',
+                'date',
+                Rule::when(
+                    filled($request->input('ngay_thue')) && filled($request->input('ngay_tra_du_kien')),
+                    ['after_or_equal:ngay_thue']
+                ),
+            ],
+            'ngay_tra_chinh_thuc' => [
+                'nullable',
+                'date',
+                Rule::when(
+                    filled($request->input('ngay_thue')) && filled($request->input('ngay_tra_chinh_thuc')),
+                    ['after_or_equal:ngay_thue']
+                ),
+            ],
             'tong_tien' => ['nullable', 'integer', 'min:0'],
             'giam_gia' => ['nullable', 'integer', 'min:0'],
             'tien_coc' => ['nullable', 'integer', 'min:0'],
             'trang_thai' => ['required', 'string', Rule::in([
+                'moi_tao',
+                'nhap',
                 'cho_xac_nhan',
                 'dang_thue',
                 'da_tra',
                 'qua_han',
+                'hoan_thanh',
                 'da_huy',
             ])],
             'nguoi_cho_thue' => ['nullable', 'integer', 'exists:users,id'],
@@ -167,8 +252,14 @@ class HopDongChoThueTrangPhucController extends BaseApiController
             'nguoi_tham_gia.*' => ['integer', 'exists:users,id'],
             'ghi_chu_sale' => ['nullable', 'string'],
             'ghi_chu_khach' => ['nullable', 'string'],
-            'san_pham_cho_thue' => ['required', 'array', 'min:1'],
+            'san_pham_cho_thue' => [
+                $isUpdate ? 'sometimes' : ($isDraft ? 'nullable' : 'required'),
+                'array',
+                $isDraft ? 'nullable' : 'min:1',
+            ],
             'san_pham_cho_thue.*.san_pham_id' => ['required', 'integer', 'exists:trang_phuc,id', 'distinct'],
+            'san_pham_cho_thue.*.ngay_bat_dau' => ['nullable', 'date'],
+            'san_pham_cho_thue.*.ngay_ket_thuc' => ['nullable', 'date', 'after_or_equal:san_pham_cho_thue.*.ngay_bat_dau'],
             'san_pham_cho_thue.*.ghi_chu' => ['nullable', 'string'],
         ]);
     }
@@ -177,34 +268,51 @@ class HopDongChoThueTrangPhucController extends BaseApiController
      * @param  array<string, mixed>  $validated
      * @return array<string, mixed>
      */
-    private function applyCalculatedFields(array $validated): array
+    private function applyCalculatedFields(array $validated, bool $isUpdate = false): array
     {
-        $ngayThue = Carbon::parse($validated['ngay_thue'])->startOfDay();
-        $ngayTraDuKien = Carbon::parse($validated['ngay_tra_du_kien'])->startOfDay();
+        if (! empty($validated['ngay_thue']) && ! empty($validated['ngay_tra_du_kien'])) {
+            $ngayThue = Carbon::parse($validated['ngay_thue'])->startOfDay();
+            $ngayTraDuKien = Carbon::parse($validated['ngay_tra_du_kien'])->startOfDay();
+            $validated['so_ngay_thue'] = max(1, $ngayThue->diffInDays($ngayTraDuKien) + 1);
+        } elseif (! $isUpdate) {
+            $validated['so_ngay_thue'] = 1;
+        }
 
-        $validated['so_ngay_thue'] = max(1, $ngayThue->diffInDays($ngayTraDuKien) + 1);
-        $validated['tong_tien'] = (int) ($validated['tong_tien'] ?? 0);
-        $validated['giam_gia'] = (int) ($validated['giam_gia'] ?? 0);
-        $validated['tien_coc'] = (int) ($validated['tien_coc'] ?? 0);
-        $validated['nguoi_tham_gia'] = collect($validated['nguoi_tham_gia'] ?? [])
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values()
-            ->all();
+        if (array_key_exists('tong_tien', $validated)) {
+            $validated['tong_tien'] = (int) ($validated['tong_tien'] ?? 0);
+        }
+        if (array_key_exists('giam_gia', $validated)) {
+            $validated['giam_gia'] = (int) ($validated['giam_gia'] ?? 0);
+        }
+        if (array_key_exists('tien_coc', $validated)) {
+            $validated['tien_coc'] = (int) ($validated['tien_coc'] ?? 0);
+        }
 
-        $validated['san_pham_cho_thue'] = collect($validated['san_pham_cho_thue'])
-            ->map(fn (array $item) => [
-                'san_pham_id' => (int) $item['san_pham_id'],
-                'ghi_chu' => isset($item['ghi_chu']) ? trim((string) $item['ghi_chu']) : null,
-            ])
-            ->values()
-            ->all();
+        if (array_key_exists('nguoi_tham_gia', $validated)) {
+            $validated['nguoi_tham_gia'] = collect($validated['nguoi_tham_gia'] ?? [])
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values()
+                ->all();
+        }
+
+        if (array_key_exists('san_pham_cho_thue', $validated)) {
+            $validated['san_pham_cho_thue'] = collect($validated['san_pham_cho_thue'] ?? [])
+                ->map(fn (array $item) => [
+                    'san_pham_id' => (int) $item['san_pham_id'],
+                    'ngay_bat_dau' => $item['ngay_bat_dau'] ?? null,
+                    'ngay_ket_thuc' => $item['ngay_ket_thuc'] ?? null,
+                    'ghi_chu' => isset($item['ghi_chu']) ? trim((string) $item['ghi_chu']) : null,
+                ])
+                ->values()
+                ->all();
+        }
 
         return $validated;
     }
 
     /**
-     * @param  array<int, array{san_pham_id: int, ghi_chu: ?string}>  $sanPhamItems
+     * @param  array<int, array{san_pham_id: int, ngay_bat_dau: ?string, ngay_ket_thuc: ?string, ghi_chu: ?string}>  $sanPhamItems
      */
     private function syncSanPhamChoThue(HopDongChoThueTrangPhuc $hopDong, array $sanPhamItems): void
     {
@@ -214,6 +322,8 @@ class HopDongChoThueTrangPhucController extends BaseApiController
             HopDongChoThueTrangPhucSanPhamChoThue::create([
                 'hop_dong_id' => $hopDong->id,
                 'san_pham_id' => $item['san_pham_id'],
+                'ngay_bat_dau' => $item['ngay_bat_dau'] ?: null,
+                'ngay_ket_thuc' => $item['ngay_ket_thuc'] ?: null,
                 'ghi_chu' => $item['ghi_chu'] ?: null,
             ]);
         }

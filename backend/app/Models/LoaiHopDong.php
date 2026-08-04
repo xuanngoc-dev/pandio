@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
     'ten_hop_dong',
     'ma_hop_dong',
     'noi_dung',
+    'thong_tin_dieu_phoi',
     'trang_thai',
 ])]
 /**
@@ -16,7 +17,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 class LoaiHopDong extends Model
 {
-    protected $table = 'loai_hop_dong';
+    protected $table = 'danh_muc_loai_hop_dong';
 
     /**
      * @return array<string, string>
@@ -25,6 +26,7 @@ class LoaiHopDong extends Model
     {
         return [
             'noi_dung' => 'array',
+            'thong_tin_dieu_phoi' => 'array',
         ];
     }
 }

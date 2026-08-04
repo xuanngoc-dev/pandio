@@ -45,6 +45,16 @@ class HopDongChoThueTrangPhuc extends Model
         ];
     }
 
+    /**
+     * Sinh mã hợp đồng theo quy tắc: HDTTP_DDMMYYYY{id}
+     */
+    public static function buildMaHopDong(int $id, ?\DateTimeInterface $date = null): string
+    {
+        $date ??= now();
+
+        return 'HDTTP_'.$date->format('dmY').$id;
+    }
+
     public function nguoiChoThueUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'nguoi_cho_thue');

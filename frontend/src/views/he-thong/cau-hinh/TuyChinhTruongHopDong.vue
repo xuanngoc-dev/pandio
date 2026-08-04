@@ -1,5 +1,5 @@
 <template>
-  <ConfigSettingPage title="Tuỳ chỉnh trường theo loại hợp đồng khách hàng">
+  <ConfigSettingPage title="Cấu hình thông tin hợp đồng">
     <div class="loai-hop-dong">
       <CustomCard shadow="hover" class="filter-card">
         <div class="toolbar">
@@ -77,12 +77,20 @@
           />
           <CustomTableColumn
             v-if="columnSettings.isColumnVisible('so_truong')"
-            label="Số trường"
-            width="100"
+            label="Số thông tin thông tin"
             align="center"
           >
             <template #default="{ row }">
               {{ countFields(row.noi_dung) }}
+            </template>
+          </CustomTableColumn>
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('so_dieu_phoi')"
+            label="Số thông tin điều phối"
+            align="center"
+          >
+            <template #default="{ row }">
+              {{ countDieuPhoi(row.thong_tin_dieu_phoi) }}
             </template>
           </CustomTableColumn>
           <CustomTableColumn
@@ -136,8 +144,8 @@
 
       <CustomDialog
         v-model="dialogVisible"
-        :title="editingId ? 'Sửa loại hợp đồng khách hàng' : 'Thêm loại hợp đồng khách hàng'"
-        :width="1200"
+        :title="editingId ? 'Sửa thông tin hợp đồng' : 'Thêm thông tin hợp đồng'"
+        :width="1400"
       >
         <CustomForm ref="formRef" :model="form" :rules="rules" label-position="top">
           <CustomRow :gutter="16">
@@ -168,139 +176,270 @@
             </CustomCol>
           </CustomRow>
 
-          <div class="fields-header">
-            <span class="fields-title">Nội dung trường hợp đồng</span>
-            <CustomButton v-if="form.truong.length" type="primary" plain @click="addField">
-              <CustomIcon><Plus /></CustomIcon>
-              Thêm trường
-            </CustomButton>
-          </div>
+          <!-- Nội dung trường hợp đồng -->
+          <div class="section-block">
+            <div class="section-header" @click="fieldsExpanded = !fieldsExpanded">
+              <div class="section-header__left">
+                <CustomIcon class="section-chevron" :class="{ 'is-expanded': fieldsExpanded }">
+                  <ArrowRight />
+                </CustomIcon>
+                <span class="fields-title">Nội dung trường hợp đồng</span>
+                <span v-if="form.truong.length" class="section-count">
+                  ({{ form.truong.length }})
+                </span>
+              </div>
+              <CustomButton
+                v-if="form.truong.length && fieldsExpanded"
+                type="primary"
+                plain
+                @click.stop="addField"
+              >
+                <CustomIcon><Plus /></CustomIcon>
+                Thêm trường
+              </CustomButton>
+            </div>
 
-          <div v-if="!form.truong.length" class="fields-empty">
-            <p>Chưa có trường nào.</p>
-            <CustomButton type="primary" @click="addField">
-              <CustomIcon><Plus /></CustomIcon>
-              Thêm trường
-            </CustomButton>
-          </div>
+            <div v-show="fieldsExpanded" class="section-body">
+              <div v-if="!form.truong.length" class="fields-empty">
+                <p>Chưa có trường nào.</p>
+                <CustomButton type="primary" @click="addField">
+                  <CustomIcon><Plus /></CustomIcon>
+                  Thêm trường
+                </CustomButton>
+              </div>
 
-          <div
-            v-for="(item, index) in form.truong"
-            :key="item._key"
-            class="field-card"
-          >
-            <CustomRow :gutter="12">
-              <CustomCol :xs="24" :sm="6">
-                <CustomFormItem
-                  label="Tên trường"
-                  :prop="`truong.${index}.ten_truong`"
-                  :rules="fieldRules.ten_truong"
-                >
-                  <CustomInput
-                    v-model="item.ten_truong"
-                    placeholder="VD: Tên chú rể"
-                  />
-                </CustomFormItem>
-              </CustomCol>
-              <CustomCol :xs="24" :sm="6">
-                <CustomFormItem
-                  label="Key"
-                  :prop="`truong.${index}.key`"
-                  :rules="fieldRules.key"
-                >
-                  <CustomInput
-                    v-model="item.key"
-                    placeholder="VD: tenChuRe"
-                  />
-                </CustomFormItem>
-              </CustomCol>
-              <CustomCol :xs="24" :sm="6">
-                <CustomFormItem
-                  label="Kiểu dữ liệu"
-                  :prop="`truong.${index}.kieu`"
-                  :rules="fieldRules.kieu"
-                >
-                  <CustomSelect
-                    v-model="item.kieu"
-                    placeholder="Chọn kiểu"
-                    style="width: 100%"
-                    @change="(val) => onKieuChange(item, val)"
-                  >
-                    <template v-for="group in kieuDuLieuOptionGroups" :key="group.label">
-                      <el-option-group :label="group.label">
-                        <CustomOption
-                          v-for="opt in group.options"
-                          :key="opt.value"
-                          :label="opt.label"
-                          :value="opt.value"
+              <div
+                v-for="(item, index) in form.truong"
+                :key="item._key"
+                class="field-card"
+              >
+                <CustomRow :gutter="12">
+                  <CustomCol :xs="24" :sm="6">
+                    <CustomFormItem
+                      label="Tên trường"
+                      :prop="`truong.${index}.ten_truong`"
+                      :rules="fieldRules.ten_truong"
+                    >
+                      <CustomInput
+                        v-model="item.ten_truong"
+                        placeholder="VD: Tên chú rể"
+                        @input="onFieldNameInput(item)"
+                      />
+                    </CustomFormItem>
+                  </CustomCol>
+                  <CustomCol :xs="24" :sm="6">
+                    <CustomFormItem
+                      label="Key"
+                      :prop="`truong.${index}.key`"
+                      :rules="getFieldKeyRules(index)"
+                    >
+                      <CustomInput
+                        v-model="item.key"
+                        placeholder="VD: tenChuRe"
+                        @input="onFieldKeyInput(index)"
+                      />
+                    </CustomFormItem>
+                  </CustomCol>
+                  <CustomCol :xs="24" :sm="6">
+                    <CustomFormItem
+                      label="Kiểu dữ liệu"
+                      :prop="`truong.${index}.kieu`"
+                      :rules="fieldRules.kieu"
+                    >
+                      <CustomSelect
+                        v-model="item.kieu"
+                        placeholder="Chọn kiểu"
+                        style="width: 100%"
+                        @change="(val) => onKieuChange(item, val)"
+                      >
+                        <template v-for="group in getKieuOptionGroups(item.kieu)" :key="group.label">
+                          <el-option-group :label="group.label">
+                            <CustomOption
+                              v-for="opt in group.options"
+                              :key="opt.value"
+                              :label="opt.label"
+                              :value="opt.value"
+                            />
+                          </el-option-group>
+                        </template>
+                      </CustomSelect>
+                    </CustomFormItem>
+                  </CustomCol>
+                  <CustomCol :xs="24" :sm="6">
+                    <CustomFormItem label="Bắt buộc">
+                      <div class="field-required-row">
+                        <el-switch
+                          v-model="item.bat_buoc"
+                          inline-prompt
+                          active-text="Có"
+                          inactive-text="Không"
                         />
-                      </el-option-group>
-                    </template>
-                  </CustomSelect>
-                </CustomFormItem>
-              </CustomCol>
-              <CustomCol :xs="24" :sm="6">
-                <CustomFormItem label="Bắt buộc">
-                  <div class="field-required-row">
-                    <el-switch
-                      v-model="item.bat_buoc"
-                      inline-prompt
-                      active-text="Có"
-                      inactive-text="Không"
-                    />
-                    <CustomButton type="danger" link :icon="Delete" @click="removeField(index)">
-                      Xóa
-                    </CustomButton>
-                  </div>
-                </CustomFormItem>
-              </CustomCol>
-
-              <CustomCol v-if="hasFieldOptions(item.kieu)" :span="24">
-                <div class="options-block">
-                  <div class="options-block__header">
-                    <span class="options-block__title">Tùy chọn (options)</span>
-                    <CustomButton link type="primary" @click="addOption(item)">
-                      <CustomIcon><Plus /></CustomIcon>
-                      Thêm option
-                    </CustomButton>
-                  </div>
-
-                  <div v-if="!item.options.length" class="options-empty">
-                    Chưa có option. Nhấn "Thêm option" để thêm.
-                  </div>
-
-                  <div
-                    v-for="(opt, optIndex) in item.options"
-                    :key="opt._key"
-                    class="option-row"
-                  >
-                    <CustomFormItem
-                      class="option-row__item"
-                      label="Nhãn"
-                      :prop="`truong.${index}.options.${optIndex}.label`"
-                      :rules="fieldRules.optionLabel"
-                    >
-                      <CustomInput v-model="opt.label" placeholder="VD: Nam" />
+                        <CustomButton type="danger" link :icon="Delete" @click="removeField(index)">
+                          Xóa
+                        </CustomButton>
+                      </div>
                     </CustomFormItem>
+                  </CustomCol>
+
+                  <CustomCol v-if="hasFieldOptions(item.kieu)" :span="24">
+                    <div class="options-block">
+                      <div class="options-block__header">
+                        <span class="options-block__title">Tùy chọn (options)</span>
+                        <CustomButton link type="primary" @click="addOption(item)">
+                          <CustomIcon><Plus /></CustomIcon>
+                          Thêm option
+                        </CustomButton>
+                      </div>
+
+                      <div v-if="!item.options.length" class="options-empty">
+                        Chưa có option. Nhấn "Thêm option" để thêm.
+                      </div>
+
+                      <div
+                        v-for="(opt, optIndex) in item.options"
+                        :key="opt._key"
+                        class="option-row"
+                      >
+                        <CustomFormItem
+                          class="option-row__item"
+                          label="Nhãn"
+                          :prop="`truong.${index}.options.${optIndex}.label`"
+                          :rules="fieldRules.optionLabel"
+                        >
+                          <CustomInput v-model="opt.label" placeholder="VD: Nam" />
+                        </CustomFormItem>
+                        <CustomFormItem
+                          class="option-row__item"
+                          label="Giá trị"
+                          :prop="`truong.${index}.options.${optIndex}.value`"
+                          :rules="fieldRules.optionValue"
+                        >
+                          <CustomInput v-model="opt.value" placeholder="VD: nam" />
+                        </CustomFormItem>
+                        <CustomButton
+                          type="danger"
+                          link
+                          :icon="Delete"
+                          class="option-row__remove"
+                          @click="removeOption(item, optIndex)"
+                        />
+                      </div>
+                    </div>
+                  </CustomCol>
+                </CustomRow>
+              </div>
+            </div>
+          </div>
+
+          <!-- Thông tin điều phối -->
+          <div class="section-block">
+            <div class="section-header" @click="dieuPhoiExpanded = !dieuPhoiExpanded">
+              <div class="section-header__left">
+                <CustomIcon class="section-chevron" :class="{ 'is-expanded': dieuPhoiExpanded }">
+                  <ArrowRight />
+                </CustomIcon>
+                <span class="fields-title">Thông tin điều phối</span>
+                <span v-if="form.dieu_phoi.length" class="section-count">
+                  ({{ form.dieu_phoi.length }})
+                </span>
+              </div>
+              <CustomButton
+                v-if="form.dieu_phoi.length && dieuPhoiExpanded"
+                type="primary"
+                plain
+                @click.stop="addDieuPhoi"
+              >
+                <CustomIcon><Plus /></CustomIcon>
+                Thêm thông tin
+              </CustomButton>
+            </div>
+
+            <div v-show="dieuPhoiExpanded" class="section-body">
+              <div v-if="!form.dieu_phoi.length" class="fields-empty">
+                <p>Chưa có thông tin điều phối nào.</p>
+                <CustomButton type="primary" @click="addDieuPhoi">
+                  <CustomIcon><Plus /></CustomIcon>
+                  Thêm thông tin
+                </CustomButton>
+              </div>
+
+              <div
+                v-for="(item, index) in form.dieu_phoi"
+                :key="item._key"
+                class="field-card"
+              >
+                <CustomRow :gutter="12">
+                  <CustomCol :xs="24" :sm="5">
                     <CustomFormItem
-                      class="option-row__item"
-                      label="Giá trị"
-                      :prop="`truong.${index}.options.${optIndex}.value`"
-                      :rules="fieldRules.optionValue"
+                      label="Tên (name)"
+                      :prop="`dieu_phoi.${index}.name`"
+                      :rules="dieuPhoiRules.name"
                     >
-                      <CustomInput v-model="opt.value" placeholder="VD: nam" />
+                      <CustomInput
+                        v-model="item.name"
+                        placeholder="VD: Ngày cưới chính thức"
+                        @input="onDieuPhoiNameInput(item)"
+                      />
                     </CustomFormItem>
-                    <CustomButton
-                      type="danger"
-                      link
-                      :icon="Delete"
-                      class="option-row__remove"
-                      @click="removeOption(item, optIndex)"
-                    />
-                  </div>
-                </div>
-              </CustomCol>
-            </CustomRow>
+                  </CustomCol>
+                  <CustomCol :xs="24" :sm="4">
+                    <CustomFormItem
+                      label="Key"
+                      :prop="`dieu_phoi.${index}.key`"
+                      :rules="getDieuPhoiKeyRules(index)"
+                    >
+                      <CustomInput
+                        v-model="item.key"
+                        placeholder="VD: ngayCuoiChinhThuc"
+                        @input="onDieuPhoiKeyInput(index)"
+                      />
+                    </CustomFormItem>
+                  </CustomCol>
+                  <CustomCol :xs="24" :sm="5">
+                    <CustomFormItem
+                      label="Giá trị mặc định (value)"
+                      :prop="`dieu_phoi.${index}.value`"
+                    >
+                      <CustomInput
+                        v-model="item.value"
+                        placeholder="Giá trị mặc định"
+                      />
+                    </CustomFormItem>
+                  </CustomCol>
+                  <CustomCol :xs="24" :sm="5">
+                    <CustomFormItem
+                      label="Ghi chú (note)"
+                      :prop="`dieu_phoi.${index}.note`"
+                    >
+                      <CustomInput
+                        v-model="item.note"
+                        placeholder="Ghi chú (tuỳ chọn)"
+                      />
+                    </CustomFormItem>
+                  </CustomCol>
+                  <CustomCol :xs="24" :sm="5">
+                    <CustomFormItem label="Bắt buộc (required)">
+                      <div class="field-required-row">
+                        <el-switch
+                          v-model="item.required"
+                          inline-prompt
+                          active-text="Có"
+                          inactive-text="Không"
+                        />
+                        <CustomButton
+                          type="danger"
+                          link
+                          :icon="Delete"
+                          @click="removeDieuPhoi(index)"
+                        >
+                          Xóa
+                        </CustomButton>
+                      </div>
+                    </CustomFormItem>
+                  </CustomCol>
+                </CustomRow>
+              </div>
+            </div>
           </div>
         </CustomForm>
 
@@ -314,9 +453,9 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Delete, Edit, Plus, Search } from '@element-plus/icons-vue'
+import { Delete, Edit, Plus, Search, ArrowRight } from '@element-plus/icons-vue'
 import {
   createLoaiHopDong,
   deleteLoaiHopDong,
@@ -350,6 +489,10 @@ const ACTIVE = 'hoat_dong'
 const INACTIVE = 'ngung_hoat_dong'
 
 const KIEU_CO_TUY_CHON = ['select', 'radio', 'checkbox_group']
+const KIEU_LEGACY = [
+  { label: 'Tệp đính kèm (cũ)', value: 'file' },
+  { label: 'Hình ảnh (cũ)', value: 'image' },
+]
 
 const kieuDuLieuOptionGroups = [
   {
@@ -390,14 +533,21 @@ const kieuDuLieuOptionGroups = [
       { label: 'Năm', value: 'year' },
     ],
   },
-  {
-    label: 'Tệp tin',
-    options: [
-      { label: 'Tệp đính kèm', value: 'file' },
-      { label: 'Hình ảnh', value: 'image' },
-    ],
-  },
 ]
+
+function getKieuOptionGroups(currentKieu) {
+  if (!KIEU_LEGACY.some((opt) => opt.value === currentKieu)) {
+    return kieuDuLieuOptionGroups
+  }
+
+  return [
+    ...kieuDuLieuOptionGroups,
+    {
+      label: 'Tệp tin (dữ liệu cũ)',
+      options: KIEU_LEGACY,
+    },
+  ]
+}
 
 function hasFieldOptions(kieu) {
   return KIEU_CO_TUY_CHON.includes(kieu)
@@ -405,11 +555,13 @@ function hasFieldOptions(kieu) {
 
 let fieldKeySeed = 0
 let optionKeySeed = 0
+let dieuPhoiKeySeed = 0
 
 const tableColumns = [
   { key: 'ma_hop_dong', label: 'Mã' },
   { key: 'ten_hop_dong', label: 'Tên hợp đồng' },
-  { key: 'so_truong', label: 'Số trường' },
+  { key: 'so_truong', label: 'Số thông tin thông tin' },
+  { key: 'so_dieu_phoi', label: 'Số thông tin điều phối' },
   { key: 'trang_thai', label: 'Trạng thái' },
 ]
 const columnSettings = useTableColumns('he-thong.tuy-chinh-truong-hop-dong', tableColumns)
@@ -430,6 +582,8 @@ const trangThaiFilter = ref('')
 const dialogVisible = ref(false)
 const editingId = ref(null)
 const formRef = ref(null)
+const fieldsExpanded = ref(true)
+const dieuPhoiExpanded = ref(true)
 
 const { selectedCount, onSelectionChange, clearSelection, countByStatus, idsByStatus, selectedIds } =
   useBulkSelection(
@@ -482,6 +636,7 @@ const emptyForm = () => ({
   ma_hop_dong: '',
   trang_thai: ACTIVE,
   truong: [],
+  dieu_phoi: [],
 })
 
 const form = reactive(emptyForm())
@@ -494,17 +649,63 @@ const rules = {
 
 const fieldRules = {
   ten_truong: [{ required: true, message: 'Vui lòng nhập tên trường', trigger: 'blur' }],
-  key: [
-    { required: true, message: 'Vui lòng nhập key', trigger: 'blur' },
-    {
-      pattern: /^[a-zA-Z][a-zA-Z0-9_]*$/,
-      message: 'Key chỉ gồm chữ, số, _ và bắt đầu bằng chữ',
-      trigger: 'blur',
-    },
-  ],
   kieu: [{ required: true, message: 'Vui lòng chọn kiểu dữ liệu', trigger: 'change' }],
   optionLabel: [{ required: true, message: 'Vui lòng nhập nhãn', trigger: 'blur' }],
   optionValue: [{ required: true, message: 'Vui lòng nhập giá trị', trigger: 'blur' }],
+}
+
+const dieuPhoiRules = {
+  name: [{ required: true, message: 'Vui lòng nhập tên', trigger: 'blur' }],
+}
+
+function isDuplicateKey(items, currentIndex, value) {
+  const normalized = (value || '').trim()
+  if (!normalized) return false
+  return items.some(
+    (item, index) => index !== currentIndex && item.key.trim() === normalized,
+  )
+}
+
+function getFieldKeyRules(index) {
+  return [
+    { required: true, message: 'Vui lòng nhập key', trigger: ['blur', 'change'] },
+    {
+      pattern: /^[a-zA-Z][a-zA-Z0-9_]*$/,
+      message: 'Key chỉ gồm chữ, số, _ và bắt đầu bằng chữ',
+      trigger: ['blur', 'change'],
+    },
+    {
+      validator: (_rule, value, callback) => {
+        if (isDuplicateKey(form.truong, index, value)) {
+          callback(new Error('Key bị trùng'))
+          return
+        }
+        callback()
+      },
+      trigger: ['blur', 'change'],
+    },
+  ]
+}
+
+function getDieuPhoiKeyRules(index) {
+  return [
+    { required: true, message: 'Vui lòng nhập key', trigger: ['blur', 'change'] },
+    {
+      pattern: /^[a-zA-Z][a-zA-Z0-9_]*$/,
+      message: 'Key chỉ gồm chữ, số, _ và bắt đầu bằng chữ',
+      trigger: ['blur', 'change'],
+    },
+    {
+      validator: (_rule, value, callback) => {
+        if (isDuplicateKey(form.dieu_phoi, index, value)) {
+          callback(new Error('Key bị trùng'))
+          return
+        }
+        callback()
+      },
+      trigger: ['blur', 'change'],
+    },
+  ]
 }
 
 function nextFieldKey() {
@@ -515,6 +716,11 @@ function nextFieldKey() {
 function nextOptionKey() {
   optionKeySeed += 1
   return `option-${optionKeySeed}`
+}
+
+function nextDieuPhoiKey() {
+  dieuPhoiKeySeed += 1
+  return `dieu-phoi-${dieuPhoiKeySeed}`
 }
 
 function createOption(data = {}) {
@@ -538,9 +744,34 @@ function createField(data = {}) {
   }
 }
 
+function createDieuPhoi(data = {}) {
+  return {
+    _key: nextDieuPhoiKey(),
+    key: data.key || '',
+    name: data.name || '',
+    value: data.value ?? '',
+    required: !!data.required,
+    note: data.note || '',
+  }
+}
+
 function parseNoiDung(noiDung) {
   const truong = Array.isArray(noiDung?.truong) ? noiDung.truong : []
   return truong.map((item) => createField(item))
+}
+
+function parseThongTinDieuPhoi(thongTin) {
+  if (!thongTin || typeof thongTin !== 'object' || Array.isArray(thongTin)) return []
+
+  return Object.entries(thongTin).map(([key, item]) =>
+    createDieuPhoi({
+      key,
+      name: item?.name,
+      value: item?.value,
+      required: item?.required,
+      note: item?.note,
+    }),
+  )
 }
 
 function buildNoiDungPayload() {
@@ -565,16 +796,46 @@ function buildNoiDungPayload() {
   }
 }
 
+function buildThongTinDieuPhoiPayload() {
+  const result = {}
+  for (const item of form.dieu_phoi) {
+    const key = item.key.trim()
+    if (!key) continue
+    result[key] = {
+      name: item.name.trim(),
+      value: typeof item.value === 'string' ? item.value.trim() : item.value ?? '',
+      required: !!item.required,
+      note: (item.note || '').trim(),
+    }
+  }
+  return result
+}
+
 function countFields(noiDung) {
   return Array.isArray(noiDung?.truong) ? noiDung.truong.length : 0
 }
 
+function countDieuPhoi(thongTin) {
+  if (!thongTin || typeof thongTin !== 'object' || Array.isArray(thongTin)) return 0
+  return Object.keys(thongTin).length
+}
+
 function addField() {
   form.truong.push(createField())
+  fieldsExpanded.value = true
 }
 
 function removeField(index) {
   form.truong.splice(index, 1)
+}
+
+function addDieuPhoi() {
+  form.dieu_phoi.push(createDieuPhoi())
+  dieuPhoiExpanded.value = true
+}
+
+function removeDieuPhoi(index) {
+  form.dieu_phoi.splice(index, 1)
 }
 
 function addOption(field) {
@@ -594,14 +855,65 @@ function onKieuChange(field, kieu) {
   }
 }
 
-function validateUniqueKeys() {
-  const keys = form.truong.map((item) => item.key.trim()).filter(Boolean)
-  const duplicates = keys.filter((key, index) => keys.indexOf(key) !== index)
-  if (duplicates.length) {
-    ElMessage.warning(`Key bị trùng: ${[...new Set(duplicates)].join(', ')}`)
-    return false
-  }
-  return true
+function removeVietnameseTones(str) {
+  return String(str || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+}
+
+function toCamelCaseKey(text) {
+  const words = removeVietnameseTones(text)
+    .replace(/[^a-zA-Z0-9\s_-]/g, ' ')
+    .trim()
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+
+  if (!words.length) return ''
+
+  return words
+    .map((word, index) => {
+      const lower = word.toLowerCase()
+      if (index === 0) return lower
+      return lower.charAt(0).toUpperCase() + lower.slice(1)
+    })
+    .join('')
+    .replace(/^[0-9]+/, '')
+}
+
+function revalidateFieldKeys() {
+  nextTick(() => {
+    form.truong.forEach((_, index) => {
+      formRef.value?.validateField(`truong.${index}.key`, () => {})
+    })
+  })
+}
+
+function revalidateDieuPhoiKeys() {
+  nextTick(() => {
+    form.dieu_phoi.forEach((_, index) => {
+      formRef.value?.validateField(`dieu_phoi.${index}.key`, () => {})
+    })
+  })
+}
+
+function onFieldNameInput(item) {
+  item.key = toCamelCaseKey(item.ten_truong)
+  revalidateFieldKeys()
+}
+
+function onFieldKeyInput() {
+  revalidateFieldKeys()
+}
+
+function onDieuPhoiNameInput(item) {
+  item.key = toCamelCaseKey(item.name)
+  revalidateDieuPhoiKeys()
+}
+
+function onDieuPhoiKeyInput() {
+  revalidateDieuPhoiKeys()
 }
 
 function validateSelectOptions() {
@@ -625,6 +937,7 @@ async function toggleStatus(row) {
       ten_hop_dong: row.ten_hop_dong,
       ma_hop_dong: row.ma_hop_dong,
       noi_dung: row.noi_dung || { truong: [] },
+      thong_tin_dieu_phoi: row.thong_tin_dieu_phoi || {},
       trang_thai: value,
     })
     row.trang_thai = value
@@ -688,6 +1001,7 @@ async function bulkSetStatus(target) {
         ten_hop_dong: row?.ten_hop_dong,
         ma_hop_dong: row?.ma_hop_dong,
         noi_dung: row?.noi_dung || { truong: [] },
+        thong_tin_dieu_phoi: row?.thong_tin_dieu_phoi || {},
         trang_thai: target,
       })
     })
@@ -730,6 +1044,8 @@ function onSearch() {
 function openCreate() {
   editingId.value = null
   Object.assign(form, emptyForm())
+  fieldsExpanded.value = true
+  dieuPhoiExpanded.value = true
   dialogVisible.value = true
 }
 
@@ -740,14 +1056,21 @@ function openEdit(row) {
     ma_hop_dong: row.ma_hop_dong,
     trang_thai: row.trang_thai || ACTIVE,
     truong: parseNoiDung(row.noi_dung),
+    dieu_phoi: parseThongTinDieuPhoi(row.thong_tin_dieu_phoi),
   })
+  fieldsExpanded.value = true
+  dieuPhoiExpanded.value = true
   dialogVisible.value = true
 }
 
 async function save() {
   const valid = await formRef.value?.validate().catch(() => false)
-  if (!valid) return
-  if (!validateUniqueKeys()) return
+  if (!valid) {
+    // Mở section nếu có lỗi key bên trong
+    fieldsExpanded.value = true
+    dieuPhoiExpanded.value = true
+    return
+  }
   if (!validateSelectOptions()) return
 
   saving.value = true
@@ -755,6 +1078,7 @@ async function save() {
     ten_hop_dong: form.ten_hop_dong.trim(),
     ma_hop_dong: form.ma_hop_dong.trim(),
     noi_dung: buildNoiDungPayload(),
+    thong_tin_dieu_phoi: buildThongTinDieuPhoiPayload(),
     trang_thai: form.trang_thai,
   }
 
@@ -861,6 +1185,53 @@ onMounted(loadItems)
 .fields-title {
   font-weight: 600;
   color: var(--el-text-color-primary);
+}
+
+.section-block {
+  margin-top: 8px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  margin: 8px 0 0;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  background: var(--el-fill-color-light);
+  cursor: pointer;
+  user-select: none;
+}
+
+.section-header:hover {
+  background: var(--el-fill-color);
+}
+
+.section-header__left {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.section-chevron {
+  transition: transform 0.2s ease;
+  color: var(--el-text-color-secondary);
+}
+
+.section-chevron.is-expanded {
+  transform: rotate(90deg);
+}
+
+.section-count {
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+}
+
+.section-body {
+  margin-top: 12px;
 }
 
 .fields-empty {

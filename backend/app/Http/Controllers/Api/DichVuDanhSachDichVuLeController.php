@@ -24,7 +24,7 @@ class DichVuDanhSachDichVuLeController extends BaseApiController
                 'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
                 'trang_thai' => ['sometimes', 'nullable', Rule::in(['dang_su_dung', 'ngung_su_dung'])],
                 'loai_dich_vu_id' => ['sometimes', 'nullable', 'integer', 'exists:dich_vu_loai_dich_vu,id'],
-                'loai_hop_dong_id' => ['sometimes', 'nullable', 'integer', 'exists:loai_hop_dong,id'],
+                'loai_hop_dong_id' => ['sometimes', 'nullable', 'integer', 'exists:danh_muc_loai_hop_dong,id'],
             ]);
 
             $perPage = $validated['per_page'] ?? 10;
@@ -125,7 +125,7 @@ class DichVuDanhSachDichVuLeController extends BaseApiController
             'ten_dich_vu' => ['required', 'string', 'max:255'],
             'loai_dich_vu_id' => ['required', 'integer', 'exists:dich_vu_loai_dich_vu,id'],
             'loai_hop_dong_ids' => ['nullable', 'array'],
-            'loai_hop_dong_ids.*' => ['integer', 'exists:loai_hop_dong,id'],
+            'loai_hop_dong_ids.*' => ['integer', 'exists:danh_muc_loai_hop_dong,id'],
             'gia_goc' => ['required', 'numeric', 'min:0'],
             'gia_khuyen_mai' => ['nullable', 'numeric', 'min:0'],
             'mo_ta' => ['nullable', 'string'],
