@@ -7,6 +7,8 @@
           <div class="legend">
             <span class="legend-swatch is-ngay-nghi" />
             <span class="legend-text">Ngày nghỉ</span>
+            <!-- <span class="legend-swatch is-lunar-month-start" />
+            <span class="legend-text">Mùng 1 âm</span> -->
           </div>
         </div>
       </template>
@@ -26,7 +28,10 @@
           <div
             v-if="data.type === 'current-month'"
             class="day-cell"
-            :class="{ 'is-ngay-nghi': isNgayNghi(data.day) }"
+            :class="{
+              'is-ngay-nghi': isNgayNghi(data.day),
+              'is-lunar-month-start': isLunarMonthStart(data.day),
+            }"
             :title="ngayNghiTitle(data.day)"
           >
             <div class="day-head">
@@ -46,7 +51,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { fetchNgayNghi } from '@/api/ngayNghi'
-import { formatLunarLabel } from '@/utils/lunar'
+import { formatLunarLabel, isLunarMonthStart } from '@/utils/lunar'
 
 /** Mặc định: tháng hiện tại */
 const selectedDate = ref(new Date())
@@ -205,6 +210,11 @@ onMounted(() => {
     background: color-mix(in srgb, var(--el-color-danger) 16%, transparent);
     border-color: color-mix(in srgb, var(--el-color-danger) 35%, transparent);
   }
+
+  &.is-lunar-month-start {
+    background: #c45656;
+    border-color: #a33b3b;
+  }
 }
 
 .calendar-card {
@@ -238,6 +248,13 @@ onMounted(() => {
   &.is-ngay-nghi {
     background: color-mix(in srgb, var(--el-color-danger) 14%, transparent);
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--el-color-danger) 28%, transparent);
+  }
+
+  &.is-lunar-month-start {
+    .day-lunar {
+      color: #a8071a;
+      font-weight: 700;
+    }
   }
 }
 

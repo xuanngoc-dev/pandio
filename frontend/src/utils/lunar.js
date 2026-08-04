@@ -29,10 +29,7 @@ function toSolarParts(date) {
  * @returns {string}
  */
 export function formatLunarLabel(date) {
-  const solar = toSolarParts(date)
-  if (!solar) return ''
-
-  const lunar = getLunarDate(solar.day, solar.month, solar.year)
+  const lunar = getLunarParts(date)
   if (!lunar) return ''
 
   if (lunar.day === 1) {
@@ -40,4 +37,24 @@ export function formatLunarLabel(date) {
   }
 
   return String(lunar.day)
+}
+
+/**
+ * Có phải mùng 1 âm lịch (đầu tháng âm) không.
+ * @param {Date|string} date
+ * @returns {boolean}
+ */
+export function isLunarMonthStart(date) {
+  const lunar = getLunarParts(date)
+  return Boolean(lunar && lunar.day === 1)
+}
+
+/**
+ * @param {Date|string} date
+ * @returns {{ day: number, month: number, year: number, leap?: boolean } | null}
+ */
+function getLunarParts(date) {
+  const solar = toSolarParts(date)
+  if (!solar) return null
+  return getLunarDate(solar.day, solar.month, solar.year) || null
 }

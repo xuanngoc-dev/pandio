@@ -14,16 +14,26 @@
       </button>
       <div v-show="conceptExpanded" class="dich-vu-section__body">
         <div class="service-filter">
-          <CustomInput
-            v-model="conceptFilter.keyword"
-            placeholder="Tìm theo tên concept..."
-            clearable
-            class="service-filter__keyword"
-          >
-            <template #prefix>
-              <CustomIcon><Search /></CustomIcon>
-            </template>
-          </CustomInput>
+          <CustomRow :gutter="12">
+            <CustomCol :xs="12" :sm="16" :md="18">
+              <CustomInput
+                v-model="conceptFilter.keyword"
+                placeholder="Tìm theo tên concept..."
+                clearable
+                class="service-filter__keyword"
+              >
+                <template #prefix>
+                  <CustomIcon><Search /></CustomIcon>
+                </template>
+              </CustomInput>
+            </CustomCol>
+            <CustomCol :xs="12" :sm="8" :md="6">
+              <div class="service-filter__switch">
+                <el-switch v-model="conceptFilter.chi_da_chon" size="small" />
+                <span class="service-filter__switch-label">Đã chọn</span>
+              </div>
+            </CustomCol>
+          </CustomRow>
         </div>
 
         <div class="service-card-grid">
@@ -81,28 +91,42 @@
       </button>
       <div v-show="trangPhucExpanded" class="dich-vu-section__body">
         <div class="service-filter">
-          <CustomInput
-            v-model="trangPhucFilter.keyword"
-            placeholder="Tìm theo tên trang phục..."
-            clearable
-            class="service-filter__keyword"
-          >
-            <template #prefix>
-              <CustomIcon><Search /></CustomIcon>
-            </template>
-          </CustomInput>
-          <MoneyInput
-            v-model="trangPhucFilter.gia_tu"
-            placeholder="Giá từ"
-            clearable
-            class="service-filter__price"
-          />
-          <MoneyInput
-            v-model="trangPhucFilter.gia_den"
-            placeholder="Giá đến"
-            clearable
-            class="service-filter__price"
-          />
+          <CustomRow :gutter="12">
+            <CustomCol :xs="12" :sm="12" :md="10">
+              <CustomInput
+                v-model="trangPhucFilter.keyword"
+                placeholder="Tìm theo tên trang phục..."
+                clearable
+                class="service-filter__keyword"
+              >
+                <template #prefix>
+                  <CustomIcon><Search /></CustomIcon>
+                </template>
+              </CustomInput>
+            </CustomCol>
+            <CustomCol :xs="12" :sm="6" :md="4">
+              <MoneyInput
+                v-model="trangPhucFilter.gia_tu"
+                placeholder="Giá từ"
+                clearable
+                class="service-filter__price"
+              />
+            </CustomCol>
+            <CustomCol :xs="12" :sm="6" :md="4">
+              <MoneyInput
+                v-model="trangPhucFilter.gia_den"
+                placeholder="Giá đến"
+                clearable
+                class="service-filter__price"
+              />
+            </CustomCol>
+            <CustomCol :xs="12" :sm="12" :md="6">
+              <div class="service-filter__switch">
+                <el-switch v-model="trangPhucFilter.chi_da_chon" size="small" />
+                <span class="service-filter__switch-label">Đã chọn</span>
+              </div>
+            </CustomCol>
+          </CustomRow>
         </div>
 
         <div class="service-card-grid">
@@ -306,42 +330,53 @@ const trangPhucExpanded = ref(true)
 
 const conceptFilter = reactive({
   keyword: '',
+  chi_da_chon: false,
 })
 
 const trangPhucFilter = reactive({
   keyword: '',
   gia_tu: null,
   gia_den: null,
+  chi_da_chon: false,
 })
 
 const emptyConceptMessage = computed(() => {
   if (!conceptOptions.value.length) return 'Không có concept đang sử dụng.'
+  if (conceptFilter.chi_da_chon && !selectedConcepts.value.length) {
+    return 'Chưa chọn concept nào.'
+  }
   return 'Không tìm thấy concept khớp bộ lọc.'
 })
 
 const emptyTrangPhucMessage = computed(() => {
   if (!trangPhucOptions.value.length) return 'Không có trang phục đang hoạt động.'
+  if (trangPhucFilter.chi_da_chon && !selectedTrangPhucs.value.length) {
+    return 'Chưa chọn trang phục nào.'
+  }
   return 'Không tìm thấy trang phục khớp bộ lọc.'
 })
 
 const filteredConceptOptions = computed(() => {
   const keyword = String(conceptFilter.keyword || '').trim().toLowerCase()
-  if (!keyword) return conceptOptions.value
   return conceptOptions.value.filter((item) => {
+    if (conceptFilter.chi_da_chon && !isConceptSelected(item.id)) return false
+    if (!keyword) return true
     const name = String(item.ten_concept || '').toLowerCase()
     const place = String(item.dia_diem || '').toLowerCase()
     return name.includes(keyword) || place.includes(keyword)
   })
 })
 
-const filteredTrangPhucOptions = computed(() =>
-  filterServiceOptions(
+const filteredTrangPhucOptions = computed(() => {
+  const filtered = filterServiceOptions(
     trangPhucOptions.value,
     trangPhucFilter,
     (item) => item.ten_san_pham,
     (item) => Number(item.gia_cho_thue) || 0,
-  ),
-)
+  )
+  if (!trangPhucFilter.chi_da_chon) return filtered
+  return filtered.filter((item) => isTrangPhucSelected(item.id))
+})
 
 const tongTienDichVuHienThi = computed(() => Number(props.tongTienDichVu) || 0)
 
@@ -379,9 +414,11 @@ function formatMoney(value) {
 
 function resetFilters() {
   conceptFilter.keyword = ''
+  conceptFilter.chi_da_chon = false
   trangPhucFilter.keyword = ''
   trangPhucFilter.gia_tu = null
   trangPhucFilter.gia_den = null
+  trangPhucFilter.chi_da_chon = false
 }
 
 function isConceptSelected(id) {
@@ -592,20 +629,29 @@ defineExpose({
 }
 
 .service-filter {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
   margin-bottom: 12px;
+
+  :deep(.el-row) {
+    row-gap: 10px;
+  }
 }
 
-.service-filter__keyword {
-  flex: 1 1 240px;
-  min-width: 200px;
-}
-
+.service-filter__keyword,
 .service-filter__price {
-  flex: 0 1 160px;
-  width: 160px;
+  width: 100%;
+}
+
+.service-filter__switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+}
+
+.service-filter__switch-label {
+  font-size: 13px;
+  color: var(--el-text-color-regular);
+  white-space: nowrap;
 }
 
 .service-card-grid {
