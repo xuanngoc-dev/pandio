@@ -38,7 +38,7 @@
     <CustomCard shadow="hover" class="table-card">
       <template #header>
         <div class="card-header">
-          <span class="card-title">Danh sách hợp đồng cho thuê trang phục</span>
+          <span class="card-title">Danh sách hợp đồng</span>
           <BulkActionBar :actions="bulkActions" @action="onBulkAction">
             <TableColumnConfig :settings="columnSettings" />
             <CustomTooltip content="Danh sách hợp đồng nháp" placement="top">

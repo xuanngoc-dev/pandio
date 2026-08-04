@@ -118,40 +118,48 @@
             </button>
 
             <div v-show="sanPhamExpanded" class="san-pham-picker__body">
-              <div class="san-pham-filter">
-                <CustomInput
-                  v-model="sanPhamKeyword"
-                  placeholder="Tìm nhanh theo mã, tên trang phục..."
-                  clearable
-                  class="san-pham-filter__keyword"
-                  @input="onSanPhamSearch"
-                  @clear="onSanPhamSearch"
-                >
-                  <template #prefix>
-                    <CustomIcon><Search /></CustomIcon>
-                  </template>
-                </CustomInput>
-                <MoneyInput
-                  v-model="sanPhamGiaTu"
-                  placeholder="Giá từ"
-                  clearable
-                  class="san-pham-filter__price"
-                  @update:model-value="onSanPhamSearch"
-                  @clear="onSanPhamSearch"
-                />
-                <MoneyInput
-                  v-model="sanPhamGiaDen"
-                  placeholder="Giá đến"
-                  clearable
-                  class="san-pham-filter__price"
-                  @update:model-value="onSanPhamSearch"
-                  @clear="onSanPhamSearch"
-                />
-                <div class="san-pham-filter__busy">
-                  <el-switch v-model="sanPhamBusyFilter" size="small" />
-                  <span class="san-pham-filter__busy-label">Hiện sản phẩm bận</span>
-                </div>
-              </div>
+              <CustomRow :gutter="10" align="middle" class="san-pham-filter">
+                <CustomCol :xs="12" :sm="6" :md="9">
+                  <CustomInput
+                    v-model="sanPhamKeyword"
+                    placeholder="Tìm nhanh theo mã, tên trang phục..."
+                    clearable
+                    class="san-pham-filter__keyword"
+                    @input="onSanPhamSearch"
+                    @clear="onSanPhamSearch"
+                  >
+                    <template #prefix>
+                      <CustomIcon><Search /></CustomIcon>
+                    </template>
+                  </CustomInput>
+                </CustomCol>
+                <CustomCol :xs="12" :sm="6" :md="4">
+                  <MoneyInput
+                    v-model="sanPhamGiaTu"
+                    placeholder="Giá từ"
+                    clearable
+                    class="san-pham-filter__price"
+                    @update:model-value="onSanPhamSearch"
+                    @clear="onSanPhamSearch"
+                  />
+                </CustomCol>
+                <CustomCol :xs="12" :sm="6" :md="4">
+                  <MoneyInput
+                    v-model="sanPhamGiaDen"
+                    placeholder="Giá đến"
+                    clearable
+                    class="san-pham-filter__price"
+                    @update:model-value="onSanPhamSearch"
+                    @clear="onSanPhamSearch"
+                  />
+                </CustomCol>
+                <CustomCol :xs="12" :sm="6" :md="7">
+                  <div class="san-pham-filter__busy">
+                    <el-switch v-model="sanPhamBusyFilter" size="small" />
+                    <span class="san-pham-filter__busy-label">Hiện sản phẩm bận</span>
+                  </div>
+                </CustomCol>
+              </CustomRow>
 
               <div v-loading="trangPhucLoading" class="san-pham-card-grid">
                 <CustomTooltip
@@ -1089,28 +1097,24 @@ watch(
 }
 
 .san-pham-filter {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
   margin-bottom: 12px;
   margin-top: 12px;
+
+  @media (max-width: 767px) {
+    row-gap: 10px;
+  }
 }
 
-.san-pham-filter__keyword {
-  flex: 1 1 240px;
-  min-width: 200px;
-}
-
+.san-pham-filter__keyword,
 .san-pham-filter__price {
-  flex: 0 1 160px;
-  width: 160px;
+  width: 100%;
 }
 
 .san-pham-filter__busy {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  flex: 0 0 auto;
+  min-height: 32px;
 }
 
 .san-pham-filter__busy-label {
@@ -1128,6 +1132,18 @@ watch(
   overflow-y: auto;
   padding: 4px;
   margin-bottom: 16px;
+
+  @media (max-width: 1280px) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  @media (max-width: 900px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  @media (max-width: 576px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .san-pham-card {
