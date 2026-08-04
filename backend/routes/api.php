@@ -126,6 +126,7 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
     Route::apiResource('nha-cung-cap-trang-phuc', NhaCungCapTrangPhucController::class);
     Route::apiResource('dat-mua-trang-phuc', DatMuaTrangPhucController::class);
     Route::post('/hop-dong-cho-thue-trang-phuc/khoi-tao', [HopDongChoThueTrangPhucController::class, 'khoiTao']);
+    Route::post('/hop-dong-cho-thue-trang-phuc/{hop_dong_cho_thue_trang_phuc}/thanh-toan', [HopDongChoThueTrangPhucController::class, 'thanhToan']);
     Route::apiResource('hop-dong-cho-thue-trang-phuc', HopDongChoThueTrangPhucController::class);
     Route::post('/hop-dong-su-dung-dich-vu/khoi-tao', [HopDongSuDungDichVuController::class, 'khoiTao']);
     Route::apiResource('hop-dong-su-dung-dich-vu', HopDongSuDungDichVuController::class);

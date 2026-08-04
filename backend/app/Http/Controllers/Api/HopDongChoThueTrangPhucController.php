@@ -41,7 +41,7 @@ class HopDongChoThueTrangPhucController extends BaseApiController
             $query = HopDongChoThueTrangPhuc::query()
                 ->with([
                     'nguoiChoThueUser:id,name,phone',
-                    'sanPhamChoThue.sanPham:id,ma_san_pham,ten_san_pham,gia_cho_thue,hinh_anh',
+                    'sanPhamChoThue.sanPham:id,ma_san_pham,ten_san_pham,gia_tri,gia_cho_thue,hinh_anh',
                 ])
                 ->when($keyword !== '', function ($q) use ($keyword) {
                     $q->where(function ($inner) use ($keyword) {
@@ -77,7 +77,7 @@ class HopDongChoThueTrangPhucController extends BaseApiController
         return $this->handleApi(function () use ($hop_dong_cho_thue_trang_phuc) {
             $hop_dong_cho_thue_trang_phuc->load([
                 'nguoiChoThueUser:id,name,phone',
-                'sanPhamChoThue.sanPham:id,ma_san_pham,ten_san_pham,gia_cho_thue,hinh_anh',
+                'sanPhamChoThue.sanPham:id,ma_san_pham,ten_san_pham,gia_tri,gia_cho_thue,hinh_anh',
             ]);
 
             return response()->json($hop_dong_cho_thue_trang_phuc);
@@ -120,7 +120,7 @@ class HopDongChoThueTrangPhucController extends BaseApiController
 
             $hopDong->load([
                 'nguoiChoThueUser:id,name,phone',
-                'sanPhamChoThue.sanPham:id,ma_san_pham,ten_san_pham,gia_cho_thue,hinh_anh',
+                'sanPhamChoThue.sanPham:id,ma_san_pham,ten_san_pham,gia_tri,gia_cho_thue,hinh_anh',
             ]);
 
             return response()->json($hopDong, 201);
@@ -153,7 +153,7 @@ class HopDongChoThueTrangPhucController extends BaseApiController
 
             $hopDong->load([
                 'nguoiChoThueUser:id,name,phone',
-                'sanPhamChoThue.sanPham:id,ma_san_pham,ten_san_pham,gia_cho_thue,hinh_anh',
+                'sanPhamChoThue.sanPham:id,ma_san_pham,ten_san_pham,gia_tri,gia_cho_thue,hinh_anh',
             ]);
 
             return response()->json($hopDong, 201);
@@ -189,7 +189,7 @@ class HopDongChoThueTrangPhucController extends BaseApiController
 
             return response()->json($hop_dong_cho_thue_trang_phuc->fresh()->load([
                 'nguoiChoThueUser:id,name,phone',
-                'sanPhamChoThue.sanPham:id,ma_san_pham,ten_san_pham,gia_cho_thue,hinh_anh',
+                'sanPhamChoThue.sanPham:id,ma_san_pham,ten_san_pham,gia_tri,gia_cho_thue,hinh_anh',
             ]));
 
         }, 'cập nhật hợp đồng cho thuê trang phục');
@@ -206,6 +206,106 @@ class HopDongChoThueTrangPhucController extends BaseApiController
             return response()->json(['message' => 'Đã xóa hợp đồng cho thuê trang phục.']);
 
         }, 'xóa hợp đồng cho thuê trang phục');
+    }
+
+    /**
+     * Thanh toán hợp đồng cho thuê trang phục.
+     */
+    public function thanhToan(Request $request, HopDongChoThueTrangPhuc $hop_dong_cho_thue_trang_phuc): JsonResponse
+    {
+        return $this->handleApi(function () use ($request, $hop_dong_cho_thue_trang_phuc) {
+            $validated = $request->validate([
+                'so_tien_thanh_toan' => ['required', 'integer', 'min:0'],
+                'hinh_thuc_thanh_toan' => [
+                    'nullable',
+                    'string',
+                    Rule::in(['tien_mat', 'chuyen_khoan']),
+                    Rule::requiredIf(fn () => (int) $request->input('so_tien_thanh_toan', 0) > 0
+                        || (int) $request->input('tien_den_bu', 0) > 0
+                        || (int) $request->input('phi_tra_muon', 0) > 0
+                        || (int) $request->input('phi_phu_thu', 0) > 0),
+                ],
+                'phi_tra_muon' => ['nullable', 'integer', 'min:0'],
+                'tien_den_bu' => ['nullable', 'integer', 'min:0'],
+                'phi_phu_thu' => ['nullable', 'integer', 'min:0'],
+                'uu_dai_tat_toan' => ['nullable', 'integer', 'min:0'],
+                'tong_tien_thanh_toan' => ['nullable', 'integer', 'min:0'],
+                'ngay_tra_chinh_thuc' => ['nullable', 'date'],
+                'ghi_chu_sale' => ['nullable', 'string'],
+                'ghi_chu_khach' => ['nullable', 'string'],
+                'san_pham_cho_thue' => ['sometimes', 'array'],
+                'san_pham_cho_thue.*.id' => [
+                    'required',
+                    'integer',
+                    Rule::exists('hop_dong_cho_thue_trang_phuc_san_pham_cho_thue', 'id')
+                        ->where('hop_dong_id', $hop_dong_cho_thue_trang_phuc->id),
+                ],
+                'san_pham_cho_thue.*.trang_thai_hoan_tra' => [
+                    'required',
+                    'string',
+                    Rule::in(['da_hoan_tra', 'chua_hoan_tra']),
+                ],
+                'san_pham_cho_thue.*.ghi_chu' => ['nullable', 'string'],
+            ]);
+
+            $thanhTien = (int) ($hop_dong_cho_thue_trang_phuc->thanh_tien
+                ?: max(0, (int) $hop_dong_cho_thue_trang_phuc->tong_tien - (int) $hop_dong_cho_thue_trang_phuc->giam_gia));
+            $tienCocHienTai = (int) $hop_dong_cho_thue_trang_phuc->tien_coc;
+            $conLai = max(0, $thanhTien - $tienCocHienTai);
+            $soTienThanhToan = (int) $validated['so_tien_thanh_toan'];
+            $phiTraMuon = (int) ($validated['phi_tra_muon'] ?? 0);
+            $tienDenBu = (int) ($validated['tien_den_bu'] ?? 0);
+            $phiPhuThu = (int) ($validated['phi_phu_thu'] ?? 0);
+            $uuDaiTatToan = (int) ($validated['uu_dai_tat_toan'] ?? 0);
+            $tongTienThanhToan = array_key_exists('tong_tien_thanh_toan', $validated)
+                ? (int) $validated['tong_tien_thanh_toan']
+                : max(0, $soTienThanhToan + $phiTraMuon + $tienDenBu + $phiPhuThu - $uuDaiTatToan);
+
+            if ($soTienThanhToan > $conLai) {
+                return response()->json([
+                    'message' => 'Số tiền thanh toán không được vượt quá số tiền còn lại.',
+                    'errors' => [
+                        'so_tien_thanh_toan' => ['Số tiền thanh toán không được vượt quá số tiền còn lại.'],
+                    ],
+                ], 422);
+            }
+
+            DB::transaction(function () use ($hop_dong_cho_thue_trang_phuc, $validated, $tienCocHienTai, $soTienThanhToan, $phiTraMuon, $tienDenBu, $phiPhuThu, $uuDaiTatToan, $tongTienThanhToan) {
+                $updateData = [
+                    'phi_tra_muon' => $phiTraMuon,
+                    'tien_den_bu' => $tienDenBu,
+                    'phi_phu_thu' => $phiPhuThu,
+                    'uu_dai_tat_toan' => $uuDaiTatToan,
+                    'tong_tien_thanh_toan' => $tongTienThanhToan,
+                    'ngay_tra_chinh_thuc' => $validated['ngay_tra_chinh_thuc'] ?? now()->toDateString(),
+                    'ghi_chu_sale' => $validated['ghi_chu_sale'] ?? null,
+                    'ghi_chu_khach' => $validated['ghi_chu_khach'] ?? null,
+                ];
+                if ($soTienThanhToan > 0) {
+                    $updateData['tien_coc'] = $tienCocHienTai + $soTienThanhToan;
+                }
+                if ($soTienThanhToan > 0 || $phiTraMuon > 0 || $tienDenBu > 0 || $phiPhuThu > 0) {
+                    $updateData['hinh_thuc_thanh_toan'] = $validated['hinh_thuc_thanh_toan'] ?? null;
+                }
+                $hop_dong_cho_thue_trang_phuc->update($updateData);
+
+                foreach ($validated['san_pham_cho_thue'] ?? [] as $item) {
+                    HopDongChoThueTrangPhucSanPhamChoThue::query()
+                        ->where('hop_dong_id', $hop_dong_cho_thue_trang_phuc->id)
+                        ->where('id', $item['id'])
+                        ->update([
+                            'trang_thai_hoan_tra' => $item['trang_thai_hoan_tra'],
+                            'ghi_chu' => $item['ghi_chu'] ?? null,
+                        ]);
+                }
+            });
+
+            return response()->json($hop_dong_cho_thue_trang_phuc->fresh()->load([
+                'nguoiChoThueUser:id,name,phone',
+                'sanPhamChoThue.sanPham:id,ma_san_pham,ten_san_pham,gia_tri,gia_cho_thue,hinh_anh',
+            ]));
+
+        }, 'thanh toán hợp đồng cho thuê trang phục');
     }
 
     /**
@@ -248,6 +348,7 @@ class HopDongChoThueTrangPhucController extends BaseApiController
             'giam_gia' => ['nullable', 'integer', 'min:0'],
             'thanh_tien' => ['nullable', 'integer', 'min:0'],
             'tien_coc' => ['nullable', 'integer', 'min:0'],
+            'hinh_thuc_thanh_toan' => ['nullable', 'string', Rule::in(['tien_mat', 'chuyen_khoan'])],
             'trang_thai' => ['required', 'string', Rule::in([
                 'moi_tao',
                 'nhap',
@@ -270,6 +371,11 @@ class HopDongChoThueTrangPhucController extends BaseApiController
             ],
             'san_pham_cho_thue.*.san_pham_id' => ['required', 'integer', 'exists:trang_phuc,id', 'distinct'],
             'san_pham_cho_thue.*.ghi_chu' => ['nullable', 'string'],
+            'san_pham_cho_thue.*.trang_thai_hoan_tra' => [
+                'nullable',
+                'string',
+                Rule::in(['da_hoan_tra', 'chua_hoan_tra']),
+            ],
         ]);
     }
 
@@ -313,6 +419,9 @@ class HopDongChoThueTrangPhucController extends BaseApiController
                 ->map(fn (array $item) => [
                     'san_pham_id' => (int) $item['san_pham_id'],
                     'ghi_chu' => isset($item['ghi_chu']) ? trim((string) $item['ghi_chu']) : null,
+                    'trang_thai_hoan_tra' => in_array($item['trang_thai_hoan_tra'] ?? null, ['da_hoan_tra', 'chua_hoan_tra'], true)
+                        ? $item['trang_thai_hoan_tra']
+                        : null,
                 ])
                 ->values()
                 ->all();
@@ -327,13 +436,17 @@ class HopDongChoThueTrangPhucController extends BaseApiController
     }
 
     /**
-     * @param  array<int, array{san_pham_id: int, ghi_chu: ?string}>  $sanPhamItems
+     * @param  array<int, array{san_pham_id: int, ghi_chu: ?string, trang_thai_hoan_tra?: ?string}>  $sanPhamItems
      */
     private function syncSanPhamChoThue(
         HopDongChoThueTrangPhuc $hopDong,
         array $sanPhamItems,
         bool $persistDates = false,
     ): void {
+        $existingBySanPhamId = $hopDong->sanPhamChoThue()
+            ->get(['san_pham_id', 'trang_thai_hoan_tra'])
+            ->keyBy('san_pham_id');
+
         $hopDong->sanPhamChoThue()->delete();
 
         $ngayBatDau = $persistDates ? ($hopDong->ngay_thue?->format('Y-m-d') ?: null) : null;
@@ -343,6 +456,10 @@ class HopDongChoThueTrangPhucController extends BaseApiController
             : null;
 
         foreach ($sanPhamItems as $item) {
+            $trangThaiHoanTra = $item['trang_thai_hoan_tra']
+                ?? $existingBySanPhamId->get($item['san_pham_id'])?->trang_thai_hoan_tra
+                ?? 'chua_hoan_tra';
+
             HopDongChoThueTrangPhucSanPhamChoThue::create([
                 'hop_dong_id' => $hopDong->id,
                 'san_pham_id' => $item['san_pham_id'],
@@ -350,6 +467,7 @@ class HopDongChoThueTrangPhucController extends BaseApiController
                 'ngay_ket_thuc_du_kien' => $ngayKetThucDuKien,
                 'ngay_ket_thuc_thuc_te' => $ngayKetThucThucTe,
                 'ghi_chu' => $item['ghi_chu'] ?: null,
+                'trang_thai_hoan_tra' => $trangThaiHoanTra,
             ]);
         }
     }

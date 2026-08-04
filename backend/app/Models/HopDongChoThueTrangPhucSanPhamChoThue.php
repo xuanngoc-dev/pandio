@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'ngay_ket_thuc_du_kien',
     'ngay_ket_thuc_thuc_te',
     'ghi_chu',
+    'trang_thai_hoan_tra',
 ])]
 class HopDongChoThueTrangPhucSanPhamChoThue extends Model
 {

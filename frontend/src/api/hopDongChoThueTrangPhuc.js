@@ -55,3 +55,24 @@ export function updateHopDongChoThueTrangPhuc(id, payload) {
 export function deleteHopDongChoThueTrangPhuc(id) {
   return api.delete(`/hop-dong-cho-thue-trang-phuc/${id}`)
 }
+
+/**
+ * Thanh toán hợp đồng cho thuê trang phục.
+ * @param {number|string} id
+ * @param {{
+ *   so_tien_thanh_toan: number,
+ *   hinh_thuc_thanh_toan: 'tien_mat'|'chuyen_khoan',
+ *   tien_den_bu?: number,
+ *   phi_tra_muon?: number,
+ *   phi_phu_thu?: number,
+ *   uu_dai_tat_toan?: number,
+ *   tong_tien_thanh_toan?: number,
+ *   ngay_tra_chinh_thuc?: string,
+ *   ghi_chu_sale?: string|null,
+ *   ghi_chu_khach?: string|null,
+ *   san_pham_cho_thue?: Array<{ id: number, trang_thai_hoan_tra: 'da_hoan_tra'|'chua_hoan_tra', ghi_chu?: string|null }>,
+ * }} payload
+ */
+export function thanhToanHopDongChoThueTrangPhuc(id, payload) {
+  return api.post(`/hop-dong-cho-thue-trang-phuc/${id}/thanh-toan`, payload)
+}

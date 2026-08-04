@@ -157,11 +157,14 @@
             </el-tag>
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Thao tác" width="100" fixed="right" align="center">
+        <CustomTableColumn label="Thao tác" width="140" fixed="right" align="center">
           <template #default="{ row }">
             <div class="action-btns">
               <CustomTooltip content="Sửa" placement="top">
                 <CustomButton type="primary" link :icon="Edit" @click="openEdit(row)" />
+              </CustomTooltip>
+              <CustomTooltip content="Thanh toán" placement="top">
+                <CustomButton type="success" link :icon="Wallet" @click="openThanhToan(row)" />
               </CustomTooltip>
               <CustomTooltip content="Xóa" placement="top">
                 <CustomButton type="danger" link :icon="Delete" @click="remove(row)" />
@@ -193,13 +196,19 @@
       @saved="onFormSaved"
       @closed="onFormClosed"
     />
+
+    <HopDongChoThueThanhToanModal
+      v-model="thanhToanModalVisible"
+      :hop-dong="thanhToanHopDong"
+      @saved="onThanhToanSaved"
+    />
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Delete, Document, Edit, Plus, Search } from '@element-plus/icons-vue'
+import { Delete, Document, Edit, Plus, Search, Wallet } from '@element-plus/icons-vue'
 import {
   deleteHopDongChoThueTrangPhuc,
   fetchHopDongChoThueTrangPhuc,
@@ -208,6 +217,7 @@ import {
 } from '@/api/hopDongChoThueTrangPhuc'
 import HopDongChoThueDraftModal from '@/views/van-hanh-cuoi/hop-dong-cho-thue/HopDongChoThueDraftModal.vue'
 import HopDongChoThueFormModal from '@/views/van-hanh-cuoi/hop-dong-cho-thue/HopDongChoThueFormModal.vue'
+import HopDongChoThueThanhToanModal from '@/views/van-hanh-cuoi/hop-dong-cho-thue/HopDongChoThueThanhToanModal.vue'
 import BulkActionBar from '@/components/BulkActionBar.vue'
 import TableColumnConfig from '@/components/TableColumnConfig.vue'
 import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
@@ -265,6 +275,8 @@ const formModalVisible = ref(false)
 const draftModalVisible = ref(false)
 const draftModalRef = ref(null)
 const currentHopDong = ref(null)
+const thanhToanModalVisible = ref(false)
+const thanhToanHopDong = ref(null)
 
 const { selectedCount, onSelectionChange, clearSelection, selectedIds } = useBulkSelection()
 
@@ -395,6 +407,21 @@ async function openEdit(row) {
     currentHopDong.value = row
   }
   formModalVisible.value = true
+}
+
+async function openThanhToan(row) {
+  thanhToanHopDong.value = row
+  thanhToanModalVisible.value = true
+  try {
+    const { data } = await getHopDongChoThueTrangPhuc(row.id)
+    thanhToanHopDong.value = data
+  } catch {
+    // keep list row as fallback; modal will also try reload
+  }
+}
+
+function onThanhToanSaved() {
+  loadItems()
 }
 
 async function onContinueDraft(row) {
