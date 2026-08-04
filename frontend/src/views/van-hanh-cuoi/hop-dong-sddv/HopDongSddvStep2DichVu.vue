@@ -627,10 +627,14 @@ defineExpose({
 }
 
 .service-card-grid {
+  --service-card-row-height: 88px;
+  --service-card-gap: 10px;
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 10px;
-  max-height: 320px;
+  grid-auto-rows: var(--service-card-row-height);
+  gap: var(--service-card-gap);
+  // Hiển thị đúng 2 hàng; vượt quá thì cuộn dọc
+  max-height: calc(2 * var(--service-card-row-height) + var(--service-card-gap) + 4px);
   overflow-y: auto;
   padding: 2px;
 }
@@ -640,7 +644,8 @@ defineExpose({
   display: flex;
   align-items: stretch;
   width: 100%;
-  min-height: 88px;
+  height: 100%;
+  min-height: 0;
   padding: 0;
   border: 1.5px solid var(--el-border-color-lighter);
   border-radius: 8px;
@@ -792,7 +797,6 @@ defineExpose({
 @media (max-width: 768px) {
   .service-card-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    max-height: 280px;
   }
 }
 </style>
