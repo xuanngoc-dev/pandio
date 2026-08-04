@@ -120,6 +120,7 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
 
     // Trang phục
     Route::post('/trang-phuc/upload-hinh-anh', [TrangPhucController::class, 'uploadHinhAnh']);
+    Route::get('/trang-phuc/{trang_phuc}/lich-cho-thue', [TrangPhucController::class, 'lichChoThue']);
     Route::apiResource('trang-phuc', TrangPhucController::class);
     Route::apiResource('danh-muc-trang-phuc', DanhMucTrangPhucController::class);
     Route::apiResource('nha-cung-cap-trang-phuc', NhaCungCapTrangPhucController::class);

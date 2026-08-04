@@ -141,7 +141,11 @@ class HopDongChoThueTrangPhucController extends BaseApiController
 
             $hopDong = DB::transaction(function () use ($validated, $sanPhamItems) {
                 $hopDong = HopDongChoThueTrangPhuc::create($validated);
-                $this->syncSanPhamChoThue($hopDong, $sanPhamItems);
+                $this->syncSanPhamChoThue(
+                    $hopDong,
+                    $sanPhamItems,
+                    $this->shouldPersistSanPhamDates($validated['trang_thai'] ?? null),
+                );
 
                 return $hopDong;
             });
@@ -173,7 +177,12 @@ class HopDongChoThueTrangPhucController extends BaseApiController
                     $hop_dong_cho_thue_trang_phuc->update($validated);
                 }
                 if ($sanPhamItems !== null) {
-                    $this->syncSanPhamChoThue($hop_dong_cho_thue_trang_phuc, $sanPhamItems);
+                    $trangThai = $validated['trang_thai'] ?? $hop_dong_cho_thue_trang_phuc->trang_thai;
+                    $this->syncSanPhamChoThue(
+                        $hop_dong_cho_thue_trang_phuc->fresh(),
+                        $sanPhamItems,
+                        $this->shouldPersistSanPhamDates($trangThai),
+                    );
                 }
             });
 
@@ -258,8 +267,6 @@ class HopDongChoThueTrangPhucController extends BaseApiController
                 $isDraft ? 'nullable' : 'min:1',
             ],
             'san_pham_cho_thue.*.san_pham_id' => ['required', 'integer', 'exists:trang_phuc,id', 'distinct'],
-            'san_pham_cho_thue.*.ngay_bat_dau' => ['nullable', 'date'],
-            'san_pham_cho_thue.*.ngay_ket_thuc' => ['nullable', 'date', 'after_or_equal:san_pham_cho_thue.*.ngay_bat_dau'],
             'san_pham_cho_thue.*.ghi_chu' => ['nullable', 'string'],
         ]);
     }
@@ -300,8 +307,6 @@ class HopDongChoThueTrangPhucController extends BaseApiController
             $validated['san_pham_cho_thue'] = collect($validated['san_pham_cho_thue'] ?? [])
                 ->map(fn (array $item) => [
                     'san_pham_id' => (int) $item['san_pham_id'],
-                    'ngay_bat_dau' => $item['ngay_bat_dau'] ?? null,
-                    'ngay_ket_thuc' => $item['ngay_ket_thuc'] ?? null,
                     'ghi_chu' => isset($item['ghi_chu']) ? trim((string) $item['ghi_chu']) : null,
                 ])
                 ->values()
@@ -311,19 +316,34 @@ class HopDongChoThueTrangPhucController extends BaseApiController
         return $validated;
     }
 
-    /**
-     * @param  array<int, array{san_pham_id: int, ngay_bat_dau: ?string, ngay_ket_thuc: ?string, ghi_chu: ?string}>  $sanPhamItems
-     */
-    private function syncSanPhamChoThue(HopDongChoThueTrangPhuc $hopDong, array $sanPhamItems): void
+    private function shouldPersistSanPhamDates(?string $trangThai): bool
     {
+        return ! in_array($trangThai, ['moi_tao', 'nhap'], true);
+    }
+
+    /**
+     * @param  array<int, array{san_pham_id: int, ghi_chu: ?string}>  $sanPhamItems
+     */
+    private function syncSanPhamChoThue(
+        HopDongChoThueTrangPhuc $hopDong,
+        array $sanPhamItems,
+        bool $persistDates = false,
+    ): void {
         $hopDong->sanPhamChoThue()->delete();
+
+        $ngayBatDau = $persistDates ? ($hopDong->ngay_thue?->format('Y-m-d') ?: null) : null;
+        $ngayKetThucDuKien = $persistDates ? ($hopDong->ngay_tra_du_kien?->format('Y-m-d') ?: null) : null;
+        $ngayKetThucThucTe = $persistDates
+            ? ($hopDong->ngay_tra_chinh_thuc?->format('Y-m-d') ?: null)
+            : null;
 
         foreach ($sanPhamItems as $item) {
             HopDongChoThueTrangPhucSanPhamChoThue::create([
                 'hop_dong_id' => $hopDong->id,
                 'san_pham_id' => $item['san_pham_id'],
-                'ngay_bat_dau' => $item['ngay_bat_dau'] ?: null,
-                'ngay_ket_thuc' => $item['ngay_ket_thuc'] ?: null,
+                'ngay_bat_dau' => $ngayBatDau,
+                'ngay_ket_thuc_du_kien' => $ngayKetThucDuKien,
+                'ngay_ket_thuc_thuc_te' => $ngayKetThucThucTe,
                 'ghi_chu' => $item['ghi_chu'] ?: null,
             ]);
         }

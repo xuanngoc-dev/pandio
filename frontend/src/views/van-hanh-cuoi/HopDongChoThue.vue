@@ -313,35 +313,56 @@
                 </div>
 
                 <div v-loading="trangPhucLoading" class="san-pham-card-grid">
-                  <button
+                  <CustomTooltip
                     v-for="tp in trangPhucOptions"
                     :key="tp.id"
-                    type="button"
-                    class="san-pham-card"
-                    :class="{ 'is-selected': isSanPhamSelected(tp.id) }"
-                    @click="toggleSanPham(tp)"
+                    :disabled="!isSanPhamBusy(tp)"
+                    content="Sản phẩm đã được sử dụng trong khoảng thời gian bạn chọn"
+                    placement="top"
                   >
-                    <div class="san-pham-card__image">
-                      <el-avatar
-                        v-if="tp.hinh_anh"
-                        :size="40"
-                        :src="mediaUrl(tp.hinh_anh)"
-                        shape="square"
-                        class="san-pham-card__avatar"
-                      />
-                      <div v-else class="san-pham-card__placeholder">
-                        <CustomIcon :size="24"><Picture /></CustomIcon>
+                    <button
+                      type="button"
+                      class="san-pham-card"
+                      :class="{
+                        'is-selected': isSanPhamSelected(tp.id),
+                        'is-disabled': isSanPhamBusy(tp),
+                      }"
+                      @click="onSanPhamCardClick(tp)"
+                    >
+                      <div class="san-pham-card__image">
+                        <el-avatar
+                          v-if="tp.hinh_anh"
+                          :size="40"
+                          :src="mediaUrl(tp.hinh_anh)"
+                          shape="square"
+                          class="san-pham-card__avatar"
+                        />
+                        <div v-else class="san-pham-card__placeholder">
+                          <CustomIcon :size="24"><Picture /></CustomIcon>
+                        </div>
+                        <span v-if="isSanPhamSelected(tp.id)" class="san-pham-card__check">
+                          <CustomIcon><Check /></CustomIcon>
+                        </span>
                       </div>
-                      <span v-if="isSanPhamSelected(tp.id)" class="san-pham-card__check">
-                        <CustomIcon><Check /></CustomIcon>
-                      </span>
-                    </div>
-                    <div class="san-pham-card__body">
-                      <div class="san-pham-card__code">{{ tp.ma_san_pham }}</div>
-                      <div class="san-pham-card__name" :title="tp.ten_san_pham">{{ tp.ten_san_pham }}</div>
-                      <div class="san-pham-card__price">{{ formatMoney(tp.gia_cho_thue) }}</div>
-                    </div>
-                  </button>
+                      <div class="san-pham-card__body">
+                        <div class="san-pham-card__code">{{ tp.ma_san_pham }}</div>
+                        <div class="san-pham-card__name" :title="tp.ten_san_pham">{{ tp.ten_san_pham }}</div>
+                        <div class="san-pham-card__price">{{ formatMoney(tp.gia_cho_thue) }}</div>
+                      </div>
+                      <CustomTooltip
+                        v-if="tp.co_lich_cho_thue"
+                        content="Xem lịch sử dụng"
+                        placement="top"
+                      >
+                        <span
+                          class="san-pham-card__calendar"
+                          @click.stop="openLichChoThue(tp)"
+                        >
+                          <CustomIcon :size="14"><Calendar /></CustomIcon>
+                        </span>
+                      </CustomTooltip>
+                    </button>
+                  </CustomTooltip>
                   <div v-if="!trangPhucLoading && !trangPhucOptions.length" class="san-pham-empty">
                     Không tìm thấy trang phục phù hợp.
                   </div>
@@ -479,13 +500,60 @@
       @continue="onContinueDraft"
       @changed="loadItems"
     />
+
+    <CustomDialog
+      v-model="lichModalVisible"
+      :title="lichModalTitle"
+      :width="1100"
+      @closed="onLichModalClosed"
+    >
+      <CustomTable v-loading="lichLoading" :data="lichItems" stripe style="width: 100%">
+        <CustomTableColumn label="Mã HĐ" prop="hop_dong.ma_hop_dong" min-width="140" />
+        <CustomTableColumn label="Khách hàng" min-width="160">
+          <template #default="{ row }">
+            <div>{{ row.hop_dong?.ten_khach_hang || '—' }}</div>
+            <div v-if="row.hop_dong?.sdt_khach_hang" class="sub-text">
+              {{ row.hop_dong.sdt_khach_hang }}
+            </div>
+          </template>
+        </CustomTableColumn>
+        <CustomTableColumn label="Ngày bắt đầu" width="120" align="center">
+          <template #default="{ row }">
+            {{ formatDate(row.ngay_bat_dau) }}
+          </template>
+        </CustomTableColumn>
+        <CustomTableColumn label="Ngày KT dự kiến" width="130" align="center">
+          <template #default="{ row }">
+            {{ formatDate(row.ngay_ket_thuc_du_kien) }}
+          </template>
+        </CustomTableColumn>
+        <CustomTableColumn label="Ngày KT thực tế" width="130" align="center">
+          <template #default="{ row }">
+            {{ formatDate(row.ngay_ket_thuc_thuc_te) }}
+          </template>
+        </CustomTableColumn>
+        <CustomTableColumn label="Trạng thái" width="120" align="center">
+          <template #default="{ row }">
+            <el-tag :type="trangThaiTagType(row.hop_dong?.trang_thai)" size="small">
+              {{ trangThaiLabel(row.hop_dong?.trang_thai) }}
+            </el-tag>
+          </template>
+        </CustomTableColumn>
+      </CustomTable>
+      <div v-if="!lichLoading && !lichItems.length" class="lich-empty">
+        Chưa có lịch sử dụng sản phẩm.
+      </div>
+      <template #footer>
+        <CustomButton @click="lichModalVisible = false">Đóng</CustomButton>
+      </template>
+    </CustomDialog>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowDown, Check, Delete, Document, Edit, Picture, Plus, Search } from '@element-plus/icons-vue'
+import { ArrowDown, Calendar, Check, Delete, Document, Edit, Picture, Plus, Search } from '@element-plus/icons-vue'
 import {
   deleteHopDongChoThueTrangPhuc,
   fetchHopDongChoThueTrangPhuc,
@@ -494,7 +562,7 @@ import {
   updateHopDongChoThueTrangPhuc,
 } from '@/api/hopDongChoThueTrangPhuc'
 import HopDongChoThueDraftModal from '@/views/van-hanh-cuoi/hop-dong-cho-thue/HopDongChoThueDraftModal.vue'
-import { fetchTrangPhuc } from '@/api/trangPhuc'
+import { fetchTrangPhuc, fetchTrangPhucLichChoThue } from '@/api/trangPhuc'
 import { fetchUsers } from '@/api/users'
 import BulkActionBar from '@/components/BulkActionBar.vue'
 import TableColumnConfig from '@/components/TableColumnConfig.vue'
@@ -580,6 +648,16 @@ const formRef = ref(null)
 const bulkDeleting = ref(false)
 const draftModalVisible = ref(false)
 const draftModalRef = ref(null)
+const lichModalVisible = ref(false)
+const lichLoading = ref(false)
+const lichItems = ref([])
+const lichCurrentProduct = ref(null)
+
+const lichModalTitle = computed(() => {
+  const product = lichCurrentProduct.value
+  if (!product) return 'Lịch sử dụng sản phẩm'
+  return `Lịch sử dụng — ${product.ma_san_pham || product.ten_san_pham || ''}`
+})
 
 const { selectedCount, onSelectionChange, clearSelection, selectedIds } = useBulkSelection()
 
@@ -599,8 +677,6 @@ const bulkActions = computed(() => [
 
 const emptySanPhamItem = (sanPhamId) => ({
   san_pham_id: sanPhamId,
-  ngay_bat_dau: null,
-  ngay_ket_thuc: null,
   ghi_chu: '',
 })
 
@@ -724,6 +800,15 @@ function isSanPhamSelected(sanPhamId) {
   return form.san_pham_cho_thue.some((item) => item.san_pham_id === sanPhamId)
 }
 
+function isSanPhamBusy(tp) {
+  return Boolean(tp?.dang_su_dung)
+}
+
+function onSanPhamCardClick(tp) {
+  if (isSanPhamBusy(tp)) return
+  toggleSanPham(tp)
+}
+
 function recalcTongTien() {
   form.tong_tien = tongTienTuTinh.value
 }
@@ -733,6 +818,7 @@ function applyTongTienTuTinh() {
 }
 
 function toggleSanPham(tp) {
+  if (isSanPhamBusy(tp)) return
   const index = form.san_pham_cho_thue.findIndex((item) => item.san_pham_id === tp.id)
   if (index >= 0) {
     form.san_pham_cho_thue.splice(index, 1)
@@ -753,6 +839,7 @@ function removeSanPham(sanPhamId) {
 
 function updateSoNgayThue() {
   recalcTongTien()
+  loadTrangPhucOptions()
 }
 
 function onSanPhamSearch() {
@@ -787,13 +874,33 @@ async function loadTrangPhucOptions() {
       keyword: sanPhamKeyword.value.trim() || undefined,
       gia_tu: Number.isFinite(giaTu) ? giaTu : undefined,
       gia_den: Number.isFinite(giaDen) ? giaDen : undefined,
+      ngay_thue: form.ngay_thue || undefined,
+      ngay_tra_du_kien: form.ngay_tra_du_kien || undefined,
+      exclude_hop_dong_id: editingId.value || undefined,
     })
     trangPhucOptions.value = data.data || []
     cacheTrangPhucItems(trangPhucOptions.value)
+    removeBusySelectedSanPham()
   } catch {
     trangPhucOptions.value = []
   } finally {
     trangPhucLoading.value = false
+  }
+}
+
+function removeBusySelectedSanPham() {
+  if (!form.ngay_thue || !form.ngay_tra_du_kien) return
+  const busyIds = new Set(
+    trangPhucOptions.value.filter((tp) => isSanPhamBusy(tp)).map((tp) => tp.id),
+  )
+  if (!busyIds.size) return
+
+  const before = form.san_pham_cho_thue.length
+  form.san_pham_cho_thue = form.san_pham_cho_thue.filter(
+    (item) => !busyIds.has(item.san_pham_id),
+  )
+  if (form.san_pham_cho_thue.length !== before) {
+    recalcTongTien()
   }
 }
 
@@ -832,8 +939,6 @@ function fillFormFromRow(row, { draftFlow = false } = {}) {
 
   const sanPhamItems = (row.san_pham_cho_thue || []).map((item) => ({
     san_pham_id: item.san_pham_id,
-    ngay_bat_dau: item.ngay_bat_dau?.slice?.(0, 10) || item.ngay_bat_dau || null,
-    ngay_ket_thuc: item.ngay_ket_thuc?.slice?.(0, 10) || item.ngay_ket_thuc || null,
     ghi_chu: item.ghi_chu || '',
   }))
   cacheTrangPhucItems((row.san_pham_cho_thue || []).map((item) => item.san_pham).filter(Boolean))
@@ -926,11 +1031,29 @@ function buildPayload(trangThai) {
     ghi_chu_khach: form.ghi_chu_khach?.trim() || null,
     san_pham_cho_thue: form.san_pham_cho_thue.map((item) => ({
       san_pham_id: item.san_pham_id,
-      ngay_bat_dau: item.ngay_bat_dau || null,
-      ngay_ket_thuc: item.ngay_ket_thuc || null,
       ghi_chu: item.ghi_chu?.trim() || null,
     })),
   }
+}
+
+async function openLichChoThue(tp) {
+  lichCurrentProduct.value = tp
+  lichModalVisible.value = true
+  lichLoading.value = true
+  lichItems.value = []
+  try {
+    const { data } = await fetchTrangPhucLichChoThue(tp.id)
+    lichItems.value = Array.isArray(data) ? data : []
+  } catch {
+    lichItems.value = []
+  } finally {
+    lichLoading.value = false
+  }
+}
+
+function onLichModalClosed() {
+  lichCurrentProduct.value = null
+  lichItems.value = []
 }
 
 async function saveDraft() {
@@ -1217,6 +1340,7 @@ onMounted(() => {
 }
 
 .san-pham-card {
+  position: relative;
   display: flex;
   flex-direction: row;
   align-items: stretch;
@@ -1241,6 +1365,23 @@ onMounted(() => {
     border-color: var(--el-color-primary);
     box-shadow: 0 0 0 1px var(--el-color-primary-light-7);
     background: var(--el-color-primary-light-9);
+  }
+
+  &.is-disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+    background: var(--el-fill-color-light);
+
+    &:hover {
+      border-color: var(--el-border-color-lighter);
+      box-shadow: none;
+    }
+
+    &.is-selected {
+      border-color: var(--el-border-color);
+      box-shadow: none;
+      background: var(--el-fill-color-light);
+    }
   }
 }
 
@@ -1321,6 +1462,35 @@ onMounted(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.san-pham-card__calendar {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--el-color-warning-light-8);
+  color: var(--el-color-warning-dark-2);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+
+  &:hover {
+    background: var(--el-color-warning);
+    color: #fff;
+  }
+}
+
+.lich-empty {
+  padding: 24px 12px;
+  text-align: center;
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
 }
 
 .san-pham-empty,

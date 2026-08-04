@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'hinh_anh',
@@ -48,5 +49,10 @@ class TrangPhuc extends Model
     public function cauHinhChiNhanh(): BelongsTo
     {
         return $this->belongsTo(CauHinhChiNhanh::class, 'chi_nhanh');
+    }
+
+    public function lichChoThue(): HasMany
+    {
+        return $this->hasMany(HopDongChoThueTrangPhucSanPhamChoThue::class, 'san_pham_id');
     }
 }

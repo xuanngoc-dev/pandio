@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\TrangPhuc;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -13,7 +14,8 @@ class TrangPhucController extends BaseApiController
     /**
      * Danh sách trang phục — phân trang + tìm kiếm.
      *
-     * Query: page, per_page, keyword, danh_muc, nha_cung_cap, chi_nhanh, trang_thai, gia_tu, gia_den
+     * Query: page, per_page, keyword, danh_muc, nha_cung_cap, chi_nhanh, trang_thai, gia_tu, gia_den,
+     *        ngay_thue, ngay_tra_du_kien, exclude_hop_dong_id
      */
     public function index(Request $request): JsonResponse
     {
@@ -28,10 +30,38 @@ class TrangPhucController extends BaseApiController
                 'trang_thai' => ['sometimes', 'nullable', Rule::in([0, 1, '0', '1'])],
                 'gia_tu' => ['sometimes', 'nullable', 'integer', 'min:0'],
                 'gia_den' => ['sometimes', 'nullable', 'integer', 'min:0'],
+                'ngay_thue' => ['sometimes', 'nullable', 'date'],
+                'ngay_tra_du_kien' => ['sometimes', 'nullable', 'date', 'after_or_equal:ngay_thue'],
+                'exclude_hop_dong_id' => ['sometimes', 'nullable', 'integer', 'exists:hop_dong_cho_thue_trang_phuc,id'],
             ]);
 
             $perPage = $validated['per_page'] ?? 10;
             $keyword = trim((string) ($validated['keyword'] ?? ''));
+            $ngayThue = $validated['ngay_thue'] ?? null;
+            $ngayTraDuKien = $validated['ngay_tra_du_kien'] ?? null;
+            $excludeHopDongId = isset($validated['exclude_hop_dong_id'])
+                ? (int) $validated['exclude_hop_dong_id']
+                : null;
+            $checkOverlap = filled($ngayThue) && filled($ngayTraDuKien);
+
+            $existsRelations = [
+                'lichChoThue as co_lich_cho_thue' => function ($q) {
+                    $q->whereNotNull('ngay_bat_dau')
+                        ->where(function ($inner) {
+                            $inner->whereNotNull('ngay_ket_thuc_du_kien')
+                                ->orWhereNotNull('ngay_ket_thuc_thuc_te');
+                        })
+                        ->whereHas('hopDong', function ($hd) {
+                            $hd->whereNotIn('trang_thai', ['moi_tao', 'nhap', 'da_huy']);
+                        });
+                },
+            ];
+
+            if ($checkOverlap) {
+                $existsRelations['lichChoThue as dang_su_dung'] = function ($q) use ($ngayThue, $ngayTraDuKien, $excludeHopDongId) {
+                    $this->applyLichChoThueOverlapFilter($q, $ngayThue, $ngayTraDuKien, $excludeHopDongId);
+                };
+            }
 
             $query = TrangPhuc::query()
                 ->with([
@@ -39,6 +69,7 @@ class TrangPhucController extends BaseApiController
                     'nhaCungCapTrangPhuc:id,ten_nha_cung_cap,ma_nha_cung_cap',
                     'cauHinhChiNhanh:id,ten_chi_nhanh',
                 ])
+                ->withExists($existsRelations)
                 ->when($keyword !== '', function ($q) use ($keyword) {
                     $q->where(function ($inner) use ($keyword) {
                         $inner->where('ma_san_pham', 'like', "%{$keyword}%")
@@ -59,6 +90,33 @@ class TrangPhucController extends BaseApiController
             return response()->json($query->paginate($perPage));
 
         }, 'lấy danh sách trang phục');
+    }
+
+    /**
+     * Lịch sử cho thuê của một trang phục.
+     */
+    public function lichChoThue(TrangPhuc $trang_phuc): JsonResponse
+    {
+        return $this->handleApi(function () use ($trang_phuc) {
+            $items = $trang_phuc->lichChoThue()
+                ->whereNotNull('ngay_bat_dau')
+                ->where(function ($q) {
+                    $q->whereNotNull('ngay_ket_thuc_du_kien')
+                        ->orWhereNotNull('ngay_ket_thuc_thuc_te');
+                })
+                ->whereHas('hopDong', function ($hd) {
+                    $hd->whereNotIn('trang_thai', ['moi_tao', 'nhap']);
+                })
+                ->with([
+                    'hopDong:id,ma_hop_dong,ten_khach_hang,sdt_khach_hang,trang_thai',
+                ])
+                ->orderByDesc('ngay_bat_dau')
+                ->orderByDesc('id')
+                ->get();
+
+            return response()->json($items);
+
+        }, 'lấy lịch cho thuê trang phục');
     }
 
     /**
@@ -204,5 +262,29 @@ class TrangPhucController extends BaseApiController
         }
 
         return $validated;
+    }
+
+    /**
+     * Lọc lịch cho thuê giao với khoảng [ngay_thue, ngay_tra_du_kien].
+     */
+    private function applyLichChoThueOverlapFilter(
+        Builder $query,
+        string $ngayThue,
+        string $ngayTraDuKien,
+        ?int $excludeHopDongId = null,
+    ): void {
+        $query->whereNotNull('ngay_bat_dau')
+            ->where(function ($inner) {
+                $inner->whereNotNull('ngay_ket_thuc_du_kien')
+                    ->orWhereNotNull('ngay_ket_thuc_thuc_te');
+            })
+            ->whereDate('ngay_bat_dau', '<=', $ngayTraDuKien)
+            ->whereRaw('COALESCE(ngay_ket_thuc_thuc_te, ngay_ket_thuc_du_kien) >= ?', [$ngayThue])
+            ->whereHas('hopDong', function ($hd) use ($excludeHopDongId) {
+                $hd->whereNotIn('trang_thai', ['moi_tao', 'nhap', 'da_huy']);
+                if ($excludeHopDongId) {
+                    $hd->where('id', '!=', $excludeHopDongId);
+                }
+            });
     }
 }

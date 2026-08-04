@@ -10,7 +10,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'hop_dong_id',
     'san_pham_id',
     'ngay_bat_dau',
-    'ngay_ket_thuc',
+    'ngay_ket_thuc_du_kien',
+    'ngay_ket_thuc_thuc_te',
     'ghi_chu',
 ])]
 class HopDongChoThueTrangPhucSanPhamChoThue extends Model
@@ -24,7 +25,8 @@ class HopDongChoThueTrangPhucSanPhamChoThue extends Model
     {
         return [
             'ngay_bat_dau' => 'date',
-            'ngay_ket_thuc' => 'date',
+            'ngay_ket_thuc_du_kien' => 'date',
+            'ngay_ket_thuc_thuc_te' => 'date',
         ];
     }
 
