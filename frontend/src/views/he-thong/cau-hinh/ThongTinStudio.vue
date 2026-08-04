@@ -210,6 +210,16 @@
                 <CustomOption label="Có" value="co" />
                 <CustomOption label="Không" value="khong" />
               </CustomSelect>
+              <CustomSelect
+                v-model="payment.trangThaiFilter"
+                placeholder="Trạng thái"
+                clearable
+                style="width: 180px"
+                @change="onPaymentSearch"
+              >
+                <CustomOption label="Đang hoạt động" value="dang_hoat_dong" />
+                <CustomOption label="Ngưng hoạt động" value="ngung_hoat_dong" />
+              </CustomSelect>
               <CustomButton type="primary" plain @click="onPaymentSearch">
                 <CustomIcon><Search /></CustomIcon>
                 Tìm kiếm
@@ -237,6 +247,22 @@
               <CustomTableColumn label="STT" width="60" align="center">
                 <template #default="{ $index }">
                   {{ (payment.page - 1) * payment.perPage + $index + 1 }}
+                </template>
+              </CustomTableColumn>
+              <CustomTableColumn
+                v-if="paymentColumnSettings.isColumnVisible('hinh_anh_logo')"
+                label="Logo"
+                width="80"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <el-avatar
+                    v-if="row.hinh_anh_logo"
+                    :size="40"
+                    shape="square"
+                    :src="mediaUrl(row.hinh_anh_logo)"
+                  />
+                  <span v-else>—</span>
                 </template>
               </CustomTableColumn>
               <CustomTableColumn
@@ -281,7 +307,7 @@
                       :model-value="row.mac_dinh"
                       active-value="co"
                       inactive-value="khong"
-                      :loading="payment.togglingId === row.id"
+                      :loading="payment.togglingId === row.id && payment.togglingField === 'mac_dinh'"
                       :disabled="payment.togglingId === row.id"
                       :before-change="() => togglePaymentMacDinh(row)"
                     />
@@ -290,6 +316,32 @@
                       :class="row.mac_dinh === 'co' ? 'is-active' : 'is-inactive'"
                     >
                       {{ row.mac_dinh === 'co' ? 'Có' : 'Không' }}
+                    </span>
+                  </div>
+                </template>
+              </CustomTableColumn>
+              <CustomTableColumn
+                v-if="paymentColumnSettings.isColumnVisible('trang_thai')"
+                prop="trang_thai"
+                label="Trạng thái"
+                width="200"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <div class="status-cell">
+                    <el-switch
+                      :model-value="row.trang_thai"
+                      active-value="dang_hoat_dong"
+                      inactive-value="ngung_hoat_dong"
+                      :loading="payment.togglingId === row.id && payment.togglingField === 'trang_thai'"
+                      :disabled="payment.togglingId === row.id"
+                      :before-change="() => togglePaymentTrangThai(row)"
+                    />
+                    <span
+                      class="status-label"
+                      :class="row.trang_thai === 'dang_hoat_dong' ? 'is-active' : 'is-inactive'"
+                    >
+                      {{ row.trang_thai === 'dang_hoat_dong' ? 'Đang hoạt động' : 'Ngưng hoạt động' }}
                     </span>
                   </div>
                 </template>
@@ -414,7 +466,26 @@
       :width="640"
     >
       <CustomForm ref="paymentFormRef" :model="paymentForm" :rules="paymentRules">
+        <div class="payment-logo-preview">
+          <img
+            v-if="paymentLogoPreviewUrl"
+            :src="paymentLogoPreviewUrl"
+            class="payment-logo-image"
+            alt="Logo ngân hàng"
+          />
+          <div v-else class="payment-logo-placeholder">Chưa có logo</div>
+        </div>
+
         <CustomRow :gutter="16">
+          <CustomCol :span="24">
+            <CustomFormItem label="Link hình ảnh logo" prop="hinh_anh_logo">
+              <CustomInput
+                v-model="paymentForm.hinh_anh_logo"
+                placeholder="https://... hoặc đường dẫn logo"
+                clearable
+              />
+            </CustomFormItem>
+          </CustomCol>
           <CustomCol :xs="24" :sm="12">
             <CustomFormItem label="Ngân hàng" prop="ngan_hang">
               <CustomInput v-model="paymentForm.ngan_hang" placeholder="VD: Vietcombank" />
@@ -440,6 +511,14 @@
               <CustomSelect v-model="paymentForm.mac_dinh" style="width: 100%">
                 <CustomOption label="Có" value="co" />
                 <CustomOption label="Không" value="khong" />
+              </CustomSelect>
+            </CustomFormItem>
+          </CustomCol>
+          <CustomCol :xs="24" :sm="12">
+            <CustomFormItem label="Trạng thái" prop="trang_thai">
+              <CustomSelect v-model="paymentForm.trang_thai" style="width: 100%">
+                <CustomOption label="Đang hoạt động" value="dang_hoat_dong" />
+                <CustomOption label="Ngưng hoạt động" value="ngung_hoat_dong" />
               </CustomSelect>
             </CustomFormItem>
           </CustomCol>
@@ -505,11 +584,13 @@ const studioTableColumns = [
 const studioColumnSettings = useTableColumns('he-thong.thong-tin-studio', studioTableColumns)
 
 const paymentTableColumns = [
+  { key: 'hinh_anh_logo', label: 'Logo' },
   { key: 'ngan_hang', label: 'Ngân hàng' },
   { key: 'so_tai_khoan', label: 'Số tài khoản' },
   { key: 'chu_tai_khoan', label: 'Chủ tài khoản' },
   { key: 'chi_nhanh', label: 'Chi nhánh' },
   { key: 'mac_dinh', label: 'Mặc định' },
+  { key: 'trang_thai', label: 'Trạng thái' },
 ]
 const paymentColumnSettings = useTableColumns('he-thong.tai-khoan-thanh-toan', paymentTableColumns)
 
@@ -535,11 +616,13 @@ const payment = reactive({
   loading: false,
   saving: false,
   togglingId: null,
+  togglingField: null,
   page: 1,
   perPage: 10,
   total: 0,
   keyword: '',
   macDinhFilter: '',
+  trangThaiFilter: '',
   dialogVisible: false,
   editingId: null,
 })
@@ -565,7 +648,9 @@ const emptyPaymentForm = () => ({
   so_tai_khoan: '',
   chu_tai_khoan: '',
   chi_nhanh: '',
+  hinh_anh_logo: '',
   mac_dinh: 'khong',
+  trang_thai: 'dang_hoat_dong',
 })
 
 const studioForm = reactive(emptyStudioForm())
@@ -582,12 +667,15 @@ const paymentRules = {
   so_tai_khoan: [{ required: true, message: 'Vui lòng nhập số tài khoản', trigger: 'blur' }],
   chu_tai_khoan: [{ required: true, message: 'Vui lòng nhập chủ tài khoản', trigger: 'blur' }],
   mac_dinh: [{ required: true, message: 'Vui lòng chọn mặc định', trigger: 'change' }],
+  trang_thai: [{ required: true, message: 'Vui lòng chọn trạng thái', trigger: 'change' }],
 }
 
 const logoPreviewUrl = computed(() => {
   if (pendingLogoPreview.value) return pendingLogoPreview.value
   return mediaUrl(studioForm.logo)
 })
+
+const paymentLogoPreviewUrl = computed(() => mediaUrl(paymentForm.hinh_anh_logo?.trim()))
 
 function clearPendingLogo() {
   if (pendingLogoPreview.value) {
@@ -649,6 +737,7 @@ async function loadPayments() {
       per_page: payment.perPage,
       keyword: payment.keyword.trim() || undefined,
       mac_dinh: payment.macDinhFilter || undefined,
+      trang_thai: payment.trangThaiFilter || undefined,
     })
     payment.items = data.data || []
     payment.total = data.total || 0
@@ -709,6 +798,7 @@ async function togglePaymentMacDinh(row) {
 
   const value = row.mac_dinh === 'co' ? 'khong' : 'co'
   payment.togglingId = row.id
+  payment.togglingField = 'mac_dinh'
 
   try {
     await updateTaiKhoanThanhToan(row.id, {
@@ -716,7 +806,9 @@ async function togglePaymentMacDinh(row) {
       so_tai_khoan: row.so_tai_khoan,
       chu_tai_khoan: row.chu_tai_khoan,
       chi_nhanh: row.chi_nhanh || null,
+      hinh_anh_logo: row.hinh_anh_logo || null,
       mac_dinh: value,
+      trang_thai: row.trang_thai || 'dang_hoat_dong',
     })
     if (value === 'co') {
       payment.items.forEach((item) => {
@@ -733,6 +825,37 @@ async function togglePaymentMacDinh(row) {
     return false
   } finally {
     payment.togglingId = null
+    payment.togglingField = null
+  }
+}
+
+async function togglePaymentTrangThai(row) {
+  if (!row?.id) return false
+
+  const value = row.trang_thai === 'dang_hoat_dong' ? 'ngung_hoat_dong' : 'dang_hoat_dong'
+  payment.togglingId = row.id
+  payment.togglingField = 'trang_thai'
+
+  try {
+    await updateTaiKhoanThanhToan(row.id, {
+      ngan_hang: row.ngan_hang,
+      so_tai_khoan: row.so_tai_khoan,
+      chu_tai_khoan: row.chu_tai_khoan,
+      chi_nhanh: row.chi_nhanh || null,
+      hinh_anh_logo: row.hinh_anh_logo || null,
+      mac_dinh: row.mac_dinh || 'khong',
+      trang_thai: value,
+    })
+    row.trang_thai = value
+    ElMessage.success(
+      value === 'dang_hoat_dong' ? 'Đã bật hoạt động tài khoản.' : 'Đã ngưng hoạt động tài khoản.',
+    )
+    return true
+  } catch {
+    return false
+  } finally {
+    payment.togglingId = null
+    payment.togglingField = null
   }
 }
 
@@ -827,7 +950,9 @@ function openPaymentEdit(row) {
     so_tai_khoan: row.so_tai_khoan || '',
     chu_tai_khoan: row.chu_tai_khoan || '',
     chi_nhanh: row.chi_nhanh || '',
+    hinh_anh_logo: row.hinh_anh_logo || '',
     mac_dinh: row.mac_dinh || 'khong',
+    trang_thai: row.trang_thai || 'dang_hoat_dong',
   })
   payment.dialogVisible = true
 }
@@ -842,7 +967,9 @@ async function savePayment() {
     so_tai_khoan: paymentForm.so_tai_khoan.trim(),
     chu_tai_khoan: paymentForm.chu_tai_khoan.trim(),
     chi_nhanh: paymentForm.chi_nhanh?.trim() || null,
+    hinh_anh_logo: paymentForm.hinh_anh_logo?.trim() || null,
     mac_dinh: paymentForm.mac_dinh,
+    trang_thai: paymentForm.trang_thai || 'dang_hoat_dong',
   }
 
   try {
@@ -1006,5 +1133,35 @@ onMounted(loadStudios)
   align-items: center;
   justify-content: center;
   padding: 0;
+}
+
+.payment-logo-preview {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.payment-logo-image {
+  width: 112px;
+  height: 112px;
+  object-fit: contain;
+  display: block;
+  border-radius: 12px;
+  border: 1px solid var(--el-border-color-lighter);
+  background: var(--el-fill-color-light);
+  padding: 8px;
+}
+
+.payment-logo-placeholder {
+  width: 112px;
+  height: 112px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  border: 1px dashed var(--el-border-color);
+  background: var(--el-fill-color-blank);
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
 }
 </style>

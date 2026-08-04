@@ -280,6 +280,7 @@ class HopDongChoThueTrangPhucController extends BaseApiController
                     'ngay_tra_chinh_thuc' => $validated['ngay_tra_chinh_thuc'] ?? now()->toDateString(),
                     'ghi_chu_sale' => $validated['ghi_chu_sale'] ?? null,
                     'ghi_chu_khach' => $validated['ghi_chu_khach'] ?? null,
+                    'trang_thai' => 'hoan_thanh',
                 ];
                 if ($soTienThanhToan > 0) {
                     $updateData['tien_coc'] = $tienCocHienTai + $soTienThanhToan;

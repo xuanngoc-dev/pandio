@@ -225,6 +225,13 @@
       </div>
     </template>
   </CustomDialog>
+
+  <HopDongChoThueDoiThanhToanModal
+    v-model="doiThanhToanVisible"
+    :so-tien="tongTienThanhToan"
+    :ma-hop-dong="hopDongData?.ma_hop_dong || ''"
+    @confirmed="onDoiThanhToanConfirmed"
+  />
 </template>
 
 <script setup>
@@ -251,6 +258,7 @@ import {
   MoneyInput,
 } from '@/components/element'
 import { mediaUrl } from '@/utils/media'
+import HopDongChoThueDoiThanhToanModal from './HopDongChoThueDoiThanhToanModal.vue'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -275,6 +283,7 @@ const formRef = ref(null)
 const hopDongData = ref(null)
 const sanPhamRows = ref([])
 const productsExpanded = ref(true)
+const doiThanhToanVisible = ref(false)
 
 const form = reactive({
   hinh_thuc_thanh_toan: 'tien_mat',
@@ -446,12 +455,28 @@ async function submit() {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
 
-  const soTien = conLai.value
   if (tongTienThanhToan.value > 0 && !form.hinh_thuc_thanh_toan) {
     ElMessage.warning('Vui lòng chọn hình thức thanh toán.')
     return
   }
 
+  if (form.hinh_thuc_thanh_toan === 'chuyen_khoan' && tongTienThanhToan.value > 0) {
+    doiThanhToanVisible.value = true
+    return
+  }
+
+  await submitThanhToan()
+}
+
+async function onDoiThanhToanConfirmed() {
+  doiThanhToanVisible.value = false
+  await submitThanhToan()
+}
+
+async function submitThanhToan() {
+  if (!hopDongData.value?.id) return
+
+  const soTien = conLai.value
   saving.value = true
   try {
     const { data } = await thanhToanHopDongChoThueTrangPhuc(hopDongData.value.id, {
@@ -489,6 +514,7 @@ function resetLocalState() {
   hopDongData.value = null
   sanPhamRows.value = []
   productsExpanded.value = true
+  doiThanhToanVisible.value = false
   form.hinh_thuc_thanh_toan = 'tien_mat'
   form.phi_phu_thu = 0
   form.uu_dai_tat_toan = 0

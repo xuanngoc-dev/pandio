@@ -10,7 +10,9 @@ use Illuminate\Database\Eloquent\Model;
     'so_tai_khoan',
     'chu_tai_khoan',
     'chi_nhanh',
+    'hinh_anh_logo',
     'mac_dinh',
+    'trang_thai',
 ])]
 class CauHinhTaiKhoanThanhToan extends Model
 {

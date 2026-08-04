@@ -2,7 +2,7 @@ import api from '@/api/axios'
 
 /**
  * Danh sách tài khoản thanh toán — phân trang.
- * @param {{ page?: number, per_page?: number, keyword?: string, mac_dinh?: string }} params
+ * @param {{ page?: number, per_page?: number, keyword?: string, mac_dinh?: string, trang_thai?: string }} params
  */
 export function fetchTaiKhoanThanhToan(params = {}) {
   return api.get('/cau-hinh-tai-khoan-thanh-toan', { params })

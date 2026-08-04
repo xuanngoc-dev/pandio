@@ -65,7 +65,12 @@
         style="width: 100%"
         @selection-change="onSelectionChange"
       >
-        <CustomTableColumn type="selection" width="48" align="center" />
+        <CustomTableColumn
+          type="selection"
+          width="48"
+          align="center"
+          :selectable="canDelete"
+        />
         <CustomTableColumn label="STT" width="60" align="center">
           <template #default="{ $index }">
             {{ (page - 1) * perPage + $index + 1 }}
@@ -114,8 +119,11 @@
         >
           <template #default="{ row }">
             <div class="thanh-toan-cell">
-              <div class="thanh-toan-cell__text">
-                {{ formatMoney(row.tien_coc) }} / {{ formatMoney(row.tong_tien) }}
+              <div
+                class="thanh-toan-cell__text"
+                :title="`${formatMoney(row.tien_coc)} / ${formatMoney(row.tong_tien)}`"
+              >
+                {{ formatMoneyCompact(row.tien_coc) }} / {{ formatMoneyCompact(row.tong_tien) }}
               </div>
               <div class="thanh-toan-progress" :title="`${thanhToanPercent(row)}%`">
                 <div
@@ -126,7 +134,7 @@
             </div>
           </template>
         </CustomTableColumn>
-        <CustomTableColumn
+        <!-- <CustomTableColumn
           v-if="columnSettings.isColumnVisible('nguoi_cho_thue')"
           label="Người cho thuê"
           min-width="140"
@@ -134,7 +142,7 @@
           <template #default="{ row }">
             {{ row.nguoi_cho_thue_user?.name || '—' }}
           </template>
-        </CustomTableColumn>
+        </CustomTableColumn> -->
         <CustomTableColumn
           v-if="columnSettings.isColumnVisible('san_pham')"
           label="Sản phẩm"
@@ -160,14 +168,41 @@
         <CustomTableColumn label="Thao tác" width="140" fixed="right" align="center">
           <template #default="{ row }">
             <div class="action-btns">
-              <CustomTooltip content="Sửa" placement="top">
-                <CustomButton type="primary" link :icon="Edit" @click="openEdit(row)" />
+              <CustomTooltip
+                :content="canEdit(row) ? 'Sửa' : editDisabledReason(row)"
+                placement="top"
+              >
+                <CustomButton
+                  type="primary"
+                  link
+                  :icon="Edit"
+                  :disabled="!canEdit(row)"
+                  @click="openEdit(row)"
+                />
               </CustomTooltip>
-              <CustomTooltip content="Thanh toán" placement="top">
-                <CustomButton type="success" link :icon="Wallet" @click="openThanhToan(row)" />
+              <CustomTooltip
+                :content="canThanhToan(row) ? 'Thanh toán' : thanhToanDisabledReason(row)"
+                placement="top"
+              >
+                <CustomButton
+                  type="success"
+                  link
+                  :icon="Wallet"
+                  :disabled="!canThanhToan(row)"
+                  @click="openThanhToan(row)"
+                />
               </CustomTooltip>
-              <CustomTooltip content="Xóa" placement="top">
-                <CustomButton type="danger" link :icon="Delete" @click="remove(row)" />
+              <CustomTooltip
+                :content="canDelete(row) ? 'Xóa' : deleteDisabledReason(row)"
+                placement="top"
+              >
+                <CustomButton
+                  type="danger"
+                  link
+                  :icon="Delete"
+                  :disabled="!canDelete(row)"
+                  @click="remove(row)"
+                />
               </CustomTooltip>
             </div>
           </template>
@@ -319,6 +354,19 @@ function formatMoney(value) {
   return `${num.toLocaleString('vi-VN')} ₫`
 }
 
+function formatMoneyCompact(value) {
+  if (value == null || value === '') return '—'
+  const num = Number(value)
+  if (Number.isNaN(num)) return '—'
+  if (Math.abs(num) < 1_000_000) {
+    return num.toLocaleString('vi-VN')
+  }
+  const millions = num / 1_000_000
+  const rounded = Math.round(millions * 10) / 10
+  const text = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
+  return `${text}M`
+}
+
 function formatDate(value) {
   if (!value) return '—'
   const date = new Date(value)
@@ -346,7 +394,8 @@ function formatThoiGianThue(row) {
   const soNgay = Number(row?.so_ngay_thue) || calcSoNgayThue(row?.ngay_thue, toRaw)
   const range = from === '—' && to === '—' ? '—' : `${from} – ${to}`
   if (soNgay == null) return range
-  return `${range} (${soNgay} ngày)`
+  // return `${range} (${soNgay} ngày)`
+  return `${range}`
 }
 
 function thanhToanPercent(row) {
@@ -354,6 +403,33 @@ function thanhToanPercent(row) {
   if (tong <= 0) return 0
   const coc = Number(row?.tien_coc) || 0
   return Math.min(100, Math.max(0, Math.round((coc / tong) * 100)))
+}
+
+function canEdit(row) {
+  return !['hoan_thanh', 'dang_thue'].includes(row?.trang_thai)
+}
+
+function canDelete(row) {
+  return row?.trang_thai !== 'hoan_thanh'
+}
+
+function canThanhToan(row) {
+  return row?.trang_thai === 'dang_thue'
+}
+
+function editDisabledReason(row) {
+  if (row?.trang_thai === 'hoan_thanh') return 'Hợp đồng đã hoàn thành, không thể sửa'
+  if (row?.trang_thai === 'dang_thue') return 'Hợp đồng đang thuê, không thể sửa'
+  return 'Không thể sửa'
+}
+
+function thanhToanDisabledReason(row) {
+  if (row?.trang_thai === 'hoan_thanh') return 'Hợp đồng đã hoàn thành, không thể thanh toán'
+  return 'Chỉ thanh toán hợp đồng đang thuê'
+}
+
+function deleteDisabledReason() {
+  return 'Hợp đồng đã hoàn thành, không thể xóa'
 }
 
 async function loadItems() {
@@ -400,6 +476,10 @@ function openDrafts() {
 }
 
 async function openEdit(row) {
+  if (!canEdit(row)) {
+    ElMessage.warning(editDisabledReason(row))
+    return
+  }
   try {
     const { data } = await getHopDongChoThueTrangPhuc(row.id)
     currentHopDong.value = data
@@ -410,6 +490,10 @@ async function openEdit(row) {
 }
 
 async function openThanhToan(row) {
+  if (!canThanhToan(row)) {
+    ElMessage.warning(thanhToanDisabledReason(row))
+    return
+  }
   thanhToanHopDong.value = row
   thanhToanModalVisible.value = true
   try {
@@ -476,6 +560,11 @@ async function bulkRemove() {
 }
 
 async function remove(row) {
+  if (!canDelete(row)) {
+    ElMessage.warning(deleteDisabledReason())
+    return
+  }
+
   await ElMessageBox.confirm(`Xóa hợp đồng "${row.ma_hop_dong}"?`, 'Xác nhận', {
     type: 'warning',
     confirmButtonText: 'Xóa',

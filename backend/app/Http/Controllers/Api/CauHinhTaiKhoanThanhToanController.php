@@ -23,11 +23,13 @@ class CauHinhTaiKhoanThanhToanController extends BaseApiController
                 'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
                 'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
                 'mac_dinh' => ['sometimes', 'nullable', 'string', Rule::in(['co', 'khong'])],
+                'trang_thai' => ['sometimes', 'nullable', 'string', Rule::in(['dang_hoat_dong', 'ngung_hoat_dong'])],
             ]);
 
             $perPage = $validated['per_page'] ?? 10;
             $keyword = trim((string) ($validated['keyword'] ?? ''));
             $macDinh = $validated['mac_dinh'] ?? null;
+            $trangThai = $validated['trang_thai'] ?? null;
 
             $query = CauHinhTaiKhoanThanhToan::query()
                 ->when($keyword !== '', function ($q) use ($keyword) {
@@ -39,6 +41,8 @@ class CauHinhTaiKhoanThanhToanController extends BaseApiController
                     });
                 })
                 ->when($macDinh, fn ($q) => $q->where('mac_dinh', $macDinh))
+                ->when($trangThai, fn ($q) => $q->where('trang_thai', $trangThai))
+                ->orderByDesc('mac_dinh')
                 ->orderByDesc('created_at')
                 ->orderByDesc('id');
 
@@ -122,12 +126,18 @@ class CauHinhTaiKhoanThanhToanController extends BaseApiController
      */
     private function validatePayload(Request $request): array
     {
-        return $request->validate([
+        $validated = $request->validate([
             'ngan_hang' => ['required', 'string', 'max:255'],
             'so_tai_khoan' => ['required', 'string', 'max:100'],
             'chu_tai_khoan' => ['required', 'string', 'max:255'],
             'chi_nhanh' => ['nullable', 'string', 'max:255'],
+            'hinh_anh_logo' => ['nullable', 'string', 'max:500'],
             'mac_dinh' => ['required', 'string', Rule::in(['co', 'khong'])],
+            'trang_thai' => ['nullable', 'string', Rule::in(['dang_hoat_dong', 'ngung_hoat_dong'])],
         ]);
+
+        $validated['trang_thai'] = $validated['trang_thai'] ?? 'dang_hoat_dong';
+
+        return $validated;
     }
 }
