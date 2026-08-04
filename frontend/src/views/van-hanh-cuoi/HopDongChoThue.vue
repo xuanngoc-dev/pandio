@@ -217,7 +217,8 @@
                 format="DD/MM/YYYY"
                 value-format="YYYY-MM-DD"
                 style="width: 100%"
-                @change="updateSoNgayThue"
+                :disabled-date="disabledNgayThue"
+                @change="onNgayThueChange"
               />
             </CustomFormItem>
           </CustomCol>
@@ -230,6 +231,7 @@
                 format="DD/MM/YYYY"
                 value-format="YYYY-MM-DD"
                 style="width: 100%"
+                :disabled-date="disabledNgayTraDuKien"
                 @change="updateSoNgayThue"
               />
             </CustomFormItem>
@@ -704,8 +706,35 @@ const rules = {
   ma_hop_dong: [{ required: true, message: 'Vui lòng nhập mã hợp đồng', trigger: 'blur' }],
   ten_khach_hang: [{ required: true, message: 'Vui lòng nhập tên khách hàng', trigger: 'blur' }],
   sdt_khach_hang: [{ required: true, message: 'Vui lòng nhập SĐT khách hàng', trigger: 'blur' }],
-  ngay_thue: [{ required: true, message: 'Vui lòng chọn ngày thuê', trigger: 'change' }],
-  ngay_tra_du_kien: [{ required: true, message: 'Vui lòng chọn ngày trả dự kiến', trigger: 'change' }],
+  ngay_thue: [
+    { required: true, message: 'Vui lòng chọn ngày thuê', trigger: 'change' },
+    {
+      validator: (_rule, value, callback) => {
+        if (!value) return callback()
+        // Cho phép giữ ngày cũ khi sửa hợp đồng đã tạo trước đó
+        if (!isDraftFlow.value) return callback()
+        if (toDateOnly(value) < startOfToday()) {
+          return callback(new Error('Ngày thuê phải từ hôm nay trở đi'))
+        }
+        return callback()
+      },
+      trigger: 'change',
+    },
+  ],
+  ngay_tra_du_kien: [
+    { required: true, message: 'Vui lòng chọn ngày trả dự kiến', trigger: 'change' },
+    {
+      validator: (_rule, value, callback) => {
+        if (!value) return callback()
+        if (!form.ngay_thue) return callback()
+        if (toDateOnly(value) < toDateOnly(form.ngay_thue)) {
+          return callback(new Error('Ngày trả dự kiến phải bằng hoặc sau ngày thuê'))
+        }
+        return callback()
+      },
+      trigger: 'change',
+    },
+  ],
 }
 
 const soNgayThue = computed(() => {
@@ -840,6 +869,41 @@ function removeSanPham(sanPhamId) {
 function updateSoNgayThue() {
   recalcTongTien()
   loadTrangPhucOptions()
+}
+
+function startOfToday() {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return today
+}
+
+function toDateOnly(value) {
+  if (!value) return null
+  const date = value instanceof Date ? new Date(value) : new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  date.setHours(0, 0, 0, 0)
+  return date
+}
+
+function disabledNgayThue(date) {
+  return date.getTime() < startOfToday().getTime()
+}
+
+function disabledNgayTraDuKien(date) {
+  const minDate = form.ngay_thue ? toDateOnly(form.ngay_thue) : startOfToday()
+  return date.getTime() < minDate.getTime()
+}
+
+function onNgayThueChange() {
+  if (
+    form.ngay_thue
+    && form.ngay_tra_du_kien
+    && toDateOnly(form.ngay_tra_du_kien) < toDateOnly(form.ngay_thue)
+  ) {
+    form.ngay_tra_du_kien = ''
+  }
+  formRef.value?.validateField?.(['ngay_thue', 'ngay_tra_du_kien']).catch(() => {})
+  updateSoNgayThue()
 }
 
 function onSanPhamSearch() {
