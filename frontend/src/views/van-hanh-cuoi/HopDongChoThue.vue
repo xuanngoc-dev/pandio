@@ -312,11 +312,15 @@
                     @update:model-value="onSanPhamSearch"
                     @clear="onSanPhamSearch"
                   />
+                  <div class="san-pham-filter__busy">
+                    <el-switch v-model="sanPhamBusyFilter" size="small" />
+                    <span class="san-pham-filter__busy-label">Hiện sản phẩm bận</span>
+                  </div>
                 </div>
 
                 <div v-loading="trangPhucLoading" class="san-pham-card-grid">
                   <CustomTooltip
-                    v-for="tp in trangPhucOptions"
+                    v-for="tp in filteredTrangPhucOptions"
                     :key="tp.id"
                     :disabled="!isSanPhamBusy(tp)"
                     content="Sản phẩm đã được sử dụng trong khoảng thời gian bạn chọn"
@@ -365,7 +369,7 @@
                       </CustomTooltip>
                     </button>
                   </CustomTooltip>
-                  <div v-if="!trangPhucLoading && !trangPhucOptions.length" class="san-pham-empty">
+                  <div v-if="!trangPhucLoading && !filteredTrangPhucOptions.length" class="san-pham-empty">
                     Không tìm thấy trang phục phù hợp.
                   </div>
                 </div>
@@ -639,6 +643,7 @@ const trangPhucCache = ref({})
 const sanPhamKeyword = ref('')
 const sanPhamGiaTu = ref(null)
 const sanPhamGiaDen = ref(null)
+const sanPhamBusyFilter = ref(true)
 const sanPhamExpanded = ref(true)
 const trangPhucLoading = ref(false)
 let sanPhamSearchTimer = null
@@ -759,6 +764,11 @@ const selectedSanPhamList = computed(() =>
     })
     .filter(Boolean),
 )
+
+const filteredTrangPhucOptions = computed(() => {
+  if (sanPhamBusyFilter.value) return trangPhucOptions.value
+  return trangPhucOptions.value.filter((tp) => !isSanPhamBusy(tp))
+})
 
 const tongGiaChoThue = computed(() =>
   selectedSanPhamList.value.reduce((sum, item) => sum + (Number(item.gia_cho_thue) || 0), 0),
@@ -998,6 +1008,7 @@ function fillFormFromRow(row, { draftFlow = false } = {}) {
   sanPhamKeyword.value = ''
   sanPhamGiaTu.value = null
   sanPhamGiaDen.value = null
+  sanPhamBusyFilter.value = true
   sanPhamExpanded.value = true
   ensureUserInOptions(row.nguoi_cho_thue_user || authStore.user)
 
@@ -1379,6 +1390,7 @@ onMounted(() => {
   flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 12px;
+  margin-top: 12px;
 }
 
 .san-pham-filter__keyword {
@@ -1389,6 +1401,19 @@ onMounted(() => {
 .san-pham-filter__price {
   flex: 0 1 160px;
   width: 160px;
+}
+
+.san-pham-filter__busy {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.san-pham-filter__busy-label {
+  font-size: 13px;
+  color: var(--el-text-color-regular);
+  white-space: nowrap;
 }
 
 .san-pham-card-grid {
