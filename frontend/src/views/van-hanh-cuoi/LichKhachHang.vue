@@ -12,6 +12,16 @@
       </template>
 
       <el-calendar v-model="selectedDate">
+        <template #header>
+          <div class="el-calendar__title">{{ calendarTitle }}</div>
+          <div class="el-calendar__button-group">
+            <el-button-group>
+              <el-button size="small" @click="shiftMonth(-1)">Tháng trước</el-button>
+              <el-button size="small" @click="goToday">Hôm nay</el-button>
+              <el-button size="small" @click="shiftMonth(1)">Tháng tới</el-button>
+            </el-button-group>
+          </div>
+        </template>
         <template #date-cell="{ data }">
           <div
             class="day-cell"
@@ -36,13 +46,36 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { fetchNgayNghi } from '@/api/ngayNghi'
 import { formatLunarLabel } from '@/utils/lunar'
 
 /** Mặc định: tháng hiện tại */
 const selectedDate = ref(new Date())
 const loadingNgayNghi = ref(false)
+
+/** Tiêu đề dạng: Tháng N năm M */
+const calendarTitle = computed(() => {
+  const d = selectedDate.value instanceof Date
+    ? selectedDate.value
+    : new Date(selectedDate.value)
+  return `Tháng ${d.getMonth() + 1} năm ${d.getFullYear()}`
+})
+
+function toSelectedDate() {
+  return selectedDate.value instanceof Date
+    ? selectedDate.value
+    : new Date(selectedDate.value)
+}
+
+function shiftMonth(delta) {
+  const d = toSelectedDate()
+  selectedDate.value = new Date(d.getFullYear(), d.getMonth() + delta, 1)
+}
+
+function goToday() {
+  selectedDate.value = new Date()
+}
 
 /** Map YYYY-MM-DD → cấu hình ngày nghỉ active */
 const ngayNghiByDate = ref({})
