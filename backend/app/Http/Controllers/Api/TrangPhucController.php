@@ -69,6 +69,7 @@ class TrangPhucController extends BaseApiController
                     'nhaCungCapTrangPhuc:id,ten_nha_cung_cap,ma_nha_cung_cap',
                     'cauHinhChiNhanh:id,ten_chi_nhanh',
                 ])
+                ->withCount('lichChoThue as luot_thue')
                 ->withExists($existsRelations)
                 ->when($keyword !== '', function ($q) use ($keyword) {
                     $q->where(function ($inner) use ($keyword) {

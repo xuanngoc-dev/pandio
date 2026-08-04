@@ -177,6 +177,27 @@
           </template>
         </CustomTableColumn>
         <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('luot_su_dung')"
+          label="Lượt sử dụng"
+          align="center"
+        >
+          <CustomTableColumn label="Tổng" width="80" align="center">
+            <template #default="{ row }">
+              {{ luotThue(row) + luotDichVu(row) }}
+            </template>
+          </CustomTableColumn>
+          <CustomTableColumn label="Thuê" width="80" align="center">
+            <template #default="{ row }">
+              {{ luotThue(row) }}
+            </template>
+          </CustomTableColumn>
+          <CustomTableColumn label="Dịch vụ" width="90" align="center">
+            <template #default="{ row }">
+              {{ luotDichVu(row) }}
+            </template>
+          </CustomTableColumn>
+        </CustomTableColumn>
+        <CustomTableColumn
           v-if="columnSettings.isColumnVisible('ngay_nhap')"
           label="Ngày nhập"
           width="120"
@@ -509,6 +530,7 @@ const tableColumns = [
   { key: 'gia_tri', label: 'Giá trị' },
   { key: 'gia_cho_thue', label: 'Giá cho thuê' },
   { key: 'tinh_trang', label: 'Tình trạng' },
+  { key: 'luot_su_dung', label: 'Lượt sử dụng' },
   { key: 'ngay_nhap', label: 'Ngày nhập' },
   { key: 'trang_thai', label: 'Trạng thái' },
 ]
@@ -655,6 +677,14 @@ function formatDate(value) {
 
 function tinhTrangLabel(value) {
   return tinhTrangOptions.find((opt) => opt.value === value)?.label || value || '—'
+}
+
+function luotThue(row) {
+  return Number(row?.luot_thue) || 0
+}
+
+function luotDichVu() {
+  return 0
 }
 
 function clearPendingPreview() {

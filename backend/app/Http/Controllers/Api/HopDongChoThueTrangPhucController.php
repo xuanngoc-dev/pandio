@@ -102,6 +102,7 @@ class HopDongChoThueTrangPhucController extends BaseApiController
                     'so_ngay_thue' => 1,
                     'tong_tien' => 0,
                     'giam_gia' => 0,
+                    'thanh_tien' => 0,
                     'tien_coc' => 0,
                     'trang_thai' => 'moi_tao',
                     'nguoi_cho_thue' => $request->user()->id,
@@ -245,6 +246,7 @@ class HopDongChoThueTrangPhucController extends BaseApiController
             ],
             'tong_tien' => ['nullable', 'integer', 'min:0'],
             'giam_gia' => ['nullable', 'integer', 'min:0'],
+            'thanh_tien' => ['nullable', 'integer', 'min:0'],
             'tien_coc' => ['nullable', 'integer', 'min:0'],
             'trang_thai' => ['required', 'string', Rule::in([
                 'moi_tao',
@@ -290,6 +292,9 @@ class HopDongChoThueTrangPhucController extends BaseApiController
         }
         if (array_key_exists('giam_gia', $validated)) {
             $validated['giam_gia'] = (int) ($validated['giam_gia'] ?? 0);
+        }
+        if (array_key_exists('thanh_tien', $validated)) {
+            $validated['thanh_tien'] = (int) ($validated['thanh_tien'] ?? 0);
         }
         if (array_key_exists('tien_coc', $validated)) {
             $validated['tien_coc'] = (int) ($validated['tien_coc'] ?? 0);

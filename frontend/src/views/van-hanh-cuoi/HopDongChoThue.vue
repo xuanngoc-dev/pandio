@@ -88,32 +88,15 @@
           </template>
         </CustomTableColumn>
         <CustomTableColumn
-          v-if="columnSettings.isColumnVisible('ngay_thue')"
-          label="Ngày thuê"
-          width="120"
+          v-if="columnSettings.isColumnVisible('thoi_gian')"
+          label="Thời gian"
+          min-width="200"
           align="center"
         >
           <template #default="{ row }">
-            {{ formatDate(row.ngay_thue) }}
+            {{ formatThoiGianThue(row) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn
-          v-if="columnSettings.isColumnVisible('ngay_tra_du_kien')"
-          label="Ngày trả DK"
-          width="120"
-          align="center"
-        >
-          <template #default="{ row }">
-            {{ formatDate(row.ngay_tra_du_kien) }}
-          </template>
-        </CustomTableColumn>
-        <CustomTableColumn
-          v-if="columnSettings.isColumnVisible('so_ngay_thue')"
-          label="Số ngày"
-          width="90"
-          align="center"
-          prop="so_ngay_thue"
-        />
         <CustomTableColumn
           v-if="columnSettings.isColumnVisible('tong_tien')"
           label="Tổng tiền"
@@ -122,6 +105,25 @@
         >
           <template #default="{ row }">
             {{ formatMoney(row.tong_tien) }}
+          </template>
+        </CustomTableColumn>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('thanh_toan')"
+          label="Thanh toán"
+          min-width="160"
+        >
+          <template #default="{ row }">
+            <div class="thanh-toan-cell">
+              <div class="thanh-toan-cell__text">
+                {{ formatMoney(row.tien_coc) }} / {{ formatMoney(row.tong_tien) }}
+              </div>
+              <div class="thanh-toan-progress" :title="`${thanhToanPercent(row)}%`">
+                <div
+                  class="thanh-toan-progress__bar"
+                  :style="{ width: `${thanhToanPercent(row)}%` }"
+                />
+              </div>
+            </div>
           </template>
         </CustomTableColumn>
         <CustomTableColumn
@@ -425,9 +427,9 @@
         </div>
 
         <CustomRow :gutter="16" class="summary-row">
-          <CustomCol :xs="24" :sm="12" :md="6">
+          <CustomCol :xs="24" :sm="6" :md="4">
             <CustomFormItem label="Tổng tiền" prop="tong_tien">
-              <MoneyInput v-model="form.tong_tien" style="width: 100%" />
+              <MoneyInput disabled v-model="form.tong_tien" style="width: 100%" />
               <div v-if="tongTienTuTinh !== form.tong_tien" class="tong-tien-hint">
                 Gợi ý: {{ formatMoney(tongTienTuTinh) }}
                 <CustomButton type="primary" link size="small" @click="applyTongTienTuTinh">
@@ -436,17 +438,22 @@
               </div>
             </CustomFormItem>
           </CustomCol>
-          <CustomCol :xs="24" :sm="12" :md="6">
+          <CustomCol :xs="24" :sm="6" :md="4">
             <CustomFormItem label="Giảm giá" prop="giam_gia">
               <MoneyInput v-model="form.giam_gia" style="width: 100%" />
             </CustomFormItem>
           </CustomCol>
-          <CustomCol :xs="24" :sm="12" :md="6">
+          <CustomCol :xs="24" :sm="6" :md="4">
+            <CustomFormItem label="Thành tiền" prop="thanh_tien">
+              <MoneyInput disabled v-model="form.thanh_tien" style="width: 100%" />
+            </CustomFormItem>
+          </CustomCol>
+          <CustomCol :xs="24" :sm="6" :md="4">
             <CustomFormItem label="Tiền cọc" prop="tien_coc">
               <MoneyInput v-model="form.tien_coc" style="width: 100%" />
             </CustomFormItem>
           </CustomCol>
-          <CustomCol :xs="24" :sm="12" :md="6">
+          <CustomCol :xs="24" :sm="6" :md="4">
             <CustomFormItem label="Còn lại">
               <CustomInput :model-value="formatMoney(conLai)" readonly class="con-lai-input" />
             </CustomFormItem>
@@ -557,7 +564,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowDown, Calendar, Check, Delete, Document, Edit, Picture, Plus, Search } from '@element-plus/icons-vue'
 import {
@@ -600,10 +607,9 @@ const authStore = useAuthStore()
 const tableColumns = [
   { key: 'ma_hop_dong', label: 'Mã HĐ' },
   { key: 'khach_hang', label: 'Khách hàng' },
-  { key: 'ngay_thue', label: 'Ngày thuê' },
-  { key: 'ngay_tra_du_kien', label: 'Ngày trả DK' },
-  { key: 'so_ngay_thue', label: 'Số ngày' },
+  { key: 'thoi_gian', label: 'Thời gian' },
   { key: 'tong_tien', label: 'Tổng tiền' },
+  { key: 'thanh_toan', label: 'Thanh toán' },
   { key: 'nguoi_cho_thue', label: 'Người cho thuê' },
   { key: 'san_pham', label: 'Sản phẩm' },
   { key: 'trang_thai', label: 'Trạng thái' },
@@ -696,6 +702,7 @@ const emptyForm = () => ({
   ngay_tra_chinh_thuc: '',
   tong_tien: 0,
   giam_gia: 0,
+  thanh_tien: 0,
   tien_coc: 0,
   trang_thai: 'cho_xac_nhan',
   nguoi_cho_thue: null,
@@ -777,11 +784,22 @@ const tongGiaChoThue = computed(() =>
 const tongTienTuTinh = computed(() => soNgayThue.value * tongGiaChoThue.value)
 
 const conLai = computed(() => {
-  const tong = Number(form.tong_tien) || 0
-  const giam = Number(form.giam_gia) || 0
+  const thanhTien = Number(form.thanh_tien) || 0
   const coc = Number(form.tien_coc) || 0
-  return tong - giam - coc
+  return thanhTien - coc
 })
+
+let skipThanhTienSync = false
+
+function syncThanhTienFromTongGiam() {
+  if (skipThanhTienSync) return
+  form.thanh_tien = Math.max(0, (Number(form.tong_tien) || 0) - (Number(form.giam_gia) || 0))
+}
+
+watch(
+  () => [form.tong_tien, form.giam_gia],
+  () => syncThanhTienFromTongGiam(),
+)
 
 function currentUserId() {
   return authStore.user?.id ?? null
@@ -825,6 +843,36 @@ function formatDate(value) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   return date.toLocaleDateString('vi-VN')
+}
+
+function getNgayTraHienThi(row) {
+  return row?.ngay_tra_chinh_thuc || row?.ngay_tra_du_kien || null
+}
+
+function calcSoNgayThue(from, to) {
+  if (!from || !to) return null
+  const start = new Date(from)
+  const end = new Date(to)
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return null
+  const diff = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1
+  return Math.max(1, diff)
+}
+
+function formatThoiGianThue(row) {
+  const from = formatDate(row?.ngay_thue)
+  const toRaw = getNgayTraHienThi(row)
+  const to = formatDate(toRaw)
+  const soNgay = Number(row?.so_ngay_thue) || calcSoNgayThue(row?.ngay_thue, toRaw)
+  const range = from === '—' && to === '—' ? '—' : `${from} – ${to}`
+  if (soNgay == null) return range
+  return `${range} (${soNgay} ngày)`
+}
+
+function thanhToanPercent(row) {
+  const tong = Number(row?.tong_tien) || 0
+  if (tong <= 0) return 0
+  const coc = Number(row?.tien_coc) || 0
+  return Math.min(100, Math.max(0, Math.round((coc / tong) * 100)))
 }
 
 function cacheTrangPhucItems(items = []) {
@@ -1023,6 +1071,7 @@ function fillFormFromRow(row, { draftFlow = false } = {}) {
     ? 'cho_xac_nhan'
     : (row.trang_thai || 'cho_xac_nhan')
 
+  skipThanhTienSync = true
   Object.assign(form, {
     ma_hop_dong: row.ma_hop_dong || '',
     ten_khach_hang: row.ten_khach_hang || '',
@@ -1032,6 +1081,8 @@ function fillFormFromRow(row, { draftFlow = false } = {}) {
     ngay_tra_chinh_thuc: row.ngay_tra_chinh_thuc?.slice?.(0, 10) || row.ngay_tra_chinh_thuc || '',
     tong_tien: Number(row.tong_tien) || 0,
     giam_gia: Number(row.giam_gia) || 0,
+    thanh_tien: Number(row.thanh_tien)
+      || Math.max(0, (Number(row.tong_tien) || 0) - (Number(row.giam_gia) || 0)),
     tien_coc: Number(row.tien_coc) || 0,
     trang_thai: trangThai,
     nguoi_cho_thue: row.nguoi_cho_thue || currentUserId(),
@@ -1039,6 +1090,9 @@ function fillFormFromRow(row, { draftFlow = false } = {}) {
     ghi_chu_sale: row.ghi_chu_sale || '',
     ghi_chu_khach: row.ghi_chu_khach || '',
     san_pham_cho_thue: sanPhamItems,
+  })
+  nextTick(() => {
+    skipThanhTienSync = false
   })
 }
 
@@ -1099,6 +1153,7 @@ function buildPayload(trangThai) {
     ngay_tra_du_kien: form.ngay_tra_du_kien || null,
     tong_tien: Number(form.tong_tien) || 0,
     giam_gia: Number(form.giam_gia) || 0,
+    thanh_tien: Number(form.thanh_tien) || 0,
     tien_coc: Number(form.tien_coc) || 0,
     trang_thai: trangThai,
     nguoi_tham_gia: form.nguoi_tham_gia || [],
@@ -1287,6 +1342,34 @@ onMounted(() => {
 .sub-text {
   font-size: 12px;
   color: var(--el-text-color-secondary);
+}
+
+.thanh-toan-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.thanh-toan-cell__text {
+  font-size: 13px;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.thanh-toan-progress {
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--el-fill-color);
+  overflow: hidden;
+}
+
+.thanh-toan-progress__bar {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--el-color-primary);
+  transition: width 0.2s ease;
 }
 
 .action-btns {
