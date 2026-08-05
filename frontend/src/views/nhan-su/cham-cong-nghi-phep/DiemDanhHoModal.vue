@@ -197,12 +197,21 @@
             Đơn xin đi muộn / về sớm đã duyệt sẽ được miễn phạt.
           </p>
         </div>
+        <div v-if="blockByMissingShift" class="proxy-notice">
+          <strong>Chú ý:</strong>
+          Nhân viên chưa đăng ký ca làm ngày này nên không thể điểm danh hộ (Bạn cần đăng ký ca làm trước hoặc thay đổi thông tin cấu hình).
+        </div>
       </CustomForm>
     </div>
 
     <template #footer>
       <CustomButton @click="visible = false">Hủy</CustomButton>
-      <CustomButton type="primary" :loading="saving" @click="submit">
+      <CustomButton
+        type="primary"
+        :loading="saving"
+        :disabled="saveDisabled"
+        @click="submit"
+      >
         Lưu
       </CustomButton>
     </template>
@@ -214,7 +223,7 @@ import { computed, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { CircleCheck, CircleCheckFilled, CircleCloseFilled, Clock } from '@element-plus/icons-vue'
 import { getCauHinhJson } from '@/api/cauHinhJson'
-import { diemDanhHo, getDiemDanhHoContext } from '@/api/diemDanh'
+import { diemDanhHo, fetchClientIp, getDiemDanhHoContext } from '@/api/diemDanh'
 import {
   CustomButton,
   CustomCol,
@@ -240,6 +249,9 @@ const visible = ref(false)
 const loading = ref(false)
 const saving = ref(false)
 const formRef = ref(null)
+const yeuCauDangKyCa = ref(false)
+const kiemSoatIpDiemDanh = ref(false)
+const hasDangKyCa = ref(false)
 
 const info = reactive({
   name: '',
@@ -272,6 +284,14 @@ const penaltyConfig = reactive({ ...DEFAULT_PENALTY_CONFIG })
 
 const hasShiftTimes = computed(
   () => Boolean(info.gioBatDauCa && info.gioKetThucCa),
+)
+
+const blockByMissingShift = computed(
+  () => yeuCauDangKyCa.value && !hasDangKyCa.value,
+)
+
+const saveDisabled = computed(
+  () => loading.value || blockByMissingShift.value,
 )
 
 const penaltyPreview = computed(() => {
@@ -408,12 +428,20 @@ function applyPenaltyConfig(group = {}) {
   }
 }
 
-async function loadPenaltyConfig() {
+function applyAttendanceRules(group = {}) {
+  yeuCauDangKyCa.value = Boolean(group.yeu_cau_dang_ky_ca_moi_duoc_diem_danh?.gia_tri)
+  kiemSoatIpDiemDanh.value = Boolean(group.kiem_soat_ip_diem_danh?.gia_tri)
+}
+
+async function loadChamCongConfig() {
   try {
     const { data } = await getCauHinhJson({ skipLoading: true })
-    applyPenaltyConfig(data?.thong_tin_cau_hinh?.cham_cong_tang_ca || {})
+    const group = data?.thong_tin_cau_hinh?.cham_cong_tang_ca || {}
+    applyPenaltyConfig(group)
+    applyAttendanceRules(group)
   } catch {
     applyPenaltyConfig({})
+    applyAttendanceRules({})
   }
 }
 
@@ -431,6 +459,7 @@ function resetForm() {
   info.gioKetThucCa = ''
   leaveInfo.diMuon = null
   leaveInfo.veSom = null
+  hasDangKyCa.value = false
   formRef.value?.clearValidate?.()
 }
 
@@ -457,7 +486,7 @@ async function open(payload) {
         { user_id: payload.userId, ngay_lam: payload.ngayLam },
         { skipLoading: true },
       ),
-      loadPenaltyConfig(),
+      loadChamCongConfig(),
     ])
 
     const data = contextRes.data
@@ -471,6 +500,7 @@ async function open(payload) {
     const user = data.user || {}
     const caLam = data.dang_ky_ca?.ca_lam || data.dang_ky_ca?.caLam || null
     const leaves = data.xin_nghi_phep || {}
+    hasDangKyCa.value = Boolean(caLam)
 
     info.name = user.name || payload.name || '—'
     info.email = user.email || payload.email || '—'
@@ -496,6 +526,10 @@ async function submit() {
   const formEl = formRef.value
   if (!formEl) return
 
+  if (blockByMissingShift.value) {
+    return
+  }
+
   try {
     await formEl.validate()
   } catch {
@@ -504,16 +538,23 @@ async function submit() {
 
   saving.value = true
   try {
-    await diemDanhHo({
+    const payload = {
       user_id: form.user_id,
       ngay_lam: form.ngay_lam,
       gio_vao: form.gio_vao,
       gio_ra: form.gio_ra,
-    })
+    }
+    if (kiemSoatIpDiemDanh.value) {
+      payload.ip = await fetchClientIp()
+    }
+    await diemDanhHo(payload)
     ElMessage.success('Điểm danh hộ thành công')
     visible.value = false
     emit('saved')
-  } catch {
+  } catch (error) {
+    if (!error?.response) {
+      ElMessage.error(error?.message || 'Không thể lấy địa chỉ IP để điểm danh hộ.')
+    }
     // Lỗi 422 đã được axios interceptor hiển thị
   } finally {
     saving.value = false
@@ -526,6 +567,17 @@ defineExpose({ open })
 <style scoped>
 .proxy-modal {
   min-height: 120px;
+}
+
+.proxy-notice {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--el-color-warning) 35%, var(--el-border-color-lighter));
+  background: color-mix(in srgb, var(--el-color-warning) 10%, var(--el-bg-color));
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--el-color-warning-dark-2, #b88230);
 }
 
 .proxy-section-title {

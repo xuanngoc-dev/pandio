@@ -363,6 +363,9 @@ class DiemDanhController extends BaseApiController
     public function diemDanhHo(Request $request): JsonResponse
     {
         return $this->handleApi(function () use ($request) {
+            // IP của người điểm danh hộ — bắt buộc khi bật kiểm soát IP.
+            $clientIp = $this->resolveClientIp($request);
+
             $validated = $request->validate([
                 'user_id' => ['required', 'integer', 'exists:users,id'],
                 'ngay_lam' => ['required', 'date'],
@@ -438,8 +441,8 @@ class DiemDanhController extends BaseApiController
                     'tien_phat_ve_som' => 0,
                     'ly_do' => null,
                     'ghi_chu' => $ghiChu.' · '.self::GHI_CHU_CHUA_DANG_KY_CA,
-                    'ip_checkin' => null,
-                    'ip_checkout' => null,
+                    'ip_checkin' => $clientIp,
+                    'ip_checkout' => $clientIp,
                     'gio_lam_co_ban' => $gioLamCoBan,
                     'gio_lam_tang_ca' => 0,
                     'luong_co_ban' => $luongCoBan,
@@ -484,8 +487,8 @@ class DiemDanhController extends BaseApiController
                     'tien_phat_ve_som' => $tienPhatVeSom,
                     'ly_do' => $lyDo,
                     'ghi_chu' => $ghiChu,
-                    'ip_checkin' => null,
-                    'ip_checkout' => null,
+                    'ip_checkin' => $clientIp,
+                    'ip_checkout' => $clientIp,
                     'gio_lam_co_ban' => $gioLamCoBan,
                     'gio_lam_tang_ca' => $gioLamTangCa,
                     'luong_co_ban' => $luongCoBan,

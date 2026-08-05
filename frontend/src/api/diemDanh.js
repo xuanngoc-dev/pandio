@@ -34,7 +34,8 @@ export function getDiemDanhHoContext(params, config = {}) {
  *   ngay_lam: string,
  *   gio_vao: string,
  *   gio_ra: string,
- * }} payload
+ *   ip?: string,
+ * }} payload — ip bắt buộc khi bật kiểm soát IP
  */
 export function diemDanhHo(payload) {
   return api.post('/diem-danh/ho', payload)
