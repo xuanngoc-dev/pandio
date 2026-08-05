@@ -113,6 +113,7 @@ return new class extends Migration
             $table->foreignId('loai_thong_bao_id')
                 ->constrained('danh_muc_loai_thong_bao')
                 ->restrictOnDelete();
+            $table->string('loai_mau_sac', 32)->default('blue');
             $table->string('tieu_de');
             $table->text('noi_dung')->nullable();
             $table->json('nguoi_nhan_da_doc_ids')->nullable();

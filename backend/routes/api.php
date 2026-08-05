@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\CauHinhTaiKhoanThanhToanController;
 use App\Http\Controllers\Api\CauHinhThongTinStudioController;
 use App\Http\Controllers\Api\DanhMucConceptController;
 use App\Http\Controllers\Api\DanhMucLoaiThongBaoController;
+use App\Http\Controllers\Api\HeThongThongBaoController;
 use App\Http\Controllers\Api\DanhMucTrangPhucController;
 use App\Http\Controllers\Api\DichVuDanhSachDichNhomDichVuController;
 use App\Http\Controllers\Api\DichVuDanhSachDichVuLeController;
@@ -110,6 +111,7 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
 
     // Loại thông báo hệ thống
     Route::apiResource('danh-muc-loai-thong-bao', DanhMucLoaiThongBaoController::class);
+    Route::apiResource('he-thong-thong-bao', HeThongThongBaoController::class);
 
     // Loại hợp đồng khách hàng (ký với khách, không phải nhân viên)
     Route::apiResource('loai-hop-dong', LoaiHopDongController::class);
