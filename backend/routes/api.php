@@ -111,6 +111,10 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
 
     // Loại thông báo hệ thống
     Route::apiResource('danh-muc-loai-thong-bao', DanhMucLoaiThongBaoController::class);
+    Route::get('he-thong-thong-bao/cua-toi', [HeThongThongBaoController::class, 'cuaToi']);
+    Route::post('he-thong-thong-bao/da-doc-tat-ca', [HeThongThongBaoController::class, 'danhDauTatCaDaDoc']);
+    Route::post('he-thong-thong-bao/{he_thong_thong_bao}/da-doc', [HeThongThongBaoController::class, 'danhDauDaDoc']);
+    Route::post('he-thong-thong-bao/{he_thong_thong_bao}/xoa-cua-toi', [HeThongThongBaoController::class, 'xoaCuaToi']);
     Route::apiResource('he-thong-thong-bao', HeThongThongBaoController::class);
 
     // Loại hợp đồng khách hàng (ký với khách, không phải nhân viên)

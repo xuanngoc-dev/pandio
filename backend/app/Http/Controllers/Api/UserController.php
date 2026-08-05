@@ -232,6 +232,7 @@ class UserController extends BaseApiController
             'hinh_anh' => ['nullable', 'string', 'max:500'],
             'phong_ban_ids' => ['nullable', 'array'],
             'phong_ban_ids.*' => ['integer', 'distinct', 'exists:phong_ban,id'],
+            'vai_tro_id' => ['nullable', 'integer', 'exists:vai_tro,id'],
             'ngan_hang' => ['nullable', 'string', 'max:255'],
             'chi_nhanh' => ['nullable', 'string', 'max:255'],
             'so_tai_khoan' => ['nullable', 'string', 'max:255'],
@@ -277,6 +278,7 @@ class UserController extends BaseApiController
         $keys = [
             'hinh_anh',
             'phong_ban_ids',
+            'vai_tro_id',
             'ngan_hang',
             'chi_nhanh',
             'so_tai_khoan',
@@ -308,6 +310,10 @@ class UserController extends BaseApiController
         if (array_key_exists('phong_ban_ids', $data)) {
             $ids = is_array($data['phong_ban_ids']) ? $data['phong_ban_ids'] : [];
             $data['phong_ban_ids'] = array_values(array_unique(array_map('intval', $ids))) ?: null;
+        }
+
+        if (array_key_exists('vai_tro_id', $data) && ($data['vai_tro_id'] === '' || $data['vai_tro_id'] === null)) {
+            $data['vai_tro_id'] = null;
         }
 
         if (array_key_exists('luong_thuong_phu_cap', $data)) {

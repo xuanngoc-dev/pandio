@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'hinh_anh',
     'user_id',
     'phong_ban_ids',
+    'vai_tro_id',
     'ngan_hang',
     'chi_nhanh',
     'so_tai_khoan',
@@ -94,6 +95,7 @@ class NhanVien extends Model
             'so_nguoi_phu_thuoc' => 'integer',
             'luong_thuong_phu_cap' => 'array',
             'phong_ban_ids' => 'array',
+            'vai_tro_id' => 'integer',
         ];
     }
 
@@ -139,5 +141,10 @@ class NhanVien extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function vaiTro(): BelongsTo
+    {
+        return $this->belongsTo(VaiTro::class, 'vai_tro_id');
     }
 }

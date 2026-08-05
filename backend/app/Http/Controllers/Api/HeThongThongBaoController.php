@@ -55,6 +55,115 @@ class HeThongThongBaoController extends BaseApiController
     }
 
     /**
+     * Thông báo của người đăng nhập:
+     * - id nằm trong nguoi_nhan_ids
+     * - id không nằm trong nguoi_dung_da_xoa_ids
+     *
+     * Query: page, per_page
+     */
+    public function cuaToi(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $userId = (int) $request->user()->id;
+
+            $validated = $request->validate([
+                'page' => ['sometimes', 'integer', 'min:1'],
+                'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            ]);
+
+            $perPage = $validated['per_page'] ?? 50;
+
+            $query = $this->queryCuaToi($userId)
+                ->with([
+                    'loaiThongBao:id,ma_loai_thong_bao,ten_loai_thong_bao,icon',
+                    'actor:id,name,email',
+                ])
+                ->orderByDesc('id');
+
+            $paginator = $query->paginate($perPage);
+            $this->appendDaDocChoUser($paginator->getCollection(), $userId);
+
+            return response()->json($paginator);
+        }, 'lấy thông báo của tôi');
+    }
+
+    /**
+     * Đánh dấu một thông báo đã đọc (thêm user vào nguoi_nhan_da_doc_ids).
+     */
+    public function danhDauDaDoc(Request $request, HeThongThongBao $he_thong_thong_bao): JsonResponse
+    {
+        return $this->handleApi(function () use ($request, $he_thong_thong_bao) {
+            $userId = (int) $request->user()->id;
+            $this->assertNguoiNhanChuaXoa($he_thong_thong_bao, $userId);
+
+            $daDocIds = array_map('intval', $he_thong_thong_bao->nguoi_nhan_da_doc_ids ?? []);
+            if (! in_array($userId, $daDocIds, true)) {
+                $daDocIds[] = $userId;
+                $he_thong_thong_bao->update([
+                    'nguoi_nhan_da_doc_ids' => array_values($daDocIds),
+                ]);
+            }
+
+            $item = $he_thong_thong_bao->fresh([
+                'loaiThongBao:id,ma_loai_thong_bao,ten_loai_thong_bao,icon',
+                'actor:id,name,email',
+            ]);
+            $this->appendDaDocChoUser(collect([$item]), $userId);
+
+            return response()->json($item);
+        }, 'đánh dấu đã đọc thông báo');
+    }
+
+    /**
+     * Đánh dấu tất cả thông báo của tôi là đã đọc.
+     */
+    public function danhDauTatCaDaDoc(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $userId = (int) $request->user()->id;
+
+            $items = $this->queryCuaToi($userId)->get();
+            $updated = 0;
+
+            foreach ($items as $item) {
+                $daDocIds = array_map('intval', $item->nguoi_nhan_da_doc_ids ?? []);
+                if (in_array($userId, $daDocIds, true)) {
+                    continue;
+                }
+                $daDocIds[] = $userId;
+                $item->update(['nguoi_nhan_da_doc_ids' => array_values($daDocIds)]);
+                $updated++;
+            }
+
+            return response()->json([
+                'message' => 'Đã đánh dấu tất cả thông báo là đã đọc.',
+                'updated' => $updated,
+            ]);
+        }, 'đánh dấu tất cả đã đọc');
+    }
+
+    /**
+     * Ẩn thông báo với người dùng hiện tại (thêm vào nguoi_dung_da_xoa_ids).
+     */
+    public function xoaCuaToi(Request $request, HeThongThongBao $he_thong_thong_bao): JsonResponse
+    {
+        return $this->handleApi(function () use ($request, $he_thong_thong_bao) {
+            $userId = (int) $request->user()->id;
+            $this->assertNguoiNhanChuaXoa($he_thong_thong_bao, $userId);
+
+            $daXoaIds = array_map('intval', $he_thong_thong_bao->nguoi_dung_da_xoa_ids ?? []);
+            if (! in_array($userId, $daXoaIds, true)) {
+                $daXoaIds[] = $userId;
+                $he_thong_thong_bao->update([
+                    'nguoi_dung_da_xoa_ids' => array_values($daXoaIds),
+                ]);
+            }
+
+            return response()->json(['message' => 'Đã ẩn thông báo.']);
+        }, 'ẩn thông báo của tôi');
+    }
+
+    /**
      * Chi tiết một thông báo.
      */
     public function show(HeThongThongBao $he_thong_thong_bao): JsonResponse
@@ -153,6 +262,47 @@ class HeThongThongBaoController extends BaseApiController
         }
 
         return $validated;
+    }
+
+    /**
+     * Query thông báo dành cho user: là người nhận và chưa tự xoá.
+     *
+     * @return \Illuminate\Database\Eloquent\Builder<HeThongThongBao>
+     */
+    private function queryCuaToi(int $userId)
+    {
+        return HeThongThongBao::query()
+            ->whereJsonContains('nguoi_nhan_ids', $userId)
+            ->where(function ($q) use ($userId) {
+                $q->whereNull('nguoi_dung_da_xoa_ids')
+                    ->orWhereJsonDoesntContain('nguoi_dung_da_xoa_ids', $userId);
+            });
+    }
+
+    private function assertNguoiNhanChuaXoa(HeThongThongBao $item, int $userId): void
+    {
+        $nguoiNhanIds = array_map('intval', $item->nguoi_nhan_ids ?? []);
+        if (! in_array($userId, $nguoiNhanIds, true)) {
+            abort(403, 'Bạn không phải người nhận thông báo này.');
+        }
+
+        $daXoaIds = array_map('intval', $item->nguoi_dung_da_xoa_ids ?? []);
+        if (in_array($userId, $daXoaIds, true)) {
+            abort(404, 'Thông báo không tồn tại.');
+        }
+    }
+
+    /**
+     * Gắn cờ da_doc cho người dùng hiện tại.
+     *
+     * @param  \Illuminate\Support\Collection<int, HeThongThongBao>  $items
+     */
+    private function appendDaDocChoUser($items, int $userId): void
+    {
+        $items->each(function (HeThongThongBao $item) use ($userId) {
+            $daDocIds = array_map('intval', $item->nguoi_nhan_da_doc_ids ?? []);
+            $item->setAttribute('da_doc', in_array($userId, $daDocIds, true));
+        });
     }
 
     /**
