@@ -163,7 +163,7 @@ class DiemDanhController extends BaseApiController
                 $diMuon = (! $waiveLate && $lateMinutes > 0) ? 'co' : 'khong';
                 $thoiGianDiMuon = $diMuon === 'co' ? $lateMinutes : 0;
                 $tienPhatDiMuon = $diMuon === 'co'
-                    ? $this->tinhTienPhat($user, $caLam, $thoiGianDiMuon)
+                    ? $this->tinhTienPhat('di_muon', $thoiGianDiMuon)
                     : 0;
 
                 $payload = [
@@ -270,7 +270,7 @@ class DiemDanhController extends BaseApiController
                 $veSom = (! $waiveEarly && $earlyMinutes > 0) ? 'co' : 'khong';
                 $thoiGianVeSom = $veSom === 'co' ? $earlyMinutes : 0;
                 $tienPhatVeSom = $veSom === 'co'
-                    ? $this->tinhTienPhat($user, $caLam, $thoiGianVeSom)
+                    ? $this->tinhTienPhat('ve_som', $thoiGianVeSom)
                     : 0;
 
                 [$gioLamCoBan, $gioLamTangCa] = $this->tinhGioLam($gioVao, $now, $caLam);
@@ -457,10 +457,10 @@ class DiemDanhController extends BaseApiController
                 $thoiGianDiMuon = $diMuon === 'co' ? $lateMinutes : 0;
                 $thoiGianVeSom = $veSom === 'co' ? $earlyMinutes : 0;
                 $tienPhatDiMuon = $diMuon === 'co'
-                    ? $this->tinhTienPhat($target, $caLam, $thoiGianDiMuon)
+                    ? $this->tinhTienPhat('di_muon', $thoiGianDiMuon)
                     : 0;
                 $tienPhatVeSom = $veSom === 'co'
-                    ? $this->tinhTienPhat($target, $caLam, $thoiGianVeSom)
+                    ? $this->tinhTienPhat('ve_som', $thoiGianVeSom)
                     : 0;
 
                 [$gioLamCoBan, $gioLamTangCa] = $this->tinhGioLam($gioVao, $gioRa, $caLam);
@@ -653,34 +653,27 @@ class DiemDanhController extends BaseApiController
     }
 
     /**
-     * Phạt theo tỷ lệ lương ngày / số phút ca.
+     * Phạt theo mức cấu hình cố định:
+     * 1–30 phút / trên 30 phút (đi muộn hoặc về sớm).
      */
-    private function tinhTienPhat(mixed $user, mixed $caLam, int $phut): float
+    private function tinhTienPhat(string $loai, int $phut): float
     {
         if ($phut <= 0) {
             return 0;
         }
 
-        $user->loadMissing('nhanVien');
-        $nhanVien = $user->nhanVien;
-        if (! $nhanVien) {
-            return 0;
+        $config = $this->chamCongConfig();
+        $isOver30 = $phut > 30;
+
+        if ($loai === 've_som') {
+            $key = $isOver30 ? 'tien_phat_ve_som_tren_30' : 'tien_phat_ve_som_1_30';
+            $default = $isOver30 ? 50000 : 30000;
+        } else {
+            $key = $isOver30 ? 'tien_phat_di_muon_tren_30' : 'tien_phat_di_muon_1_30';
+            $default = $isOver30 ? 100000 : 50000;
         }
 
-        $luongCoBan = $nhanVien->getLuongValue('luong_1_gio');
-        $congChuan = (float) ($nhanVien->cong_chuan ?? 0);
-        if ($luongCoBan <= 0 || $congChuan <= 0) {
-            return 0;
-        }
-
-        $ngay = $this->todayDate();
-        $gioBatDau = $this->combineDateAndTime($ngay, $caLam->gio_bat_dau);
-        $gioKetThuc = $this->combineDateAndTime($ngay, $caLam->gio_ket_thuc);
-        $phutCa = max(1, (int) $gioBatDau->diffInMinutes($gioKetThuc));
-
-        $tienMotPhut = ($luongCoBan / $congChuan) / $phutCa;
-
-        return round($tienMotPhut * $phut, 2);
+        return round((float) data_get($config, "{$key}.gia_tri", $default), 2);
     }
 
     /**

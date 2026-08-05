@@ -2,9 +2,10 @@ import api from '@/api/axios'
 
 /**
  * Lấy cấu hình JSON động hiện tại.
+ * @param {{ skipLoading?: boolean }} [config]
  */
-export function getCauHinhJson() {
-  return api.get('/cau-hinh-json')
+export function getCauHinhJson(config = {}) {
+  return api.get('/cau-hinh-json', config)
 }
 
 /**

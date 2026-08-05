@@ -12,7 +12,7 @@
         </template>
 
         <CustomForm ref="formRef" :model="form" label-position="top">
-          <div class="setting-list">
+          <div class="setting-grid">
             <div class="setting-item">
               <label class="setting-item__title">
                 <el-checkbox v-model="form.yeu_cau_dang_ky_ca_moi_duoc_diem_danh.gia_tri" />
@@ -42,7 +42,7 @@
             <div class="setting-item">
               <div class="setting-item__title">Giờ tính tăng ca</div>
               <CustomRow :gutter="12">
-                <CustomCol :xs="24" :sm="20">
+                <CustomCol :xs="24" :sm="16">
                   <CustomFormItem prop="gio_tinh_tang_ca.mo_ta" class="mo-ta-item">
                     <CustomInput
                       v-model="form.gio_tinh_tang_ca.mo_ta"
@@ -50,7 +50,7 @@
                     />
                   </CustomFormItem>
                 </CustomCol>
-                <CustomCol :xs="24" :sm="4">
+                <CustomCol :xs="24" :sm="8">
                   <el-time-picker
                     v-model="form.gio_tinh_tang_ca.gia_tri"
                     format="HH:mm"
@@ -65,7 +65,7 @@
             <div class="setting-item">
               <div class="setting-item__title">Số phút tối thiểu để tính tăng ca</div>
               <CustomRow :gutter="12">
-                <CustomCol :xs="24" :sm="20">
+                <CustomCol :xs="24" :sm="16">
                   <CustomFormItem prop="so_phut_toi_thieu_de_tinh_tang_ca.mo_ta" class="mo-ta-item">
                     <CustomInput
                       v-model="form.so_phut_toi_thieu_de_tinh_tang_ca.mo_ta"
@@ -73,7 +73,7 @@
                     />
                   </CustomFormItem>
                 </CustomCol>
-                <CustomCol :xs="24" :sm="4">
+                <CustomCol :xs="24" :sm="8">
                   <el-input-number
                     v-model="form.so_phut_toi_thieu_de_tinh_tang_ca.gia_tri"
                     class="phut-input"
@@ -81,6 +81,90 @@
                     :max="1440"
                     :step="1"
                     controls-position="right"
+                    style="width: 100%"
+                  />
+                </CustomCol>
+              </CustomRow>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-item__title">Tiền phạt đi muộn 1–30 phút (VND)</div>
+              <CustomRow :gutter="12">
+                <CustomCol :xs="24" :sm="16">
+                  <CustomFormItem prop="tien_phat_di_muon_1_30.mo_ta" class="mo-ta-item">
+                    <CustomInput
+                      v-model="form.tien_phat_di_muon_1_30.mo_ta"
+                      placeholder="Mô tả cấu hình"
+                    />
+                  </CustomFormItem>
+                </CustomCol>
+                <CustomCol :xs="24" :sm="8">
+                  <MoneyInput
+                    v-model="form.tien_phat_di_muon_1_30.gia_tri"
+                    placeholder="0"
+                    style="width: 100%"
+                  />
+                </CustomCol>
+              </CustomRow>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-item__title">Tiền phạt đi muộn &gt; 30 phút (VND)</div>
+              <CustomRow :gutter="12">
+                <CustomCol :xs="24" :sm="16">
+                  <CustomFormItem prop="tien_phat_di_muon_tren_30.mo_ta" class="mo-ta-item">
+                    <CustomInput
+                      v-model="form.tien_phat_di_muon_tren_30.mo_ta"
+                      placeholder="Mô tả cấu hình"
+                    />
+                  </CustomFormItem>
+                </CustomCol>
+                <CustomCol :xs="24" :sm="8">
+                  <MoneyInput
+                    v-model="form.tien_phat_di_muon_tren_30.gia_tri"
+                    placeholder="0"
+                    style="width: 100%"
+                  />
+                </CustomCol>
+              </CustomRow>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-item__title">Tiền phạt về sớm 1–30 phút (VND)</div>
+              <CustomRow :gutter="12">
+                <CustomCol :xs="24" :sm="16">
+                  <CustomFormItem prop="tien_phat_ve_som_1_30.mo_ta" class="mo-ta-item">
+                    <CustomInput
+                      v-model="form.tien_phat_ve_som_1_30.mo_ta"
+                      placeholder="Mô tả cấu hình"
+                    />
+                  </CustomFormItem>
+                </CustomCol>
+                <CustomCol :xs="24" :sm="8">
+                  <MoneyInput
+                    v-model="form.tien_phat_ve_som_1_30.gia_tri"
+                    placeholder="0"
+                    style="width: 100%"
+                  />
+                </CustomCol>
+              </CustomRow>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-item__title">Tiền phạt về sớm &gt; 30 phút (VND)</div>
+              <CustomRow :gutter="12">
+                <CustomCol :xs="24" :sm="16">
+                  <CustomFormItem prop="tien_phat_ve_som_tren_30.mo_ta" class="mo-ta-item">
+                    <CustomInput
+                      v-model="form.tien_phat_ve_som_tren_30.mo_ta"
+                      placeholder="Mô tả cấu hình"
+                    />
+                  </CustomFormItem>
+                </CustomCol>
+                <CustomCol :xs="24" :sm="8">
+                  <MoneyInput
+                    v-model="form.tien_phat_ve_som_tren_30.gia_tri"
+                    placeholder="0"
                     style="width: 100%"
                   />
                 </CustomCol>
@@ -97,6 +181,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getCauHinhJson, updateCauHinhJson } from '@/api/cauHinhJson'
+import { MoneyInput } from '@/components/element'
 import ConfigSettingPage from './ConfigSettingPage.vue'
 
 const CONFIG_GROUP_KEY = 'cham_cong_tang_ca'
@@ -118,6 +203,22 @@ const DEFAULTS = {
     mo_ta: 'Số phút làm thêm tối thiểu để được ghi nhận tăng ca.',
     gia_tri: 30,
   },
+  tien_phat_di_muon_1_30: {
+    mo_ta: 'Số tiền phạt khi đi muộn từ 1 đến 30 phút.',
+    gia_tri: 50000,
+  },
+  tien_phat_di_muon_tren_30: {
+    mo_ta: 'Số tiền phạt khi đi muộn trên 30 phút.',
+    gia_tri: 100000,
+  },
+  tien_phat_ve_som_1_30: {
+    mo_ta: 'Số tiền phạt khi về sớm từ 1 đến 30 phút.',
+    gia_tri: 30000,
+  },
+  tien_phat_ve_som_tren_30: {
+    mo_ta: 'Số tiền phạt khi về sớm trên 30 phút.',
+    gia_tri: 50000,
+  },
 }
 
 const CONFIG_KEYS = Object.keys(DEFAULTS)
@@ -131,6 +232,10 @@ const form = reactive({
   kiem_soat_ip_diem_danh: { ...DEFAULTS.kiem_soat_ip_diem_danh },
   gio_tinh_tang_ca: { ...DEFAULTS.gio_tinh_tang_ca },
   so_phut_toi_thieu_de_tinh_tang_ca: { ...DEFAULTS.so_phut_toi_thieu_de_tinh_tang_ca },
+  tien_phat_di_muon_1_30: { ...DEFAULTS.tien_phat_di_muon_1_30 },
+  tien_phat_di_muon_tren_30: { ...DEFAULTS.tien_phat_di_muon_tren_30 },
+  tien_phat_ve_som_1_30: { ...DEFAULTS.tien_phat_ve_som_1_30 },
+  tien_phat_ve_som_tren_30: { ...DEFAULTS.tien_phat_ve_som_tren_30 },
 })
 
 function applyFromServer(group = {}) {
@@ -161,6 +266,22 @@ function buildGroupPayload() {
     so_phut_toi_thieu_de_tinh_tang_ca: {
       mo_ta: form.so_phut_toi_thieu_de_tinh_tang_ca.mo_ta?.trim() || DEFAULTS.so_phut_toi_thieu_de_tinh_tang_ca.mo_ta,
       gia_tri: Number(form.so_phut_toi_thieu_de_tinh_tang_ca.gia_tri ?? 0),
+    },
+    tien_phat_di_muon_1_30: {
+      mo_ta: form.tien_phat_di_muon_1_30.mo_ta?.trim() || DEFAULTS.tien_phat_di_muon_1_30.mo_ta,
+      gia_tri: Number(form.tien_phat_di_muon_1_30.gia_tri ?? 0),
+    },
+    tien_phat_di_muon_tren_30: {
+      mo_ta: form.tien_phat_di_muon_tren_30.mo_ta?.trim() || DEFAULTS.tien_phat_di_muon_tren_30.mo_ta,
+      gia_tri: Number(form.tien_phat_di_muon_tren_30.gia_tri ?? 0),
+    },
+    tien_phat_ve_som_1_30: {
+      mo_ta: form.tien_phat_ve_som_1_30.mo_ta?.trim() || DEFAULTS.tien_phat_ve_som_1_30.mo_ta,
+      gia_tri: Number(form.tien_phat_ve_som_1_30.gia_tri ?? 0),
+    },
+    tien_phat_ve_som_tren_30: {
+      mo_ta: form.tien_phat_ve_som_tren_30.mo_ta?.trim() || DEFAULTS.tien_phat_ve_som_tren_30.mo_ta,
+      gia_tri: Number(form.tien_phat_ve_som_tren_30.gia_tri ?? 0),
     },
   }
 }
@@ -209,23 +330,15 @@ onMounted(loadConfig)
   font-weight: 600;
 }
 
-.setting-list {
-  display: flex;
-  flex-direction: column;
+.setting-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0 20px;
 }
 
 .setting-item {
   padding: 16px 0;
   border-bottom: 1px solid var(--el-border-color-lighter);
-
-  &:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
-  }
-
-  &:first-child {
-    padding-top: 0;
-  }
 
   &__title {
     display: inline-flex;
@@ -247,7 +360,38 @@ onMounted(loadConfig)
   text-align: left;
 }
 
+@media (min-width: 768px) {
+  .setting-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .setting-item {
+    border-bottom: none;
+    padding: 16px 0;
+    border-top: 1px solid var(--el-border-color-lighter);
+  }
+
+  .setting-item:nth-child(1),
+  .setting-item:nth-child(2) {
+    border-top: none;
+    padding-top: 0;
+  }
+
+  .setting-item:nth-last-child(-n + 2) {
+    padding-bottom: 0;
+  }
+}
+
 @media (max-width: 767px) {
+  .setting-item:first-child {
+    padding-top: 0;
+  }
+
+  .setting-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
   .setting-item :deep(.el-col:not(:last-child)) {
     margin-bottom: 12px;
   }
