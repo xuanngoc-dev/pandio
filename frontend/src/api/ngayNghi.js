@@ -3,9 +3,10 @@ import api from '@/api/axios'
 /**
  * Danh sách ngày nghỉ — phân trang.
  * @param {{ page?: number, per_page?: number, keyword?: string, trang_thai?: string }} params
+ * @param {{ skipLoading?: boolean }} [config]
  */
-export function fetchNgayNghi(params = {}) {
-  return api.get('/cau-hinh-ngay-nghi', { params })
+export function fetchNgayNghi(params = {}, config = {}) {
+  return api.get('/cau-hinh-ngay-nghi', { params, ...config })
 }
 
 function assertId(id) {

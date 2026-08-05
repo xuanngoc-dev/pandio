@@ -3,9 +3,10 @@ import api from '@/api/axios'
 /**
  * Danh sách user (nhân sự) — phân trang.
  * @param {{ page?: number, per_page?: number, keyword?: string, status?: string }} params
+ * @param {{ skipLoading?: boolean }} [config]
  */
-export function fetchUsers(params = {}) {
-  return api.get('/users', { params })
+export function fetchUsers(params = {}, config = {}) {
+  return api.get('/users', { params, ...config })
 }
 
 /**

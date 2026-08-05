@@ -6,6 +6,7 @@ use App\Models\CauHinhJson;
 use App\Models\DangKyCaLamViec;
 use App\Models\DiemDanh;
 use App\Models\IpDiemDanh;
+use App\Models\User;
 use App\Models\XinNghiPhep;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -303,6 +304,206 @@ class DiemDanhController extends BaseApiController
             ]));
 
         }, 'checkout điểm danh');
+    }
+
+    /**
+     * Ngữ cảnh điểm danh hộ — thông tin nhân viên + ca đăng ký theo ngày.
+     *
+     * Query: user_id, ngay_lam
+     */
+    public function hoContext(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'user_id' => ['required', 'integer', 'exists:users,id'],
+                'ngay_lam' => ['required', 'date'],
+            ]);
+
+            $ngayLam = Carbon::parse($validated['ngay_lam'], self::TIMEZONE)->startOfDay();
+            $today = $this->todayDate();
+
+            if ($ngayLam->gt($today)) {
+                throw ValidationException::withMessages([
+                    'ngay_lam' => ['Chỉ được điểm danh hộ cho ngày hôm nay hoặc ngày trong quá khứ.'],
+                ]);
+            }
+
+            $user = User::query()
+                ->with(['nhanVien'])
+                ->select(['id', 'name', 'email', 'phone', 'status'])
+                ->findOrFail($validated['user_id']);
+
+            $dangKy = $this->findDangKyCaHomNay((int) $user->id, $ngayLam);
+
+            $diemDanh = DiemDanh::query()
+                ->where('user_id', $user->id)
+                ->whereDate('ngay_lam', $ngayLam)
+                ->first();
+
+            return response()->json([
+                'user' => $user,
+                'ngay_lam' => $ngayLam->toDateString(),
+                'dang_ky_ca' => $dangKy,
+                'diem_danh' => $diemDanh,
+                'can_proxy' => $diemDanh === null || $diemDanh->gio_vao === null,
+            ]);
+
+        }, 'lấy ngữ cảnh điểm danh hộ');
+    }
+
+    /**
+     * Điểm danh hộ — tạo bản ghi điểm danh cho nhân viên khác.
+     *
+     * Body: user_id, ngay_lam, gio_vao (H:i), gio_ra (H:i)
+     */
+    public function diemDanhHo(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'user_id' => ['required', 'integer', 'exists:users,id'],
+                'ngay_lam' => ['required', 'date'],
+                'gio_vao' => ['required', 'date_format:H:i'],
+                'gio_ra' => ['required', 'date_format:H:i'],
+            ]);
+
+            $actor = $request->user();
+            $ngayLam = Carbon::parse($validated['ngay_lam'], self::TIMEZONE)->startOfDay();
+            $today = $this->todayDate();
+
+            if ($ngayLam->gt($today)) {
+                throw ValidationException::withMessages([
+                    'ngay_lam' => ['Chỉ được điểm danh hộ cho ngày hôm nay hoặc ngày trong quá khứ.'],
+                ]);
+            }
+
+            $target = User::query()->with('nhanVien')->findOrFail($validated['user_id']);
+
+            $existing = DiemDanh::query()
+                ->where('user_id', $target->id)
+                ->whereDate('ngay_lam', $ngayLam)
+                ->first();
+
+            if ($existing && $existing->gio_vao) {
+                throw ValidationException::withMessages([
+                    'user_id' => ['Nhân viên đã điểm danh ngày này rồi.'],
+                ]);
+            }
+
+            $gioVao = $this->combineDateAndTime($ngayLam, $validated['gio_vao']);
+            $gioRa = $this->combineDateAndTime($ngayLam, $validated['gio_ra']);
+
+            if ($gioRa->lte($gioVao)) {
+                throw ValidationException::withMessages([
+                    'gio_ra' => ['Giờ ra phải sau giờ vào.'],
+                ]);
+            }
+
+            $dangKy = $this->findDangKyCaHomNay((int) $target->id, $ngayLam);
+            $caLam = $dangKy?->caLam;
+
+            if ($this->yeuCauDangKyCa() && (! $dangKy || ! $caLam)) {
+                throw ValidationException::withMessages([
+                    'ca_lam' => ['Nhân viên chưa đăng ký ca làm ngày này nên không thể điểm danh hộ.'],
+                ]);
+            }
+
+            if ($caLam && $caLam->trang_thai === 'khong') {
+                throw ValidationException::withMessages([
+                    'ca_lam' => ['Ca làm đã đăng ký đang không hoạt động.'],
+                ]);
+            }
+
+            $ghiChu = 'Điểm danh hộ bởi '.($actor->name ?: $actor->email);
+
+            if (! $caLam) {
+                $phutLam = (int) $gioVao->diffInMinutes($gioRa);
+                $gioLamCoBan = round($phutLam / 60, 2);
+                [$luongCoBan, $luongTangCa] = $this->tinhLuong($target, $gioLamCoBan, 0.0);
+
+                $payload = [
+                    'user_id' => $target->id,
+                    'ngay_lam' => $ngayLam->toDateString(),
+                    'ca_lam_id' => null,
+                    'gio_vao' => $gioVao->format('Y-m-d H:i:s'),
+                    'gio_ra' => $gioRa->format('Y-m-d H:i:s'),
+                    'di_muon' => 'khong',
+                    've_som' => 'khong',
+                    'thoi_gian_di_muon' => 0,
+                    'thoi_gian_ve_som' => 0,
+                    'tien_phat_di_muon' => 0,
+                    'tien_phat_ve_som' => 0,
+                    'ly_do' => null,
+                    'ghi_chu' => $ghiChu.' · '.self::GHI_CHU_CHUA_DANG_KY_CA,
+                    'ip_checkin' => null,
+                    'ip_checkout' => null,
+                    'gio_lam_co_ban' => $gioLamCoBan,
+                    'gio_lam_tang_ca' => 0,
+                    'luong_co_ban' => $luongCoBan,
+                    'luong_tang_ca' => $luongTangCa,
+                ];
+            } else {
+                $gioBatDau = $this->combineDateAndTime($ngayLam, $caLam->gio_bat_dau);
+                $gioKetThuc = $this->combineDateAndTime($ngayLam, $caLam->gio_ket_thuc);
+
+                $lateMinutes = max(0, (int) $gioBatDau->diffInMinutes($gioVao, false));
+                $earlyMinutes = max(0, (int) $gioRa->diffInMinutes($gioKetThuc, false));
+
+                $waiveLate = $this->hasApprovedLeave((int) $target->id, $ngayLam, 'di_muon');
+                $waiveEarly = $this->hasApprovedLeave((int) $target->id, $ngayLam, 've_som');
+                $lyDo = $this->resolveLyDo((int) $target->id, $ngayLam);
+
+                $diMuon = (! $waiveLate && $lateMinutes > 0) ? 'co' : 'khong';
+                $veSom = (! $waiveEarly && $earlyMinutes > 0) ? 'co' : 'khong';
+                $thoiGianDiMuon = $diMuon === 'co' ? $lateMinutes : 0;
+                $thoiGianVeSom = $veSom === 'co' ? $earlyMinutes : 0;
+                $tienPhatDiMuon = $diMuon === 'co'
+                    ? $this->tinhTienPhat($target, $caLam, $thoiGianDiMuon)
+                    : 0;
+                $tienPhatVeSom = $veSom === 'co'
+                    ? $this->tinhTienPhat($target, $caLam, $thoiGianVeSom)
+                    : 0;
+
+                [$gioLamCoBan, $gioLamTangCa] = $this->tinhGioLam($gioVao, $gioRa, $caLam);
+                [$luongCoBan, $luongTangCa] = $this->tinhLuong($target, $gioLamCoBan, $gioLamTangCa);
+
+                $payload = [
+                    'user_id' => $target->id,
+                    'ngay_lam' => $ngayLam->toDateString(),
+                    'ca_lam_id' => $caLam->id,
+                    'gio_vao' => $gioVao->format('Y-m-d H:i:s'),
+                    'gio_ra' => $gioRa->format('Y-m-d H:i:s'),
+                    'di_muon' => $diMuon,
+                    've_som' => $veSom,
+                    'thoi_gian_di_muon' => $thoiGianDiMuon,
+                    'thoi_gian_ve_som' => $thoiGianVeSom,
+                    'tien_phat_di_muon' => $tienPhatDiMuon,
+                    'tien_phat_ve_som' => $tienPhatVeSom,
+                    'ly_do' => $lyDo,
+                    'ghi_chu' => $ghiChu,
+                    'ip_checkin' => null,
+                    'ip_checkout' => null,
+                    'gio_lam_co_ban' => $gioLamCoBan,
+                    'gio_lam_tang_ca' => $gioLamTangCa,
+                    'luong_co_ban' => $luongCoBan,
+                    'luong_tang_ca' => $luongTangCa,
+                ];
+            }
+
+            if ($existing) {
+                $existing->update($payload);
+                $diemDanh = $existing->fresh();
+            } else {
+                $diemDanh = DiemDanh::create($payload);
+            }
+
+            $diemDanh->load([
+                'user:id,name,email,phone',
+                'caLam:id,ten_ca,gio_bat_dau,gio_ket_thuc',
+            ]);
+
+            return response()->json($diemDanh, 201);
+
+        }, 'điểm danh hộ');
     }
 
     private function todayDate(): Carbon

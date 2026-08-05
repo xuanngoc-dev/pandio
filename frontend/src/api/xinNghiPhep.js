@@ -9,10 +9,13 @@ import api from '@/api/axios'
  *   user_id?: number|string,
  *   loai_nghi_phep?: string,
  *   trang_thai?: string,
+ *   tu_ngay?: string,
+ *   den_ngay?: string,
  * }} params
+ * @param {{ skipLoading?: boolean }} [config]
  */
-export function fetchXinNghiPhep(params = {}) {
-  return api.get('/xin-nghi-phep', { params })
+export function fetchXinNghiPhep(params = {}, config = {}) {
+  return api.get('/xin-nghi-phep', { params, ...config })
 }
 
 /**

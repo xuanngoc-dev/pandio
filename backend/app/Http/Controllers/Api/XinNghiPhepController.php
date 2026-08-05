@@ -25,7 +25,8 @@ class XinNghiPhepController extends BaseApiController
     /**
      * Danh sách xin nghỉ phép — phân trang + lọc.
      *
-     * Query: page, per_page, keyword, user_id, loai_nghi_phep, trang_thai
+     * Query: page, per_page, keyword, user_id, loai_nghi_phep, trang_thai, tu_ngay, den_ngay
+     * tu_ngay/den_ngay: lọc đơn có khoảng nghỉ giao với khoảng ngày.
      */
     public function index(Request $request): JsonResponse
     {
@@ -37,6 +38,8 @@ class XinNghiPhepController extends BaseApiController
                 'user_id' => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
                 'loai_nghi_phep' => ['sometimes', 'nullable', 'string', Rule::in(self::LOAI_NGHI_PHEP)],
                 'trang_thai' => ['sometimes', 'nullable', 'string', Rule::in(self::TRANG_THAI)],
+                'tu_ngay' => ['sometimes', 'nullable', 'date'],
+                'den_ngay' => ['sometimes', 'nullable', 'date', 'after_or_equal:tu_ngay'],
             ]);
 
             $perPage = $validated['per_page'] ?? 10;
@@ -67,6 +70,24 @@ class XinNghiPhepController extends BaseApiController
                 ->when(
                     ! empty($validated['trang_thai']),
                     fn ($q) => $q->where('trang_thai', $validated['trang_thai'])
+                )
+                ->when(
+                    ! empty($validated['tu_ngay']) || ! empty($validated['den_ngay']),
+                    function ($q) use ($validated) {
+                        $tuNgay = $validated['tu_ngay'] ?? null;
+                        $denNgay = $validated['den_ngay'] ?? null;
+
+                        // Giao khoảng: bat_dau <= den_ngay AND ket_thuc >= tu_ngay
+                        if ($denNgay) {
+                            $q->whereDate('ngay_bat_dau', '<=', $denNgay);
+                        }
+                        if ($tuNgay) {
+                            $q->whereRaw(
+                                'COALESCE(ngay_ket_thuc, ngay_bat_dau) >= ?',
+                                [$tuNgay]
+                            );
+                        }
+                    }
                 )
                 ->orderByDesc('id');
 

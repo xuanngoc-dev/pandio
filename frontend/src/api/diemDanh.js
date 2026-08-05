@@ -19,6 +19,28 @@ export async function fetchClientIp() {
 }
 
 /**
+ * Ngữ cảnh điểm danh hộ (nhân viên + ca theo ngày).
+ * @param {{ user_id: number|string, ngay_lam: string }} params
+ * @param {{ skipLoading?: boolean }} [config]
+ */
+export function getDiemDanhHoContext(params, config = {}) {
+  return api.get('/diem-danh/ho-context', { params, ...config })
+}
+
+/**
+ * Điểm danh hộ.
+ * @param {{
+ *   user_id: number|string,
+ *   ngay_lam: string,
+ *   gio_vao: string,
+ *   gio_ra: string,
+ * }} payload
+ */
+export function diemDanhHo(payload) {
+  return api.post('/diem-danh/ho', payload)
+}
+
+/**
  * Danh sách điểm danh — phân trang.
  * @param {{
  *   page?: number,

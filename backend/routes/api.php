@@ -71,6 +71,8 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
 
     // Điểm danh
     Route::get('/diem-danh/today', [DiemDanhController::class, 'today']);
+    Route::get('/diem-danh/ho-context', [DiemDanhController::class, 'hoContext']);
+    Route::post('/diem-danh/ho', [DiemDanhController::class, 'diemDanhHo']);
     Route::post('/diem-danh/checkin', [DiemDanhController::class, 'checkin']);
     Route::post('/diem-danh/checkout', [DiemDanhController::class, 'checkout']);
     Route::get('/diem-danh', [DiemDanhController::class, 'index']);
