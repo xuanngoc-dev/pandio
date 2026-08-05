@@ -242,6 +242,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Document, Edit, Plus, Search, Wallet } from '@element-plus/icons-vue'
 import {
@@ -303,7 +304,8 @@ const creating = ref(false)
 const page = ref(1)
 const perPage = ref(10)
 const total = ref(0)
-const keyword = ref('')
+const route = useRoute()
+const keyword = ref(String(route.query.keyword || ''))
 const filterTrangThai = ref('')
 const bulkDeleting = ref(false)
 const formModalVisible = ref(false)

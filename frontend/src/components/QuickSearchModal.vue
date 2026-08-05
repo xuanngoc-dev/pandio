@@ -1,7 +1,7 @@
 <template>
   <CustomDialog
     v-model="visible"
-    :width="680"
+    :width="720"
     :show-close="false"
     class="quick-search-dialog"
     @opened="onOpened"
@@ -15,22 +15,44 @@
           v-model="keyword"
           type="text"
           class="quick-search__input"
-          placeholder="Tìm kiếm chức năng, nhân viên..."
+          placeholder="Tìm hợp đồng, trang phục, concept, dịch vụ, nhân viên..."
           autocomplete="off"
           @keydown.esc="visible = false"
         />
+        <CustomTooltip content="Cấu hình mục tìm kiếm" placement="top">
+          <button
+            type="button"
+            class="quick-search__config-btn"
+            aria-label="Cấu hình mục tìm kiếm"
+            @click="sourceSettings.openConfig()"
+          >
+            <el-icon :size="18"><Setting /></el-icon>
+          </button>
+        </CustomTooltip>
         <kbd class="quick-search__kbd">ESC</kbd>
       </div>
 
       <el-tabs v-model="activeTab" class="quick-search__tabs">
         <el-tab-pane label="Tất cả" name="all" />
-        <el-tab-pane label="Chức năng" name="functions" />
-        <el-tab-pane label="Nhân viên" name="employees" />
+        <el-tab-pane
+          v-if="sourceSettings.isEnabled('functions')"
+          label="Chức năng"
+          name="functions"
+        />
+        <el-tab-pane
+          v-for="source in enabledSources"
+          :key="source.key"
+          :label="source.label"
+          :name="source.key"
+        />
       </el-tabs>
 
-      <div v-loading="loading && needsEmployeeSearch" class="quick-search__results">
+      <div v-loading="loading && needsEntitySearch" class="quick-search__results">
         <template v-if="activeTab === 'all'">
-          <section v-if="functionResults.length" class="quick-search__section">
+          <section
+            v-if="sourceSettings.isEnabled('functions') && functionResults.length"
+            class="quick-search__section"
+          >
             <h4 class="quick-search__section-title">Chức năng</h4>
             <button
               v-for="item in functionResults"
@@ -55,25 +77,30 @@
           </section>
 
           <section
-            v-if="needsEmployeeSearch && (loading || employeeResults.length)"
+            v-for="source in enabledSources"
+            v-show="needsEntitySearch && (loading || entityResults[source.key]?.length)"
+            :key="source.key"
             class="quick-search__section"
           >
-            <h4 class="quick-search__section-title">Nhân viên</h4>
+            <h4 class="quick-search__section-title">{{ source.label }}</h4>
             <button
-              v-for="employee in employeeResults"
-              :key="`emp-${employee.id}`"
+              v-for="item in entityResults[source.key] || []"
+              :key="`${source.key}-${item.id}`"
               type="button"
               class="quick-search__item"
-              @click="goToEmployee(employee)"
+              @click="goToEntity(item)"
             >
-              <el-avatar :size="36" class="quick-search__avatar">
-                {{ avatarInitial(employee.name) }}
+              <el-avatar v-if="item.avatar" :size="36" class="quick-search__avatar">
+                {{ avatarInitial(item.title) }}
               </el-avatar>
+              <span v-else class="quick-search__item-icon">
+                <el-icon :size="18">
+                  <component :is="resolveIcon(source.icon)" />
+                </el-icon>
+              </span>
               <span class="quick-search__item-body">
-                <span class="quick-search__item-title">{{ employee.name }}</span>
-                <span class="quick-search__item-meta">
-                  {{ [employee.email, employee.phone, deptName(employee)].filter(Boolean).join(' · ') }}
-                </span>
+                <span class="quick-search__item-title">{{ item.title }}</span>
+                <span v-if="item.meta" class="quick-search__item-meta">{{ item.meta }}</span>
               </span>
               <el-icon class="quick-search__item-arrow"><ArrowRight /></el-icon>
             </button>
@@ -81,7 +108,7 @@
 
           <el-empty
             v-if="showAllEmpty"
-            :description="keyword.trim() ? 'Không tìm thấy kết quả phù hợp' : 'Nhập từ khóa để tìm kiếm toàn bộ'"
+            :description="emptyAllDescription"
             :image-size="72"
           />
         </template>
@@ -117,70 +144,146 @@
 
         <template v-else>
           <button
-            v-for="employee in employeeResults"
-            :key="employee.id"
+            v-for="item in activeEntityResults"
+            :key="item.id"
             type="button"
             class="quick-search__item"
-            @click="goToEmployee(employee)"
+            @click="goToEntity(item)"
           >
-            <el-avatar :size="36" class="quick-search__avatar">
-              {{ avatarInitial(employee.name) }}
+            <el-avatar v-if="item.avatar" :size="36" class="quick-search__avatar">
+              {{ avatarInitial(item.title) }}
             </el-avatar>
+            <span v-else class="quick-search__item-icon">
+              <el-icon :size="18">
+                <component :is="resolveIcon(activeSource?.icon)" />
+              </el-icon>
+            </span>
             <span class="quick-search__item-body">
-              <span class="quick-search__item-title">{{ employee.name }}</span>
-              <span class="quick-search__item-meta">
-                {{ [employee.email, employee.phone, deptName(employee)].filter(Boolean).join(' · ') }}
-              </span>
+              <span class="quick-search__item-title">{{ item.title }}</span>
+              <span v-if="item.meta" class="quick-search__item-meta">{{ item.meta }}</span>
             </span>
             <el-icon class="quick-search__item-arrow"><ArrowRight /></el-icon>
           </button>
 
           <el-empty
-            v-if="!loading && !employeeResults.length"
-            :description="keyword.trim() ? 'Không tìm thấy nhân viên phù hợp' : 'Nhập tên, email hoặc SĐT để tìm nhân viên'"
+            v-if="!loading && !activeEntityResults.length"
+            :description="
+              keyword.trim()
+                ? `Không tìm thấy ${activeSource?.label?.toLowerCase() || 'kết quả'} phù hợp`
+                : `Nhập từ khóa để tìm ${activeSource?.label?.toLowerCase() || 'dữ liệu'}`
+            "
             :image-size="72"
           />
         </template>
       </div>
     </div>
   </CustomDialog>
+
+  <CustomDialog
+    v-model="sourceSettings.dialogVisible"
+    title="Cấu hình mục tìm kiếm"
+    :width="560"
+  >
+    <p class="source-config-hint">
+      Chọn các mục muốn tìm trong tìm kiếm nhanh. Cấu hình được lưu trên trình duyệt này.
+    </p>
+    <div class="source-config-list">
+      <label
+        v-for="opt in sourceSettings.options"
+        :key="opt.key"
+        class="source-config-item"
+      >
+        <el-checkbox v-model="sourceSettings.draft[opt.key]">
+          <span class="source-config-item__label">
+            <el-icon :size="16"><component :is="resolveIcon(opt.icon)" /></el-icon>
+            {{ opt.label }}
+          </span>
+        </el-checkbox>
+      </label>
+    </div>
+    <template #footer>
+      <div class="source-config-footer">
+        <div class="source-config-footer-left">
+          <CustomButton @click="sourceSettings.selectAllDraft()">Chọn tất cả</CustomButton>
+          <CustomButton @click="sourceSettings.clearDraft()">Bỏ chọn tất cả</CustomButton>
+        </div>
+        <div class="source-config-footer-right">
+          <CustomButton @click="sourceSettings.dialogVisible = false">Hủy</CustomButton>
+          <CustomButton type="primary" @click="saveSourceConfig">Lưu</CustomButton>
+        </div>
+      </div>
+    </template>
+  </CustomDialog>
 </template>
 
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import * as Icons from '@element-plus/icons-vue'
-import { ArrowRight, Search, Odometer } from '@element-plus/icons-vue'
-import { fetchUsers } from '@/api/users'
+import { ArrowRight, Odometer, Search, Setting } from '@element-plus/icons-vue'
 import { searchFunctions } from '@/utils/quickSearch'
+import {
+  ENTITY_TAB_KEYS,
+  SEARCH_SOURCE_MAP,
+  searchSources,
+} from '@/utils/quickSearchEntities'
+import { useQuickSearchSources } from '@/composables/useQuickSearchSources'
+import CustomButton from '@/components/element/CustomButton.vue'
 import CustomDialog from '@/components/element/CustomDialog.vue'
 import CustomIcon from '@/components/element/CustomIcon.vue'
+import CustomTooltip from '@/components/element/CustomTooltip.vue'
 
 const visible = defineModel({ type: Boolean, default: false })
 
 const router = useRouter()
+const sourceSettings = useQuickSearchSources()
 const inputRef = ref(null)
 const keyword = ref('')
 const activeTab = ref('all')
 const loading = ref(false)
-const employeeResults = ref([])
+const entityResults = reactive(
+  Object.fromEntries(ENTITY_TAB_KEYS.map((key) => [key, []]))
+)
 
 let searchTimer = null
 let searchRequestId = 0
 
-const functionResults = computed(() => searchFunctions(keyword.value))
+const enabledSources = computed(() => sourceSettings.enabledSources())
 
-const needsEmployeeSearch = computed(
-  () =>
-    keyword.value.trim() &&
-    (activeTab.value === 'employees' || activeTab.value === 'all')
-)
+const enabledEntityKeys = computed(() => sourceSettings.enabledEntityKeys())
+
+const functionResults = computed(() => {
+  if (!sourceSettings.isEnabled('functions')) return []
+  return searchFunctions(keyword.value)
+})
+
+const activeSource = computed(() => SEARCH_SOURCE_MAP[activeTab.value] || null)
+
+const activeEntityResults = computed(() => entityResults[activeTab.value] || [])
+
+const needsEntitySearch = computed(() => {
+  const trimmed = keyword.value.trim()
+  if (!trimmed) return false
+  if (activeTab.value === 'all') return enabledEntityKeys.value.length > 0
+  return enabledEntityKeys.value.includes(activeTab.value)
+})
+
+const emptyAllDescription = computed(() => {
+  if (!keyword.value.trim()) {
+    return sourceSettings.isEnabled('functions')
+      ? 'Nhập từ khóa để tìm kiếm toàn bộ'
+      : 'Nhập từ khóa để tìm kiếm'
+  }
+  return 'Không tìm thấy kết quả phù hợp'
+})
 
 const showAllEmpty = computed(() => {
   if (activeTab.value !== 'all' || loading.value) return false
-  const hasFunctions = functionResults.value.length > 0
-  const hasEmployees = needsEmployeeSearch.value && employeeResults.value.length > 0
-  return !hasFunctions && !hasEmployees
+  const hasFunctions =
+    sourceSettings.isEnabled('functions') && functionResults.value.length > 0
+  const hasEntities = enabledEntityKeys.value.some((key) => entityResults[key]?.length)
+  if (!keyword.value.trim()) return !hasFunctions
+  return !hasFunctions && !hasEntities
 })
 
 function resolveIcon(name) {
@@ -192,23 +295,34 @@ function avatarInitial(name) {
   return text ? text.charAt(0).toUpperCase() : '?'
 }
 
-function deptName(row) {
-  const list = row?.nhan_vien?.phong_bans
-  if (Array.isArray(list) && list.length) {
-    return list.map((pb) => pb.ten_phong_ban).filter(Boolean).join(', ')
+function clearEntityResults() {
+  for (const key of ENTITY_TAB_KEYS) {
+    entityResults[key] = []
   }
-  return ''
+}
+
+function isTabAvailable(tab) {
+  if (tab === 'all') return true
+  if (tab === 'functions') return sourceSettings.isEnabled('functions')
+  return enabledEntityKeys.value.includes(tab)
+}
+
+function ensureActiveTabAvailable() {
+  if (!isTabAvailable(activeTab.value)) {
+    activeTab.value = 'all'
+  }
 }
 
 function resetState() {
   keyword.value = ''
   activeTab.value = 'all'
-  employeeResults.value = []
+  clearEntityResults()
   loading.value = false
   clearTimeout(searchTimer)
 }
 
 function onOpened() {
+  ensureActiveTabAvailable()
   nextTick(() => {
     inputRef.value?.focus()
     inputRef.value?.select()
@@ -224,17 +338,23 @@ function goToFunction(item) {
   closeAndNavigate(item.path)
 }
 
-function goToEmployee(employee) {
-  closeAndNavigate({
-    name: 'nhan-su-danh-sach',
-    query: { keyword: employee.name },
-  })
+function goToEntity(item) {
+  if (!item?.route) return
+  closeAndNavigate(item.route)
 }
 
-async function searchEmployees(value) {
+function keysForTab(tab) {
+  if (tab === 'all') return enabledEntityKeys.value
+  if (enabledEntityKeys.value.includes(tab)) return [tab]
+  return []
+}
+
+async function runEntitySearch(value, tab = activeTab.value) {
   const trimmed = value.trim()
-  if (!trimmed) {
-    employeeResults.value = []
+  const keys = keysForTab(tab)
+
+  if (!trimmed || !keys.length) {
+    clearEntityResults()
     loading.value = false
     return
   }
@@ -242,56 +362,55 @@ async function searchEmployees(value) {
   const requestId = ++searchRequestId
   loading.value = true
 
-  try {
-    const { data } = await fetchUsers({
-      page: 1,
-      per_page: 10,
-      keyword: trimmed,
-    })
+  const limit = tab === 'all' ? 5 : 10
+  const results = await searchSources(keys, trimmed, limit)
 
-    if (requestId !== searchRequestId) return
-    employeeResults.value = data.data || []
-  } catch {
-    if (requestId !== searchRequestId) return
-    employeeResults.value = []
-  } finally {
-    if (requestId === searchRequestId) {
-      loading.value = false
-    }
+  if (requestId !== searchRequestId) return
+
+  for (const key of ENTITY_TAB_KEYS) {
+    entityResults[key] = results[key] || []
   }
+  loading.value = false
 }
 
-function scheduleEmployeeSearch(value) {
-  if (!value.trim()) {
+function scheduleEntitySearch(value) {
+  const trimmed = value.trim()
+  const keys = keysForTab(activeTab.value)
+
+  if (!trimmed || !keys.length) {
     clearTimeout(searchTimer)
-    employeeResults.value = []
+    clearEntityResults()
     loading.value = false
     return
   }
 
-  if (activeTab.value !== 'employees' && activeTab.value !== 'all') return
-
   clearTimeout(searchTimer)
   searchTimer = setTimeout(() => {
-    searchEmployees(value)
+    runEntitySearch(value)
   }, 300)
 }
 
-watch(keyword, scheduleEmployeeSearch)
+function saveSourceConfig() {
+  if (!sourceSettings.saveConfig()) return
+  ensureActiveTabAvailable()
+  if (keysForTab(activeTab.value).length && keyword.value.trim()) {
+    runEntitySearch(keyword.value)
+  } else {
+    clearEntityResults()
+  }
+}
+
+watch(keyword, scheduleEntitySearch)
 
 watch(activeTab, (tab) => {
-  if ((tab === 'employees' || tab === 'all') && keyword.value.trim()) {
-    searchEmployees(keyword.value)
+  if (keysForTab(tab).length && keyword.value.trim()) {
+    runEntitySearch(keyword.value, tab)
   }
 })
 
 watch(visible, (open) => {
-  if (
-    open &&
-    (activeTab.value === 'employees' || activeTab.value === 'all') &&
-    keyword.value.trim()
-  ) {
-    searchEmployees(keyword.value)
+  if (open && keysForTab(activeTab.value).length && keyword.value.trim()) {
+    runEntitySearch(keyword.value)
   }
 })
 </script>
@@ -330,6 +449,26 @@ watch(visible, (open) => {
   }
 }
 
+.quick-search__config-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--el-text-color-secondary);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+
+  &:hover {
+    background: var(--el-fill-color-light);
+    color: var(--el-color-primary);
+  }
+}
+
 .quick-search__kbd {
   flex-shrink: 0;
   padding: 2px 6px;
@@ -349,6 +488,13 @@ watch(visible, (open) => {
 
   :deep(.el-tabs__nav-wrap::after) {
     height: 1px;
+  }
+
+  :deep(.el-tabs__item) {
+    padding: 0 12px;
+    height: 36px;
+    line-height: 36px;
+    font-size: 13px;
   }
 }
 
@@ -440,6 +586,74 @@ watch(visible, (open) => {
 .quick-search__item-arrow {
   flex-shrink: 0;
   color: var(--el-text-color-placeholder);
+}
+
+.source-config-hint {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+  line-height: 1.45;
+}
+
+.source-config-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  max-height: min(55vh, 360px);
+  overflow: auto;
+  padding-right: 4px;
+
+  @media (max-width: 520px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.source-config-item {
+  display: flex;
+  align-items: flex-start;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--el-fill-color-light);
+  }
+
+  :deep(.el-checkbox) {
+    width: 100%;
+    height: auto;
+    align-items: center;
+    white-space: normal;
+  }
+
+  :deep(.el-checkbox__label) {
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.35;
+  }
+}
+
+.source-config-item__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.source-config-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.source-config-footer-left,
+.source-config-footer-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 </style>
 

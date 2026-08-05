@@ -15,10 +15,14 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useRoute } from 'vue-router'
 import ConceptList from './concept/ConceptList.vue'
 import DanhMucConcept from './concept/DanhMucConcept.vue'
 
-const activeTab = ref('concept')
+const route = useRoute()
+const allowedTabs = ['concept', 'danh-muc']
+const initialTab = String(route.query.tab || 'concept')
+const activeTab = ref(allowedTabs.includes(initialTab) ? initialTab : 'concept')
 </script>
 
 <style scoped lang="scss">

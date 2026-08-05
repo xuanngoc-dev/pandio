@@ -214,6 +214,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Document, Edit, Plus, Search } from '@element-plus/icons-vue'
 import {
@@ -270,7 +271,8 @@ const loading = ref(false)
 const page = ref(1)
 const perPage = ref(10)
 const total = ref(0)
-const keyword = ref('')
+const route = useRoute()
+const keyword = ref(String(route.query.keyword || ''))
 const filterLoaiHopDongId = ref(null)
 const filterTrangThai = ref('')
 const loaiHopDongOptions = ref([])

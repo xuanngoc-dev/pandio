@@ -18,11 +18,15 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useRoute } from 'vue-router'
 import DanhSachDichVuLe from './dich-vu/DanhSachDichVuLe.vue'
 import NhomDichVu from './dich-vu/NhomDichVu.vue'
 import LoaiDichVu from './dich-vu/LoaiDichVu.vue'
 
-const activeTab = ref('dich-vu')
+const route = useRoute()
+const allowedTabs = ['dich-vu', 'nhom-dich-vu', 'loai-dich-vu']
+const initialTab = String(route.query.tab || 'dich-vu')
+const activeTab = ref(allowedTabs.includes(initialTab) ? initialTab : 'dich-vu')
 </script>
 
 <style scoped lang="scss">

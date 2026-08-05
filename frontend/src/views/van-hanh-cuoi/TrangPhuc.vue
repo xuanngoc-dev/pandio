@@ -21,12 +21,16 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useRoute } from 'vue-router'
 import DanhMucTrangPhuc from './trang-phuc/DanhMucTrangPhuc.vue'
 import DatMuaTrangPhuc from './trang-phuc/DatMuaTrangPhuc.vue'
 import NhaCungCapTrangPhuc from './trang-phuc/NhaCungCapTrangPhuc.vue'
 import TrangPhucList from './trang-phuc/TrangPhucList.vue'
 
-const activeTab = ref('trang-phuc')
+const route = useRoute()
+const allowedTabs = ['trang-phuc', 'danh-muc', 'nha-cung-cap', 'dat-mua']
+const initialTab = String(route.query.tab || 'trang-phuc')
+const activeTab = ref(allowedTabs.includes(initialTab) ? initialTab : 'trang-phuc')
 </script>
 
 <style scoped lang="scss">

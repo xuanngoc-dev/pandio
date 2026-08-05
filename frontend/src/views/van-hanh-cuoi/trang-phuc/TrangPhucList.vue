@@ -482,6 +482,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Edit, Plus, Search } from '@element-plus/icons-vue'
 import { fetchChiNhanh } from '@/api/chiNhanh'
@@ -558,7 +559,8 @@ const togglingId = ref(null)
 const page = ref(1)
 const perPage = ref(10)
 const total = ref(0)
-const keyword = ref('')
+const route = useRoute()
+const keyword = ref(String(route.query.keyword || ''))
 const danhMucFilter = ref(null)
 const chiNhanhFilter = ref(null)
 const trangThaiFilter = ref(null)

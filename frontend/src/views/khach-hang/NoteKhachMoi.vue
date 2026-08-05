@@ -364,6 +364,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Edit, Plus, Search } from '@element-plus/icons-vue'
 import {
@@ -442,7 +443,8 @@ const saving = ref(false)
 const page = ref(1)
 const perPage = ref(10)
 const total = ref(0)
-const keyword = ref('')
+const route = useRoute()
+const keyword = ref(String(route.query.keyword || ''))
 const filterTrangThai = ref('')
 const ngayHenTu = ref('')
 const ngayHenDen = ref('')
