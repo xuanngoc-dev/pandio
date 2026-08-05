@@ -141,19 +141,23 @@
             <template v-for="cell in [getDayCell(row, day.date)]" :key="day.date">
               <div class="day-cell">
                 <CustomTooltip
+                  v-if="cell?.type === 'leave'"
                   :content="cellTooltip(cell)"
-                  :disabled="!cellTooltip(cell)"
+                  placement="top"
+                >
+                  <span
+                    class="cell-mark cell-mark--corner"
+                    :class="leaveMarkClass(cell)"
+                  />
+                </CustomTooltip>
+
+                <CustomTooltip
+                  :content="cellTooltip(cell)"
+                  :disabled="!cellTooltip(cell) || cell?.type === 'leave'"
                   placement="top"
                 >
                   <div class="day-cell__body">
-                    <template v-if="cell?.type === 'leave'">
-                      <span class="cell-mark" :class="leaveMarkClass(cell)" />
-                      <span class="leave-label" :class="leaveLabelClass(cell)">
-                        {{ leaveShortLabel(cell) }}
-                      </span>
-                    </template>
-
-                    <template v-else-if="cell?.type === 'attendance'">
+                    <template v-if="cell?.type === 'attendance'">
                       <div class="time-row">
                         <span class="time-line" :class="checkinClass(cell.record)">
                           {{ formatTime(cell.record.gio_vao) }}
@@ -176,8 +180,6 @@
                         {{ formatMoneyK(cell.record.tien_phat_ve_som) }}
                       </span>
                     </template>
-
-                    <!-- <span v-else class="day-cell__empty">—</span> -->
                   </div>
                 </CustomTooltip>
 
@@ -249,97 +251,14 @@
       />
     </CustomCard>
 
-    <CustomDialog
-      v-model="proxyDialogVisible"
-      title="Điểm danh hộ"
-      :width="960"
-      @closed="resetProxyForm"
-    >
-      <div v-loading="proxyLoading" class="proxy-modal">
-        <CustomForm ref="proxyFormRef" :model="proxyForm" :rules="proxyRules" label-position="top">
-          <div class="proxy-section-title">Thông tin nhân viên</div>
-          <CustomRow :gutter="16">
-            <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
-              <CustomFormItem label="Họ tên">
-                <CustomInput :model-value="proxyInfo.name || '—'" readonly />
-              </CustomFormItem>
-            </CustomCol>
-            <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
-              <CustomFormItem label="Email">
-                <CustomInput :model-value="proxyInfo.email || '—'" readonly />
-              </CustomFormItem>
-            </CustomCol>
-            <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
-              <CustomFormItem label="Phòng ban">
-                <CustomInput :model-value="proxyInfo.phongBan || '—'" readonly />
-              </CustomFormItem>
-            </CustomCol>
-            <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
-              <CustomFormItem label="Số điện thoại">
-                <CustomInput :model-value="proxyInfo.phone || '—'" readonly />
-              </CustomFormItem>
-            </CustomCol>
-            <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
-              <CustomFormItem label="Ngày làm">
-                <CustomInput :model-value="formatDisplayDate(proxyForm.ngay_lam)" readonly />
-              </CustomFormItem>
-            </CustomCol>
-            <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
-              <CustomFormItem label="Ca làm việc">
-                <CustomInput :model-value="proxyInfo.caLamLabel || '—'" readonly />
-              </CustomFormItem>
-            </CustomCol>
-            <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
-              <CustomFormItem label="Thời gian vào làm (ca)">
-                <CustomInput :model-value="proxyInfo.gioBatDauCa || '—'" readonly />
-              </CustomFormItem>
-            </CustomCol>
-            <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
-              <CustomFormItem label="Thời gian kết thúc ca">
-                <CustomInput :model-value="proxyInfo.gioKetThucCa || '—'" readonly />
-              </CustomFormItem>
-            </CustomCol>
-            <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
-              <CustomFormItem label="Giờ vào (checkin)" prop="gio_vao">
-                <el-time-picker
-                  v-model="proxyForm.gio_vao"
-                  value-format="HH:mm"
-                  format="HH:mm"
-                  placeholder="Chọn giờ vào"
-                  style="width: 100%"
-                />
-              </CustomFormItem>
-            </CustomCol>
-            <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
-              <CustomFormItem label="Giờ ra (checkout)" prop="gio_ra">
-                <el-time-picker
-                  v-model="proxyForm.gio_ra"
-                  value-format="HH:mm"
-                  format="HH:mm"
-                  placeholder="Chọn giờ ra"
-                  style="width: 100%"
-                />
-              </CustomFormItem>
-            </CustomCol>
-          </CustomRow>
-        </CustomForm>
-      </div>
-
-      <template #footer>
-        <CustomButton @click="proxyDialogVisible = false">Hủy</CustomButton>
-        <CustomButton type="primary" :loading="proxySaving" @click="submitProxyCheckin">
-          Lưu
-        </CustomButton>
-      </template>
-    </CustomDialog>
+    <DiemDanhHoModal ref="proxyModalRef" @saved="loadData" />
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { computed, onMounted, ref } from 'vue'
 import { Briefcase, Clock, EditPen, Search } from '@element-plus/icons-vue'
-import { diemDanhHo, fetchDiemDanh, getDiemDanhHoContext } from '@/api/diemDanh'
+import { fetchDiemDanh } from '@/api/diemDanh'
 import { fetchNgayNghi } from '@/api/ngayNghi'
 import { fetchUsers } from '@/api/users'
 import { fetchXinNghiPhep } from '@/api/xinNghiPhep'
@@ -347,17 +266,13 @@ import Pagination from '@/components/Pagination.vue'
 import {
   CustomButton,
   CustomCard,
-  CustomCol,
-  CustomDialog,
-  CustomForm,
-  CustomFormItem,
   CustomIcon,
   CustomInput,
-  CustomRow,
   CustomTable,
   CustomTableColumn,
   CustomTooltip,
 } from '@/components/element'
+import DiemDanhHoModal from './DiemDanhHoModal.vue'
 
 const DOW_LABELS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
 
@@ -384,29 +299,7 @@ const rows = ref([])
 /** @type {import('vue').Ref<Record<string, { ten_ngay_nghi?: string }>>} */
 const ngayNghiByDate = ref({})
 
-const proxyDialogVisible = ref(false)
-const proxyLoading = ref(false)
-const proxySaving = ref(false)
-const proxyFormRef = ref(null)
-const proxyInfo = reactive({
-  name: '',
-  email: '',
-  phone: '',
-  phongBan: '',
-  caLamLabel: '',
-  gioBatDauCa: '',
-  gioKetThucCa: '',
-})
-const proxyForm = reactive({
-  user_id: null,
-  ngay_lam: '',
-  gio_vao: '',
-  gio_ra: '',
-})
-const proxyRules = {
-  gio_vao: [{ required: true, message: 'Vui lòng chọn giờ vào', trigger: 'change' }],
-  gio_ra: [{ required: true, message: 'Vui lòng chọn giờ ra', trigger: 'change' }],
-}
+const proxyModalRef = ref(null)
 
 const todayKey = computed(() =>
   new Intl.DateTimeFormat('en-CA', {
@@ -498,106 +391,13 @@ function canProxyCheckin(day, cell) {
   return true
 }
 
-function formatDisplayDate(value) {
-  const key = toDateKey(value)
-  if (!key) return '—'
-  const [y, m, d] = key.split('-')
-  return `${d}/${m}/${y}`
-}
-
-function phongBanLabel(user) {
-  const list = user?.nhan_vien?.phong_bans || user?.nhan_vien?.phongBans || []
-  if (!Array.isArray(list) || list.length === 0) return ''
-  return list.map((pb) => pb.ten_phong_ban || pb.name).filter(Boolean).join(', ')
-}
-
-function formatShiftTime(value) {
-  if (!value) return ''
-  return formatTime(value)
-}
-
-function resetProxyForm() {
-  proxyForm.user_id = null
-  proxyForm.ngay_lam = ''
-  proxyForm.gio_vao = ''
-  proxyForm.gio_ra = ''
-  proxyInfo.name = ''
-  proxyInfo.email = ''
-  proxyInfo.phone = ''
-  proxyInfo.phongBan = ''
-  proxyInfo.caLamLabel = ''
-  proxyInfo.gioBatDauCa = ''
-  proxyInfo.gioKetThucCa = ''
-  proxyFormRef.value?.clearValidate?.()
-}
-
-async function openProxyModal(row, day) {
-  resetProxyForm()
-  proxyForm.user_id = row.id
-  proxyForm.ngay_lam = day.date
-  proxyDialogVisible.value = true
-  proxyLoading.value = true
-
-  try {
-    const { data } = await getDiemDanhHoContext(
-      { user_id: row.id, ngay_lam: day.date },
-      { skipLoading: true },
-    )
-
-    if (data.can_proxy === false) {
-      ElMessage.warning('Nhân viên đã điểm danh ngày này.')
-      proxyDialogVisible.value = false
-      return
-    }
-
-    const user = data.user || {}
-    const caLam = data.dang_ky_ca?.ca_lam || data.dang_ky_ca?.caLam || null
-
-    proxyInfo.name = user.name || row.name || '—'
-    proxyInfo.email = user.email || row.email || '—'
-    proxyInfo.phone = user.phone || '—'
-    proxyInfo.phongBan = phongBanLabel(user) || '—'
-    proxyInfo.caLamLabel = caLam?.ten_ca || 'Chưa đăng ký ca'
-    proxyInfo.gioBatDauCa = formatShiftTime(caLam?.gio_bat_dau) || '—'
-    proxyInfo.gioKetThucCa = formatShiftTime(caLam?.gio_ket_thuc) || '—'
-
-    // Mặc định giờ theo ca nếu có
-    proxyForm.gio_vao = formatShiftTime(caLam?.gio_bat_dau) || ''
-    proxyForm.gio_ra = formatShiftTime(caLam?.gio_ket_thuc) || ''
-  } catch {
-    ElMessage.error('Không tải được thông tin điểm danh hộ.')
-    proxyDialogVisible.value = false
-  } finally {
-    proxyLoading.value = false
-  }
-}
-
-async function submitProxyCheckin() {
-  const formEl = proxyFormRef.value
-  if (!formEl) return
-
-  try {
-    await formEl.validate()
-  } catch {
-    return
-  }
-
-  proxySaving.value = true
-  try {
-    await diemDanhHo({
-      user_id: proxyForm.user_id,
-      ngay_lam: proxyForm.ngay_lam,
-      gio_vao: proxyForm.gio_vao,
-      gio_ra: proxyForm.gio_ra,
-    })
-    ElMessage.success('Điểm danh hộ thành công')
-    proxyDialogVisible.value = false
-    await loadData()
-  } catch {
-    // Lỗi 422 đã được axios interceptor hiển thị
-  } finally {
-    proxySaving.value = false
-  }
+function openProxyModal(row, day) {
+  proxyModalRef.value?.open({
+    userId: row.id,
+    ngayLam: day.date,
+    name: row.name,
+    email: row.email,
+  })
 }
 
 function employeeTypeLabel(value) {
@@ -656,19 +456,6 @@ function leaveMarkClass(cell) {
   return cell.trang_thai === 'da_duyet'
     ? 'cell-mark--leave-approved'
     : 'cell-mark--leave-pending'
-}
-
-function leaveLabelClass(cell) {
-  if (!cell || cell.type !== 'leave') return ''
-  return cell.trang_thai === 'da_duyet'
-    ? 'leave-label--approved'
-    : 'leave-label--pending'
-}
-
-function leaveShortLabel(cell) {
-  if (!cell || cell.type !== 'leave') return ''
-  // return cell.trang_thai === 'da_duyet' ? 'NP' : 'CD'
-  return cell.trang_thai === 'da_duyet' ? '' : ''
 }
 
 /** Giờ checkin: xanh nếu hợp lệ, đỏ nếu đi muộn, vàng nếu mới checkin. */
@@ -1069,6 +856,7 @@ onMounted(loadData)
 }
 
 .day-cell {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1133,20 +921,6 @@ onMounted(loadData)
   font-weight: 400;
 }
 
-.leave-label {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-.leave-label--approved {
-  color: var(--el-color-primary);
-}
-
-.leave-label--pending {
-  color: var(--el-color-primary-light-3);
-}
-
 .cell-mark {
   display: inline-block;
   width: 10px;
@@ -1155,6 +929,15 @@ onMounted(loadData)
   vertical-align: middle;
   cursor: default;
   box-sizing: border-box;
+}
+
+.cell-mark--corner {
+  position: absolute;
+  top: 1px;
+  right: 2px;
+  z-index: 1;
+  width: 8px;
+  height: 8px;
 }
 
 .cell-mark--leave-approved {
@@ -1203,17 +986,6 @@ onMounted(loadData)
   min-height: 0 !important;
   font-size: 14px !important;
   line-height: 1;
-}
-
-.proxy-modal {
-  min-height: 120px;
-}
-
-.proxy-section-title {
-  margin: 0 0 12px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--el-text-color-primary);
 }
 
 .attendance-table :deep(.is-weekend-col) {

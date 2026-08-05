@@ -346,6 +346,10 @@ class DiemDanhController extends BaseApiController
                 'dang_ky_ca' => $dangKy,
                 'diem_danh' => $diemDanh,
                 'can_proxy' => $diemDanh === null || $diemDanh->gio_vao === null,
+                'xin_nghi_phep' => [
+                    'di_muon' => $this->findLeaveForDay((int) $user->id, $ngayLam, 'di_muon'),
+                    've_som' => $this->findLeaveForDay((int) $user->id, $ngayLam, 've_som'),
+                ],
             ]);
 
         }, 'lấy ngữ cảnh điểm danh hộ');
@@ -633,6 +637,26 @@ class DiemDanhController extends BaseApiController
                     ->orWhereDate('ngay_ket_thuc', '>=', $today);
             })
             ->exists();
+    }
+
+    /**
+     * Đơn xin nghỉ phép đi muộn / về sớm còn hiệu lực trong ngày (chờ duyệt hoặc đã duyệt).
+     * Ưu tiên đơn đã duyệt nếu có nhiều bản ghi.
+     */
+    private function findLeaveForDay(int $userId, Carbon $day, string $loai): ?XinNghiPhep
+    {
+        return XinNghiPhep::query()
+            ->where('user_id', $userId)
+            ->where('loai_nghi_phep', $loai)
+            ->whereIn('trang_thai', ['cho_duyet', 'da_duyet'])
+            ->whereDate('ngay_bat_dau', '<=', $day)
+            ->where(function ($q) use ($day) {
+                $q->whereNull('ngay_ket_thuc')
+                    ->orWhereDate('ngay_ket_thuc', '>=', $day);
+            })
+            ->orderByRaw("CASE trang_thai WHEN 'da_duyet' THEN 0 WHEN 'cho_duyet' THEN 1 ELSE 2 END")
+            ->orderByDesc('id')
+            ->first(['id', 'loai_nghi_phep', 'trang_thai', 'ly_do', 'ngay_bat_dau', 'ngay_ket_thuc']);
     }
 
     private function resolveLyDo(int $userId, Carbon $today): ?string
