@@ -15,7 +15,7 @@
           v-model="keyword"
           type="text"
           class="quick-search__input"
-          placeholder="Tìm hợp đồng, trang phục, concept, dịch vụ, nhân viên..."
+          placeholder="Tìm kiếm nhanh..."
           autocomplete="off"
           @keydown.esc="visible = false"
         />

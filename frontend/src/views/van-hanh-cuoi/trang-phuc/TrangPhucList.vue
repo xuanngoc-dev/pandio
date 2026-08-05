@@ -1,64 +1,74 @@
 <template>
   <div class="trang-phuc-list">
     <CustomCard shadow="hover" class="filter-card">
-      <div class="toolbar">
-        <CustomInput
-          v-model="keyword"
-          placeholder="Tìm theo mã, tên sản phẩm..."
-          clearable
-          style="max-width: 300px"
-          @clear="onSearch"
-          @keyup.enter="onSearch"
-        >
-          <template #prefix>
+      <CustomRow :gutter="12" class="toolbar">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+          <CustomInput
+            v-model="keyword"
+            placeholder="Tìm theo mã, tên sản phẩm..."
+            clearable
+            style="width: 100%"
+            @clear="onSearch"
+            @keyup.enter="onSearch"
+          >
+            <template #prefix>
+              <CustomIcon><Search /></CustomIcon>
+            </template>
+          </CustomInput>
+        </CustomCol>
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="5">
+          <CustomSelect
+            v-model="danhMucFilter"
+            placeholder="Danh mục"
+            clearable
+            filterable
+            style="width: 100%"
+            @change="onSearch"
+          >
+            <CustomOption
+              v-for="item in danhMucOptions"
+              :key="item.id"
+              :label="item.ten_danh_muc"
+              :value="item.id"
+            />
+          </CustomSelect>
+        </CustomCol>
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="5">
+          <CustomSelect
+            v-model="chiNhanhFilter"
+            placeholder="Chi nhánh"
+            clearable
+            filterable
+            style="width: 100%"
+            @change="onSearch"
+          >
+            <CustomOption
+              v-for="item in chiNhanhOptions"
+              :key="item.id"
+              :label="item.ten_chi_nhanh"
+              :value="item.id"
+            />
+          </CustomSelect>
+        </CustomCol>
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="4">
+          <CustomSelect
+            v-model="trangThaiFilter"
+            placeholder="Trạng thái"
+            clearable
+            style="width: 100%"
+            @change="onSearch"
+          >
+            <CustomOption label="Hoạt động" :value="1" />
+            <CustomOption label="Ngừng hoạt động" :value="0" />
+          </CustomSelect>
+        </CustomCol>
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="4">
+          <CustomButton type="primary" plain @click="onSearch">
             <CustomIcon><Search /></CustomIcon>
-          </template>
-        </CustomInput>
-        <CustomSelect
-          v-model="danhMucFilter"
-          placeholder="Danh mục"
-          clearable
-          filterable
-          style="width: 200px"
-          @change="onSearch"
-        >
-          <CustomOption
-            v-for="item in danhMucOptions"
-            :key="item.id"
-            :label="item.ten_danh_muc"
-            :value="item.id"
-          />
-        </CustomSelect>
-        <CustomSelect
-          v-model="chiNhanhFilter"
-          placeholder="Chi nhánh"
-          clearable
-          filterable
-          style="width: 200px"
-          @change="onSearch"
-        >
-          <CustomOption
-            v-for="item in chiNhanhOptions"
-            :key="item.id"
-            :label="item.ten_chi_nhanh"
-            :value="item.id"
-          />
-        </CustomSelect>
-        <CustomSelect
-          v-model="trangThaiFilter"
-          placeholder="Trạng thái"
-          clearable
-          style="width: 160px"
-          @change="onSearch"
-        >
-          <CustomOption label="Hoạt động" :value="1" />
-          <CustomOption label="Ngừng hoạt động" :value="0" />
-        </CustomSelect>
-        <CustomButton type="primary" plain @click="onSearch">
-          <CustomIcon><Search /></CustomIcon>
-          Tìm kiếm
-        </CustomButton>
-      </div>
+            Tìm kiếm
+          </CustomButton>
+        </CustomCol>
+      </CustomRow>
     </CustomCard>
 
     <CustomCard shadow="hover" class="table-card">
@@ -1005,9 +1015,8 @@ onMounted(async () => {
 }
 
 .toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
+  width: 100%;
+  row-gap: 12px;
 }
 
 .action-btns {

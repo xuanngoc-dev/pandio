@@ -106,7 +106,18 @@
           <template v-if="authStore.isAuthenticated">
             <el-dropdown trigger="click" @command="onCommand">
               <span class="user-trigger">
-                <el-avatar :size="32">{{ avatarLetter }}</el-avatar>
+                <span class="user-avatar-wrap">
+                  <el-avatar :size="32">{{ avatarLetter }}</el-avatar>
+                  <el-tooltip :content="networkTooltip" placement="bottom">
+                    <span
+                      class="network-status"
+                      :class="networkToneClass"
+                      role="status"
+                      :aria-label="networkTooltip"
+                      @click.stop
+                    />
+                  </el-tooltip>
+                </span>
                 <span class="user-name" :title="userFullName">
                   <span class="user-name__full">{{ userFullName }}</span>
                   <span class="user-name__short">{{ userShortName }}</span>
@@ -155,6 +166,7 @@ import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useLayoutStore } from '@/stores/layout'
+import { useNetworkStatus } from '@/composables/useNetworkStatus'
 import { Monitor, Fold, Expand, ArrowDown, Setting, Bell, Search } from '@element-plus/icons-vue'
 import SideMenu from '@/components/SideMenu.vue'
 import NotificationDrawer from '@/components/NotificationDrawer.vue'
@@ -179,6 +191,10 @@ const router = useRouter()
 const authStore = useAuthStore()
 const layoutStore = useLayoutStore()
 const { navbarFixed, sidebarFixed, sidebarPushContent } = storeToRefs(layoutStore)
+const {
+  tooltip: networkTooltip,
+  toneClass: networkToneClass,
+} = useNetworkStatus()
 
 /** Thu gọn do người dùng / viewport (trạng thái “ghim”) */
 const pinnedCollapsed = ref(false)
@@ -645,6 +661,37 @@ onUnmounted(() => {
   gap: 8px;
   cursor: pointer;
   max-width: 220px;
+}
+
+.user-avatar-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.network-status {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--el-bg-color);
+  box-sizing: content-box;
+  cursor: default;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
+
+  &.is-online {
+    background: #22c55e;
+  }
+
+  &.is-unstable {
+    background: #eab308;
+  }
+
+  &.is-offline {
+    background: #ef4444;
+  }
 }
 
 .user-name {
