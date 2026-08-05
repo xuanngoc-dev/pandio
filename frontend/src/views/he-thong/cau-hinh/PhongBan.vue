@@ -75,6 +75,20 @@
             </template>
           </CustomTableColumn>
           <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('so_luong_nhan_vien')"
+            label="SL nhân viên"
+            width="160"
+            align="center"
+          >
+            <template #default="{ row }">
+              <CustomTooltip content="Xem danh sách nhân viên" placement="top">
+                <CustomButton type="primary" link @click="openEmployees(row)">
+                  {{ row.so_luong_nhan_vien ?? 0 }}
+                </CustomButton>
+              </CustomTooltip>
+            </template>
+          </CustomTableColumn>
+          <CustomTableColumn
             v-if="columnSettings.isColumnVisible('mo_ta')"
             prop="mo_ta"
             label="Mô tả"
@@ -172,6 +186,88 @@
           <CustomButton type="primary" :loading="saving" @click="save">Lưu</CustomButton>
         </template>
       </CustomDialog>
+
+      <CustomDialog
+        v-model="employeesDialogVisible"
+        :title="employeesDialogTitle"
+        :width="1200"
+        @closed="onEmployeesDialogClosed"
+      >
+        <div class="employees-toolbar">
+          <CustomInput
+            v-model="employeeKeyword"
+            placeholder="Tìm theo tên, email, SĐT..."
+            clearable
+            style="max-width: 280px"
+            @clear="onEmployeeSearch"
+            @keyup.enter="onEmployeeSearch"
+          >
+            <template #prefix>
+              <CustomIcon><Search /></CustomIcon>
+            </template>
+          </CustomInput>
+          <CustomButton type="primary" plain @click="onEmployeeSearch">
+            <CustomIcon><Search /></CustomIcon>
+            Tìm kiếm
+          </CustomButton>
+        </div>
+
+        <CustomTable
+          v-loading="employeesLoading"
+          :data="employees"
+          stripe
+          row-key="id"
+          style="width: 100%"
+        >
+          <CustomTableColumn label="STT" width="60" align="center">
+            <template #default="{ $index }">
+              {{ (employeePage - 1) * employeePerPage + $index + 1 }}
+            </template>
+          </CustomTableColumn>
+          <CustomTableColumn label="Họ tên" min-width="160">
+            <template #default="{ row }">
+              {{ row.user?.name || '—' }}
+            </template>
+          </CustomTableColumn>
+          <CustomTableColumn label="Email" min-width="180" show-overflow-tooltip>
+            <template #default="{ row }">
+              {{ row.user?.email || '—' }}
+            </template>
+          </CustomTableColumn>
+          <CustomTableColumn label="SĐT" width="130">
+            <template #default="{ row }">
+              {{ row.user?.phone || '—' }}
+            </template>
+          </CustomTableColumn>
+          <CustomTableColumn label="Vị trí" min-width="140" show-overflow-tooltip>
+            <template #default="{ row }">
+              {{ row.vi_tri_lam_viec || '—' }}
+            </template>
+          </CustomTableColumn>
+          <CustomTableColumn label="Trạng thái" width="130" align="center">
+            <template #default="{ row }">
+              <CustomTag :type="statusType(row.user?.status)" size="small">
+                {{ statusLabel(row.user?.status) }}
+              </CustomTag>
+            </template>
+          </CustomTableColumn>
+          <CustomTableColumn label="Thao tác" width="160" fixed="right" align="center">
+            <template #default="{ row }">
+              <CustomTooltip content="Xóa khỏi phòng ban" placement="top">
+                <CustomButton type="danger" link :icon="Delete" @click="removeEmployeeFromDepartment(row)" />
+              </CustomTooltip>
+            </template>
+          </CustomTableColumn>
+        </CustomTable>
+
+        <Pagination
+          v-model="employeePage"
+          v-model:page-size="employeePerPage"
+          :total="employeeTotal"
+          :disabled="employeesLoading"
+          @change="loadEmployees"
+        />
+      </CustomDialog>
     </div>
   </ConfigSettingPage>
 </template>
@@ -184,6 +280,8 @@ import {
   createPhongBan,
   deletePhongBan,
   fetchPhongBan,
+  fetchPhongBanNhanVien,
+  removeNhanVienKhoiPhongBan,
   updatePhongBan,
 } from '@/api/phongBan'
 import BulkActionBar from '@/components/BulkActionBar.vue'
@@ -202,6 +300,7 @@ import {
   CustomRow,
   CustomTable,
   CustomTableColumn,
+  CustomTag,
   CustomTooltip,
 } from '@/components/element'
 import Pagination from '@/components/Pagination.vue'
@@ -211,6 +310,7 @@ const tableColumns = [
   { key: 'ma_phong_ban', label: 'Mã' },
   { key: 'ten_phong_ban', label: 'Tên phòng ban' },
   { key: 'truong_phong', label: 'Trưởng phòng' },
+  { key: 'so_luong_nhan_vien', label: 'SL nhân viên' },
   { key: 'mo_ta', label: 'Mô tả' },
   { key: 'ghi_chu', label: 'Ghi chú' },
 ]
@@ -229,7 +329,17 @@ const editingId = ref(null)
 const formRef = ref(null)
 const bulkDeleting = ref(false)
 
-const { selectedCount, onSelectionChange, clearSelection, selectedIds } = useBulkSelection()
+const employeesDialogVisible = ref(false)
+const employeesLoading = ref(false)
+const employees = ref([])
+const employeePage = ref(1)
+const employeePerPage = ref(10)
+const employeeTotal = ref(0)
+const employeeKeyword = ref('')
+const currentDepartment = ref(null)
+
+const { selectedCount, onSelectionChange, clearSelection, selectedIds, selectedRows } =
+  useBulkSelection()
 
 const bulkActions = computed(() => [
   {
@@ -245,6 +355,11 @@ const bulkActions = computed(() => [
   },
 ])
 
+const employeesDialogTitle = computed(() => {
+  const name = currentDepartment.value?.ten_phong_ban
+  return name ? `Nhân viên — ${name}` : 'Danh sách nhân viên'
+})
+
 const emptyForm = () => ({
   ma_phong_ban: '',
   ten_phong_ban: '',
@@ -258,6 +373,18 @@ const form = reactive(emptyForm())
 const rules = {
   ma_phong_ban: [{ required: true, message: 'Vui lòng nhập mã phòng ban', trigger: 'blur' }],
   ten_phong_ban: [{ required: true, message: 'Vui lòng nhập tên phòng ban', trigger: 'blur' }],
+}
+
+function statusLabel(status) {
+  return { active: 'Đang hoạt động', inactive: 'Không hoạt động' }[status] || status || '—'
+}
+
+function statusType(status) {
+  return { active: 'success', inactive: 'info' }[status] || 'info'
+}
+
+function employeeCountOf(row) {
+  return Number(row?.so_luong_nhan_vien ?? 0)
 }
 
 async function loadDepartments() {
@@ -338,9 +465,18 @@ async function onBulkAction(key) {
 }
 
 async function bulkRemove() {
-  const ids = selectedIds.value
-  if (!ids.length) return
+  const rows = selectedRows.value
+  if (!rows.length) return
 
+  const blocked = rows.filter((row) => employeeCountOf(row) > 0)
+  if (blocked.length) {
+    ElMessage.warning(
+      `Không thể xóa ${blocked.length} phòng ban đang có nhân viên. Vui lòng chuyển nhân viên trước.`,
+    )
+    return
+  }
+
+  const ids = selectedIds.value
   await ElMessageBox.confirm(`Xóa ${ids.length} phòng ban đã chọn?`, 'Xác nhận', {
     type: 'warning',
     confirmButtonText: 'Xóa',
@@ -360,6 +496,13 @@ async function bulkRemove() {
 }
 
 async function remove(row) {
+  if (employeeCountOf(row) > 0) {
+    ElMessage.warning(
+      `Không thể xóa phòng ban đang có ${employeeCountOf(row)} nhân viên. Vui lòng chuyển hoặc xóa nhân viên khỏi phòng ban trước.`,
+    )
+    return
+  }
+
   await ElMessageBox.confirm(`Xóa phòng ban "${row.ten_phong_ban}"?`, 'Xác nhận', {
     type: 'warning',
     confirmButtonText: 'Xóa',
@@ -372,6 +515,81 @@ async function remove(row) {
     await loadDepartments()
   } catch {
     // Lỗi đã được axios interceptor xử lý
+  }
+}
+
+function openEmployees(row) {
+  currentDepartment.value = row
+  employeeKeyword.value = ''
+  employeePage.value = 1
+  employeesDialogVisible.value = true
+  loadEmployees()
+}
+
+function onEmployeesDialogClosed() {
+  currentDepartment.value = null
+  employees.value = []
+  employeeTotal.value = 0
+  employeeKeyword.value = ''
+  employeePage.value = 1
+}
+
+function onEmployeeSearch() {
+  employeePage.value = 1
+  loadEmployees()
+}
+
+async function loadEmployees() {
+  if (!currentDepartment.value?.id) return
+
+  employeesLoading.value = true
+  try {
+    const { data } = await fetchPhongBanNhanVien(currentDepartment.value.id, {
+      page: employeePage.value,
+      per_page: employeePerPage.value,
+      keyword: employeeKeyword.value.trim() || undefined,
+    })
+    employees.value = data.data || []
+    employeeTotal.value = data.total || 0
+    employeePage.value = data.current_page || employeePage.value
+  } catch {
+    employees.value = []
+    employeeTotal.value = 0
+  } finally {
+    employeesLoading.value = false
+  }
+}
+
+async function removeEmployeeFromDepartment(row) {
+  if (!currentDepartment.value?.id) return
+
+  const name = row.user?.name || `#${row.id}`
+  await ElMessageBox.confirm(
+    `Xóa "${name}" khỏi phòng ban "${currentDepartment.value.ten_phong_ban}"?`,
+    'Xác nhận',
+    {
+      type: 'warning',
+      confirmButtonText: 'Xóa khỏi phòng ban',
+      cancelButtonText: 'Hủy',
+    },
+  )
+
+  try {
+    await removeNhanVienKhoiPhongBan(currentDepartment.value.id, row.id)
+    ElMessage.success('Đã xóa nhân viên khỏi phòng ban.')
+
+    if (employees.value.length === 1 && employeePage.value > 1) {
+      employeePage.value -= 1
+    }
+
+    await Promise.all([loadEmployees(), loadDepartments()])
+
+    const updated = departments.value.find((item) => item.id === currentDepartment.value?.id)
+    if (updated) {
+      currentDepartment.value = updated
+    }
+  } catch {
+    // interceptor
   }
 }
 
@@ -397,15 +615,27 @@ onMounted(loadDepartments)
   color: var(--el-text-color-primary);
 }
 
-.toolbar {
+.toolbar,
+.employees-toolbar {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
+  margin-bottom: 12px;
+}
+
+.toolbar {
+  margin-bottom: 0;
 }
 
 .action-btns {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
+
+.count-view-label {
+  margin-left: 4px;
+  font-size: 12px;
+  opacity: 0.85;
 }
 </style>

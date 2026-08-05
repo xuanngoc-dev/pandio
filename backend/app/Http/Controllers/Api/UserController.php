@@ -32,7 +32,7 @@ class UserController extends BaseApiController
             $status = $validated['status'] ?? null;
 
             $query = User::query()
-                ->with(['nhanVien.phongBan'])
+                ->with(['nhanVien'])
                 ->select(['id', 'name', 'email', 'phone', 'role', 'status', 'created_at', 'updated_at'])
                 ->when($keyword !== '', function ($q) use ($keyword) {
                     $q->where(function ($inner) use ($keyword) {
@@ -57,7 +57,7 @@ class UserController extends BaseApiController
     public function show(User $user): JsonResponse
     {
         return $this->handleApi(function () use ($user) {
-            $user->load(['nhanVien.phongBan']);
+            $user->load(['nhanVien']);
 
             return response()->json($user);
 
@@ -109,7 +109,7 @@ class UserController extends BaseApiController
 
                 $user->nhanVien()->create($this->nhanVienAttributes($validated));
 
-                return $user->load(['nhanVien.phongBan']);
+                return $user->load(['nhanVien']);
             });
 
             return response()->json($user, 201);
@@ -149,7 +149,7 @@ class UserController extends BaseApiController
                     $user->nhanVien()->create($nhanVienData);
                 }
 
-                return $user->fresh()->load(['nhanVien.phongBan']);
+                return $user->fresh()->load(['nhanVien']);
             });
 
             $newHinhAnh = $user->nhanVien?->hinh_anh;
@@ -230,7 +230,8 @@ class UserController extends BaseApiController
             'status' => ['required', 'string', Rule::in(['active', 'inactive'])],
 
             'hinh_anh' => ['nullable', 'string', 'max:500'],
-            'phong_ban_id' => ['nullable', 'integer', 'exists:phong_ban,id'],
+            'phong_ban_ids' => ['nullable', 'array'],
+            'phong_ban_ids.*' => ['integer', 'distinct', 'exists:phong_ban,id'],
             'ngan_hang' => ['nullable', 'string', 'max:255'],
             'chi_nhanh' => ['nullable', 'string', 'max:255'],
             'so_tai_khoan' => ['nullable', 'string', 'max:255'],
@@ -252,18 +253,10 @@ class UserController extends BaseApiController
             'cong_chuan' => ['nullable', 'numeric', 'min:0'],
             'tham_gia_bao_hiem' => ['sometimes', 'boolean'],
             'so_nguoi_phu_thuoc' => ['nullable', 'integer', 'min:0', 'max:20'],
-            'luong_cung' => ['nullable', 'numeric', 'min:0'],
-            'luong_mem' => ['nullable', 'numeric', 'min:0'],
-            'phu_cap' => ['nullable', 'numeric', 'min:0'],
-            'luong_co_ban' => ['nullable', 'numeric', 'min:0'],
-            'luong_tang_ca' => ['nullable', 'numeric', 'min:0'],
-            'phu_cap_xang' => ['nullable', 'numeric', 'min:0'],
-            'phu_cap_an_trua' => ['nullable', 'numeric', 'min:0'],
-            'phu_cap_dien_thoai' => ['nullable', 'numeric', 'min:0'],
-            'phu_cap_nha_o' => ['nullable', 'numeric', 'min:0'],
-            'thuong_chuyen_can' => ['nullable', 'numeric', 'min:0'],
-            'hoa_hong_hop_dong_cuoi' => ['nullable', 'numeric', 'min:0'],
-            'hoa_hong_hop_dong_trang_phuc' => ['nullable', 'numeric', 'min:0'],
+            'luong_thuong_phu_cap' => ['nullable', 'array'],
+            'luong_thuong_phu_cap.*.name' => ['nullable', 'string', 'max:255'],
+            'luong_thuong_phu_cap.*.value' => ['nullable', 'numeric', 'min:0'],
+            'luong_thuong_phu_cap.*.note' => ['nullable', 'string', 'max:1000'],
         ], [
             'phone.regex' => 'Số điện thoại không hợp lệ (VD: 0912345678).',
             'phone.unique' => 'Số điện thoại đã được sử dụng.',
@@ -283,7 +276,7 @@ class UserController extends BaseApiController
     {
         $keys = [
             'hinh_anh',
-            'phong_ban_id',
+            'phong_ban_ids',
             'ngan_hang',
             'chi_nhanh',
             'so_tai_khoan',
@@ -299,18 +292,7 @@ class UserController extends BaseApiController
             'cong_chuan',
             'tham_gia_bao_hiem',
             'so_nguoi_phu_thuoc',
-            'luong_cung',
-            'luong_mem',
-            'phu_cap',
-            'luong_co_ban',
-            'luong_tang_ca',
-            'phu_cap_xang',
-            'phu_cap_an_trua',
-            'phu_cap_dien_thoai',
-            'phu_cap_nha_o',
-            'thuong_chuyen_can',
-            'hoa_hong_hop_dong_cuoi',
-            'hoa_hong_hop_dong_trang_phuc',
+            'luong_thuong_phu_cap',
         ];
 
         $data = [];
@@ -323,6 +305,15 @@ class UserController extends BaseApiController
         $data['tham_gia_bao_hiem'] = (bool) ($validated['tham_gia_bao_hiem'] ?? false);
         $data['so_nguoi_phu_thuoc'] = (int) ($validated['so_nguoi_phu_thuoc'] ?? 0);
 
+        if (array_key_exists('phong_ban_ids', $data)) {
+            $ids = is_array($data['phong_ban_ids']) ? $data['phong_ban_ids'] : [];
+            $data['phong_ban_ids'] = array_values(array_unique(array_map('intval', $ids))) ?: null;
+        }
+
+        if (array_key_exists('luong_thuong_phu_cap', $data)) {
+            $data['luong_thuong_phu_cap'] = $this->normalizeLuongThuongPhuCap($data['luong_thuong_phu_cap']);
+        }
+
         // Chuỗi rỗng → null cho các field nullable
         foreach (['hinh_anh', 'ngan_hang', 'chi_nhanh', 'so_tai_khoan', 'chu_tai_khoan', 'cccd', 'vi_tri_lam_viec', 'gioi_tinh'] as $nullable) {
             if (array_key_exists($nullable, $data) && $data[$nullable] === '') {
@@ -331,5 +322,47 @@ class UserController extends BaseApiController
         }
 
         return $data;
+    }
+
+    /**
+     * Chuẩn hóa object JSON lương/thưởng/phụ cấp.
+     *
+     * @param  mixed  $input
+     * @return array<string, array{name: string, value: float|null, note: string|null}>|null
+     */
+    private function normalizeLuongThuongPhuCap(mixed $input): ?array
+    {
+        if (! is_array($input) || $input === []) {
+            return null;
+        }
+
+        $definitions = \App\Models\NhanVien::salaryFieldDefinitions();
+        $defaultNotes = \App\Models\NhanVien::salaryFieldNotes();
+        $result = [];
+
+        foreach ($definitions as $key => $defaultName) {
+            $defaultNote = $defaultNotes[$key] ?? null;
+            $item = $input[$key] ?? null;
+            if (! is_array($item)) {
+                $result[$key] = [
+                    'name' => $defaultName,
+                    'value' => null,
+                    'note' => $defaultNote,
+                ];
+                continue;
+            }
+
+            $value = $item['value'] ?? null;
+            $note = $item['note'] ?? null;
+            $normalizedNote = $note === null || $note === '' ? null : trim((string) $note);
+
+            $result[$key] = [
+                'name' => trim((string) ($item['name'] ?? $defaultName)) ?: $defaultName,
+                'value' => $value === null || $value === '' ? null : (float) $value,
+                'note' => $normalizedNote ?? $defaultNote,
+            ];
+        }
+
+        return $result;
     }
 }

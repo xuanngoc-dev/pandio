@@ -113,53 +113,14 @@
                     <label class="expand-field__label">Người phụ thuộc</label>
                     <CustomInput :model-value="String(nv(row).so_nguoi_phu_thuoc ?? 0)" readonly />
                   </div>
-                  <div class="expand-field">
-                    <label class="expand-field__label">Lương cứng</label>
-                    <CustomInput :model-value="formatMoney(nv(row).luong_cung)" readonly />
-                  </div>
-                  <div class="expand-field">
-                    <label class="expand-field__label">Lương mềm</label>
-                    <CustomInput :model-value="formatMoney(nv(row).luong_mem)" readonly />
-                  </div>
-                  <div class="expand-field">
-                    <label class="expand-field__label">Phụ cấp</label>
-                    <CustomInput :model-value="formatMoney(nv(row).phu_cap)" readonly />
-                  </div>
-                  <div class="expand-field">
-                    <label class="expand-field__label">Lương cơ bản</label>
-                    <CustomInput :model-value="formatMoney(nv(row).luong_co_ban)" readonly />
-                  </div>
-                  <div class="expand-field">
-                    <label class="expand-field__label">Lương tăng ca</label>
-                    <CustomInput :model-value="formatMoney(nv(row).luong_tang_ca)" readonly />
-                  </div>
-                  <div class="expand-field">
-                    <label class="expand-field__label">PC xăng</label>
-                    <CustomInput :model-value="formatMoney(nv(row).phu_cap_xang)" readonly />
-                  </div>
-                  <div class="expand-field">
-                    <label class="expand-field__label">PC ăn trưa</label>
-                    <CustomInput :model-value="formatMoney(nv(row).phu_cap_an_trua)" readonly />
-                  </div>
-                  <div class="expand-field">
-                    <label class="expand-field__label">PC điện thoại</label>
-                    <CustomInput :model-value="formatMoney(nv(row).phu_cap_dien_thoai)" readonly />
-                  </div>
-                  <div class="expand-field">
-                    <label class="expand-field__label">PC nhà ở</label>
-                    <CustomInput :model-value="formatMoney(nv(row).phu_cap_nha_o)" readonly />
-                  </div>
-                  <div class="expand-field">
-                    <label class="expand-field__label">Thưởng chuyên cần</label>
-                    <CustomInput :model-value="formatMoney(nv(row).thuong_chuyen_can)" readonly />
-                  </div>
-                  <div class="expand-field">
-                    <label class="expand-field__label">HH HĐ cuối</label>
-                    <CustomInput :model-value="formatMoney(nv(row).hoa_hong_hop_dong_cuoi)" readonly />
-                  </div>
-                  <div class="expand-field">
-                    <label class="expand-field__label">HH HĐ trang phục</label>
-                    <CustomInput :model-value="formatMoney(nv(row).hoa_hong_hop_dong_trang_phuc)" readonly />
+                  <div
+                    v-for="item in salaryItemsOf(nv(row))"
+                    :key="item.key"
+                    class="expand-field"
+                  >
+                    <label class="expand-field__label">{{ item.name }}</label>
+                    <CustomInput :model-value="formatMoney(item.value)" readonly />
+                    <span v-if="item.note" class="expand-field__note">{{ item.note }}</span>
                   </div>
                 </div>
               </section>
@@ -252,8 +213,8 @@
         >
           <template #default="{ row }">
             <div class="cell-stack cell-stack--right">
-              <span class="cell-primary cell-money">{{ formatMoney(nv(row).luong_co_ban) }}</span>
-              <span class="cell-secondary">Cứng: {{ formatMoney(nv(row).luong_cung) }}</span>
+              <span class="cell-primary cell-money">{{ formatMoney(salaryValueOf(nv(row), 'luong_1_gio')) }}</span>
+              <span class="cell-secondary">Cứng: {{ formatMoney(salaryValueOf(nv(row), 'luong_cung')) }}</span>
             </div>
           </template>
         </CustomTableColumn>
@@ -400,11 +361,14 @@
                     </CustomFormItem>
                   </CustomCol>
                   <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
-                    <CustomFormItem label="Phòng ban" prop="phong_ban_id">
+                    <CustomFormItem label="Phòng ban" prop="phong_ban_ids">
                       <CustomSelect
-                        v-model="form.phong_ban_id"
+                        v-model="form.phong_ban_ids"
+                        multiple
                         clearable
                         filterable
+                        collapse-tags
+                        collapse-tags-tooltip
                         placeholder="Chọn phòng ban"
                         style="width: 100%"
                       >
@@ -537,99 +501,22 @@
 
           <el-tab-pane label="Thông tin lương" name="salary">
             <CustomRow :gutter="16" class="salary-fields">
-              <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
-                <CustomFormItem label="Công chuẩn" prop="cong_chuan">
-                  <el-input-number
-                    v-model="form.cong_chuan"
-                    :min="0"
-                    :precision="2"
-                    :controls="false"
-                    align="left"
-                    placeholder="0"
+              <CustomCol
+                v-for="item in salaryFormItems"
+                :key="item.key"
+                :xs="12"
+                :sm="8"
+                :md="6"
+                :lg="4"
+              >
+                <CustomFormItem
+                  :label="item.name"
+                  :prop="`luong_thuong_phu_cap.${item.key}.value`"
+                >
+                  <MoneyInput
+                    v-model="form.luong_thuong_phu_cap[item.key].value"
                     style="width: 100%"
                   />
-                </CustomFormItem>
-              </CustomCol>
-              <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
-                <CustomFormItem label="Số người phụ thuộc" prop="so_nguoi_phu_thuoc">
-                  <el-input-number
-                    v-model="form.so_nguoi_phu_thuoc"
-                    :min="0"
-                    :precision="0"
-                    :controls="false"
-                    align="left"
-                    placeholder="0"
-                    style="width: 100%"
-                  />
-                </CustomFormItem>
-              </CustomCol>
-
-              <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
-                <CustomFormItem label="Lương cứng" prop="luong_cung">
-                  <MoneyInput v-model="form.luong_cung" style="width: 100%" />
-                </CustomFormItem>
-              </CustomCol>
-              <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
-                <CustomFormItem label="Lương mềm" prop="luong_mem">
-                  <MoneyInput v-model="form.luong_mem" style="width: 100%" />
-                </CustomFormItem>
-              </CustomCol>
-              <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
-                <CustomFormItem label="Phụ cấp" prop="phu_cap">
-                  <MoneyInput v-model="form.phu_cap" style="width: 100%" />
-                </CustomFormItem>
-              </CustomCol>
-
-              <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
-                <CustomFormItem label="Lương cơ bản" prop="luong_co_ban">
-                  <MoneyInput v-model="form.luong_co_ban" style="width: 100%" />
-                </CustomFormItem>
-              </CustomCol>
-              <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
-                <CustomFormItem label="Lương tăng ca" prop="luong_tang_ca">
-                  <MoneyInput v-model="form.luong_tang_ca" style="width: 100%" />
-                </CustomFormItem>
-              </CustomCol>
-              <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
-                <CustomFormItem label="Phụ cấp xăng" prop="phu_cap_xang">
-                  <MoneyInput v-model="form.phu_cap_xang" style="width: 100%" />
-                </CustomFormItem>
-              </CustomCol>
-
-              <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
-                <CustomFormItem label="Phụ cấp ăn trưa" prop="phu_cap_an_trua">
-                  <MoneyInput v-model="form.phu_cap_an_trua" style="width: 100%" />
-                </CustomFormItem>
-              </CustomCol>
-              <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
-                <CustomFormItem label="Phụ cấp điện thoại" prop="phu_cap_dien_thoai">
-                  <MoneyInput v-model="form.phu_cap_dien_thoai" style="width: 100%" />
-                </CustomFormItem>
-              </CustomCol>
-              <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
-                <CustomFormItem label="Phụ cấp nhà ở" prop="phu_cap_nha_o">
-                  <MoneyInput v-model="form.phu_cap_nha_o" style="width: 100%" />
-                </CustomFormItem>
-              </CustomCol>
-
-              <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
-                <CustomFormItem label="Thưởng chuyên cần" prop="thuong_chuyen_can">
-                  <MoneyInput v-model="form.thuong_chuyen_can" style="width: 100%" />
-                </CustomFormItem>
-              </CustomCol>
-              <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
-                <CustomFormItem label="Hoa hồng HĐ cuối" prop="hoa_hong_hop_dong_cuoi">
-                  <MoneyInput v-model="form.hoa_hong_hop_dong_cuoi" style="width: 100%" />
-                </CustomFormItem>
-              </CustomCol>
-              <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
-                <CustomFormItem label="Hoa hồng HĐ trang phục" prop="hoa_hong_hop_dong_trang_phuc">
-                  <MoneyInput v-model="form.hoa_hong_hop_dong_trang_phuc" style="width: 100%" />
-                </CustomFormItem>
-              </CustomCol>
-              <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
-                <CustomFormItem label="Tham gia bảo hiểm" prop="tham_gia_bao_hiem">
-                  <el-switch v-model="form.tham_gia_bao_hiem" />
                 </CustomFormItem>
               </CustomCol>
             </CustomRow>
@@ -677,6 +564,42 @@ import {
 } from '@/components/element'
 import Pagination from '@/components/Pagination.vue'
 
+/** Định nghĩa các khoản lương/thưởng/phụ cấp (khớp backend). */
+const SALARY_FIELD_DEFINITIONS = [
+  { key: 'luong_cung', name: 'Lương cứng' },
+  { key: 'luong_mem', name: 'Lương mềm' },
+  { key: 'phu_cap', name: 'Phụ cấp' },
+  { key: 'luong_1_gio', name: 'Lương 1 giờ', note: 'Dành cho part time' },
+  { key: 'luong_tang_ca_1_gio', name: 'Lương tăng ca 1 giờ', note: 'Dành cho cả part_time và full_time' },
+  { key: 'phu_cap_xang', name: 'Phụ cấp xăng' },
+  { key: 'phu_cap_an_trua', name: 'Phụ cấp ăn trưa' },
+  { key: 'phu_cap_dien_thoai', name: 'Phụ cấp điện thoại' },
+  { key: 'phu_cap_nha_o', name: 'Phụ cấp nhà ở' },
+  { key: 'thuong_chuyen_can', name: 'Thưởng chuyên cần' },
+  { key: 'hoa_hong_hop_dong_sddv', name: 'Hoa hồng HĐ sử dụng dịch vụ' },
+  { key: 'hoa_hong_hop_dong_trang_phuc', name: 'Hoa hồng HĐ trang phục' },
+  { key: 'chup_1_diem', name: 'Chụp 1 điểm' },
+  { key: 'chup_2_diem', name: 'Chụp 2 điểm' },
+  { key: 'chup_3_diem', name: 'Chụp 3 điểm' },
+  { key: 'make_1_diem', name: 'Make 1 điểm' },
+  { key: 'make_2_diem', name: 'Make 2 điểm' },
+  { key: 'make_3_diem', name: 'Make 3 điểm' },
+  { key: 'phi_xu_ly_hd_thue_trang_phuc', name: 'Phí xử lý HĐ thuê trang phục' },
+]
+
+function createDefaultLuongThuongPhuCap(overrides = {}) {
+  const result = {}
+  for (const def of SALARY_FIELD_DEFINITIONS) {
+    const src = overrides?.[def.key] || {}
+    result[def.key] = {
+      name: src.name || def.name,
+      value: src.value != null && src.value !== '' ? Number(src.value) : null,
+      note: src.note != null && src.note !== '' ? String(src.note) : (def.note || ''),
+    }
+  }
+  return result
+}
+
 const tableColumns = [
   { key: 'nhan_vien', label: 'Nhân viên' },
   { key: 'lien_he', label: 'Liên hệ' },
@@ -722,7 +645,7 @@ const emptyForm = () => ({
   status: 'active',
   // nhan_vien — thông tin cá nhân
   hinh_anh: '',
-  phong_ban_id: null,
+  phong_ban_ids: [],
   ngan_hang: '',
   chi_nhanh: '',
   so_tai_khoan: '',
@@ -739,21 +662,17 @@ const emptyForm = () => ({
   cong_chuan: null,
   tham_gia_bao_hiem: false,
   so_nguoi_phu_thuoc: 0,
-  luong_cung: null,
-  luong_mem: null,
-  phu_cap: null,
-  luong_co_ban: null,
-  luong_tang_ca: null,
-  phu_cap_xang: null,
-  phu_cap_an_trua: null,
-  phu_cap_dien_thoai: null,
-  phu_cap_nha_o: null,
-  thuong_chuyen_can: null,
-  hoa_hong_hop_dong_cuoi: null,
-  hoa_hong_hop_dong_trang_phuc: null,
+  luong_thuong_phu_cap: createDefaultLuongThuongPhuCap(),
 })
 
 const form = reactive(emptyForm())
+
+const salaryFormItems = computed(() =>
+  SALARY_FIELD_DEFINITIONS.map((def) => ({
+    key: def.key,
+    ...form.luong_thuong_phu_cap[def.key],
+  })),
+)
 
 const rules = {
   name: [{ required: true, message: 'Vui lòng nhập họ tên', trigger: 'blur' }],
@@ -820,8 +739,25 @@ function nv(row) {
   return row?.nhan_vien || {}
 }
 
+function salaryValueOf(nvData, key) {
+  const item = nvData?.luong_thuong_phu_cap?.[key]
+  return item?.value ?? null
+}
+
+function salaryItemsOf(nvData) {
+  const data = createDefaultLuongThuongPhuCap(nvData?.luong_thuong_phu_cap || {})
+  return SALARY_FIELD_DEFINITIONS.map((def) => ({
+    key: def.key,
+    ...data[def.key],
+  }))
+}
+
 function deptName(row) {
-  return nv(row).phong_ban?.ten_phong_ban || 'Chưa có phòng ban'
+  const list = nv(row).phong_bans
+  if (Array.isArray(list) && list.length) {
+    return list.map((pb) => pb.ten_phong_ban).filter(Boolean).join(', ')
+  }
+  return 'Chưa có phòng ban'
 }
 
 function avatarInitial(name) {
@@ -996,9 +932,9 @@ function fillSampleData() {
     password: `Pass${randomDigits(6)}`,
     role: pick(['user', 'admin']),
     status: pick(['active', 'inactive']),
-    phong_ban_id: departments.value.length
-      ? pick(departments.value).id
-      : null,
+    phong_ban_ids: departments.value.length
+      ? [pick(departments.value).id]
+      : [],
     ngan_hang: nganHang,
     chi_nhanh: chiNhanh,
     so_tai_khoan: randomDigits(10),
@@ -1014,18 +950,20 @@ function fillSampleData() {
     cong_chuan: randomInt(22, 26),
     tham_gia_bao_hiem: Math.random() > 0.3,
     so_nguoi_phu_thuoc: randomInt(0, 3),
-    luong_cung: luongCung,
-    luong_mem: luongMem,
-    phu_cap: phuCap,
-    luong_co_ban: luongCung + luongMem,
-    luong_tang_ca: randomInt(3, 8) * 10_000,
-    phu_cap_xang: randomInt(3, 8) * 100_000,
-    phu_cap_an_trua: randomInt(5, 10) * 100_000,
-    phu_cap_dien_thoai: randomInt(1, 4) * 100_000,
-    phu_cap_nha_o: randomInt(5, 15) * 100_000,
-    thuong_chuyen_can: randomInt(2, 8) * 100_000,
-    hoa_hong_hop_dong_cuoi: randomInt(0, 5) * 100_000,
-    hoa_hong_hop_dong_trang_phuc: randomInt(0, 3) * 100_000,
+    luong_thuong_phu_cap: createDefaultLuongThuongPhuCap({
+      luong_cung: { value: luongCung },
+      luong_mem: { value: luongMem },
+      phu_cap: { value: phuCap },
+      luong_1_gio: { value: randomInt(3, 8) * 10_000 },
+      luong_tang_ca_1_gio: { value: randomInt(3, 8) * 10_000 },
+      phu_cap_xang: { value: randomInt(3, 8) * 100_000 },
+      phu_cap_an_trua: { value: randomInt(5, 10) * 100_000 },
+      phu_cap_dien_thoai: { value: randomInt(1, 4) * 100_000 },
+      phu_cap_nha_o: { value: randomInt(5, 15) * 100_000 },
+      thuong_chuyen_can: { value: randomInt(2, 8) * 100_000 },
+      hoa_hong_hop_dong_sddv: { value: randomInt(0, 5) * 100_000 },
+      hoa_hong_hop_dong_trang_phuc: { value: randomInt(0, 3) * 100_000 },
+    }),
   })
   resetImageState()
   formRef.value?.clearValidate?.()
@@ -1035,7 +973,7 @@ function fillSampleData() {
 function openEdit(row) {
   editingId.value = row.id
   activeTab.value = 'personal'
-  const nv = row.nhan_vien || {}
+  const nvData = row.nhan_vien || {}
   Object.assign(form, emptyForm(), {
     name: row.name,
     email: row.email,
@@ -1043,37 +981,24 @@ function openEdit(row) {
     password: '',
     role: row.role || 'user',
     status: row.status || 'active',
-    hinh_anh: nv.hinh_anh || '',
-    phong_ban_id: nv.phong_ban_id ?? null,
-    ngan_hang: nv.ngan_hang || '',
-    chi_nhanh: nv.chi_nhanh || '',
-    so_tai_khoan: nv.so_tai_khoan || '',
-    chu_tai_khoan: nv.chu_tai_khoan || '',
-    gioi_tinh: nv.gioi_tinh || null,
-    ngay_sinh: toDateOnly(nv.ngay_sinh),
-    cccd: nv.cccd || '',
-    vi_tri_lam_viec: nv.vi_tri_lam_viec || '',
-    ngay_vao_cong_ty: toDateOnly(nv.ngay_vao_cong_ty),
-    ngay_ky_hop_dong: toDateOnly(nv.ngay_ky_hop_dong),
-    loai_nhan_vien: nv.loai_nhan_vien || null,
-    loai_hop_dong: nv.loai_hop_dong || null,
-    cong_chuan: nv.cong_chuan != null ? Number(nv.cong_chuan) : null,
-    tham_gia_bao_hiem: !!nv.tham_gia_bao_hiem,
-    so_nguoi_phu_thuoc: nv.so_nguoi_phu_thuoc ?? 0,
-    luong_cung: nv.luong_cung != null ? Number(nv.luong_cung) : null,
-    luong_mem: nv.luong_mem != null ? Number(nv.luong_mem) : null,
-    phu_cap: nv.phu_cap != null ? Number(nv.phu_cap) : null,
-    luong_co_ban: nv.luong_co_ban != null ? Number(nv.luong_co_ban) : null,
-    luong_tang_ca: nv.luong_tang_ca != null ? Number(nv.luong_tang_ca) : null,
-    phu_cap_xang: nv.phu_cap_xang != null ? Number(nv.phu_cap_xang) : null,
-    phu_cap_an_trua: nv.phu_cap_an_trua != null ? Number(nv.phu_cap_an_trua) : null,
-    phu_cap_dien_thoai: nv.phu_cap_dien_thoai != null ? Number(nv.phu_cap_dien_thoai) : null,
-    phu_cap_nha_o: nv.phu_cap_nha_o != null ? Number(nv.phu_cap_nha_o) : null,
-    thuong_chuyen_can: nv.thuong_chuyen_can != null ? Number(nv.thuong_chuyen_can) : null,
-    hoa_hong_hop_dong_cuoi:
-      nv.hoa_hong_hop_dong_cuoi != null ? Number(nv.hoa_hong_hop_dong_cuoi) : null,
-    hoa_hong_hop_dong_trang_phuc:
-      nv.hoa_hong_hop_dong_trang_phuc != null ? Number(nv.hoa_hong_hop_dong_trang_phuc) : null,
+    hinh_anh: nvData.hinh_anh || '',
+    phong_ban_ids: Array.isArray(nvData.phong_ban_ids) ? [...nvData.phong_ban_ids] : [],
+    ngan_hang: nvData.ngan_hang || '',
+    chi_nhanh: nvData.chi_nhanh || '',
+    so_tai_khoan: nvData.so_tai_khoan || '',
+    chu_tai_khoan: nvData.chu_tai_khoan || '',
+    gioi_tinh: nvData.gioi_tinh || null,
+    ngay_sinh: toDateOnly(nvData.ngay_sinh),
+    cccd: nvData.cccd || '',
+    vi_tri_lam_viec: nvData.vi_tri_lam_viec || '',
+    ngay_vao_cong_ty: toDateOnly(nvData.ngay_vao_cong_ty),
+    ngay_ky_hop_dong: toDateOnly(nvData.ngay_ky_hop_dong),
+    loai_nhan_vien: nvData.loai_nhan_vien || null,
+    loai_hop_dong: nvData.loai_hop_dong || null,
+    cong_chuan: nvData.cong_chuan != null ? Number(nvData.cong_chuan) : null,
+    tham_gia_bao_hiem: !!nvData.tham_gia_bao_hiem,
+    so_nguoi_phu_thuoc: nvData.so_nguoi_phu_thuoc ?? 0,
+    luong_thuong_phu_cap: createDefaultLuongThuongPhuCap(nvData.luong_thuong_phu_cap || {}),
   })
   resetImageState()
   dialogVisible.value = true
@@ -1085,6 +1010,16 @@ function toDateOnly(value) {
 }
 
 function buildPayload() {
+  const luongThuongPhuCap = {}
+  for (const def of SALARY_FIELD_DEFINITIONS) {
+    const item = form.luong_thuong_phu_cap[def.key] || {}
+    luongThuongPhuCap[def.key] = {
+      name: item.name || def.name,
+      value: item.value != null && item.value !== '' ? Number(item.value) : null,
+      note: item.note?.trim() ? item.note.trim() : (def.note || null),
+    }
+  }
+
   const payload = {
     name: form.name.trim(),
     email: form.email.trim(),
@@ -1092,7 +1027,7 @@ function buildPayload() {
     role: form.role,
     status: form.status,
     hinh_anh: form.hinh_anh?.trim() || null,
-    phong_ban_id: form.phong_ban_id || null,
+    phong_ban_ids: Array.isArray(form.phong_ban_ids) ? form.phong_ban_ids : [],
     ngan_hang: form.ngan_hang?.trim() || null,
     chi_nhanh: form.chi_nhanh?.trim() || null,
     so_tai_khoan: form.so_tai_khoan?.trim() || null,
@@ -1108,18 +1043,7 @@ function buildPayload() {
     cong_chuan: form.cong_chuan,
     tham_gia_bao_hiem: !!form.tham_gia_bao_hiem,
     so_nguoi_phu_thuoc: form.so_nguoi_phu_thuoc ?? 0,
-    luong_cung: form.luong_cung,
-    luong_mem: form.luong_mem,
-    phu_cap: form.phu_cap,
-    luong_co_ban: form.luong_co_ban,
-    luong_tang_ca: form.luong_tang_ca,
-    phu_cap_xang: form.phu_cap_xang,
-    phu_cap_an_trua: form.phu_cap_an_trua,
-    phu_cap_dien_thoai: form.phu_cap_dien_thoai,
-    phu_cap_nha_o: form.phu_cap_nha_o,
-    thuong_chuyen_can: form.thuong_chuyen_can,
-    hoa_hong_hop_dong_cuoi: form.hoa_hong_hop_dong_cuoi,
-    hoa_hong_hop_dong_trang_phuc: form.hoa_hong_hop_dong_trang_phuc,
+    luong_thuong_phu_cap: luongThuongPhuCap,
   }
 
   if (form.password) {
@@ -1335,6 +1259,13 @@ onMounted(() => {
   font-weight: 600;
   color: var(--el-text-color-primary);
   cursor: default;
+}
+
+.expand-field__note {
+  font-size: 11px;
+  color: var(--el-text-color-secondary);
+  line-height: 1.3;
+  margin-top: 2px;
 }
 
 @media (max-width: 1400px) {

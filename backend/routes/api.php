@@ -76,6 +76,8 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
     Route::get('/diem-danh', [DiemDanhController::class, 'index']);
 
     // Phòng ban
+    Route::get('phong-ban/{phong_ban}/nhan-vien', [PhongBanController::class, 'nhanVien']);
+    Route::delete('phong-ban/{phong_ban}/nhan-vien/{nhan_vien}', [PhongBanController::class, 'removeNhanVien']);
     Route::apiResource('phong-ban', PhongBanController::class);
 
     // IP điểm danh

@@ -40,3 +40,21 @@ export function updatePhongBan(id, payload) {
 export function deletePhongBan(id) {
   return api.delete(`/phong-ban/${id}`)
 }
+
+/**
+ * Danh sách nhân viên thuộc phòng ban.
+ * @param {number|string} phongBanId
+ * @param {{ page?: number, per_page?: number, keyword?: string }} params
+ */
+export function fetchPhongBanNhanVien(phongBanId, params = {}) {
+  return api.get(`/phong-ban/${phongBanId}/nhan-vien`, { params })
+}
+
+/**
+ * Xóa nhân viên khỏi phòng ban.
+ * @param {number|string} phongBanId
+ * @param {number|string} nhanVienId
+ */
+export function removeNhanVienKhoiPhongBan(phongBanId, nhanVienId) {
+  return api.delete(`/phong-ban/${phongBanId}/nhan-vien/${nhanVienId}`)
+}

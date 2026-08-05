@@ -193,7 +193,11 @@ function avatarInitial(name) {
 }
 
 function deptName(row) {
-  return row?.nhan_vien?.phong_ban?.ten_phong_ban || ''
+  const list = row?.nhan_vien?.phong_bans
+  if (Array.isArray(list) && list.length) {
+    return list.map((pb) => pb.ten_phong_ban).filter(Boolean).join(', ')
+  }
+  return ''
 }
 
 function resetState() {

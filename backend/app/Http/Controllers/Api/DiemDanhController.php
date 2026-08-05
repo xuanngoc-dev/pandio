@@ -466,7 +466,7 @@ class DiemDanhController extends BaseApiController
             return 0;
         }
 
-        $luongCoBan = (float) ($nhanVien->luong_co_ban ?? 0);
+        $luongCoBan = $nhanVien->getLuongValue('luong_1_gio');
         $congChuan = (float) ($nhanVien->cong_chuan ?? 0);
         if ($luongCoBan <= 0 || $congChuan <= 0) {
             return 0;
@@ -525,9 +525,9 @@ class DiemDanhController extends BaseApiController
             return [0.0, 0.0];
         }
 
-        $luongCoBanThang = (float) ($nhanVien->luong_co_ban ?? 0);
+        $luongCoBanThang = $nhanVien->getLuongValue('luong_1_gio');
         $congChuan = (float) ($nhanVien->cong_chuan ?? 0);
-        $luongTangCaGio = (float) ($nhanVien->luong_tang_ca ?? 0);
+        $luongTangCaGio = $nhanVien->getLuongValue('luong_tang_ca_1_gio');
 
         // Lương cơ bản ngày ≈ (lương tháng / công chuẩn) × (giờ làm cơ bản / 8)
         $luongCoBanNgay = ($luongCoBanThang > 0 && $congChuan > 0 && $gioLamCoBan > 0)
