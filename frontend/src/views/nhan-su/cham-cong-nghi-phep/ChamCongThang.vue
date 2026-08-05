@@ -1,5 +1,5 @@
 <template>
-  <div class="cham-cong-thang">
+  <div class="cham-cong-thang page-list">
     <CustomCard shadow="hover" class="table-card">
       <template #header>
         <div class="card-header">
@@ -742,17 +742,7 @@ onMounted(loadData)
 </script>
 
 <style scoped>
-.cham-cong-thang {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
 .card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
   flex-wrap: wrap;
 }
 
@@ -761,11 +751,6 @@ onMounted(loadData)
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-}
-
-.card-title {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
 }
 
 .legend {

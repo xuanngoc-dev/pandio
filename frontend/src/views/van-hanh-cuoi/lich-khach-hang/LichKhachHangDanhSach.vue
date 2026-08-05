@@ -1,5 +1,5 @@
 <template>
-  <div class="lich-khach-hang-danh-sach">
+  <div class="lich-khach-hang-danh-sach page-list">
     <CustomCard shadow="hover">
       <template #header>
         <div class="card-header">
@@ -18,24 +18,6 @@
 </script>
 
 <style scoped lang="scss">
-.lich-khach-hang-danh-sach {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.card-title {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-
 .hint {
   margin: 8px 0 0;
   color: var(--el-text-color-secondary);

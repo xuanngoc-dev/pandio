@@ -3,36 +3,42 @@
     <el-tabs v-model="activeTab" class="studio-tabs">
       <!-- Tab 1: Thông tin studio -->
       <el-tab-pane label="Thông tin studio" name="studio">
-        <div class="tab-panel">
+        <div class="tab-panel page-list">
           <CustomCard shadow="hover" class="filter-card">
-            <div class="toolbar">
-              <CustomInput
-                v-model="studio.keyword"
-                placeholder="Tìm theo tên, khẩu hiệu, email, SĐT..."
-                clearable
-                style="max-width: 320px"
-                @clear="onStudioSearch"
-                @keyup.enter="onStudioSearch"
-              >
-                <template #prefix>
+            <CustomRow :gutter="12" class="toolbar">
+              <CustomCol :xs="12" :sm="12" :md="8" :lg="8">
+                <CustomInput
+                  v-model="studio.keyword"
+                  placeholder="Tìm theo tên, khẩu hiệu, email, SĐT..."
+                  clearable
+                  style="width: 100%"
+                  @clear="onStudioSearch"
+                  @keyup.enter="onStudioSearch"
+                >
+                  <template #prefix>
+                    <CustomIcon><Search /></CustomIcon>
+                  </template>
+                </CustomInput>
+              </CustomCol>
+              <CustomCol :xs="12" :sm="12" :md="8" :lg="8">
+                <CustomSelect
+                  v-model="studio.macDinhFilter"
+                  placeholder="Mặc định"
+                  clearable
+                  style="width: 100%"
+                  @change="onStudioSearch"
+                >
+                  <CustomOption label="Có" value="co" />
+                  <CustomOption label="Không" value="khong" />
+                </CustomSelect>
+              </CustomCol>
+              <CustomCol :xs="12" :sm="12" :md="8" :lg="4">
+                <CustomButton type="primary" plain @click="onStudioSearch">
                   <CustomIcon><Search /></CustomIcon>
-                </template>
-              </CustomInput>
-              <CustomSelect
-                v-model="studio.macDinhFilter"
-                placeholder="Mặc định"
-                clearable
-                style="width: 160px"
-                @change="onStudioSearch"
-              >
-                <CustomOption label="Có" value="co" />
-                <CustomOption label="Không" value="khong" />
-              </CustomSelect>
-              <CustomButton type="primary" plain @click="onStudioSearch">
-                <CustomIcon><Search /></CustomIcon>
-                Tìm kiếm
-              </CustomButton>
-            </div>
+                  Tìm kiếm
+                </CustomButton>
+              </CustomCol>
+            </CustomRow>
           </CustomCard>
 
           <CustomCard shadow="hover" class="table-card">
@@ -185,46 +191,54 @@
 
       <!-- Tab 2: Tài khoản thanh toán -->
       <el-tab-pane label="Tài khoản thanh toán" name="payment">
-        <div class="tab-panel">
+        <div class="tab-panel page-list">
           <CustomCard shadow="hover" class="filter-card">
-            <div class="toolbar">
-              <CustomInput
-                v-model="payment.keyword"
-                placeholder="Tìm theo ngân hàng, số TK, chủ TK..."
-                clearable
-                style="max-width: 320px"
-                @clear="onPaymentSearch"
-                @keyup.enter="onPaymentSearch"
-              >
-                <template #prefix>
+            <CustomRow :gutter="12" class="toolbar">
+              <CustomCol :xs="12" :sm="12" :md="6" :lg="7">
+                <CustomInput
+                  v-model="payment.keyword"
+                  placeholder="Tìm theo ngân hàng, số TK, chủ TK..."
+                  clearable
+                  style="width: 100%"
+                  @clear="onPaymentSearch"
+                  @keyup.enter="onPaymentSearch"
+                >
+                  <template #prefix>
+                    <CustomIcon><Search /></CustomIcon>
+                  </template>
+                </CustomInput>
+              </CustomCol>
+              <CustomCol :xs="12" :sm="12" :md="6" :lg="5">
+                <CustomSelect
+                  v-model="payment.macDinhFilter"
+                  placeholder="Mặc định"
+                  clearable
+                  style="width: 100%"
+                  @change="onPaymentSearch"
+                >
+                  <CustomOption label="Có" value="co" />
+                  <CustomOption label="Không" value="khong" />
+                </CustomSelect>
+              </CustomCol>
+              <CustomCol :xs="12" :sm="12" :md="6" :lg="5">
+                <CustomSelect
+                  v-model="payment.trangThaiFilter"
+                  placeholder="Trạng thái"
+                  clearable
+                  style="width: 100%"
+                  @change="onPaymentSearch"
+                >
+                  <CustomOption label="Đang hoạt động" value="dang_hoat_dong" />
+                  <CustomOption label="Ngưng hoạt động" value="ngung_hoat_dong" />
+                </CustomSelect>
+              </CustomCol>
+              <CustomCol :xs="12" :sm="12" :md="6" :lg="4">
+                <CustomButton type="primary" plain @click="onPaymentSearch">
                   <CustomIcon><Search /></CustomIcon>
-                </template>
-              </CustomInput>
-              <CustomSelect
-                v-model="payment.macDinhFilter"
-                placeholder="Mặc định"
-                clearable
-                style="width: 160px"
-                @change="onPaymentSearch"
-              >
-                <CustomOption label="Có" value="co" />
-                <CustomOption label="Không" value="khong" />
-              </CustomSelect>
-              <CustomSelect
-                v-model="payment.trangThaiFilter"
-                placeholder="Trạng thái"
-                clearable
-                style="width: 180px"
-                @change="onPaymentSearch"
-              >
-                <CustomOption label="Đang hoạt động" value="dang_hoat_dong" />
-                <CustomOption label="Ngưng hoạt động" value="ngung_hoat_dong" />
-              </CustomSelect>
-              <CustomButton type="primary" plain @click="onPaymentSearch">
-                <CustomIcon><Search /></CustomIcon>
-                Tìm kiếm
-              </CustomButton>
-            </div>
+                  Tìm kiếm
+                </CustomButton>
+              </CustomCol>
+            </CustomRow>
           </CustomCard>
 
           <CustomCard shadow="hover" class="table-card">
@@ -1024,60 +1038,15 @@ onMounted(loadStudios)
   margin-bottom: 16px;
 }
 
-.tab-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
 .header-actions {
   display: inline-flex;
   align-items: center;
   gap: 12px;
 }
 
-.card-title {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.action-btns {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.status-cell {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .status-label {
-  font-size: 13px;
   line-height: 1.2;
   white-space: nowrap;
-}
-
-.status-label.is-active {
-  color: var(--el-color-success);
-}
-
-.status-label.is-inactive {
-  color: var(--el-text-color-secondary);
 }
 
 .logo-slot {

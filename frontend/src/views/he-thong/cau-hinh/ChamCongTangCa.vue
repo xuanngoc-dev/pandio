@@ -319,17 +319,6 @@ onMounted(loadConfig)
 </script>
 
 <style scoped lang="scss">
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.card-title {
-  font-weight: 600;
-}
-
 .setting-grid {
   display: grid;
   grid-template-columns: 1fr;

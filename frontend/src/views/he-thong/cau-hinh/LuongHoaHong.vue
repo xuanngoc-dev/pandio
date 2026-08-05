@@ -886,17 +886,6 @@ onMounted(loadConfig)
 </script>
 
 <style scoped lang="scss">
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.card-title {
-  font-weight: 600;
-}
-
 .config-tabs :deep(.el-tabs__header) {
   margin-bottom: 8px;
 }

@@ -1,25 +1,29 @@
 <template>
   <ConfigSettingPage title="Vai trò (chức danh nhân sự)">
-    <div class="vai-tro">
+    <div class="vai-tro page-list">
       <CustomCard shadow="hover" class="filter-card">
-        <div class="toolbar">
-          <CustomInput
-            v-model="keyword"
-            placeholder="Tìm theo tên vai trò, ghi chú..."
-            clearable
-            style="max-width: 300px"
-            @clear="onSearch"
-            @keyup.enter="onSearch"
-          >
-            <template #prefix>
+        <CustomRow :gutter="12" class="toolbar">
+          <CustomCol :xs="12" :sm="12" :md="12" :lg="16">
+            <CustomInput
+              v-model="keyword"
+              placeholder="Tìm theo tên vai trò, ghi chú..."
+              clearable
+              style="width: 100%"
+              @clear="onSearch"
+              @keyup.enter="onSearch"
+            >
+              <template #prefix>
+                <CustomIcon><Search /></CustomIcon>
+              </template>
+            </CustomInput>
+          </CustomCol>
+          <CustomCol :xs="12" :sm="12" :md="6" :lg="4">
+            <CustomButton type="primary" plain @click="onSearch">
               <CustomIcon><Search /></CustomIcon>
-            </template>
-          </CustomInput>
-          <CustomButton type="primary" plain @click="onSearch">
-            <CustomIcon><Search /></CustomIcon>
-            Tìm kiếm
-          </CustomButton>
-        </div>
+              Tìm kiếm
+            </CustomButton>
+          </CustomCol>
+        </CustomRow>
       </CustomCard>
 
       <CustomCard shadow="hover" class="table-card">
@@ -468,36 +472,6 @@ onMounted(loadItems)
 </script>
 
 <style scoped>
-.vai-tro {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.card-title {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.action-btns {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
 .tree-panel {
   width: 100%;
   max-height: 360px;

@@ -1,34 +1,40 @@
 <template>
-  <div class="hang-muc-thu-chi">
+  <div class="hang-muc-thu-chi page-list">
     <CustomCard shadow="hover" class="filter-card">
-      <div class="toolbar">
-        <CustomInput
-          v-model="keyword"
-          placeholder="Tìm theo tên hạng mục, ghi chú..."
-          clearable
-          style="max-width: 320px"
-          @clear="onSearch"
-          @keyup.enter="onSearch"
-        >
-          <template #prefix>
+      <CustomRow :gutter="12" class="toolbar">
+        <CustomCol :xs="12" :sm="12" :md="8" :lg="8">
+          <CustomInput
+            v-model="keyword"
+            placeholder="Tìm theo tên hạng mục, ghi chú..."
+            clearable
+            style="width: 100%"
+            @clear="onSearch"
+            @keyup.enter="onSearch"
+          >
+            <template #prefix>
+              <CustomIcon><Search /></CustomIcon>
+            </template>
+          </CustomInput>
+        </CustomCol>
+        <CustomCol :xs="12" :sm="12" :md="8" :lg="8">
+          <CustomSelect
+            v-model="filterTrangThai"
+            placeholder="Trạng thái"
+            clearable
+            style="width: 100%"
+            @change="onSearch"
+          >
+            <CustomOption label="Hoạt động" value="hoat_dong" />
+            <CustomOption label="Ngừng hoạt động" value="ngung_hoat_dong" />
+          </CustomSelect>
+        </CustomCol>
+        <CustomCol :xs="12" :sm="12" :md="8" :lg="4">
+          <CustomButton type="primary" plain @click="onSearch">
             <CustomIcon><Search /></CustomIcon>
-          </template>
-        </CustomInput>
-        <CustomSelect
-          v-model="filterTrangThai"
-          placeholder="Trạng thái"
-          clearable
-          style="width: 180px"
-          @change="onSearch"
-        >
-          <CustomOption label="Hoạt động" value="hoat_dong" />
-          <CustomOption label="Ngừng hoạt động" value="ngung_hoat_dong" />
-        </CustomSelect>
-        <CustomButton type="primary" plain @click="onSearch">
-          <CustomIcon><Search /></CustomIcon>
-          Tìm kiếm
-        </CustomButton>
-      </div>
+            Tìm kiếm
+          </CustomButton>
+        </CustomCol>
+      </CustomRow>
     </CustomCard>
 
     <CustomCard shadow="hover" class="table-card">
@@ -456,56 +462,3 @@ async function remove(row) {
 onMounted(loadItems)
 </script>
 
-<style scoped lang="scss">
-.hang-muc-thu-chi {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.card-title {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
-}
-
-.action-btns {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.status-cell {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.status-label {
-  font-size: 13px;
-  line-height: 1.2;
-  white-space: nowrap;
-}
-
-.status-label.is-active {
-  color: var(--el-color-success);
-}
-
-.status-label.is-inactive {
-  color: var(--el-text-color-secondary);
-}
-</style>

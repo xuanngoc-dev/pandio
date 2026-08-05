@@ -55,13 +55,6 @@ const authStore = useAuthStore()
 </script>
 
 <style scoped>
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
 .home :deep(.el-col) {
   margin-bottom: 16px;
 }

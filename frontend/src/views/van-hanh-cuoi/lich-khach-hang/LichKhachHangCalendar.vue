@@ -180,18 +180,6 @@ onMounted(() => {
   gap: 16px;
 }
 
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.card-title {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-
 .legend {
   display: inline-flex;
   align-items: center;

@@ -3,36 +3,42 @@
     <el-tabs v-model="activeTab" class="gio-nghi-tabs">
       <!-- Tab giờ làm việc -->
       <el-tab-pane label="Giờ làm việc" name="gio-lam">
-        <div class="tab-panel">
+        <div class="tab-panel page-list">
           <CustomCard shadow="hover" class="filter-card">
-            <div class="toolbar">
-              <CustomInput
-                v-model="gioLam.keyword"
-                placeholder="Tìm theo tên cấu hình..."
-                clearable
-                style="max-width: 300px"
-                @clear="onSearchGioLam"
-                @keyup.enter="onSearchGioLam"
-              >
-                <template #prefix>
+            <CustomRow :gutter="12" class="toolbar">
+              <CustomCol :xs="12" :sm="12" :md="8" :lg="8">
+                <CustomInput
+                  v-model="gioLam.keyword"
+                  placeholder="Tìm theo tên cấu hình..."
+                  clearable
+                  style="width: 100%"
+                  @clear="onSearchGioLam"
+                  @keyup.enter="onSearchGioLam"
+                >
+                  <template #prefix>
+                    <CustomIcon><Search /></CustomIcon>
+                  </template>
+                </CustomInput>
+              </CustomCol>
+              <CustomCol :xs="12" :sm="12" :md="8" :lg="8">
+                <CustomSelect
+                  v-model="gioLam.suDungFilter"
+                  placeholder="Sử dụng"
+                  clearable
+                  style="width: 100%"
+                  @change="onSearchGioLam"
+                >
+                  <CustomOption label="Đang sử dụng" value="co" />
+                  <CustomOption label="Không sử dụng" value="khong" />
+                </CustomSelect>
+              </CustomCol>
+              <CustomCol :xs="12" :sm="12" :md="8" :lg="4">
+                <CustomButton type="primary" plain @click="onSearchGioLam">
                   <CustomIcon><Search /></CustomIcon>
-                </template>
-              </CustomInput>
-              <CustomSelect
-                v-model="gioLam.suDungFilter"
-                placeholder="Sử dụng"
-                clearable
-                style="width: 180px"
-                @change="onSearchGioLam"
-              >
-                <CustomOption label="Đang sử dụng" value="co" />
-                <CustomOption label="Không sử dụng" value="khong" />
-              </CustomSelect>
-              <CustomButton type="primary" plain @click="onSearchGioLam">
-                <CustomIcon><Search /></CustomIcon>
-                Tìm kiếm
-              </CustomButton>
-            </div>
+                  Tìm kiếm
+                </CustomButton>
+              </CustomCol>
+            </CustomRow>
           </CustomCard>
 
           <CustomCard shadow="hover" class="table-card">
@@ -162,36 +168,42 @@
 
       <!-- Tab ngày nghỉ -->
       <el-tab-pane label="Ngày nghỉ" name="ngay-nghi">
-        <div class="tab-panel">
+        <div class="tab-panel page-list">
           <CustomCard shadow="hover" class="filter-card">
-            <div class="toolbar">
-              <CustomInput
-                v-model="ngayNghi.keyword"
-                placeholder="Tìm theo tên ngày nghỉ..."
-                clearable
-                style="max-width: 300px"
-                @clear="onSearchNgayNghi"
-                @keyup.enter="onSearchNgayNghi"
-              >
-                <template #prefix>
+            <CustomRow :gutter="12" class="toolbar">
+              <CustomCol :xs="12" :sm="12" :md="8" :lg="8">
+                <CustomInput
+                  v-model="ngayNghi.keyword"
+                  placeholder="Tìm theo tên ngày nghỉ..."
+                  clearable
+                  style="width: 100%"
+                  @clear="onSearchNgayNghi"
+                  @keyup.enter="onSearchNgayNghi"
+                >
+                  <template #prefix>
+                    <CustomIcon><Search /></CustomIcon>
+                  </template>
+                </CustomInput>
+              </CustomCol>
+              <CustomCol :xs="12" :sm="12" :md="8" :lg="8">
+                <CustomSelect
+                  v-model="ngayNghi.trangThaiFilter"
+                  placeholder="Trạng thái"
+                  clearable
+                  style="width: 100%"
+                  @change="onSearchNgayNghi"
+                >
+                  <CustomOption label="Đang hoạt động" value="active" />
+                  <CustomOption label="Không hoạt động" value="inactive" />
+                </CustomSelect>
+              </CustomCol>
+              <CustomCol :xs="12" :sm="12" :md="8" :lg="4">
+                <CustomButton type="primary" plain @click="onSearchNgayNghi">
                   <CustomIcon><Search /></CustomIcon>
-                </template>
-              </CustomInput>
-              <CustomSelect
-                v-model="ngayNghi.trangThaiFilter"
-                placeholder="Trạng thái"
-                clearable
-                style="width: 180px"
-                @change="onSearchNgayNghi"
-              >
-                <CustomOption label="Đang hoạt động" value="active" />
-                <CustomOption label="Không hoạt động" value="inactive" />
-              </CustomSelect>
-              <CustomButton type="primary" plain @click="onSearchNgayNghi">
-                <CustomIcon><Search /></CustomIcon>
-                Tìm kiếm
-              </CustomButton>
-            </div>
+                  Tìm kiếm
+                </CustomButton>
+              </CustomCol>
+            </CustomRow>
           </CustomCard>
 
           <CustomCard shadow="hover" class="table-card">
@@ -897,59 +909,14 @@ onMounted(loadGioLam)
   margin-bottom: 16px;
 }
 
-.tab-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
 .header-actions {
   display: inline-flex;
   align-items: center;
   gap: 12px;
 }
 
-.card-title {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.action-btns {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.status-cell {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .status-label {
-  font-size: 13px;
   line-height: 1.2;
   white-space: nowrap;
-}
-
-.status-label.is-active {
-  color: var(--el-color-success);
-}
-
-.status-label.is-inactive {
-  color: var(--el-text-color-secondary);
 }
 </style>

@@ -1,34 +1,40 @@
 <template>
-  <div class="employee-list">
+  <div class="employee-list page-list">
     <CustomCard shadow="hover" class="filter-card">
-      <div class="toolbar">
-        <CustomInput
-          v-model="keyword"
-          placeholder="Tìm theo tên, email, SĐT..."
-          clearable
-          style="max-width: 280px"
-          @clear="onSearch"
-          @keyup.enter="onSearch"
-        >
-          <template #prefix>
+      <CustomRow :gutter="12" class="toolbar">
+        <CustomCol :xs="12" :sm="12" :md="8" :lg="8">
+          <CustomInput
+            v-model="keyword"
+            placeholder="Tìm theo tên, email, SĐT..."
+            clearable
+            style="width: 100%"
+            @clear="onSearch"
+            @keyup.enter="onSearch"
+          >
+            <template #prefix>
+              <CustomIcon><Search /></CustomIcon>
+            </template>
+          </CustomInput>
+        </CustomCol>
+        <CustomCol :xs="12" :sm="12" :md="8" :lg="8">
+          <CustomSelect
+            v-model="statusFilter"
+            placeholder="Trạng thái"
+            clearable
+            style="width: 100%"
+            @change="onSearch"
+          >
+            <CustomOption label="Đang hoạt động" value="active" />
+            <CustomOption label="Không hoạt động" value="inactive" />
+          </CustomSelect>
+        </CustomCol>
+        <CustomCol :xs="12" :sm="12" :md="8" :lg="4">
+          <CustomButton type="primary" plain @click="onSearch">
             <CustomIcon><Search /></CustomIcon>
-          </template>
-        </CustomInput>
-        <CustomSelect
-          v-model="statusFilter"
-          placeholder="Trạng thái"
-          clearable
-          style="width: 180px"
-          @change="onSearch"
-        >
-          <CustomOption label="Đang hoạt động" value="active" />
-          <CustomOption label="Không hoạt động" value="inactive" />
-        </CustomSelect>
-        <CustomButton type="primary" plain @click="onSearch">
-          <CustomIcon><Search /></CustomIcon>
-          Tìm kiếm
-        </CustomButton>
-      </div>
+            Tìm kiếm
+          </CustomButton>
+        </CustomCol>
+      </CustomRow>
     </CustomCard>
 
     <CustomCard shadow="hover" class="table-card">
@@ -1109,42 +1115,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.employee-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.card-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.card-title {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.action-btns {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
 .cell-person {
   display: flex;
   align-items: center;

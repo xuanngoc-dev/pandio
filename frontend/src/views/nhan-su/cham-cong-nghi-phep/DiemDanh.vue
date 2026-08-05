@@ -1,5 +1,5 @@
 <template>
-  <div class="diem-danh">
+  <div class="diem-danh page-list">
     <CustomCard shadow="hover" class="table-card">
       <template #header>
         <div class="card-header">
@@ -374,29 +374,3 @@ onMounted(async () => {
   await Promise.all([loadChamCongConfig(), loadTodayStatus(), loadItems()])
 })
 </script>
-
-<style scoped>
-.diem-danh {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.card-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.card-title {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-</style>

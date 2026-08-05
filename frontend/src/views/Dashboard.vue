@@ -117,11 +117,6 @@ async function handleLogout() {
 </script>
 
 <style scoped>
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
 .json-box {
   background: var(--el-fill-color-light);
   padding: 12px;

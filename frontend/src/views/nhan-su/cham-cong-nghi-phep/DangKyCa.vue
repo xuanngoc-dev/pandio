@@ -1,31 +1,38 @@
 <template>
-  <div class="dang-ky-ca">
+  <div class="dang-ky-ca page-list">
     <CustomCard shadow="hover" class="filter-card">
-      <div class="toolbar">
-        <CustomInput
-          v-model="keyword"
-          placeholder="Tìm nhân viên..."
-          clearable
-          style="max-width: 260px"
-          @clear="onSearch"
-          @keyup.enter="onSearch"
-        >
-          <template #prefix>
-            <CustomIcon><Search /></CustomIcon>
-          </template>
-        </CustomInput>
-        <CustomButton type="primary" plain @click="onSearch">
-          <CustomIcon><Search /></CustomIcon>
-          Tìm kiếm
-        </CustomButton>
-        <CustomButton :type="isThisWeek ? 'primary' : 'default'" plain @click="goToThisWeek">
-          Tuần này
-        </CustomButton>
-        <CustomButton :type="isNextWeek ? 'primary' : 'default'" plain @click="goToNextWeek">
-          Tuần sau
-        </CustomButton>
-        <span class="week-label">{{ weekLabel }}</span>
-      </div>
+      <CustomRow :gutter="12" class="toolbar dang-ky-ca-toolbar" align="middle">
+        <CustomCol :xs="24" :sm="14" :md="14" :lg="14">
+          <div class="toolbar-group toolbar-group--left">
+            <CustomInput
+              v-model="keyword"
+              class="toolbar-search-input"
+              placeholder="Tìm nhân viên..."
+              clearable
+              @clear="onSearch"
+              @keyup.enter="onSearch"
+            >
+              <template #prefix>
+                <CustomIcon><Search /></CustomIcon>
+              </template>
+            </CustomInput>
+            <CustomButton type="primary" plain @click="onSearch">
+              <CustomIcon><Search /></CustomIcon>
+              Tìm kiếm
+            </CustomButton>
+          </div>
+        </CustomCol>
+        <CustomCol :xs="24" :sm="10" :md="10" :lg="10">
+          <div class="toolbar-group toolbar-group--right">
+            <CustomButton :type="isThisWeek ? 'primary' : 'default'" plain @click="goToThisWeek">
+              Tuần này
+            </CustomButton>
+            <CustomButton :type="isNextWeek ? 'primary' : 'default'" plain @click="goToNextWeek">
+              Tuần sau
+            </CustomButton>
+          </div>
+        </CustomCol>
+      </CustomRow>
     </CustomCard>
 
     <CustomCard
@@ -232,9 +239,11 @@ import { useAuthStore } from '@/stores/auth'
 import {
   CustomButton,
   CustomCard,
+  CustomCol,
   CustomIcon,
   CustomInput,
   CustomOption,
+  CustomRow,
   CustomSelect,
   CustomTable,
   CustomTableColumn,
@@ -684,17 +693,39 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.dang-ky-ca {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+.dang-ky-ca-toolbar {
+  width: 100%;
 }
 
-.toolbar {
+.toolbar-group {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+}
+
+.toolbar-group--left {
+  justify-content: flex-start;
+}
+
+.toolbar-group--right {
+  justify-content: flex-end;
+}
+
+.toolbar-search-input {
+  flex: 1 1 220px;
+  max-width: 320px;
+  min-width: 160px;
+}
+
+@media (max-width: 767px) {
+  .toolbar-group--right {
+    justify-content: flex-start;
+  }
+
+  .toolbar-search-input {
+    max-width: none;
+  }
 }
 
 .week-label {
@@ -709,11 +740,6 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
   align-items: baseline;
   gap: 8px 16px;
-}
-
-.card-title {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
 }
 
 .card-hint {

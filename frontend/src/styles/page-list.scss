@@ -1,0 +1,62 @@
+/* Shared list-page layout (chuẩn từ TrangPhucList.vue) */
+
+.page-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.card-header-actions,
+.card-header-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.card-title {
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.toolbar {
+  row-gap: 12px;
+}
+
+.action-btns {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.no-image {
+  color: var(--el-text-color-placeholder);
+}
+
+.status-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-label {
+  font-size: 13px;
+  line-height: 1.2;
+  white-space: nowrap;
+
+  &.is-active {
+    color: var(--el-color-success);
+  }
+
+  &.is-inactive {
+    color: var(--el-text-color-secondary);
+  }
+}

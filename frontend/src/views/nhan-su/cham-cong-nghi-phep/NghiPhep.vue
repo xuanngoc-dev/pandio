@@ -1,52 +1,60 @@
 <template>
-  <div class="nghi-phep">
+  <div class="nghi-phep page-list">
     <CustomCard shadow="hover" class="filter-card">
-      <div class="toolbar">
-        <CustomInput
-          v-model="keyword"
-          placeholder="Tìm theo tên nhân viên, lý do..."
-          clearable
-          style="max-width: 280px"
-          @clear="onSearch"
-          @keyup.enter="onSearch"
-        >
-          <template #prefix>
+      <CustomRow :gutter="12" class="toolbar">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="7">
+          <CustomInput
+            v-model="keyword"
+            placeholder="Tìm theo tên nhân viên, lý do..."
+            clearable
+            style="width: 100%"
+            @clear="onSearch"
+            @keyup.enter="onSearch"
+          >
+            <template #prefix>
+              <CustomIcon><Search /></CustomIcon>
+            </template>
+          </CustomInput>
+        </CustomCol>
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="5">
+          <CustomSelect
+            v-model="loaiFilter"
+            placeholder="Loại nghỉ phép"
+            clearable
+            style="width: 100%"
+            @change="onSearch"
+          >
+            <CustomOption
+              v-for="item in LOAI_NGHI_PHEP_OPTIONS"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
+          </CustomSelect>
+        </CustomCol>
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="5">
+          <CustomSelect
+            v-model="trangThaiFilter"
+            placeholder="Trạng thái"
+            clearable
+            style="width: 100%"
+            @change="onSearch"
+          >
+            <CustomOption
+              v-for="item in TRANG_THAI_OPTIONS"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
+          </CustomSelect>
+        </CustomCol>
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="4">
+          <CustomButton type="primary" plain @click="onSearch">
             <CustomIcon><Search /></CustomIcon>
-          </template>
-        </CustomInput>
-        <CustomSelect
-          v-model="loaiFilter"
-          placeholder="Loại nghỉ phép"
-          clearable
-          style="width: 180px"
-          @change="onSearch"
-        >
-          <CustomOption
-            v-for="item in LOAI_NGHI_PHEP_OPTIONS"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
-          />
-        </CustomSelect>
-        <CustomSelect
-          v-model="trangThaiFilter"
-          placeholder="Trạng thái"
-          clearable
-          style="width: 160px"
-          @change="onSearch"
-        >
-          <CustomOption
-            v-for="item in TRANG_THAI_OPTIONS"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
-          />
-        </CustomSelect>
-        <CustomButton type="primary" plain @click="onSearch">
-          <CustomIcon><Search /></CustomIcon>
-          Tìm kiếm
-        </CustomButton>
-      </div>
+            Tìm kiếm
+          </CustomButton>
+        </CustomCol>
+      </CustomRow>
     </CustomCard>
 
     <CustomCard shadow="hover" class="table-card">
@@ -637,40 +645,3 @@ onMounted(async () => {
 })
 </script>
 
-<style scoped>
-.nghi-phep {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.card-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.card-title {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.action-btns {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-</style>

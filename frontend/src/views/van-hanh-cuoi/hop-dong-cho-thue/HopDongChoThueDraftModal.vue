@@ -318,10 +318,7 @@ defineExpose({ reload: loadItems })
 }
 
 .action-btns {
-  display: inline-flex;
-  align-items: center;
   justify-content: center;
-  gap: 4px;
 }
 
 .footer-actions {

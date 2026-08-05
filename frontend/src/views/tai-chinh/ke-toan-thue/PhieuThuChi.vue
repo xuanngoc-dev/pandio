@@ -1,63 +1,73 @@
 <template>
-  <div class="phieu-thu-chi">
+  <div class="phieu-thu-chi page-list">
     <CustomCard shadow="hover" class="filter-card">
-      <div class="toolbar">
-        <CustomInput
-          v-model="keyword"
-          placeholder="Tìm theo lý do, ghi chú..."
-          clearable
-          style="max-width: 280px"
-          @clear="onSearch"
-          @keyup.enter="onSearch"
-        >
-          <template #prefix>
+      <CustomRow :gutter="12" class="toolbar">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+          <CustomInput
+            v-model="keyword"
+            placeholder="Tìm theo lý do, ghi chú..."
+            clearable
+            style="width: 100%"
+            @clear="onSearch"
+            @keyup.enter="onSearch"
+          >
+            <template #prefix>
+              <CustomIcon><Search /></CustomIcon>
+            </template>
+          </CustomInput>
+        </CustomCol>
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="5">
+          <CustomSelect
+            v-model="filterLoai"
+            placeholder="Loại"
+            clearable
+            style="width: 100%"
+            @change="onSearch"
+          >
+            <CustomOption label="Thu" value="thu" />
+            <CustomOption label="Chi" value="chi" />
+          </CustomSelect>
+        </CustomCol>
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="5">
+          <CustomSelect
+            v-model="filterTrangThai"
+            placeholder="Trạng thái"
+            clearable
+            style="width: 100%"
+            @change="onSearch"
+          >
+            <CustomOption
+              v-for="opt in trangThaiOptions"
+              :key="opt.value"
+              :label="opt.label"
+              :value="opt.value"
+            />
+          </CustomSelect>
+        </CustomCol>
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="4">
+          <CustomSelect
+            v-model="filterHangMucId"
+            placeholder="Hạng mục"
+            clearable
+            filterable
+            style="width: 100%"
+            @change="onSearch"
+          >
+            <CustomOption
+              v-for="item in hangMucOptions"
+              :key="item.id"
+              :label="item.ten_hang_muc"
+              :value="item.id"
+            />
+          </CustomSelect>
+        </CustomCol>
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="4">
+          <CustomButton type="primary" plain @click="onSearch">
             <CustomIcon><Search /></CustomIcon>
-          </template>
-        </CustomInput>
-        <CustomSelect
-          v-model="filterLoai"
-          placeholder="Loại"
-          clearable
-          style="width: 120px"
-          @change="onSearch"
-        >
-          <CustomOption label="Thu" value="thu" />
-          <CustomOption label="Chi" value="chi" />
-        </CustomSelect>
-        <CustomSelect
-          v-model="filterTrangThai"
-          placeholder="Trạng thái"
-          clearable
-          style="width: 150px"
-          @change="onSearch"
-        >
-          <CustomOption
-            v-for="opt in trangThaiOptions"
-            :key="opt.value"
-            :label="opt.label"
-            :value="opt.value"
-          />
-        </CustomSelect>
-        <CustomSelect
-          v-model="filterHangMucId"
-          placeholder="Hạng mục"
-          clearable
-          filterable
-          style="width: 200px"
-          @change="onSearch"
-        >
-          <CustomOption
-            v-for="item in hangMucOptions"
-            :key="item.id"
-            :label="item.ten_hang_muc"
-            :value="item.id"
-          />
-        </CustomSelect>
-        <CustomButton type="primary" plain @click="onSearch">
-          <CustomIcon><Search /></CustomIcon>
-          Tìm kiếm
-        </CustomButton>
-      </div>
+            Tìm kiếm
+          </CustomButton>
+        </CustomCol>
+      </CustomRow>
     </CustomCard>
 
     <CustomCard shadow="hover" class="table-card">
@@ -861,25 +871,6 @@ onMounted(async () => {
 </script>
 
 <style scoped lang="scss">
-.phieu-thu-chi {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.card-title {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-
 .card-header-right {
   display: inline-flex;
   align-items: center;
@@ -891,18 +882,5 @@ onMounted(async () => {
 
 .btn-wrap {
   display: inline-flex;
-}
-
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
-}
-
-.action-btns {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
 }
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <div class="trang-phuc-list">
+  <div class="trang-phuc-list page-list">
     <CustomCard shadow="hover" class="filter-card">
       <CustomRow :gutter="12" class="toolbar">
         <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
@@ -996,59 +996,8 @@ onMounted(async () => {
 </script>
 
 <style scoped lang="scss">
-.trang-phuc-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.card-title {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-
-.toolbar {
-  width: 100%;
-  row-gap: 12px;
-}
-
-.action-btns {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
 .product-thumb {
   border-radius: 6px;
-}
-
-.no-image {
-  color: var(--el-text-color-placeholder);
-}
-
-.status-cell {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.status-label {
-  font-size: 13px;
-
-  &.is-active {
-    color: var(--el-color-success);
-  }
-
-  &.is-inactive {
-    color: var(--el-text-color-secondary);
-  }
 }
 
 .image-slot {

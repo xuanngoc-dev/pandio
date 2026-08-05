@@ -11,6 +11,7 @@ import 'element-plus/theme-chalk/dark/css-vars.css'
 import App from './App.vue'
 import router from './router'
 import './styles/index.scss'
+import './styles/page-list.scss'
 
 // Calendar / date picker: tuần bắt đầu từ Thứ 2 (locale vi)
 dayjs.locale('vi')

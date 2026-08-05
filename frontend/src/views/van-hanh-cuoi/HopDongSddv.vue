@@ -1,53 +1,61 @@
 <template>
-  <div class="hop-dong-sddv">
+  <div class="hop-dong-sddv page-list">
     <CustomCard shadow="hover" class="filter-card">
-      <div class="toolbar">
-        <CustomInput
-          v-model="keyword"
-          placeholder="Tìm theo mã HĐ, thông tin khách hàng..."
-          clearable
-          style="max-width: 360px"
-          @clear="onSearch"
-          @keyup.enter="onSearch"
-        >
-          <template #prefix>
+      <CustomRow :gutter="12" class="toolbar">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="7">
+          <CustomInput
+            v-model="keyword"
+            placeholder="Tìm theo mã HĐ, thông tin khách hàng..."
+            clearable
+            style="width: 100%"
+            @clear="onSearch"
+            @keyup.enter="onSearch"
+          >
+            <template #prefix>
+              <CustomIcon><Search /></CustomIcon>
+            </template>
+          </CustomInput>
+        </CustomCol>
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="5">
+          <CustomSelect
+            v-model="filterLoaiHopDongId"
+            placeholder="Loại hợp đồng"
+            clearable
+            filterable
+            style="width: 100%"
+            @change="onSearch"
+          >
+            <CustomOption
+              v-for="item in loaiHopDongOptions"
+              :key="item.id"
+              :label="item.ten_hop_dong"
+              :value="item.id"
+            />
+          </CustomSelect>
+        </CustomCol>
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="5">
+          <CustomSelect
+            v-model="filterTrangThai"
+            placeholder="Trạng thái"
+            clearable
+            style="width: 100%"
+            @change="onSearch"
+          >
+            <CustomOption
+              v-for="opt in trangThaiOptions"
+              :key="opt.value"
+              :label="opt.label"
+              :value="opt.value"
+            />
+          </CustomSelect>
+        </CustomCol>
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="4">
+          <CustomButton type="primary" plain @click="onSearch">
             <CustomIcon><Search /></CustomIcon>
-          </template>
-        </CustomInput>
-        <CustomSelect
-          v-model="filterLoaiHopDongId"
-          placeholder="Loại hợp đồng"
-          clearable
-          filterable
-          style="width: 240px"
-          @change="onSearch"
-        >
-          <CustomOption
-            v-for="item in loaiHopDongOptions"
-            :key="item.id"
-            :label="item.ten_hop_dong"
-            :value="item.id"
-          />
-        </CustomSelect>
-        <CustomSelect
-          v-model="filterTrangThai"
-          placeholder="Trạng thái"
-          clearable
-          style="width: 180px"
-          @change="onSearch"
-        >
-          <CustomOption
-            v-for="opt in trangThaiOptions"
-            :key="opt.value"
-            :label="opt.label"
-            :value="opt.value"
-          />
-        </CustomSelect>
-        <CustomButton type="primary" plain @click="onSearch">
-          <CustomIcon><Search /></CustomIcon>
-          Tìm kiếm
-        </CustomButton>
-      </div>
+            Tìm kiếm
+          </CustomButton>
+        </CustomCol>
+      </CustomRow>
     </CustomCard>
 
     <CustomCard shadow="hover" class="table-card">
@@ -231,9 +239,11 @@ import { useTableColumns } from '@/composables/useTableColumns'
 import {
   CustomButton,
   CustomCard,
+  CustomCol,
   CustomIcon,
   CustomInput,
   CustomOption,
+  CustomRow,
   CustomSelect,
   CustomTable,
   CustomTableColumn,
@@ -489,38 +499,8 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-.hop-dong-sddv {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.card-title {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
 .sub-text {
   font-size: 12px;
   color: var(--el-text-color-secondary);
-}
-
-.action-btns {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
 }
 </style>

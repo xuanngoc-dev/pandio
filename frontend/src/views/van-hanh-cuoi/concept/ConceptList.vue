@@ -1,49 +1,57 @@
 <template>
-  <div class="concept-list">
+  <div class="concept-list page-list">
     <CustomCard shadow="hover" class="filter-card">
-      <div class="toolbar">
-        <CustomInput
-          v-model="keyword"
-          placeholder="Tìm theo mã, tên, địa điểm..."
-          clearable
-          style="max-width: 300px"
-          @clear="onSearch"
-          @keyup.enter="onSearch"
-        >
-          <template #prefix>
+      <CustomRow :gutter="12" class="toolbar">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="7">
+          <CustomInput
+            v-model="keyword"
+            placeholder="Tìm theo mã, tên, địa điểm..."
+            clearable
+            style="width: 100%"
+            @clear="onSearch"
+            @keyup.enter="onSearch"
+          >
+            <template #prefix>
+              <CustomIcon><Search /></CustomIcon>
+            </template>
+          </CustomInput>
+        </CustomCol>
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="5">
+          <CustomSelect
+            v-model="loaiFilter"
+            placeholder="Loại concept"
+            clearable
+            filterable
+            style="width: 100%"
+            @change="onSearch"
+          >
+            <CustomOption
+              v-for="item in danhMucOptions"
+              :key="item.id"
+              :label="item.ten_danh_muc"
+              :value="item.id"
+            />
+          </CustomSelect>
+        </CustomCol>
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="5">
+          <CustomSelect
+            v-model="trangThaiFilter"
+            placeholder="Trạng thái"
+            clearable
+            style="width: 100%"
+            @change="onSearch"
+          >
+            <CustomOption label="Đang sử dụng" value="dang_su_dung" />
+            <CustomOption label="Ngừng sử dụng" value="ngung_su_dung" />
+          </CustomSelect>
+        </CustomCol>
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="4">
+          <CustomButton type="primary" plain @click="onSearch">
             <CustomIcon><Search /></CustomIcon>
-          </template>
-        </CustomInput>
-        <CustomSelect
-          v-model="loaiFilter"
-          placeholder="Loại concept"
-          clearable
-          filterable
-          style="width: 220px"
-          @change="onSearch"
-        >
-          <CustomOption
-            v-for="item in danhMucOptions"
-            :key="item.id"
-            :label="item.ten_danh_muc"
-            :value="item.id"
-          />
-        </CustomSelect>
-        <CustomSelect
-          v-model="trangThaiFilter"
-          placeholder="Trạng thái"
-          clearable
-          style="width: 180px"
-          @change="onSearch"
-        >
-          <CustomOption label="Đang sử dụng" value="dang_su_dung" />
-          <CustomOption label="Ngừng sử dụng" value="ngung_su_dung" />
-        </CustomSelect>
-        <CustomButton type="primary" plain @click="onSearch">
-          <CustomIcon><Search /></CustomIcon>
-          Tìm kiếm
-        </CustomButton>
-      </div>
+            Tìm kiếm
+          </CustomButton>
+        </CustomCol>
+      </CustomRow>
     </CustomCard>
 
     <CustomCard shadow="hover" class="table-card">
@@ -666,61 +674,8 @@ onMounted(async () => {
 </script>
 
 <style scoped lang="scss">
-.concept-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.card-title {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.action-btns {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
 .concept-thumb {
   border-radius: 6px;
-}
-
-.no-image {
-  color: var(--el-text-color-placeholder);
-}
-
-.status-cell {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.status-label {
-  font-size: 13px;
-
-  &.is-active {
-    color: var(--el-color-success);
-  }
-
-  &.is-inactive {
-    color: var(--el-text-color-secondary);
-  }
 }
 
 .image-slot {
