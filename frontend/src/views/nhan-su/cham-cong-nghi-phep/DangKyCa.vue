@@ -28,15 +28,29 @@
       </div>
     </CustomCard>
 
-    <CustomCard shadow="hover" class="summary-card">
+    <CustomCard
+      shadow="hover"
+      class="summary-card"
+      :class="{ 'summary-card--collapsed': !summaryExpanded }"
+    >
       <template #header>
-        <div class="summary-card-header">
-          <span class="card-title">Đăng ký ca làm theo tuần</span>
-          <span class="employee-badge">{{ activeEmployeeTotal }} nhân viên</span>
-        </div>
+        <button
+          type="button"
+          class="summary-card-header"
+          :aria-expanded="summaryExpanded"
+          @click="summaryExpanded = !summaryExpanded"
+        >
+          <div class="summary-card-header__left">
+            <span class="card-title">Đăng ký ca làm theo tuần</span>
+            <span class="employee-badge">{{ activeEmployeeTotal }} nhân viên</span>
+          </div>
+          <CustomIcon class="summary-card-arrow" :class="{ 'is-expanded': summaryExpanded }">
+            <ArrowDown />
+          </CustomIcon>
+        </button>
       </template>
 
-      <div class="overview-row">
+      <div v-show="summaryExpanded" class="overview-row">
         <div class="overview-tile overview-tile--week">
           <div class="overview-tile__head">
             <span class="overview-tile__title">{{ weekShortLabel }}</span>
@@ -210,7 +224,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Search } from '@element-plus/icons-vue'
+import { ArrowDown, Search } from '@element-plus/icons-vue'
 import { fetchUsers } from '@/api/users'
 import { fetchCaLamViec } from '@/api/caLamViec'
 import { createDangKyCa, deleteDangKyCa, fetchDangKyCa, syncDangKyCaTuan } from '@/api/dangKyCa'
@@ -252,6 +266,8 @@ const perPage = ref(10)
 const total = ref(0)
 /** Tổng NV đang hoạt động — dùng cho tổng quan (không phụ thuộc keyword) */
 const activeEmployeeTotal = ref(0)
+/** Card tổng quan tuần — mặc định mở, click header để ẩn/hiện */
+const summaryExpanded = ref(true)
 /** @type {import('vue').Ref<Record<string, boolean>>} */
 const savingKeys = ref({})
 /** @type {import('vue').Ref<Record<number|string, boolean>>} */
@@ -712,6 +728,35 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   gap: 8px 12px;
   width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.summary-card-header__left {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-width: 0;
+}
+
+.summary-card-arrow {
+  flex-shrink: 0;
+  color: var(--el-text-color-secondary);
+  transition: transform 0.2s ease;
+  transform: rotate(-90deg);
+}
+
+.summary-card-arrow.is-expanded {
+  transform: rotate(0deg);
+}
+
+.summary-card--collapsed :deep(.el-card__body) {
+  padding: 0;
+  border: 0;
 }
 
 .employee-badge {

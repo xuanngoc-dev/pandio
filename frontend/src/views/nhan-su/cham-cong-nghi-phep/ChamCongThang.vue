@@ -5,7 +5,7 @@
         <div class="card-header">
           <span class="card-title">Chấm công tháng</span>
           <div class="card-header-actions">
-            <el-date-picker
+            <CustomDatePicker
               v-model="selectedMonth"
               type="month"
               placeholder="Chọn tháng"
@@ -273,6 +273,7 @@ import Pagination from '@/components/Pagination.vue'
 import {
   CustomButton,
   CustomCard,
+  CustomDatePicker,
   CustomIcon,
   CustomInput,
   CustomTable,
