@@ -141,46 +141,53 @@
             <template v-for="cell in [getDayCell(row, day.date)]" :key="day.date">
               <div class="day-cell">
                 <CustomTooltip
-                  v-if="cell?.type === 'leave'"
-                  :content="cellTooltip(cell)"
+                  v-if="cell?.leave"
+                  :content="leaveTooltip(cell.leave)"
                   placement="top"
                 >
                   <span
                     class="cell-mark cell-mark--corner"
-                    :class="leaveMarkClass(cell)"
+                    :class="leaveMarkClass(cell.leave)"
                   />
                 </CustomTooltip>
 
                 <CustomTooltip
-                  :content="cellTooltip(cell)"
-                  :disabled="!cellTooltip(cell) || cell?.type === 'leave'"
+                  :content="attendanceTooltip(cell?.attendance)"
+                  :disabled="!attendanceTooltip(cell?.attendance)"
                   placement="top"
                 >
                   <div class="day-cell__body">
-                    <template v-if="cell?.type === 'attendance'">
+                    <template v-if="cell?.attendance">
                       <div class="time-row">
-                        <span class="time-line" :class="checkinClass(cell.record)">
-                          {{ formatTime(cell.record.gio_vao) }}
+                        <span class="time-line" :class="checkinClass(cell.attendance)">
+                          {{ formatTime(cell.attendance.gio_vao) }}
                         </span>
                         <span class="time-row__sep">-</span>
-                        <span class="time-line" :class="checkoutClass(cell.record)">
-                          {{ formatTime(cell.record.gio_ra) }}
+                        <span class="time-line" :class="checkoutClass(cell.attendance)">
+                          {{ formatTime(cell.attendance.gio_ra) }}
                         </span>
                       </div>
-                      <span
-                        v-if="penaltyAmount(cell.record.tien_phat_di_muon)"
-                        class="penalty-line penalty-line--muon"
-                      >
-                        {{ formatMoneyK(cell.record.tien_phat_di_muon) }}
-                      </span>
-                      <span
-                        v-if="penaltyAmount(cell.record.tien_phat_ve_som)"
-                        class="penalty-line penalty-line--som"
-                      >
-                        {{ formatMoneyK(cell.record.tien_phat_ve_som) }}
-                      </span>
                     </template>
                   </div>
+                </CustomTooltip>
+
+                <CustomTooltip
+                  v-if="penaltyAmount(cell?.attendance?.tien_phat_di_muon)"
+                  :content="penaltyLateTooltip(cell.attendance)"
+                  placement="top"
+                >
+                  <span class="penalty-line penalty-line--muon penalty-line--corner-bl">
+                    {{ formatMoneyK(cell.attendance.tien_phat_di_muon) }}
+                  </span>
+                </CustomTooltip>
+                <CustomTooltip
+                  v-if="penaltyAmount(cell?.attendance?.tien_phat_ve_som)"
+                  :content="penaltyEarlyTooltip(cell.attendance)"
+                  placement="top"
+                >
+                  <span class="penalty-line penalty-line--som penalty-line--corner-br">
+                    {{ formatMoneyK(cell.attendance.tien_phat_ve_som) }}
+                  </span>
                 </CustomTooltip>
 
                 <CustomTooltip
@@ -387,7 +394,7 @@ function canProxyCheckin(day, cell) {
   // Chỉ từ đầu tháng → hôm nay
   if (day.date > todayKey.value) return false
   // Chưa có checkin
-  if (cell?.type === 'attendance' && cell.record?.gio_vao) return false
+  if (cell?.attendance?.gio_vao) return false
   return true
 }
 
@@ -447,13 +454,35 @@ function formatMoneyFull(value) {
   return `${num.toLocaleString('vi-VN')} ₫`
 }
 
+function penaltyLateTooltip(record) {
+  const amount = penaltyAmount(record?.tien_phat_di_muon)
+  if (!amount) return ''
+  const parts = ['Phạt đi muộn']
+  if (record?.thoi_gian_di_muon) {
+    parts.push(`${record.thoi_gian_di_muon} phút`)
+  }
+  parts.push(formatMoneyFull(amount))
+  return parts.join(' · ')
+}
+
+function penaltyEarlyTooltip(record) {
+  const amount = penaltyAmount(record?.tien_phat_ve_som)
+  if (!amount) return ''
+  const parts = ['Phạt về sớm']
+  if (record?.thoi_gian_ve_som) {
+    parts.push(`${record.thoi_gian_ve_som} phút`)
+  }
+  parts.push(formatMoneyFull(amount))
+  return parts.join(' · ')
+}
+
 function getDayCell(row, dateKey) {
   return row.days?.[dateKey] || null
 }
 
-function leaveMarkClass(cell) {
-  if (!cell || cell.type !== 'leave') return ''
-  return cell.trang_thai === 'da_duyet'
+function leaveMarkClass(leave) {
+  if (!leave) return ''
+  return leave.trang_thai === 'da_duyet'
     ? 'cell-mark--leave-approved'
     : 'cell-mark--leave-pending'
 }
@@ -473,22 +502,20 @@ function checkoutClass(record) {
   return 'time-line--ok'
 }
 
-function cellTooltip(cell) {
-  if (!cell) return ''
-  if (cell.type === 'leave') {
-    const leave = cell.record
-    const parts = [
-      leave.trang_thai === 'da_duyet' ? 'Nghỉ phép · Đã duyệt' : 'Nghỉ phép · Chờ duyệt',
-      LOAI_NGHI_LABELS[leave.loai_nghi_phep] || leave.loai_nghi_phep,
-    ]
-    if (leave.buoi_nghi) {
-      parts.push(BUOI_NGHI_LABELS[leave.buoi_nghi] || leave.buoi_nghi)
-    }
-    if (leave.ly_do) parts.push(leave.ly_do)
-    return parts.join(' · ')
+function leaveTooltip(leave) {
+  if (!leave) return ''
+  const parts = [
+    leave.trang_thai === 'da_duyet' ? 'Nghỉ phép · Đã duyệt' : 'Nghỉ phép · Chờ duyệt',
+    LOAI_NGHI_LABELS[leave.loai_nghi_phep] || leave.loai_nghi_phep,
+  ]
+  if (leave.buoi_nghi) {
+    parts.push(BUOI_NGHI_LABELS[leave.buoi_nghi] || leave.buoi_nghi)
   }
+  if (leave.ly_do) parts.push(leave.ly_do)
+  return parts.join(' · ')
+}
 
-  const record = cell.record
+function attendanceTooltip(record) {
   if (!record) return ''
   const parts = []
   if (record.di_muon === 'co') {
@@ -517,19 +544,19 @@ function cellTooltip(cell) {
 
 function sumAttendanceHours(days, field) {
   return Object.values(days || {}).reduce((sum, cell) => {
-    if (cell?.type !== 'attendance') return sum
-    const val = Number(cell.record?.[field])
+    const val = Number(cell?.attendance?.[field])
     return sum + (Number.isFinite(val) ? val : 0)
   }, 0)
 }
 
 function sumPenalties(days) {
   return Object.values(days || {}).reduce((sum, cell) => {
-    if (cell?.type !== 'attendance') return sum
+    const record = cell?.attendance
+    if (!record) return sum
     return (
       sum
-      + penaltyAmount(cell.record?.tien_phat_di_muon)
-      + penaltyAmount(cell.record?.tien_phat_ve_som)
+      + penaltyAmount(record.tien_phat_di_muon)
+      + penaltyAmount(record.tien_phat_ve_som)
     )
   }, 0)
 }
@@ -641,14 +668,12 @@ function buildDayCells(userId, attendanceMap, leaveMap) {
   const dateKeys = new Set([...Object.keys(attendance), ...Object.keys(leave)])
 
   for (const dateKey of dateKeys) {
-    const leaveRecord = leave[dateKey]
-    if (leaveRecord) {
-      days[dateKey] = { type: 'leave', trang_thai: leaveRecord.trang_thai, record: leaveRecord }
-      continue
-    }
-    const attendanceRecord = attendance[dateKey]
-    if (attendanceRecord) {
-      days[dateKey] = { type: 'attendance', record: attendanceRecord }
+    const leaveRecord = leave[dateKey] || null
+    const attendanceRecord = attendance[dateKey] || null
+    if (!leaveRecord && !attendanceRecord) continue
+    days[dateKey] = {
+      leave: leaveRecord,
+      attendance: attendanceRecord,
     }
   }
 
@@ -862,7 +887,8 @@ onMounted(loadData)
   align-items: center;
   justify-content: center;
   gap: 2px;
-  min-height: 36px;
+  min-height: 42px;
+  padding: 2px 0 10px;
   line-height: 1.2;
 }
 
@@ -934,7 +960,7 @@ onMounted(loadData)
 .cell-mark--corner {
   position: absolute;
   top: 1px;
-  right: 2px;
+  right: 0px;
   z-index: 1;
   width: 8px;
   height: 8px;
@@ -964,11 +990,27 @@ onMounted(loadData)
 }
 
 .penalty-line {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  line-height: 1.2;
+  line-height: 1;
   white-space: nowrap;
+}
+
+.penalty-line--corner-bl,
+.penalty-line--corner-br {
+  position: absolute;
+  bottom: 0;
+  z-index: 1;
+  cursor: default;
+}
+
+.penalty-line--corner-bl {
+  left: 2px;
+}
+
+.penalty-line--corner-br {
+  right: 2px;
 }
 
 .penalty-line--muon {
