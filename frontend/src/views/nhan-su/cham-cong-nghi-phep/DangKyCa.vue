@@ -214,6 +214,7 @@ import { Search } from '@element-plus/icons-vue'
 import { fetchUsers } from '@/api/users'
 import { fetchCaLamViec } from '@/api/caLamViec'
 import { createDangKyCa, deleteDangKyCa, fetchDangKyCa, syncDangKyCaTuan } from '@/api/dangKyCa'
+import { useAuthStore } from '@/stores/auth'
 import {
   CustomButton,
   CustomCard,
@@ -225,6 +226,9 @@ import {
   CustomTableColumn,
 } from '@/components/element'
 import Pagination from '@/components/Pagination.vue'
+
+const authStore = useAuthStore()
+const isAdmin = computed(() => authStore.user?.role === 'admin')
 
 const DAY_LABELS = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật']
 const DAY_SHORT_LABELS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
@@ -288,9 +292,13 @@ function todayKey() {
   return toDateKey(new Date())
 }
 
-/** Chỉ cho phép chọn từ ngày mai trở đi */
+/**
+ * Khoá ngày quá khứ.
+ * Admin được đăng ký từ hôm nay; role khác chỉ từ ngày mai trở đi.
+ */
 function isDateLocked(dateKey) {
-  return dateKey <= todayKey()
+  const today = todayKey()
+  return isAdmin.value ? dateKey < today : dateKey <= today
 }
 
 const weekDays = computed(() => {
@@ -305,7 +313,7 @@ const weekDays = computed(() => {
       displayDate: `${pad(date.getDate())}/${pad(date.getMonth() + 1)}`,
       shortDate: `${date.getDate()}/${date.getMonth() + 1}`,
       isToday: dateKey === today,
-      isLocked: dateKey <= today,
+      isLocked: isDateLocked(dateKey),
       isWeekend: index >= 5,
     }
   })
@@ -527,7 +535,11 @@ function applyScheduleItems(items) {
 
 async function onCaChange(user, dateKey, caLamId) {
   if (isDateLocked(dateKey)) {
-    ElMessage.warning('Chỉ được đăng ký ca từ ngày mai trở đi.')
+    ElMessage.warning(
+      isAdmin.value
+        ? 'Không được đăng ký ca cho ngày trong quá khứ.'
+        : 'Chỉ được đăng ký ca từ ngày mai trở đi.',
+    )
     return
   }
 
@@ -608,7 +620,9 @@ async function onWeekCaChange(user, caLamId) {
     ElMessage.success(
       caLamId == null
         ? 'Đã xóa ca đăng ký các ngày còn lại trong tuần.'
-        : 'Đã áp dụng ca cho cả tuần (từ ngày mai trở đi).',
+        : isAdmin.value
+          ? 'Đã áp dụng ca cho cả tuần (từ hôm nay trở đi).'
+          : 'Đã áp dụng ca cho cả tuần (từ ngày mai trở đi).',
     )
   } catch {
     // Lỗi đã được axios interceptor xử lý

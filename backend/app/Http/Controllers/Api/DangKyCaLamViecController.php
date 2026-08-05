@@ -3,13 +3,17 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\DangKyCaLamViec;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class DangKyCaLamViecController extends BaseApiController
 {
+    private const TIMEZONE = 'Asia/Ho_Chi_Minh';
+
     /**
      * Danh sách đăng ký ca — lọc theo khoảng ngày / nhân viên.
      *
@@ -81,6 +85,8 @@ class DangKyCaLamViecController extends BaseApiController
                 'ngay_lam' => ['required', 'date'],
             ]);
 
+            $this->assertNgayLamEditable($request, $validated['ngay_lam']);
+
             $item = DangKyCaLamViec::updateOrCreate(
                 [
                     'nguoi_dung_id' => $validated['nguoi_dung_id'],
@@ -109,6 +115,9 @@ class DangKyCaLamViecController extends BaseApiController
         return $this->handleApi(function () use ($request, $dang_ky_ca_lam_viec) {
             $validated = $this->validatePayload($request, $dang_ky_ca_lam_viec->id);
 
+            $this->assertNgayLamEditable($request, $validated['ngay_lam']);
+            $this->assertNgayLamEditable($request, $dang_ky_ca_lam_viec->ngay_lam);
+
             $dang_ky_ca_lam_viec->update($validated);
 
             return response()->json($dang_ky_ca_lam_viec->fresh([
@@ -131,13 +140,30 @@ class DangKyCaLamViecController extends BaseApiController
                 'den_ngay' => ['required', 'date', 'after_or_equal:tu_ngay'],
                 'items' => ['required', 'array'],
                 'items.*.nguoi_dung_id' => ['required', 'integer', 'exists:users,id'],
-                'items.*.ngay_lam' => ['required', 'date', 'after_or_equal:tu_ngay', 'before_or_equal:den_ngay'],
+                'items.*.ngay_lam' => [
+                    'required',
+                    'date',
+                    'after_or_equal:tu_ngay',
+                    'before_or_equal:den_ngay',
+                ],
                 'items.*.ca_lam_id' => [
                     'nullable',
                     'integer',
                     Rule::exists('cau_hinh_ca_lam_viec', 'id')->where('trang_thai', 'co'),
                 ],
             ]);
+
+            foreach ($validated['items'] as $index => $item) {
+                try {
+                    $this->assertNgayLamEditable($request, $item['ngay_lam']);
+                } catch (ValidationException $e) {
+                    throw ValidationException::withMessages([
+                        "items.{$index}.ngay_lam" => $e->errors()['ngay_lam'] ?? [
+                            $this->ngayLamErrorMessage($request),
+                        ],
+                    ]);
+                }
+            }
 
             $result = DB::transaction(function () use ($validated) {
                 $saved = [];
@@ -189,9 +215,11 @@ class DangKyCaLamViecController extends BaseApiController
     /**
      * Xóa đăng ký ca.
      */
-    public function destroy(DangKyCaLamViec $dang_ky_ca_lam_viec): JsonResponse
+    public function destroy(Request $request, DangKyCaLamViec $dang_ky_ca_lam_viec): JsonResponse
     {
-        return $this->handleApi(function () use ($dang_ky_ca_lam_viec) {
+        return $this->handleApi(function () use ($request, $dang_ky_ca_lam_viec) {
+            $this->assertNgayLamEditable($request, $dang_ky_ca_lam_viec->ngay_lam);
+
             $dang_ky_ca_lam_viec->delete();
 
             return response()->json(['message' => 'Đã xóa đăng ký ca.']);
@@ -220,5 +248,45 @@ class DangKyCaLamViecController extends BaseApiController
             ],
             'ngay_lam' => ['required', 'date'],
         ]);
+    }
+
+    private function isAdmin(Request $request): bool
+    {
+        return ($request->user()?->role ?? null) === 'admin';
+    }
+
+    private function todayDate(): Carbon
+    {
+        return Carbon::now(self::TIMEZONE)->startOfDay();
+    }
+
+    /**
+     * Ngày sớm nhất được phép đăng ký/sửa/xóa ca.
+     * Admin: hôm nay; role khác: ngày mai.
+     */
+    private function minEditableDate(Request $request): Carbon
+    {
+        $today = $this->todayDate();
+
+        return $this->isAdmin($request) ? $today : $today->copy()->addDay();
+    }
+
+    private function ngayLamErrorMessage(Request $request): string
+    {
+        return $this->isAdmin($request)
+            ? 'Không được đăng ký ca cho ngày trong quá khứ.'
+            : 'Chỉ được đăng ký ca từ ngày mai trở đi.';
+    }
+
+    private function assertNgayLamEditable(Request $request, mixed $ngayLam): void
+    {
+        $date = Carbon::parse($ngayLam, self::TIMEZONE)->startOfDay();
+        $minDate = $this->minEditableDate($request);
+
+        if ($date->lt($minDate)) {
+            throw ValidationException::withMessages([
+                'ngay_lam' => [$this->ngayLamErrorMessage($request)],
+            ]);
+        }
     }
 }
