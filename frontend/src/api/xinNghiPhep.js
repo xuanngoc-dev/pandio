@@ -60,6 +60,22 @@ export function tuChoiXinNghiPhep(id) {
 }
 
 /**
+ * Duyệt nhiều đơn nghỉ phép.
+ * @param {number[]} ids
+ */
+export function bulkDuyetXinNghiPhep(ids) {
+  return api.post('/xin-nghi-phep/bulk-duyet', { ids })
+}
+
+/**
+ * Từ chối nhiều đơn nghỉ phép.
+ * @param {number[]} ids
+ */
+export function bulkTuChoiXinNghiPhep(ids) {
+  return api.post('/xin-nghi-phep/bulk-tu-choi', { ids })
+}
+
+/**
  * Xóa đơn xin nghỉ phép.
  * @param {number|string} id
  */

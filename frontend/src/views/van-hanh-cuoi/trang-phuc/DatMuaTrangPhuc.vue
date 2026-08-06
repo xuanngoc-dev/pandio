@@ -17,6 +17,22 @@
           </CustomInput>
         </CustomCol>
         <CustomCol :xs="12" :sm="12" :md="6" :lg="4">
+          <CustomSelect
+            v-model="trangThaiFilter"
+            placeholder="Trạng thái"
+            clearable
+            style="width: 100%"
+            @change="onSearch"
+          >
+            <CustomOption
+              v-for="opt in trangThaiOptions"
+              :key="opt.value"
+              :label="opt.label"
+              :value="opt.value"
+            />
+          </CustomSelect>
+        </CustomCol>
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="4">
           <CustomButton type="primary" plain @click="onSearch">
             <CustomIcon><Search /></CustomIcon>
             Tìm kiếm
@@ -110,6 +126,18 @@
         >
           <template #default="{ row }">
             {{ formatMoney(row.du_no) }}
+          </template>
+        </CustomTableColumn>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('trang_thai')"
+          label="Trạng thái"
+          width="130"
+          align="center"
+        >
+          <template #default="{ row }">
+            <el-tag :type="trangThaiTagType(row.trang_thai)" size="small">
+              {{ trangThaiLabel(row.trang_thai) }}
+            </el-tag>
           </template>
         </CustomTableColumn>
         <CustomTableColumn label="Thao tác" width="100" fixed="right" align="center">
@@ -339,6 +367,12 @@ const nguonHangHoaOptions = [
   { value: 'nhap_khau', label: 'Nhập khẩu' },
 ]
 
+const trangThaiOptions = [
+  { value: 'cho_duyet', label: 'Chờ duyệt' },
+  { value: 'da_duyet', label: 'Đã duyệt' },
+  { value: 'huy_duyet', label: 'Hủy duyệt' },
+]
+
 const tableColumns = [
   { key: 'nha_cung_cap', label: 'Nhà cung cấp' },
   { key: 'loai_don_hang', label: 'Loại đơn hàng' },
@@ -346,6 +380,7 @@ const tableColumns = [
   { key: 'ngay_dat', label: 'Ngày đặt' },
   { key: 'tong_tien_hang', label: 'Tổng tiền hàng' },
   { key: 'du_no', label: 'Dư nợ' },
+  { key: 'trang_thai', label: 'Trạng thái' },
 ]
 const columnSettings = useTableColumns('van-hanh-cuoi.dat-mua-trang-phuc', tableColumns)
 
@@ -356,6 +391,7 @@ const page = ref(1)
 const perPage = ref(10)
 const total = ref(0)
 const keyword = ref('')
+const trangThaiFilter = ref('')
 const nhaCungCapOptions = ref([])
 
 const dialogVisible = ref(false)
@@ -429,6 +465,16 @@ function nguonHangHoaLabel(value) {
   return nguonHangHoaOptions.find((opt) => opt.value === value)?.label || value || '—'
 }
 
+function trangThaiLabel(value) {
+  return trangThaiOptions.find((opt) => opt.value === value)?.label || value || '—'
+}
+
+function trangThaiTagType(value) {
+  if (value === 'da_duyet') return 'success'
+  if (value === 'huy_duyet') return 'danger'
+  return 'warning'
+}
+
 function formatMoney(value) {
   if (value == null || value === '') return '—'
   const num = Number(value)
@@ -474,6 +520,7 @@ async function loadItems() {
       page: page.value,
       per_page: perPage.value,
       keyword: keyword.value.trim() || undefined,
+      trang_thai: trangThaiFilter.value || undefined,
     })
     items.value = data.data || []
     total.value = data.total || 0

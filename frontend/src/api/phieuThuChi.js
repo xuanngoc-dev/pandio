@@ -3,9 +3,10 @@ import api from '@/api/axios'
 /**
  * Danh sách phiếu thu chi.
  * @param {{ page?: number, per_page?: number, keyword?: string, loai?: string, trang_thai?: string, hang_muc_id?: number }} params
+ * @param {{ skipLoading?: boolean }} [config]
  */
-export function fetchPhieuThuChi(params = {}) {
-  return api.get('/phieu-thu-chi', { params })
+export function fetchPhieuThuChi(params = {}, config = {}) {
+  return api.get('/phieu-thu-chi', { params, ...config })
 }
 
 /**

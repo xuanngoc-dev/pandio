@@ -177,11 +177,11 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Edit, Plus, Search } from '@element-plus/icons-vue'
 import {
-  createHangMucLoaiThuChu,
-  deleteHangMucLoaiThuChu,
-  fetchHangMucLoaiThuChu,
-  updateHangMucLoaiThuChu,
-} from '@/api/hangMucLoaiThuChu'
+  createHangMucLoaiThuChi,
+  deleteHangMucLoaiThuChi,
+  fetchHangMucLoaiThuChi,
+  updateHangMucLoaiThuChi,
+} from '@/api/hangMucLoaiThuChi'
 import BulkActionBar from '@/components/BulkActionBar.vue'
 import TableColumnConfig from '@/components/TableColumnConfig.vue'
 import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
@@ -294,7 +294,7 @@ async function loadItems() {
   loading.value = true
   clearSelection()
   try {
-    const { data } = await fetchHangMucLoaiThuChu({
+    const { data } = await fetchHangMucLoaiThuChi({
       page: page.value,
       per_page: perPage.value,
       keyword: keyword.value.trim() || undefined,
@@ -345,10 +345,10 @@ async function save() {
 
   try {
     if (editingId.value) {
-      await updateHangMucLoaiThuChu(editingId.value, payload)
+      await updateHangMucLoaiThuChi(editingId.value, payload)
       ElMessage.success('Đã cập nhật hạng mục thu chi.')
     } else {
-      await createHangMucLoaiThuChu(payload)
+      await createHangMucLoaiThuChi(payload)
       ElMessage.success('Đã thêm hạng mục thu chi.')
     }
     dialogVisible.value = false
@@ -367,7 +367,7 @@ async function toggleStatus(row) {
   togglingId.value = row.id
 
   try {
-    await updateHangMucLoaiThuChu(row.id, {
+    await updateHangMucLoaiThuChi(row.id, {
       ten_hang_muc: row.ten_hang_muc,
       ghi_chu: row.ghi_chu || null,
       trang_thai: next,
@@ -406,7 +406,7 @@ async function bulkSetStatus(target) {
     const rows = items.value.filter((item) => ids.includes(item.id))
     await runBulk(ids, async (id) => {
       const row = rows.find((item) => item.id === id)
-      await updateHangMucLoaiThuChu(id, {
+      await updateHangMucLoaiThuChi(id, {
         ten_hang_muc: row?.ten_hang_muc,
         ghi_chu: row?.ghi_chu || null,
         trang_thai: target,
@@ -433,7 +433,7 @@ async function bulkRemove() {
 
   bulkDeleting.value = true
   try {
-    await runBulk(ids, (id) => deleteHangMucLoaiThuChu(id))
+    await runBulk(ids, (id) => deleteHangMucLoaiThuChi(id))
     ElMessage.success(`Đã xóa ${ids.length} hạng mục.`)
     await loadItems()
   } catch {
@@ -451,7 +451,7 @@ async function remove(row) {
   })
 
   try {
-    await deleteHangMucLoaiThuChu(row.id)
+    await deleteHangMucLoaiThuChi(row.id)
     ElMessage.success('Đã xóa hạng mục thu chi.')
     await loadItems()
   } catch {

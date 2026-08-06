@@ -428,7 +428,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Edit, Plus, Search, CircleCheck, CircleClose } from '@element-plus/icons-vue'
-import { fetchHangMucLoaiThuChu } from '@/api/hangMucLoaiThuChu'
+import { fetchHangMucLoaiThuChi } from '@/api/hangMucLoaiThuChi'
 import {
   bulkDeletePhieuThuChi,
   bulkUpdateStatusPhieuThuChi,
@@ -697,7 +697,7 @@ function ensureHangMucInOptions(hangMuc) {
 
 async function loadHangMucOptions() {
   try {
-    const { data } = await fetchHangMucLoaiThuChu({ per_page: 100, trang_thai: 'hoat_dong' })
+    const { data } = await fetchHangMucLoaiThuChi({ per_page: 100, trang_thai: 'hoat_dong' })
     hangMucOptions.value = data.data || []
   } catch {
     hangMucOptions.value = []
