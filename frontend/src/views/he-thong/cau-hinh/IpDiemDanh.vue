@@ -101,12 +101,12 @@
             <template #default="{ row }">
               <div class="status-cell">
                 <el-switch
-                  v-model="row.trang_thai"
+                  :model-value="row.trang_thai"
                   active-value="active"
                   inactive-value="inactive"
                   :loading="togglingId === row.id"
                   :disabled="togglingId === row.id"
-                  @change="(val) => toggleStatus(row, val)"
+                  :before-change="() => toggleStatus(row)"
                 />
                 <span
                   class="status-label"
@@ -308,10 +308,12 @@ const rules = {
   trang_thai: [{ required: true, message: 'Vui lòng chọn trạng thái', trigger: 'change' }],
 }
 
-async function toggleStatus(row, value) {
-  const previous = value === 'active' ? 'inactive' : 'active'
-  togglingId.value = row.id
+async function toggleStatus(row) {
+  if (!row?.id) return false
 
+  const value = row.trang_thai === ACTIVE ? INACTIVE : ACTIVE
+
+  togglingId.value = row.id
   try {
     await updateIpDiemDanh(row.id, {
       ten_ip: row.ten_ip,
@@ -319,11 +321,13 @@ async function toggleStatus(row, value) {
       ghi_chu: row.ghi_chu || null,
       trang_thai: value,
     })
+    row.trang_thai = value
     ElMessage.success(
-      value === 'active' ? 'Đã bật IP điểm danh.' : 'Đã tắt IP điểm danh.',
+      value === ACTIVE ? 'Đã bật IP điểm danh.' : 'Đã tắt IP điểm danh.',
     )
+    return true
   } catch {
-    row.trang_thai = previous
+    return false
   } finally {
     togglingId.value = null
   }

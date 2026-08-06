@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\TrangPhuc;
+use App\Support\Media;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class TrangPhucController extends BaseApiController
@@ -156,7 +156,7 @@ class TrangPhucController extends BaseApiController
 
             return response()->json([
                 'path' => $path,
-                'url' => Storage::disk('public')->url($path),
+                'url' => Media::url($path),
             ], 201);
 
         }, 'upload hình ảnh trang phục');
@@ -207,9 +207,7 @@ class TrangPhucController extends BaseApiController
     public function destroy(TrangPhuc $trang_phuc): JsonResponse
     {
         return $this->handleApi(function () use ($trang_phuc) {
-            if ($trang_phuc->hinh_anh) {
-                Storage::disk('public')->delete($trang_phuc->hinh_anh);
-            }
+            Media::delete($trang_phuc->getRawOriginal('hinh_anh'));
 
             $trang_phuc->delete();
 
@@ -224,7 +222,7 @@ class TrangPhucController extends BaseApiController
     private function validatePayload(Request $request, ?TrangPhuc $trangPhuc = null): array
     {
         $validated = $request->validate([
-            'hinh_anh' => ['nullable', 'string', 'max:500'],
+            'hinh_anh' => ['nullable', 'string', 'max:1000'],
             'ma_san_pham' => [
                 'required',
                 'string',
@@ -248,6 +246,10 @@ class TrangPhucController extends BaseApiController
         ]);
 
         $validated['trang_thai'] = (int) $validated['trang_thai'];
+
+        if (array_key_exists('hinh_anh', $validated)) {
+            $validated['hinh_anh'] = Media::normalizePath($validated['hinh_anh']);
+        }
 
         if (! empty($validated['thong_tin_them'])) {
             $validated['thong_tin_them'] = collect($validated['thong_tin_them'])

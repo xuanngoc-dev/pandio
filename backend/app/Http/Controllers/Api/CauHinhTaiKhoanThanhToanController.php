@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\CauHinhTaiKhoanThanhToan;
+use App\Support\Media;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -131,12 +132,16 @@ class CauHinhTaiKhoanThanhToanController extends BaseApiController
             'so_tai_khoan' => ['required', 'string', 'max:100'],
             'chu_tai_khoan' => ['required', 'string', 'max:255'],
             'chi_nhanh' => ['nullable', 'string', 'max:255'],
-            'hinh_anh_logo' => ['nullable', 'string', 'max:500'],
+            'hinh_anh_logo' => ['nullable', 'string', 'max:1000'],
             'mac_dinh' => ['required', 'string', Rule::in(['co', 'khong'])],
             'trang_thai' => ['nullable', 'string', Rule::in(['dang_hoat_dong', 'ngung_hoat_dong'])],
         ]);
 
         $validated['trang_thai'] = $validated['trang_thai'] ?? 'dang_hoat_dong';
+
+        if (array_key_exists('hinh_anh_logo', $validated)) {
+            $validated['hinh_anh_logo'] = Media::normalizePath($validated['hinh_anh_logo']);
+        }
 
         return $validated;
     }

@@ -274,7 +274,7 @@
     <!-- Dialog: Thông tin studio -->
     <CustomDialog
       v-model="studioDialogVisible"
-      :title="studioEditingId ? 'Sửa thông tin studio' : 'Thêm thông tin studio'"
+      :title="studioIsEditing ? 'Sửa thông tin studio' : 'Thêm thông tin studio'"
       :width="720"
     >
       <CustomForm ref="studioFormRef" :model="studioForm" :rules="studioRules">
@@ -435,12 +435,8 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Edit, Plus, Search } from '@element-plus/icons-vue'
-import {
-  createThongTinStudio,
-  fetchThongTinStudio,
-  updateThongTinStudio,
-  uploadStudioLogo,
-} from '@/api/thongTinStudio'
+import { fetchThongTinStudio, uploadStudioLogo } from '@/api/thongTinStudio'
+import { getCauHinhJson, updateCauHinhJson } from '@/api/cauHinhJson'
 import {
   createTaiKhoanThanhToan,
   deleteTaiKhoanThanhToan,
@@ -642,11 +638,13 @@ const paymentLoaded = ref(false)
 const studioLoading = ref(false)
 const studioSaving = ref(false)
 const studioDialogVisible = ref(false)
-const studioEditingId = ref(null)
+const studioIsEditing = ref(false)
 const defaultStudio = ref(null)
 const studioFormRef = ref(null)
 const pendingLogoFile = ref(null)
 const pendingLogoPreview = ref('')
+
+const STUDIO_CONFIG_KEY = 'thong_tin_studio'
 
 const emptyStudioForm = () => ({
   ten_studio: '',
@@ -658,6 +656,23 @@ const emptyStudioForm = () => ({
   ma_so_thue: '',
   mac_dinh: 'co',
 })
+
+function normalizeStudioPayload(raw = {}) {
+  return {
+    ten_studio: String(raw.ten_studio || '').trim(),
+    khau_hieu: raw.khau_hieu?.trim?.() || raw.khau_hieu || null,
+    logo: raw.logo?.trim?.() || raw.logo || null,
+    dia_chi: raw.dia_chi?.trim?.() || raw.dia_chi || null,
+    email: raw.email?.trim?.() || raw.email || null,
+    so_dien_thoai: raw.so_dien_thoai?.trim?.() || raw.so_dien_thoai || null,
+    ma_so_thue: raw.ma_so_thue?.trim?.() || raw.ma_so_thue || null,
+    mac_dinh: raw.mac_dinh === 'khong' ? 'khong' : 'co',
+  }
+}
+
+function hasStudioData(item) {
+  return Boolean(item && String(item.ten_studio || '').trim())
+}
 
 const studioForm = reactive(emptyStudioForm())
 
@@ -866,17 +881,42 @@ function mapEmployee(row, vaiTroMap = new Map()) {
 async function loadDefaultStudio() {
   studioLoading.value = true
   try {
+    const { data } = await getCauHinhJson()
+    const fromJson = normalizeStudioPayload(data?.thong_tin_cau_hinh?.[STUDIO_CONFIG_KEY] || {})
+    if (hasStudioData(fromJson)) {
+      defaultStudio.value = fromJson
+      return
+    }
+
+    // Migrate 1 lần từ bảng studio cũ (nếu còn) sang cau_hinh_json
+    const migrated = await migrateStudioFromLegacyTable()
+    defaultStudio.value = migrated
+  } catch {
+    defaultStudio.value = null
+  } finally {
+    studioLoading.value = false
+  }
+}
+
+async function migrateStudioFromLegacyTable() {
+  try {
     const { data } = await fetchThongTinStudio({ mac_dinh: 'co', per_page: 1 })
     let item = (data.data || [])[0] || null
     if (!item) {
       const fallback = await fetchThongTinStudio({ per_page: 1 })
       item = (fallback.data.data || [])[0] || null
     }
-    defaultStudio.value = item
+    if (!hasStudioData(item)) return null
+
+    const payload = normalizeStudioPayload(item)
+    const { data: saved } = await updateCauHinhJson({
+      thong_tin_cau_hinh: {
+        [STUDIO_CONFIG_KEY]: payload,
+      },
+    })
+    return normalizeStudioPayload(saved?.thong_tin_cau_hinh?.[STUDIO_CONFIG_KEY] || payload)
   } catch {
-    defaultStudio.value = null
-  } finally {
-    studioLoading.value = false
+    return null
   }
 }
 
@@ -913,7 +953,7 @@ function onLogoRemove() {
 }
 
 function openStudioCreate() {
-  studioEditingId.value = null
+  studioIsEditing.value = false
   Object.assign(studioForm, emptyStudioForm())
   clearPendingLogo()
   studioDialogVisible.value = true
@@ -921,12 +961,12 @@ function openStudioCreate() {
 
 function openStudioEdit() {
   const row = defaultStudio.value
-  if (!row) {
+  if (!hasStudioData(row)) {
     openStudioCreate()
     return
   }
 
-  studioEditingId.value = row.id
+  studioIsEditing.value = true
   Object.assign(studioForm, {
     ten_studio: row.ten_studio || '',
     khau_hieu: row.khau_hieu || '',
@@ -953,26 +993,30 @@ async function saveStudio() {
       clearPendingLogo()
     }
 
-    const payload = {
-      ten_studio: studioForm.ten_studio.trim(),
-      khau_hieu: studioForm.khau_hieu?.trim() || null,
-      logo: studioForm.logo?.trim() || null,
-      dia_chi: studioForm.dia_chi?.trim() || null,
-      email: studioForm.email?.trim() || null,
-      so_dien_thoai: studioForm.so_dien_thoai?.trim() || null,
-      ma_so_thue: studioForm.ma_so_thue?.trim() || null,
+    const payload = normalizeStudioPayload({
+      ten_studio: studioForm.ten_studio,
+      khau_hieu: studioForm.khau_hieu,
+      logo: studioForm.logo,
+      dia_chi: studioForm.dia_chi,
+      email: studioForm.email,
+      so_dien_thoai: studioForm.so_dien_thoai,
+      ma_so_thue: studioForm.ma_so_thue,
       mac_dinh: studioForm.mac_dinh,
-    }
+    })
 
-    if (studioEditingId.value) {
-      await updateThongTinStudio(studioEditingId.value, payload)
-      ElMessage.success('Đã cập nhật thông tin studio.')
-    } else {
-      await createThongTinStudio(payload)
-      ElMessage.success('Đã thêm thông tin studio.')
-    }
+    const { data } = await updateCauHinhJson({
+      thong_tin_cau_hinh: {
+        [STUDIO_CONFIG_KEY]: payload,
+      },
+    })
+
+    defaultStudio.value = normalizeStudioPayload(
+      data?.thong_tin_cau_hinh?.[STUDIO_CONFIG_KEY] || payload,
+    )
+    ElMessage.success(
+      studioIsEditing.value ? 'Đã cập nhật thông tin studio.' : 'Đã thêm thông tin studio.',
+    )
     studioDialogVisible.value = false
-    await loadDefaultStudio()
     window.dispatchEvent(new CustomEvent('studio-brand-updated'))
   } catch {
     // Lỗi đã được axios interceptor xử lý

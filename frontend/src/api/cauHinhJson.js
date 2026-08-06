@@ -11,7 +11,8 @@ export function getCauHinhJson(config = {}) {
 /**
  * Cập nhật cấu hình JSON động.
  * @param {{ thong_tin_cau_hinh: Record<string, unknown> }} payload
+ * @param {{ skipLoading?: boolean }} [config]
  */
-export function updateCauHinhJson(payload) {
-  return api.put('/cau-hinh-json', payload)
+export function updateCauHinhJson(payload, config = {}) {
+  return api.put('/cau-hinh-json', payload, config)
 }

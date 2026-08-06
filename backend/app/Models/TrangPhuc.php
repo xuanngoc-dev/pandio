@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasPublicMediaUrls;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -24,6 +25,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 ])]
 class TrangPhuc extends Model
 {
+    use HasPublicMediaUrls;
+
     protected $table = 'trang_phuc';
 
     protected function casts(): array
@@ -34,6 +37,14 @@ class TrangPhuc extends Model
             'trang_thai' => 'integer',
             'thong_tin_them' => 'array',
         ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function mediaUrlAttributes(): array
+    {
+        return ['hinh_anh'];
     }
 
     public function danhMucTrangPhuc(): BelongsTo

@@ -174,6 +174,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useLayoutStore } from '@/stores/layout'
 import { useNetworkStatus } from '@/composables/useNetworkStatus'
+import { getCauHinhJson, updateCauHinhJson } from '@/api/cauHinhJson'
 import { fetchThongTinStudio } from '@/api/thongTinStudio'
 import { mediaUrl } from '@/utils/media'
 import { Monitor, Fold, Expand, ArrowDown, Setting, Bell, Search } from '@element-plus/icons-vue'
@@ -356,13 +357,43 @@ async function onCommand(cmd) {
 
 async function loadStudioBrand() {
   try {
-    const { data } = await fetchThongTinStudio({ mac_dinh: 'co', per_page: 1 })
-    let item = (data.data || [])[0] || null
+    const { data } = await getCauHinhJson({ skipLoading: true })
+    const fromJson = data?.thong_tin_cau_hinh?.thong_tin_studio || null
+    if (fromJson?.ten_studio) {
+      studioInfo.value = fromJson
+      return
+    }
+
+    // Migrate 1 lần từ bảng studio cũ nếu JSON chưa có
+    const { data: listData } = await fetchThongTinStudio(
+      { mac_dinh: 'co', per_page: 1 },
+      { skipLoading: true },
+    )
+    let item = (listData.data || [])[0] || null
     if (!item) {
-      const fallback = await fetchThongTinStudio({ per_page: 1 })
+      const fallback = await fetchThongTinStudio({ per_page: 1 }, { skipLoading: true })
       item = (fallback.data.data || [])[0] || null
     }
-    studioInfo.value = item
+    if (!item?.ten_studio) {
+      studioInfo.value = null
+      return
+    }
+
+    const payload = {
+      ten_studio: item.ten_studio,
+      khau_hieu: item.khau_hieu || null,
+      logo: item.logo || null,
+      dia_chi: item.dia_chi || null,
+      email: item.email || null,
+      so_dien_thoai: item.so_dien_thoai || null,
+      ma_so_thue: item.ma_so_thue || null,
+      mac_dinh: item.mac_dinh === 'khong' ? 'khong' : 'co',
+    }
+    await updateCauHinhJson(
+      { thong_tin_cau_hinh: { thong_tin_studio: payload } },
+      { skipLoading: true },
+    )
+    studioInfo.value = payload
   } catch {
     studioInfo.value = null
   }

@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\CauHinhThongTinStudio;
+use App\Support\Media;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class CauHinhThongTinStudioController extends BaseApiController
@@ -80,7 +80,7 @@ class CauHinhThongTinStudioController extends BaseApiController
 
             return response()->json([
                 'path' => $path,
-                'url' => Storage::disk('public')->url($path),
+                'url' => Media::url($path),
             ], 201);
 
         }, 'upload logo cấu hình studio');
@@ -114,7 +114,7 @@ class CauHinhThongTinStudioController extends BaseApiController
     {
         return $this->handleApi(function () use ($request, $cau_hinh_thong_tin_studio) {
             $validated = $this->validatePayload($request);
-            $oldLogo = $cau_hinh_thong_tin_studio->logo;
+            $oldLogo = $cau_hinh_thong_tin_studio->getRawOriginal('logo');
 
             $studio = DB::transaction(function () use ($cau_hinh_thong_tin_studio, $validated) {
                 if (($validated['mac_dinh'] ?? 'khong') === 'co') {
@@ -128,8 +128,8 @@ class CauHinhThongTinStudioController extends BaseApiController
                 return $cau_hinh_thong_tin_studio->fresh();
             });
 
-            if ($oldLogo && $oldLogo !== ($validated['logo'] ?? null) && Storage::disk('public')->exists($oldLogo)) {
-                Storage::disk('public')->delete($oldLogo);
+            if ($oldLogo && $oldLogo !== ($validated['logo'] ?? null)) {
+                Media::delete($oldLogo);
             }
 
             return response()->json($studio);
@@ -143,12 +143,9 @@ class CauHinhThongTinStudioController extends BaseApiController
     public function destroy(CauHinhThongTinStudio $cau_hinh_thong_tin_studio): JsonResponse
     {
         return $this->handleApi(function () use ($cau_hinh_thong_tin_studio) {
-            $logo = $cau_hinh_thong_tin_studio->logo;
+            $logo = $cau_hinh_thong_tin_studio->getRawOriginal('logo');
             $cau_hinh_thong_tin_studio->delete();
-
-            if ($logo && Storage::disk('public')->exists($logo)) {
-                Storage::disk('public')->delete($logo);
-            }
+            Media::delete($logo);
 
             return response()->json(['message' => 'Đã xóa thông tin studio.']);
 
@@ -160,15 +157,21 @@ class CauHinhThongTinStudioController extends BaseApiController
      */
     private function validatePayload(Request $request): array
     {
-        return $request->validate([
+        $validated = $request->validate([
             'ten_studio' => ['required', 'string', 'max:255'],
             'khau_hieu' => ['nullable', 'string', 'max:255'],
-            'logo' => ['nullable', 'string', 'max:500'],
+            'logo' => ['nullable', 'string', 'max:1000'],
             'dia_chi' => ['nullable', 'string', 'max:500'],
             'email' => ['nullable', 'email', 'max:255'],
             'so_dien_thoai' => ['nullable', 'string', 'max:30'],
             'ma_so_thue' => ['nullable', 'string', 'max:50'],
             'mac_dinh' => ['required', 'string', Rule::in(['co', 'khong'])],
         ]);
+
+        if (array_key_exists('logo', $validated)) {
+            $validated['logo'] = Media::normalizePath($validated['logo']);
+        }
+
+        return $validated;
     }
 }

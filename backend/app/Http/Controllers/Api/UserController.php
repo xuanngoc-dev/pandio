@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\User;
+use App\Support\Media;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
@@ -83,7 +83,7 @@ class UserController extends BaseApiController
 
             return response()->json([
                 'path' => $path,
-                'url' => Storage::disk('public')->url($path),
+                'url' => Media::url($path),
             ], 201);
 
         }, 'upload hình ảnh nhân sự');
@@ -124,7 +124,7 @@ class UserController extends BaseApiController
     {
         return $this->handleApi(function () use ($request, $user) {
             $validated = $this->validatePayload($request, $user);
-            $oldHinhAnh = $user->nhanVien?->hinh_anh;
+            $oldHinhAnh = $user->nhanVien?->getRawOriginal('hinh_anh');
 
             $user = DB::transaction(function () use ($user, $validated) {
                 $userData = [
@@ -152,7 +152,7 @@ class UserController extends BaseApiController
                 return $user->fresh()->load(['nhanVien']);
             });
 
-            $newHinhAnh = $user->nhanVien?->hinh_anh;
+            $newHinhAnh = $user->nhanVien?->getRawOriginal('hinh_anh');
             if ($oldHinhAnh && $oldHinhAnh !== $newHinhAnh) {
                 $this->deleteHinhAnhFile($oldHinhAnh);
             }
@@ -168,7 +168,7 @@ class UserController extends BaseApiController
     public function destroy(User $user): JsonResponse
     {
         return $this->handleApi(function () use ($user) {
-            $hinhAnh = $user->nhanVien?->hinh_anh;
+            $hinhAnh = $user->nhanVien?->getRawOriginal('hinh_anh');
             $user->delete();
             $this->deleteHinhAnhFile($hinhAnh);
 
@@ -182,18 +182,12 @@ class UserController extends BaseApiController
      */
     private function deleteHinhAnhFile(?string $path): void
     {
-        if (! $path) {
+        $normalized = Media::normalizePath($path);
+        if (! $normalized || ! str_starts_with($normalized, 'nhan-vien/')) {
             return;
         }
 
-        $normalized = ltrim(str_replace('\\', '/', $path), '/');
-        if (! str_starts_with($normalized, 'nhan-vien/')) {
-            return;
-        }
-
-        if (Storage::disk('public')->exists($normalized)) {
-            Storage::disk('public')->delete($normalized);
-        }
+        Media::delete($normalized);
     }
 
     /**
@@ -229,7 +223,7 @@ class UserController extends BaseApiController
             'role' => ['required', 'string', Rule::in(['user', 'admin'])],
             'status' => ['required', 'string', Rule::in(['active', 'inactive'])],
 
-            'hinh_anh' => ['nullable', 'string', 'max:500'],
+            'hinh_anh' => ['nullable', 'string', 'max:1000'],
             'phong_ban_ids' => ['nullable', 'array'],
             'phong_ban_ids.*' => ['integer', 'distinct', 'exists:phong_ban,id'],
             'vai_tro_id' => ['nullable', 'integer', 'exists:vai_tro,id'],
@@ -325,6 +319,10 @@ class UserController extends BaseApiController
             if (array_key_exists($nullable, $data) && $data[$nullable] === '') {
                 $data[$nullable] = null;
             }
+        }
+
+        if (array_key_exists('hinh_anh', $data)) {
+            $data['hinh_anh'] = Media::normalizePath($data['hinh_anh']);
         }
 
         return $data;

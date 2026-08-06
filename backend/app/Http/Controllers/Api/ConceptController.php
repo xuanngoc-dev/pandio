@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\Concept;
+use App\Support\Media;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class ConceptController extends BaseApiController
@@ -84,7 +84,7 @@ class ConceptController extends BaseApiController
 
             return response()->json([
                 'path' => $path,
-                'url' => Concept::toPublicUrl($path),
+                'url' => Media::url($path),
             ], 201);
 
         }, 'upload hình ảnh concept');
@@ -127,12 +127,7 @@ class ConceptController extends BaseApiController
     public function destroy(Concept $concept): JsonResponse
     {
         return $this->handleApi(function () use ($concept) {
-            $rawPath = $concept->getRawOriginal('hinh_anh');
-            if (is_string($rawPath) && $rawPath !== '') {
-                Storage::disk('public')->delete(
-                    Concept::normalizeHinhAnhPath($rawPath) ?? $rawPath
-                );
-            }
+            Media::delete($concept->getRawOriginal('hinh_anh'));
 
             $concept->delete();
 
@@ -162,7 +157,7 @@ class ConceptController extends BaseApiController
         ]);
 
         if (array_key_exists('hinh_anh', $validated)) {
-            $validated['hinh_anh'] = Concept::normalizeHinhAnhPath($validated['hinh_anh']);
+            $validated['hinh_anh'] = Media::normalizePath($validated['hinh_anh']);
         }
 
         return $validated;

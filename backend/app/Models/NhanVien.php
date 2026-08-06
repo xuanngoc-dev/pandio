@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasPublicMediaUrls;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
@@ -31,12 +32,22 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class NhanVien extends Model
 {
+    use HasPublicMediaUrls;
+
     protected $table = 'nhan_vien';
 
     /**
      * @var list<string>
      */
     protected $appends = ['phong_bans'];
+
+    /**
+     * @return list<string>
+     */
+    protected function mediaUrlAttributes(): array
+    {
+        return ['hinh_anh'];
+    }
 
     /**
      * Định nghĩa mặc định các khoản lương/thưởng/phụ cấp.

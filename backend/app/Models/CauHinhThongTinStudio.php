@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasPublicMediaUrls;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
@@ -17,5 +18,15 @@ use Illuminate\Database\Eloquent\Model;
 ])]
 class CauHinhThongTinStudio extends Model
 {
+    use HasPublicMediaUrls;
+
     protected $table = 'cau_hinh_thong_tin_studio';
+
+    /**
+     * @return list<string>
+     */
+    protected function mediaUrlAttributes(): array
+    {
+        return ['logo'];
+    }
 }

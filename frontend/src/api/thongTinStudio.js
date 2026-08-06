@@ -3,9 +3,10 @@ import api from '@/api/axios'
 /**
  * Danh sách thông tin studio — phân trang.
  * @param {{ page?: number, per_page?: number, keyword?: string, mac_dinh?: string }} params
+ * @param {{ skipLoading?: boolean }} [config]
  */
-export function fetchThongTinStudio(params = {}) {
-  return api.get('/cau-hinh-thong-tin-studio', { params })
+export function fetchThongTinStudio(params = {}, config = {}) {
+  return api.get('/cau-hinh-thong-tin-studio', { params, ...config })
 }
 
 /**
