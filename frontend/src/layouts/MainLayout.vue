@@ -751,4 +751,7 @@ html:not(.dark) {
     -webkit-text-fill-color: var(--el-select-disabled-color) !important;
   }
 }
+.el-drawer__header{
+  margin-bottom: 12px;
+}
 </style>

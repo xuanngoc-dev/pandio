@@ -144,6 +144,12 @@
         "title": "Trung tâm Phê duyệt",
         "icon": "CircleCheck",
         "component": "he-thong/TrungTamPheDuyet"
+      },
+      {
+        "index": "/he-thong/thong-bao",
+        "title": "Thông báo",
+        "icon": "Bell",
+        "component": "he-thong/ThongBao"
       }
     ]
   },

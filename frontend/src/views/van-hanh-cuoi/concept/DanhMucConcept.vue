@@ -128,7 +128,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Edit, Plus, Search } from '@element-plus/icons-vue'
 import {
@@ -312,5 +312,15 @@ async function remove(row) {
   }
 }
 
-onMounted(loadItems)
+const props = defineProps({
+  active: { type: Boolean, default: false },
+})
+
+watch(
+  () => props.active,
+  (isActive) => {
+    if (isActive) loadItems()
+  },
+  { immediate: true },
+)
 </script>

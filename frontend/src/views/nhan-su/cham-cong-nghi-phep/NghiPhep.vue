@@ -325,7 +325,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { CircleCheck, CircleClose, Delete, Edit, Plus, Search } from '@element-plus/icons-vue'
 import { fetchUsers } from '@/api/users'
@@ -640,8 +640,20 @@ async function remove(row) {
   }
 }
 
-onMounted(async () => {
-  await Promise.all([loadUsers(), loadItems()])
+const props = defineProps({
+  active: { type: Boolean, default: false },
 })
+
+async function refresh() {
+  await Promise.all([loadUsers(), loadItems()])
+}
+
+watch(
+  () => props.active,
+  (isActive) => {
+    if (isActive) refresh()
+  },
+  { immediate: true },
+)
 </script>
 

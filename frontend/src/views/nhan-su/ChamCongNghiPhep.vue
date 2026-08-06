@@ -4,16 +4,16 @@
 
     <el-tabs v-model="activeTab" class="page-tabs">
       <el-tab-pane label="Điểm danh" name="diem-danh">
-        <DiemDanh />
+        <DiemDanh :active="activeTab === 'diem-danh'" />
       </el-tab-pane>
       <el-tab-pane label="Chấm công tháng" name="cham-cong-thang">
-        <ChamCongThang />
+        <ChamCongThang :active="activeTab === 'cham-cong-thang'" />
       </el-tab-pane>
       <el-tab-pane label="Đăng ký ca" name="dang-ky-ca">
-        <DangKyCa />
+        <DangKyCa :active="activeTab === 'dang-ky-ca'" />
       </el-tab-pane>
       <el-tab-pane label="Nghỉ phép" name="nghi-phep">
-        <NghiPhep />
+        <NghiPhep :active="activeTab === 'nghi-phep'" />
       </el-tab-pane>
     </el-tabs>
   </div>

@@ -207,7 +207,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { CircleCheck, SwitchButton } from '@element-plus/icons-vue'
 import {
@@ -370,7 +370,21 @@ async function onCheckInOut() {
   }
 }
 
-onMounted(async () => {
-  await Promise.all([loadChamCongConfig(), loadTodayStatus(), loadItems()])
+const props = defineProps({
+  active: { type: Boolean, default: false },
 })
+
+async function refresh() {
+  await Promise.all([loadTodayStatus(), loadItems()])
+}
+
+watch(
+  () => props.active,
+  (isActive) => {
+    if (isActive) refresh()
+  },
+  { immediate: true },
+)
+
+onMounted(loadChamCongConfig)
 </script>

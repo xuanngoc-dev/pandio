@@ -229,7 +229,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { ArrowDown, Search } from '@element-plus/icons-vue'
 import { fetchUsers } from '@/api/users'
@@ -658,7 +658,7 @@ async function onWeekCaChange(user, caLamId) {
   }
 }
 
-onMounted(async () => {
+async function refresh() {
   loading.value = true
   try {
     await loadCaOptions()
@@ -674,7 +674,21 @@ onMounted(async () => {
     loading.value = false
     await refreshTableLayout()
   }
+}
 
+const props = defineProps({
+  active: { type: Boolean, default: false },
+})
+
+watch(
+  () => props.active,
+  (isActive) => {
+    if (isActive) refresh()
+  },
+  { immediate: true },
+)
+
+onMounted(() => {
   window.addEventListener('resize', refreshTableLayout)
   const wrap = document.querySelector('.dang-ky-ca .table-wrap')
   if (wrap && typeof ResizeObserver !== 'undefined') {

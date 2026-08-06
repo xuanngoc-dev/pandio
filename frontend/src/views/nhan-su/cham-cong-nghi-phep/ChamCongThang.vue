@@ -263,7 +263,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { Briefcase, Clock, EditPen, Search } from '@element-plus/icons-vue'
 import { fetchDiemDanh } from '@/api/diemDanh'
 import { fetchNgayNghi } from '@/api/ngayNghi'
@@ -738,7 +738,17 @@ function onSearch() {
   loadData()
 }
 
-onMounted(loadData)
+const props = defineProps({
+  active: { type: Boolean, default: false },
+})
+
+watch(
+  () => props.active,
+  (isActive) => {
+    if (isActive) loadData()
+  },
+  { immediate: true },
+)
 </script>
 
 <style scoped>

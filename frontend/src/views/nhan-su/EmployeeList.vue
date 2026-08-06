@@ -94,10 +94,6 @@
                     <CustomInput :model-value="nv(row).ngan_hang || '—'" readonly />
                   </div>
                   <div class="expand-field">
-                    <label class="expand-field__label">Chi nhánh</label>
-                    <CustomInput :model-value="nv(row).chi_nhanh || '—'" readonly />
-                  </div>
-                  <div class="expand-field">
                     <label class="expand-field__label">Số tài khoản</label>
                     <CustomInput :model-value="nv(row).so_tai_khoan || '—'" readonly />
                   </div>
@@ -108,19 +104,25 @@
                 </div>
               </section>
 
-              <section class="expand-block expand-block--form expand-block--wide">
-                <h4 class="expand-title">Lương & phụ cấp</h4>
+              <section
+                v-for="group in salaryGroupsOf(nv(row))"
+                :key="group.key"
+                class="expand-block expand-block--form expand-block--wide"
+              >
+                <h4 class="expand-title">{{ group.title }}</h4>
                 <div class="expand-fields">
-                  <div class="expand-field">
-                    <label class="expand-field__label">Công chuẩn</label>
-                    <CustomInput :model-value="formatNumber(nv(row).cong_chuan)" readonly />
-                  </div>
-                  <div class="expand-field">
-                    <label class="expand-field__label">Người phụ thuộc</label>
-                    <CustomInput :model-value="String(nv(row).so_nguoi_phu_thuoc ?? 0)" readonly />
-                  </div>
+                  <template v-if="group.key === 'luong'">
+                    <div class="expand-field">
+                      <label class="expand-field__label">Công chuẩn</label>
+                      <CustomInput :model-value="formatNumber(nv(row).cong_chuan)" readonly />
+                    </div>
+                    <div class="expand-field">
+                      <label class="expand-field__label">Người phụ thuộc</label>
+                      <CustomInput :model-value="String(nv(row).so_nguoi_phu_thuoc ?? 0)" readonly />
+                    </div>
+                  </template>
                   <div
-                    v-for="item in salaryItemsOf(nv(row))"
+                    v-for="item in group.items"
                     :key="item.key"
                     class="expand-field"
                   >
@@ -351,14 +353,6 @@
                   </CustomCol>
 
                   <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
-                    <CustomFormItem label="Vai trò" prop="role">
-                      <CustomSelect v-model="form.role" style="width: 100%">
-                        <CustomOption label="User" value="user" />
-                        <CustomOption label="Admin" value="admin" />
-                      </CustomSelect>
-                    </CustomFormItem>
-                  </CustomCol>
-                  <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
                     <CustomFormItem label="Trạng thái" prop="status">
                       <CustomSelect v-model="form.status" style="width: 100%">
                         <CustomOption label="Đang hoạt động" value="active" />
@@ -383,6 +377,24 @@
                           :key="pb.id"
                           :label="pb.ten_phong_ban"
                           :value="pb.id"
+                        />
+                      </CustomSelect>
+                    </CustomFormItem>
+                  </CustomCol>
+                  <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
+                    <CustomFormItem label="Vai trò (chức danh)" prop="vai_tro_id">
+                      <CustomSelect
+                        v-model="form.vai_tro_id"
+                        clearable
+                        filterable
+                        placeholder="Chọn vai trò"
+                        style="width: 100%"
+                      >
+                        <CustomOption
+                          v-for="vt in vaiTroOptions"
+                          :key="vt.id"
+                          :label="vt.ten_vai_tro"
+                          :value="vt.id"
                         />
                       </CustomSelect>
                     </CustomFormItem>
@@ -484,12 +496,6 @@
                       <CustomInput v-model="form.ngan_hang" placeholder="Tên ngân hàng" />
                     </CustomFormItem>
                   </CustomCol>
-
-                  <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
-                    <CustomFormItem label="Chi nhánh" prop="chi_nhanh">
-                      <CustomInput v-model="form.chi_nhanh" placeholder="Chi nhánh" />
-                    </CustomFormItem>
-                  </CustomCol>
                   <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
                     <CustomFormItem label="Số tài khoản" prop="so_tai_khoan">
                       <CustomInput v-model="form.so_tai_khoan" placeholder="Số tài khoản" />
@@ -506,26 +512,56 @@
           </el-tab-pane>
 
           <el-tab-pane label="Thông tin lương" name="salary">
-            <CustomRow :gutter="16" class="salary-fields">
-              <CustomCol
-                v-for="item in salaryFormItems"
-                :key="item.key"
-                :xs="12"
-                :sm="8"
-                :md="6"
-                :lg="4"
+            <div class="salary-groups">
+              <CustomCard
+                v-for="group in salaryFormGroups"
+                :key="group.key"
+                shadow="never"
+                class="salary-group-card"
               >
-                <CustomFormItem
-                  :label="item.name"
-                  :prop="`luong_thuong_phu_cap.${item.key}.value`"
-                >
-                  <MoneyInput
-                    v-model="form.luong_thuong_phu_cap[item.key].value"
-                    style="width: 100%"
-                  />
-                </CustomFormItem>
-              </CustomCol>
-            </CustomRow>
+                <template #header>
+                  <span class="salary-group-title">{{ group.title }}</span>
+                </template>
+                <CustomRow :gutter="16" class="salary-fields">
+                  <CustomCol
+                    v-if="group.key === 'luong'"
+                    :xs="group.cols.xs"
+                    :sm="group.cols.sm"
+                    :md="group.cols.md"
+                    :lg="group.cols.lg"
+                  >
+                    <CustomFormItem label="Công chuẩn" prop="cong_chuan">
+                      <el-input-number
+                        v-model="form.cong_chuan"
+                        :min="0"
+                        :precision="2"
+                        controls-position="right"
+                        placeholder="Công chuẩn"
+                        style="width: 100%"
+                      />
+                    </CustomFormItem>
+                  </CustomCol>
+                  <CustomCol
+                    v-for="item in group.items"
+                    :key="item.key"
+                    :xs="group.cols.xs"
+                    :sm="group.cols.sm"
+                    :md="group.cols.md"
+                    :lg="group.cols.lg"
+                  >
+                    <CustomFormItem
+                      :label="item.name"
+                      :prop="`luong_thuong_phu_cap.${item.key}.value`"
+                    >
+                      <MoneyInput
+                        v-model="form.luong_thuong_phu_cap[item.key].value"
+                        style="width: 100%"
+                      />
+                    </CustomFormItem>
+                  </CustomCol>
+                </CustomRow>
+              </CustomCard>
+            </div>
           </el-tab-pane>
         </el-tabs>
       </CustomForm>
@@ -546,6 +582,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Edit, Plus, Search } from '@element-plus/icons-vue'
 import { createUser, deleteUser, fetchUsers, updateUser, uploadNhanVienHinh } from '@/api/users'
 import { fetchPhongBan } from '@/api/phongBan'
+import { fetchVaiTro } from '@/api/vaiTro'
 import { mediaUrl } from '@/utils/media'
 import { formatInteger } from '@/utils/number'
 import TableColumnConfig from '@/components/TableColumnConfig.vue'
@@ -593,6 +630,45 @@ const SALARY_FIELD_DEFINITIONS = [
   { key: 'phi_xu_ly_hd_thue_trang_phuc', name: 'Phí xử lý HĐ thuê trang phục' },
 ]
 
+const SALARY_FIELD_GROUPS = [
+  {
+    key: 'luong',
+    title: 'Lương',
+    keys: ['luong_cung', 'luong_mem', 'luong_1_gio', 'luong_tang_ca_1_gio'],
+  },
+  {
+    key: 'phu_cap',
+    title: 'Phụ cấp',
+    keys: ['phu_cap', 'phu_cap_xang', 'phu_cap_an_trua', 'phu_cap_dien_thoai', 'phu_cap_nha_o'],
+  },
+  {
+    key: 'thuong',
+    title: 'Thưởng',
+    keys: [
+      'thuong_chuyen_can',
+      'hoa_hong_hop_dong_sddv',
+      'hoa_hong_hop_dong_trang_phuc',
+      'phi_xu_ly_hd_thue_trang_phuc',
+    ],
+    // Desktop 4/hàng → tablet 3 → mobile 2
+    cols: { xs: 12, sm: 12, md: 8, lg: 6 },
+  },
+  {
+    key: 'luong_chup',
+    title: 'Lương chụp',
+    keys: ['chup_1_diem', 'chup_2_diem', 'chup_3_diem'],
+    cols: { xs: 12, sm: 12, md: 8, lg: 6 },
+  },
+  {
+    key: 'luong_make',
+    title: 'Lương make',
+    keys: ['make_1_diem', 'make_2_diem', 'make_3_diem'],
+    cols: { xs: 12, sm: 12, md: 8, lg: 6 },
+  },
+]
+
+const DEFAULT_SALARY_COLS = { xs: 12, sm: 8, md: 6, lg: 4 }
+
 function createDefaultLuongThuongPhuCap(overrides = {}) {
   const result = {}
   for (const def of SALARY_FIELD_DEFINITIONS) {
@@ -604,6 +680,19 @@ function createDefaultLuongThuongPhuCap(overrides = {}) {
     }
   }
   return result
+}
+
+function buildSalaryGroups(luongData) {
+  const data = createDefaultLuongThuongPhuCap(luongData || {})
+  return SALARY_FIELD_GROUPS.map((group) => ({
+    key: group.key,
+    title: group.title,
+    cols: group.cols || DEFAULT_SALARY_COLS,
+    items: group.keys.map((key) => ({
+      key,
+      ...data[key],
+    })),
+  }))
 }
 
 const tableColumns = [
@@ -621,6 +710,7 @@ const route = useRoute()
 
 const employees = ref([])
 const departments = ref([])
+const vaiTroOptions = ref([])
 const loading = ref(false)
 const saving = ref(false)
 const page = ref(1)
@@ -652,8 +742,8 @@ const emptyForm = () => ({
   // nhan_vien — thông tin cá nhân
   hinh_anh: '',
   phong_ban_ids: [],
+  vai_tro_id: null,
   ngan_hang: '',
-  chi_nhanh: '',
   so_tai_khoan: '',
   chu_tai_khoan: '',
   gioi_tinh: null,
@@ -673,12 +763,7 @@ const emptyForm = () => ({
 
 const form = reactive(emptyForm())
 
-const salaryFormItems = computed(() =>
-  SALARY_FIELD_DEFINITIONS.map((def) => ({
-    key: def.key,
-    ...form.luong_thuong_phu_cap[def.key],
-  })),
-)
+const salaryFormGroups = computed(() => buildSalaryGroups(form.luong_thuong_phu_cap))
 
 const rules = {
   name: [{ required: true, message: 'Vui lòng nhập họ tên', trigger: 'blur' }],
@@ -703,7 +788,6 @@ const rules = {
       trigger: 'blur',
     },
   ],
-  role: [{ required: true, message: 'Vui lòng chọn vai trò', trigger: 'change' }],
   status: [{ required: true, message: 'Vui lòng chọn trạng thái', trigger: 'change' }],
 }
 
@@ -736,6 +820,15 @@ async function loadDepartments() {
   }
 }
 
+async function loadVaiTroOptions() {
+  try {
+    const { data } = await fetchVaiTro({ per_page: 100 })
+    vaiTroOptions.value = data.data || []
+  } catch {
+    vaiTroOptions.value = []
+  }
+}
+
 function onSearch() {
   page.value = 1
   loadEmployees()
@@ -750,12 +843,8 @@ function salaryValueOf(nvData, key) {
   return item?.value ?? null
 }
 
-function salaryItemsOf(nvData) {
-  const data = createDefaultLuongThuongPhuCap(nvData?.luong_thuong_phu_cap || {})
-  return SALARY_FIELD_DEFINITIONS.map((def) => ({
-    key: def.key,
-    ...data[def.key],
-  }))
+function salaryGroupsOf(nvData) {
+  return buildSalaryGroups(nvData?.luong_thuong_phu_cap || {})
 }
 
 function deptName(row) {
@@ -919,13 +1008,6 @@ function fillSampleData() {
     'Trợ lý giám đốc',
   ])
   const nganHang = pick(['Vietcombank', 'Techcombank', 'MB Bank', 'BIDV', 'VPBank', 'ACB', 'TPBank'])
-  const chiNhanh = pick([
-    'Chi nhánh Hà Nội',
-    'Chi nhánh TP.HCM',
-    'Chi nhánh Đà Nẵng',
-    'Chi nhánh Cầu Giấy',
-    'Chi nhánh Quận 1',
-  ])
   const luongCung = randomInt(6, 15) * 1_000_000
   const luongMem = randomInt(1, 5) * 1_000_000
   const phuCap = randomInt(5, 20) * 100_000
@@ -936,13 +1018,12 @@ function fillSampleData() {
     email: `${emailLocal}@example.com`,
     phone: `09${randomDigits(8)}`,
     password: `Pass${randomDigits(6)}`,
-    role: pick(['user', 'admin']),
+    role: 'user',
     status: pick(['active', 'inactive']),
     phong_ban_ids: departments.value.length
       ? [pick(departments.value).id]
       : [],
     ngan_hang: nganHang,
-    chi_nhanh: chiNhanh,
     so_tai_khoan: randomDigits(10),
     chu_tai_khoan: toUnsign(fullName).toUpperCase(),
     gioi_tinh: gioiTinh,
@@ -989,8 +1070,8 @@ function openEdit(row) {
     status: row.status || 'active',
     hinh_anh: nvData.hinh_anh || '',
     phong_ban_ids: Array.isArray(nvData.phong_ban_ids) ? [...nvData.phong_ban_ids] : [],
+    vai_tro_id: nvData.vai_tro_id ?? null,
     ngan_hang: nvData.ngan_hang || '',
-    chi_nhanh: nvData.chi_nhanh || '',
     so_tai_khoan: nvData.so_tai_khoan || '',
     chu_tai_khoan: nvData.chu_tai_khoan || '',
     gioi_tinh: nvData.gioi_tinh || null,
@@ -1030,12 +1111,12 @@ function buildPayload() {
     name: form.name.trim(),
     email: form.email.trim(),
     phone: form.phone.trim(),
-    role: form.role,
+    role: form.role || 'user',
     status: form.status,
     hinh_anh: form.hinh_anh?.trim() || null,
     phong_ban_ids: Array.isArray(form.phong_ban_ids) ? form.phong_ban_ids : [],
+    vai_tro_id: form.vai_tro_id || null,
     ngan_hang: form.ngan_hang?.trim() || null,
-    chi_nhanh: form.chi_nhanh?.trim() || null,
     so_tai_khoan: form.so_tai_khoan?.trim() || null,
     chu_tai_khoan: form.chu_tai_khoan?.trim() || null,
     gioi_tinh: form.gioi_tinh || null,
@@ -1111,6 +1192,7 @@ async function remove(row) {
 onMounted(() => {
   loadEmployees()
   loadDepartments()
+  loadVaiTroOptions()
 })
 </script>
 
@@ -1266,6 +1348,27 @@ onMounted(() => {
   .expand-fields {
     grid-template-columns: 1fr;
   }
+}
+
+.salary-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.salary-group-card {
+  border: 1px solid var(--el-border-color-lighter);
+}
+
+.salary-group-card :deep(.el-card__header) {
+  padding: 10px 16px;
+  background: var(--el-fill-color-light);
+}
+
+.salary-group-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
 }
 
 .salary-fields :deep(.el-input-number .el-input__inner) {

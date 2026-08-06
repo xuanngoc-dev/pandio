@@ -4,10 +4,10 @@
 
     <el-tabs v-model="activeTab" class="page-tabs">
       <el-tab-pane label="Concept" name="concept">
-        <ConceptList />
+        <ConceptList :active="activeTab === 'concept'" />
       </el-tab-pane>
       <el-tab-pane label="Danh mục concept" name="danh-muc">
-        <DanhMucConcept />
+        <DanhMucConcept :active="activeTab === 'danh-muc'" />
       </el-tab-pane>
     </el-tabs>
   </div>

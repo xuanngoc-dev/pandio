@@ -301,7 +301,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Edit, Plus, Search } from '@element-plus/icons-vue'
@@ -504,6 +504,7 @@ function openCreate() {
   clearPendingPreview()
   Object.assign(form, emptyForm())
   dialogVisible.value = true
+  loadDanhMucOptions()
 }
 
 function openEdit(row) {
@@ -519,6 +520,7 @@ function openEdit(row) {
     mo_ta: row.mo_ta || '',
   })
   dialogVisible.value = true
+  loadDanhMucOptions()
 }
 
 async function save() {
@@ -667,10 +669,21 @@ async function remove(row) {
   }
 }
 
-onMounted(async () => {
-  await loadDanhMucOptions()
-  await loadItems()
+const props = defineProps({
+  active: { type: Boolean, default: false },
 })
+
+async function refresh() {
+  await Promise.all([loadDanhMucOptions(), loadItems()])
+}
+
+watch(
+  () => props.active,
+  (isActive) => {
+    if (isActive) refresh()
+  },
+  { immediate: true },
+)
 </script>
 
 <style scoped lang="scss">
