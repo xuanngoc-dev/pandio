@@ -2,6 +2,7 @@ import api from '@/api/axios'
 
 /**
  * Danh sách report quảng cáo — phân trang.
+ * Response kèm `summary`: tổng các cột số trên toàn bộ kết quả lọc (không phụ thuộc trang).
  * @param {{ page?: number, per_page?: number, keyword?: string, ngay_tu?: string, ngay_den?: string }} params
  */
 export function fetchReportQuangCao(params = {}) {
