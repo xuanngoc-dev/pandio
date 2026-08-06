@@ -658,10 +658,11 @@ const emptyStudioForm = () => ({
 })
 
 function normalizeStudioPayload(raw = {}) {
+  const logoRaw = raw.logo?.trim?.() || raw.logo || null
   return {
     ten_studio: String(raw.ten_studio || '').trim(),
     khau_hieu: raw.khau_hieu?.trim?.() || raw.khau_hieu || null,
-    logo: raw.logo?.trim?.() || raw.logo || null,
+    logo: logoRaw ? mediaUrl(logoRaw) || logoRaw : null,
     dia_chi: raw.dia_chi?.trim?.() || raw.dia_chi || null,
     email: raw.email?.trim?.() || raw.email || null,
     so_dien_thoai: raw.so_dien_thoai?.trim?.() || raw.so_dien_thoai || null,
@@ -989,7 +990,8 @@ async function saveStudio() {
   try {
     if (pendingLogoFile.value) {
       const { data } = await uploadStudioLogo(pendingLogoFile.value)
-      studioForm.logo = data.path
+      // Ghép URL từ path + VITE_API_BASE_URL (tránh phụ thuộc APP_URL backend bị sai domain)
+      studioForm.logo = mediaUrl(data.path) || data.url || data.path
       clearPendingLogo()
     }
 

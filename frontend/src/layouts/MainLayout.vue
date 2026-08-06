@@ -382,7 +382,7 @@ async function loadStudioBrand() {
     const payload = {
       ten_studio: item.ten_studio,
       khau_hieu: item.khau_hieu || null,
-      logo: item.logo || null,
+      logo: item.logo ? mediaUrl(item.logo) || item.logo : null,
       dia_chi: item.dia_chi || null,
       email: item.email || null,
       so_dien_thoai: item.so_dien_thoai || null,
