@@ -388,7 +388,7 @@
                       </CustomSelect>
                     </CustomFormItem>
                   </CustomCol>
-                  <!-- <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
+                  <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
                     <CustomFormItem label="Vai trò (chức danh)" prop="vai_tro_id">
                       <CustomSelect
                         v-model="form.vai_tro_id"
@@ -405,12 +405,12 @@
                         />
                       </CustomSelect>
                     </CustomFormItem>
-                  </CustomCol> -->
-                  <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
+                  </CustomCol>
+                  <!-- <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
                     <CustomFormItem label="Vị trí làm việc" prop="vi_tri_lam_viec">
                       <CustomInput v-model="form.vi_tri_lam_viec" placeholder="VD: Nhân viên kinh doanh" />
                     </CustomFormItem>
-                  </CustomCol>
+                  </CustomCol> -->
                   <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
                     <CustomFormItem label="Giới tính" prop="gioi_tinh">
                       <CustomSelect

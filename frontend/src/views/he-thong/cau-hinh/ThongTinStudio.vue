@@ -723,13 +723,14 @@ function userInDept(user, deptId) {
   return ids.map(Number).includes(Number(deptId))
 }
 
-function mapEmployee(row) {
+function mapEmployee(row, vaiTroMap = new Map()) {
   const name = row?.user?.name || '—'
+  const roleName = vaiTroMap.get(Number(row?.vai_tro_id)) || ''
   return {
     id: row.id,
     userId: row.user_id ?? row.user?.id ?? null,
     name,
-    position: row.vi_tri_lam_viec || '',
+    position: roleName,
     avatarUrl: mediaUrl(row.hinh_anh),
   }
 }
@@ -820,7 +821,7 @@ async function loadOrgChart() {
       depts.map(async (dept) => {
         try {
           const { data } = await fetchPhongBanNhanVien(dept.id, { per_page: 100 })
-          return (data.data || []).map(mapEmployee)
+          return (data.data || []).map((row) => mapEmployee(row, vaiTroMap))
         } catch {
           return []
         }
