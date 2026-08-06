@@ -84,7 +84,7 @@ class ConceptController extends BaseApiController
 
             return response()->json([
                 'path' => $path,
-                'url' => Storage::disk('public')->url($path),
+                'url' => Concept::toPublicUrl($path),
             ], 201);
 
         }, 'upload hình ảnh concept');
@@ -127,8 +127,11 @@ class ConceptController extends BaseApiController
     public function destroy(Concept $concept): JsonResponse
     {
         return $this->handleApi(function () use ($concept) {
-            if ($concept->hinh_anh) {
-                Storage::disk('public')->delete($concept->hinh_anh);
+            $rawPath = $concept->getRawOriginal('hinh_anh');
+            if (is_string($rawPath) && $rawPath !== '') {
+                Storage::disk('public')->delete(
+                    Concept::normalizeHinhAnhPath($rawPath) ?? $rawPath
+                );
             }
 
             $concept->delete();
@@ -143,8 +146,8 @@ class ConceptController extends BaseApiController
      */
     private function validatePayload(Request $request, ?Concept $concept = null): array
     {
-        return $request->validate([
-            'hinh_anh' => ['nullable', 'string', 'max:500'],
+        $validated = $request->validate([
+            'hinh_anh' => ['nullable', 'string', 'max:1000'],
             'loai_concept' => ['required', 'integer', 'exists:danh_muc_concept,id'],
             'ma_concept' => [
                 'required',
@@ -157,5 +160,11 @@ class ConceptController extends BaseApiController
             'trang_thai' => ['required', Rule::in(['dang_su_dung', 'ngung_su_dung'])],
             'mo_ta' => ['nullable', 'string'],
         ]);
+
+        if (array_key_exists('hinh_anh', $validated)) {
+            $validated['hinh_anh'] = Concept::normalizeHinhAnhPath($validated['hinh_anh']);
+        }
+
+        return $validated;
     }
 }
