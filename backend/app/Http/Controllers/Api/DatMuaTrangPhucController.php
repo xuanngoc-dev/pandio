@@ -6,13 +6,16 @@ use App\Models\DatMuaTrangPhuc;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class DatMuaTrangPhucController extends BaseApiController
 {
+    private const TRANG_THAI = ['cho_duyet', 'da_duyet', 'huy_duyet'];
+
     /**
      * Danh sách đặt mua trang phục — phân trang + tìm kiếm.
      *
-     * Query: page, per_page, keyword
+     * Query: page, per_page, keyword, trang_thai
      */
     public function index(Request $request): JsonResponse
     {
@@ -21,10 +24,12 @@ class DatMuaTrangPhucController extends BaseApiController
                 'page' => ['sometimes', 'integer', 'min:1'],
                 'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
                 'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
+                'trang_thai' => ['sometimes', 'nullable', 'string', Rule::in(self::TRANG_THAI)],
             ]);
 
             $perPage = $validated['per_page'] ?? 10;
             $keyword = trim((string) ($validated['keyword'] ?? ''));
+            $trangThai = $validated['trang_thai'] ?? null;
 
             $query = DatMuaTrangPhuc::query()
                 ->with('nhaCungCap:id,ma_nha_cung_cap,ten_nha_cung_cap')
@@ -38,6 +43,7 @@ class DatMuaTrangPhucController extends BaseApiController
                             });
                     });
                 })
+                ->when($trangThai, fn ($q) => $q->where('trang_thai', $trangThai))
                 ->orderByDesc('ngay_dat')
                 ->orderByDesc('id');
 
@@ -67,6 +73,7 @@ class DatMuaTrangPhucController extends BaseApiController
         return $this->handleApi(function () use ($request) {
             $validated = $this->validatePayload($request);
             $validated = $this->applyCalculatedFields($validated);
+            $validated['trang_thai'] = 'cho_duyet';
 
             $datMua = DatMuaTrangPhuc::create($validated);
             $datMua->load('nhaCungCap:id,ma_nha_cung_cap,ten_nha_cung_cap');
@@ -84,12 +91,99 @@ class DatMuaTrangPhucController extends BaseApiController
         return $this->handleApi(function () use ($request, $dat_mua_trang_phuc) {
             $validated = $this->validatePayload($request);
             $validated = $this->applyCalculatedFields($validated);
+            unset($validated['trang_thai']);
 
             $dat_mua_trang_phuc->update($validated);
 
             return response()->json($dat_mua_trang_phuc->fresh()->load('nhaCungCap:id,ma_nha_cung_cap,ten_nha_cung_cap'));
 
         }, 'cập nhật đặt mua trang phục');
+    }
+
+    /**
+     * Duyệt đơn đặt mua trang phục.
+     */
+    public function duyet(DatMuaTrangPhuc $dat_mua_trang_phuc): JsonResponse
+    {
+        return $this->handleApi(function () use ($dat_mua_trang_phuc) {
+            if ($dat_mua_trang_phuc->trang_thai !== 'cho_duyet') {
+                throw ValidationException::withMessages([
+                    'trang_thai' => ['Chỉ có thể duyệt đơn đang chờ duyệt.'],
+                ]);
+            }
+
+            $dat_mua_trang_phuc->update(['trang_thai' => 'da_duyet']);
+
+            return response()->json(
+                $dat_mua_trang_phuc->fresh()->load('nhaCungCap:id,ma_nha_cung_cap,ten_nha_cung_cap')
+            );
+        }, 'duyệt đơn đặt mua trang phục');
+    }
+
+    /**
+     * Hủy duyệt đơn đặt mua trang phục.
+     */
+    public function huyDuyet(DatMuaTrangPhuc $dat_mua_trang_phuc): JsonResponse
+    {
+        return $this->handleApi(function () use ($dat_mua_trang_phuc) {
+            if ($dat_mua_trang_phuc->trang_thai !== 'cho_duyet') {
+                throw ValidationException::withMessages([
+                    'trang_thai' => ['Chỉ có thể hủy duyệt đơn đang chờ duyệt.'],
+                ]);
+            }
+
+            $dat_mua_trang_phuc->update(['trang_thai' => 'huy_duyet']);
+
+            return response()->json(
+                $dat_mua_trang_phuc->fresh()->load('nhaCungCap:id,ma_nha_cung_cap,ten_nha_cung_cap')
+            );
+        }, 'hủy duyệt đơn đặt mua trang phục');
+    }
+
+    /**
+     * Duyệt nhiều đơn đặt mua trang phục đang chờ duyệt.
+     */
+    public function bulkDuyet(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'ids' => ['required', 'array', 'min:1'],
+                'ids.*' => ['integer', 'exists:dat_mua_trang_phuc,id'],
+            ]);
+
+            $updated = DatMuaTrangPhuc::query()
+                ->whereIn('id', $validated['ids'])
+                ->where('trang_thai', 'cho_duyet')
+                ->update(['trang_thai' => 'da_duyet']);
+
+            return response()->json([
+                'message' => "Đã duyệt {$updated} đơn đặt mua trang phục.",
+                'updated' => $updated,
+            ]);
+        }, 'duyệt nhiều đơn đặt mua trang phục');
+    }
+
+    /**
+     * Hủy duyệt nhiều đơn đặt mua trang phục đang chờ duyệt.
+     */
+    public function bulkHuyDuyet(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'ids' => ['required', 'array', 'min:1'],
+                'ids.*' => ['integer', 'exists:dat_mua_trang_phuc,id'],
+            ]);
+
+            $updated = DatMuaTrangPhuc::query()
+                ->whereIn('id', $validated['ids'])
+                ->where('trang_thai', 'cho_duyet')
+                ->update(['trang_thai' => 'huy_duyet']);
+
+            return response()->json([
+                'message' => "Đã hủy duyệt {$updated} đơn đặt mua trang phục.",
+                'updated' => $updated,
+            ]);
+        }, 'hủy duyệt nhiều đơn đặt mua trang phục');
     }
 
     /**

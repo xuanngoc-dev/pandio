@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('nguoi_tao_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('nguoi_duyet_id')->nullable()->constrained('users')->nullOnDelete();
             $table->enum('loai', ['thu', 'chi']);
-            $table->foreignId('hang_muc_id')->nullable()->constrained('hang_muc_loai_thu_chu')->nullOnDelete();
+            $table->foreignId('hang_muc_id')->nullable()->constrained('hang_muc_loai_thu_chi')->nullOnDelete();
             $table->decimal('so_tien', 15, 0)->default(0);
             $table->text('ly_do')->nullable();
             $table->enum('trang_thai', ['cho_duyet', 'da_duyet', 'tu_choi'])->default('cho_duyet');

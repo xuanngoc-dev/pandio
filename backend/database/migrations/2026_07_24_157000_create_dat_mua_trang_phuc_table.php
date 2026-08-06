@@ -21,7 +21,10 @@ return new class extends Migration
             $table->unsignedBigInteger('phi_van_chuyen')->default(0);
             $table->unsignedBigInteger('tien_coc')->default(0);
             $table->bigInteger('du_no')->default(0);
+            $table->enum('trang_thai', ['cho_duyet', 'da_duyet', 'huy_duyet'])->default('cho_duyet');
             $table->timestamps();
+
+            $table->index('trang_thai');
         });
     }
 

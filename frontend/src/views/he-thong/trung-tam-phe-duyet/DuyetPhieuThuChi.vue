@@ -170,6 +170,8 @@ import {
 } from '@/components/element'
 import Pagination from '@/components/Pagination.vue'
 
+const emit = defineEmits(['changed', 'count-change'])
+
 const items = ref([])
 const loading = ref(false)
 const page = ref(1)
@@ -298,6 +300,7 @@ async function confirmStatusChange() {
     )
     statusDialogVisible.value = false
     await loadItems()
+    emit('changed')
   } catch {
     // interceptor
   } finally {
@@ -320,9 +323,11 @@ async function loadItems() {
     items.value = data.data || []
     total.value = data.total || 0
     page.value = data.current_page || page.value
+    emit('count-change', total.value)
   } catch {
     items.value = []
     total.value = 0
+    emit('count-change', 0)
   } finally {
     loading.value = false
   }

@@ -11,9 +11,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'ghi_chu',
     'trang_thai',
 ])]
-class HangMucLoaiThuChu extends Model
+class HangMucLoaiThuChi extends Model
 {
-    protected $table = 'hang_muc_loai_thu_chu';
+    protected $table = 'hang_muc_loai_thu_chi';
 
     public function phieuThuChi(): HasMany
     {

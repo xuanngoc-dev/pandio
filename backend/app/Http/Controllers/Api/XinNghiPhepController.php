@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Models\DiemDanh;
 use App\Models\XinNghiPhep;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -154,6 +155,7 @@ class XinNghiPhepController extends BaseApiController
 
     /**
      * Duyệt đơn nghỉ phép — lưu người duyệt = user đang đăng nhập.
+     * Nếu duyệt đi muộn / về sớm thì cập nhật tiền phạt tương ứng trên diem_danh = 0.
      */
     public function duyet(XinNghiPhep $xin_nghi_phep): JsonResponse
     {
@@ -169,12 +171,58 @@ class XinNghiPhepController extends BaseApiController
                 'nguoi_duyet_id' => auth()->id(),
             ]);
 
+            $this->capNhatDiemDanhKhiDuyet($xin_nghi_phep);
+
             return response()->json($xin_nghi_phep->fresh([
                 'user:id,name,email',
                 'nguoiDuyet:id,name,email',
             ]));
 
         }, 'duyệt đơn xin nghỉ phép');
+    }
+
+    /**
+     * Khi duyệt đi muộn / về sớm: miễn tiền phạt trên bản ghi điểm danh cùng ngày.
+     */
+    private function capNhatDiemDanhKhiDuyet(XinNghiPhep $xinNghiPhep): void
+    {
+        if (! in_array($xinNghiPhep->loai_nghi_phep, ['di_muon', 've_som'], true)) {
+            return;
+        }
+
+        $ngay = $xinNghiPhep->ngay_bat_dau?->toDateString();
+        if (! $ngay) {
+            return;
+        }
+
+        $diemDanh = DiemDanh::query()
+            ->where('user_id', $xinNghiPhep->user_id)
+            ->whereDate('ngay_lam', $ngay)
+            ->first();
+
+        if (! $diemDanh) {
+            return;
+        }
+
+        $payload = [];
+
+        if ($xinNghiPhep->loai_nghi_phep === 'di_muon') {
+            $payload['tien_phat_di_muon'] = 0;
+            $payload['di_muon'] = 'khong';
+            $payload['thoi_gian_di_muon'] = 0;
+        }
+
+        if ($xinNghiPhep->loai_nghi_phep === 've_som') {
+            $payload['tien_phat_ve_som'] = 0;
+            $payload['ve_som'] = 'khong';
+            $payload['thoi_gian_ve_som'] = 0;
+        }
+
+        if ($xinNghiPhep->ly_do) {
+            $payload['ly_do'] = $xinNghiPhep->ly_do;
+        }
+
+        $diemDanh->update($payload);
     }
 
     /**
@@ -200,6 +248,65 @@ class XinNghiPhepController extends BaseApiController
             ]));
 
         }, 'từ chối đơn xin nghỉ phép');
+    }
+
+    /**
+     * Duyệt nhiều đơn nghỉ phép đang chờ duyệt.
+     */
+    public function bulkDuyet(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'ids' => ['required', 'array', 'min:1'],
+                'ids.*' => ['integer', 'exists:xin_nghi_phep,id'],
+            ]);
+
+            $items = XinNghiPhep::query()
+                ->whereIn('id', $validated['ids'])
+                ->where('trang_thai', 'cho_duyet')
+                ->get();
+
+            $updated = 0;
+            foreach ($items as $item) {
+                $item->update([
+                    'trang_thai' => 'da_duyet',
+                    'nguoi_duyet_id' => auth()->id(),
+                ]);
+                $this->capNhatDiemDanhKhiDuyet($item);
+                $updated++;
+            }
+
+            return response()->json([
+                'message' => "Đã duyệt {$updated} đơn xin nghỉ phép.",
+                'updated' => $updated,
+            ]);
+        }, 'duyệt nhiều đơn xin nghỉ phép');
+    }
+
+    /**
+     * Từ chối nhiều đơn nghỉ phép đang chờ duyệt.
+     */
+    public function bulkTuChoi(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'ids' => ['required', 'array', 'min:1'],
+                'ids.*' => ['integer', 'exists:xin_nghi_phep,id'],
+            ]);
+
+            $updated = XinNghiPhep::query()
+                ->whereIn('id', $validated['ids'])
+                ->where('trang_thai', 'cho_duyet')
+                ->update([
+                    'trang_thai' => 'tu_choi',
+                    'nguoi_duyet_id' => auth()->id(),
+                ]);
+
+            return response()->json([
+                'message' => "Đã từ chối {$updated} đơn xin nghỉ phép.",
+                'updated' => $updated,
+            ]);
+        }, 'từ chối nhiều đơn xin nghỉ phép');
     }
 
     /**

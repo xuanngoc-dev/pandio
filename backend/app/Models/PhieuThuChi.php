@@ -44,6 +44,6 @@ class PhieuThuChi extends Model
 
     public function hangMuc(): BelongsTo
     {
-        return $this->belongsTo(HangMucLoaiThuChu::class, 'hang_muc_id');
+        return $this->belongsTo(HangMucLoaiThuChi::class, 'hang_muc_id');
     }
 }

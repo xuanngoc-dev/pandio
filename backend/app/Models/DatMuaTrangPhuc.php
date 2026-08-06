@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'phi_van_chuyen',
     'tien_coc',
     'du_no',
+    'trang_thai',
 ])]
 class DatMuaTrangPhuc extends Model
 {

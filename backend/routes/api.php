@@ -20,7 +20,7 @@ use App\Http\Controllers\Api\DichVuLoaiDichVuController;
 use App\Http\Controllers\Api\DatMuaTrangPhucController;
 use App\Http\Controllers\Api\HopDongChoThueTrangPhucController;
 use App\Http\Controllers\Api\HopDongSuDungDichVuController;
-use App\Http\Controllers\Api\HangMucLoaiThuChuController;
+use App\Http\Controllers\Api\HangMucLoaiThuChiController;
 use App\Http\Controllers\Api\KhachHangNoteKhachMoiController;
 use App\Http\Controllers\Api\NhaCungCapTrangPhucController;
 use App\Http\Controllers\Api\PhieuThuChiController;
@@ -63,6 +63,8 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
     Route::apiResource('users', UserController::class);
 
     // Xin nghỉ phép
+    Route::post('/xin-nghi-phep/bulk-duyet', [XinNghiPhepController::class, 'bulkDuyet']);
+    Route::post('/xin-nghi-phep/bulk-tu-choi', [XinNghiPhepController::class, 'bulkTuChoi']);
     Route::post('/xin-nghi-phep/{xin_nghi_phep}/duyet', [XinNghiPhepController::class, 'duyet']);
     Route::post('/xin-nghi-phep/{xin_nghi_phep}/tu-choi', [XinNghiPhepController::class, 'tuChoi']);
     Route::apiResource('xin-nghi-phep', XinNghiPhepController::class);
@@ -138,6 +140,10 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
     Route::apiResource('trang-phuc', TrangPhucController::class);
     Route::apiResource('danh-muc-trang-phuc', DanhMucTrangPhucController::class);
     Route::apiResource('nha-cung-cap-trang-phuc', NhaCungCapTrangPhucController::class);
+    Route::post('/dat-mua-trang-phuc/bulk-duyet', [DatMuaTrangPhucController::class, 'bulkDuyet']);
+    Route::post('/dat-mua-trang-phuc/bulk-huy-duyet', [DatMuaTrangPhucController::class, 'bulkHuyDuyet']);
+    Route::post('/dat-mua-trang-phuc/{dat_mua_trang_phuc}/duyet', [DatMuaTrangPhucController::class, 'duyet']);
+    Route::post('/dat-mua-trang-phuc/{dat_mua_trang_phuc}/huy-duyet', [DatMuaTrangPhucController::class, 'huyDuyet']);
     Route::apiResource('dat-mua-trang-phuc', DatMuaTrangPhucController::class);
     Route::post('/hop-dong-cho-thue-trang-phuc/khoi-tao', [HopDongChoThueTrangPhucController::class, 'khoiTao']);
     Route::post('/hop-dong-cho-thue-trang-phuc/{hop_dong_cho_thue_trang_phuc}/thanh-toan', [HopDongChoThueTrangPhucController::class, 'thanhToan']);
@@ -152,7 +158,7 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
     Route::apiResource('khach-hang-note-khach-moi', KhachHangNoteKhachMoiController::class);
 
     // Tài chính — kế toán thuế
-    Route::apiResource('hang-muc-loai-thu-chu', HangMucLoaiThuChuController::class);
+    Route::apiResource('hang-muc-loai-thu-chi', HangMucLoaiThuChiController::class);
     Route::post('/phieu-thu-chi/bulk-delete', [PhieuThuChiController::class, 'bulkDestroy']);
     Route::post('/phieu-thu-chi/bulk-update-status', [PhieuThuChiController::class, 'bulkUpdateStatus']);
     Route::apiResource('phieu-thu-chi', PhieuThuChiController::class);

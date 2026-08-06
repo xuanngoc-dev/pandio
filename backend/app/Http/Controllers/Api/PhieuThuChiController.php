@@ -23,7 +23,7 @@ class PhieuThuChiController extends BaseApiController
                 'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
                 'loai' => ['sometimes', 'nullable', Rule::in(['thu', 'chi'])],
                 'trang_thai' => ['sometimes', 'nullable', Rule::in(['cho_duyet', 'da_duyet', 'tu_choi'])],
-                'hang_muc_id' => ['sometimes', 'nullable', 'integer', 'exists:hang_muc_loai_thu_chu,id'],
+                'hang_muc_id' => ['sometimes', 'nullable', 'integer', 'exists:hang_muc_loai_thu_chi,id'],
             ]);
 
             $perPage = $validated['per_page'] ?? 10;
@@ -189,7 +189,7 @@ class PhieuThuChiController extends BaseApiController
             'nguoi_tao_id' => ['nullable', 'integer', 'exists:users,id'],
             'nguoi_duyet_id' => ['nullable', 'integer', 'exists:users,id'],
             'loai' => ['required', Rule::in(['thu', 'chi'])],
-            'hang_muc_id' => ['nullable', 'integer', 'exists:hang_muc_loai_thu_chu,id'],
+            'hang_muc_id' => ['nullable', 'integer', 'exists:hang_muc_loai_thu_chi,id'],
             'so_tien' => ['required', 'numeric', 'min:0'],
             'ly_do' => ['nullable', 'string'],
             'trang_thai' => ['sometimes', Rule::in(['cho_duyet', 'da_duyet', 'tu_choi'])],

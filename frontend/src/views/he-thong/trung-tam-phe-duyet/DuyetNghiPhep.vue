@@ -145,6 +145,8 @@ import {
 } from '@/components/element'
 import Pagination from '@/components/Pagination.vue'
 
+const emit = defineEmits(['changed', 'count-change'])
+
 const LOAI_NGHI_PHEP_OPTIONS = [
   { value: 'di_muon', label: 'Đi muộn' },
   { value: 've_som', label: 'Về sớm' },
@@ -282,6 +284,7 @@ async function runAction(trangThai, ids) {
       isApprove ? `Đã duyệt ${ids.length} đơn.` : `Đã từ chối ${ids.length} đơn.`,
     )
     await loadItems()
+    emit('changed')
   } catch {
     // interceptor
   } finally {
@@ -304,9 +307,11 @@ async function loadItems() {
     items.value = data.data || []
     total.value = data.total || 0
     page.value = data.current_page || page.value
+    emit('count-change', total.value)
   } catch {
     items.value = []
     total.value = 0
+    emit('count-change', 0)
   } finally {
     loading.value = false
   }

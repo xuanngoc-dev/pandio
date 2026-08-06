@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Models\HangMucLoaiThuChu;
+use App\Models\HangMucLoaiThuChi;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
-class HangMucLoaiThuChuController extends BaseApiController
+class HangMucLoaiThuChiController extends BaseApiController
 {
     /**
      * Danh sách hạng mục loại thu chi — phân trang + tìm kiếm.
@@ -28,7 +28,7 @@ class HangMucLoaiThuChuController extends BaseApiController
             $keyword = trim((string) ($validated['keyword'] ?? ''));
             $trangThai = $validated['trang_thai'] ?? null;
 
-            $query = HangMucLoaiThuChu::query()
+            $query = HangMucLoaiThuChi::query()
                 ->when($keyword !== '', function ($q) use ($keyword) {
                     $q->where(function ($inner) use ($keyword) {
                         $inner->where('ten_hang_muc', 'like', "%{$keyword}%")
@@ -43,10 +43,10 @@ class HangMucLoaiThuChuController extends BaseApiController
         }, 'lấy danh sách hạng mục loại thu chi');
     }
 
-    public function show(HangMucLoaiThuChu $hang_muc_loai_thu_chu): JsonResponse
+    public function show(HangMucLoaiThuChi $hang_muc_loai_thu_chi): JsonResponse
     {
-        return $this->handleApi(function () use ($hang_muc_loai_thu_chu) {
-            return response()->json($hang_muc_loai_thu_chu);
+        return $this->handleApi(function () use ($hang_muc_loai_thu_chi) {
+            return response()->json($hang_muc_loai_thu_chi);
 
         }, 'lấy chi tiết hạng mục loại thu chi');
     }
@@ -60,33 +60,33 @@ class HangMucLoaiThuChuController extends BaseApiController
                 'trang_thai' => ['required', Rule::in(['hoat_dong', 'ngung_hoat_dong'])],
             ]);
 
-            $item = HangMucLoaiThuChu::create($validated);
+            $item = HangMucLoaiThuChi::create($validated);
 
             return response()->json($item, 201);
 
         }, 'tạo hạng mục loại thu chi');
     }
 
-    public function update(Request $request, HangMucLoaiThuChu $hang_muc_loai_thu_chu): JsonResponse
+    public function update(Request $request, HangMucLoaiThuChi $hang_muc_loai_thu_chi): JsonResponse
     {
-        return $this->handleApi(function () use ($request, $hang_muc_loai_thu_chu) {
+        return $this->handleApi(function () use ($request, $hang_muc_loai_thu_chi) {
             $validated = $request->validate([
                 'ten_hang_muc' => ['required', 'string', 'max:255'],
                 'ghi_chu' => ['nullable', 'string'],
                 'trang_thai' => ['required', Rule::in(['hoat_dong', 'ngung_hoat_dong'])],
             ]);
 
-            $hang_muc_loai_thu_chu->update($validated);
+            $hang_muc_loai_thu_chi->update($validated);
 
-            return response()->json($hang_muc_loai_thu_chu->fresh());
+            return response()->json($hang_muc_loai_thu_chi->fresh());
 
         }, 'cập nhật hạng mục loại thu chi');
     }
 
-    public function destroy(HangMucLoaiThuChu $hang_muc_loai_thu_chu): JsonResponse
+    public function destroy(HangMucLoaiThuChi $hang_muc_loai_thu_chi): JsonResponse
     {
-        return $this->handleApi(function () use ($hang_muc_loai_thu_chu) {
-            $hang_muc_loai_thu_chu->delete();
+        return $this->handleApi(function () use ($hang_muc_loai_thu_chi) {
+            $hang_muc_loai_thu_chi->delete();
 
             return response()->json(['message' => 'Đã xóa hạng mục loại thu chi.']);
 

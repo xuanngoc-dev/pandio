@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\HangMucLoaiThuChu;
+use App\Models\HangMucLoaiThuChi;
 use App\Models\PhieuThuChi;
 use App\Models\User;
 use Carbon\Carbon;
@@ -36,7 +36,7 @@ class HangMucVaPhieuThuChiSeeder extends Seeder
 
         $hangMucIds = [];
         foreach ($hangMucData as $item) {
-            $hangMuc = HangMucLoaiThuChu::query()->create([
+            $hangMuc = HangMucLoaiThuChi::query()->create([
                 'ten_hang_muc' => $item['ten_hang_muc'],
                 'ghi_chu' => $item['ghi_chu'],
                 'trang_thai' => 'hoat_dong',

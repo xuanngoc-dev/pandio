@@ -40,7 +40,42 @@ class ReportQuangCaoController extends BaseApiController
                 ->orderByDesc('ngay')
                 ->orderByDesc('id');
 
-            return response()->json($query->paginate($perPage));
+            // Tổng toàn bộ kết quả lọc (không phụ thuộc phân trang)
+            $summary = (clone $query)
+                ->reorder()
+                ->toBase()
+                ->selectRaw(implode(', ', [
+                    'COALESCE(SUM(cpqc_tiktok), 0) as cpqc_tiktok',
+                    'COALESCE(SUM(cpqc_fb), 0) as cpqc_fb',
+                    'COALESCE(SUM(cpqc_google), 0) as cpqc_google',
+                    'COALESCE(SUM(inbox_tiktok), 0) as inbox_tiktok',
+                    'COALESCE(SUM(cpi_tiktok), 0) as cpi_tiktok',
+                    'COALESCE(SUM(inbox_fb), 0) as inbox_fb',
+                    'COALESCE(SUM(cpi_fb), 0) as cpi_fb',
+                    'COALESCE(SUM(kh_tiktok), 0) as kh_tiktok',
+                    'COALESCE(SUM(kh_fb), 0) as kh_fb',
+                    'COALESCE(SUM(kh_google), 0) as kh_google',
+                    'COALESCE(SUM(tcpl_tiktok), 0) as tcpl_tiktok',
+                    'COALESCE(SUM(cpl_fb), 0) as cpl_fb',
+                    'COALESCE(SUM(cpl_google), 0) as cpl_google',
+                    'COALESCE(SUM(lich_hen), 0) as lich_hen',
+                    'COALESCE(SUM(khach_den_tu_hen), 0) as khach_den_tu_hen',
+                ]))
+                ->first();
+
+            $paginator = $query->paginate($perPage);
+            $payload = $paginator->toArray();
+            $payload['summary'] = $summary
+                ? array_map('intval', (array) $summary)
+                : array_fill_keys([
+                    'cpqc_tiktok', 'cpqc_fb', 'cpqc_google',
+                    'inbox_tiktok', 'cpi_tiktok', 'inbox_fb', 'cpi_fb',
+                    'kh_tiktok', 'kh_fb', 'kh_google',
+                    'tcpl_tiktok', 'cpl_fb', 'cpl_google',
+                    'lich_hen', 'khach_den_tu_hen',
+                ], 0);
+
+            return response()->json($payload);
 
         }, 'lấy danh sách report quảng cáo');
     }
