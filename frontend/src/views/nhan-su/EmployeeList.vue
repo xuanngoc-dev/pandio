@@ -1357,10 +1357,18 @@ onMounted(() => {
   background: var(--el-fill-color-light);
 }
 
+.salary-group-card :deep(.el-card__body) {
+  padding: 12px 16px 4px;
+}
+
 .salary-group-title {
   font-size: 14px;
   font-weight: 600;
   color: var(--el-text-color-primary);
+}
+
+.salary-fields :deep(.el-form-item) {
+  margin-bottom: 12px;
 }
 
 .salary-fields :deep(.el-input-number .el-input__inner) {

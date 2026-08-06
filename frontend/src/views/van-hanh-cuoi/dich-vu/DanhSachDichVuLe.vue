@@ -538,7 +538,9 @@ function onSearch() {
 function openCreate() {
   editingId.value = null
   giaKhuyenMaiSynced.value = true
-  Object.assign(form, emptyForm())
+  Object.assign(form, emptyForm(), {
+    loai_hop_dong_ids: loaiHopDongOptions.value.map((item) => item.id),
+  })
   dialogVisible.value = true
 }
 
