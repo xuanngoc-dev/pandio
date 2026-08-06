@@ -12,23 +12,16 @@ class Media
 {
     /**
      * Path tương đối / URL → URL public tuyệt đối.
+     * Luôn normalize rồi ghép lại từ APP_URL (tránh giữ domain sai nếu DB/API từng lưu full URL).
      */
     public static function url(?string $path): ?string
     {
-        if ($path === null) {
+        $normalized = self::normalizePath($path);
+        if ($normalized === null || $normalized === '') {
             return null;
         }
 
-        $path = trim($path);
-        if ($path === '') {
-            return null;
-        }
-
-        if (preg_match('#^(https?:)?//#i', $path)) {
-            return $path;
-        }
-
-        return Storage::disk('public')->url(ltrim($path, '/'));
+        return Storage::disk('public')->url($normalized);
     }
 
     /**
