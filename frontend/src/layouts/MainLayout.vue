@@ -26,8 +26,15 @@
         @mouseleave="onAsideLeave"
       >
         <div class="brand">
-          <el-icon :size="22"><Monitor /></el-icon>
-          <span class="brand-text" :class="{ 'is-hidden': collapsed }">Pandio</span>
+          <el-avatar
+            v-if="brandLogoUrl"
+            :size="28"
+            shape="square"
+            :src="brandLogoUrl"
+            class="brand-logo"
+          />
+          <el-icon v-else :size="22"><Monitor /></el-icon>
+          <span class="brand-text" :class="{ 'is-hidden': collapsed }">{{ brandName }}</span>
         </div>
 
         <div class="aside-menu">
@@ -167,6 +174,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useLayoutStore } from '@/stores/layout'
 import { useNetworkStatus } from '@/composables/useNetworkStatus'
+import { fetchThongTinStudio } from '@/api/thongTinStudio'
+import { mediaUrl } from '@/utils/media'
 import { Monitor, Fold, Expand, ArrowDown, Setting, Bell, Search } from '@element-plus/icons-vue'
 import SideMenu from '@/components/SideMenu.vue'
 import NotificationDrawer from '@/components/NotificationDrawer.vue'
@@ -208,6 +217,10 @@ const isDark = ref(document.documentElement.classList.contains('dark'))
 const now = ref(new Date())
 /** Tăng khi đổi mode đẩy/overlay để remount sidebar sạch */
 const asideMountKey = ref(0)
+const studioInfo = ref(null)
+
+const brandName = computed(() => studioInfo.value?.ten_studio?.trim() || 'Pandio')
+const brandLogoUrl = computed(() => mediaUrl(studioInfo.value?.logo) || '')
 
 const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform)
 const searchShortcutLabel = isMac ? '⌘K' : 'Ctrl+K'
@@ -280,7 +293,7 @@ watch(sidebarPushContent, async () => {
   await nextTick()
 })
 
-const pageTitle = computed(() => route.meta.title || 'Pandio')
+const pageTitle = computed(() => route.meta.title || brandName.value)
 const userFullName = computed(() => String(authStore.user?.name || '').trim())
 const userShortName = computed(() => {
   const parts = userFullName.value.split(/\s+/).filter(Boolean)
@@ -341,6 +354,20 @@ async function onCommand(cmd) {
   }
 }
 
+async function loadStudioBrand() {
+  try {
+    const { data } = await fetchThongTinStudio({ mac_dinh: 'co', per_page: 1 })
+    let item = (data.data || [])[0] || null
+    if (!item) {
+      const fallback = await fetchThongTinStudio({ per_page: 1 })
+      item = (fallback.data.data || [])[0] || null
+    }
+    studioInfo.value = item
+  } catch {
+    studioInfo.value = null
+  }
+}
+
 onMounted(() => {
   const saved = localStorage.getItem('darkMode')
   if (saved === '1') {
@@ -356,11 +383,15 @@ onMounted(() => {
   clockTimer = window.setInterval(() => {
     now.value = new Date()
   }, 1000)
+
+  loadStudioBrand()
+  window.addEventListener('studio-brand-updated', loadStudioBrand)
 })
 
 onUnmounted(() => {
   mediaQuery?.removeEventListener('change', syncCollapseByViewport)
   window.removeEventListener('keydown', onGlobalKeydown)
+  window.removeEventListener('studio-brand-updated', loadStudioBrand)
   clearHoverLeaveTimer()
   if (clockTimer != null) window.clearInterval(clockTimer)
 })
@@ -478,9 +509,17 @@ onUnmounted(() => {
   }
 }
 
+.brand-logo {
+  flex-shrink: 0;
+  border-radius: 6px;
+  background: var(--el-fill-color-light);
+}
+
 .brand-text {
   display: inline-block;
   max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   opacity: 1;
   transform: translateX(0);
   transition:

@@ -20,7 +20,7 @@ export const cauHinhSections = [
         component: 'ChiNhanh',
       },
       {
-        label: 'Giờ làm việc & Ngày nghỉ',
+        label: 'Kỳ nghỉ & ngày lễ',
         routeName: 'cau-hinh-gio-lam-viec',
         path: 'gio-lam-viec-ngay-nghi',
         component: 'GioLamViecNgayNghi',

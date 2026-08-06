@@ -143,7 +143,7 @@ const routes = [
         path: 'he-thong/cau-hinh-quan-tri/gio-lam-viec-ngay-nghi',
         name: 'cau-hinh-gio-lam-viec',
         component: () => import('@/views/he-thong/cau-hinh/GioLamViecNgayNghi.vue'),
-        meta: { title: 'Giờ làm việc & Ngày nghỉ', requiresAuth: true },
+        meta: { title: 'Kỳ nghỉ & ngày lễ', requiresAuth: true },
       },
       {
         path: 'he-thong/cau-hinh-quan-tri/hop-dong-dat-coc',

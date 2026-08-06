@@ -1,8 +1,8 @@
 <template>
-  <ConfigSettingPage title="Giờ làm việc & Ngày nghỉ">
+  <ConfigSettingPage title="Kỳ nghỉ & ngày lễ">
     <el-tabs v-model="activeTab" class="gio-nghi-tabs">
-      <!-- Tab giờ làm việc -->
-      <el-tab-pane label="Giờ làm việc" name="gio-lam">
+      <!-- Tab giờ làm việc (ẩn tạm) -->
+      <el-tab-pane v-if="showGioLamTab" label="Giờ làm việc" name="gio-lam">
         <div class="tab-panel page-list">
           <CustomCard shadow="hover" class="filter-card">
             <CustomRow :gutter="12" class="toolbar">
@@ -166,15 +166,15 @@
         </div>
       </el-tab-pane>
 
-      <!-- Tab ngày nghỉ -->
-      <el-tab-pane label="Ngày nghỉ" name="ngay-nghi">
+      <!-- Tab kỳ nghỉ & ngày lễ -->
+      <el-tab-pane label="Kỳ nghỉ & ngày lễ" name="ngay-nghi">
         <div class="tab-panel page-list">
           <CustomCard shadow="hover" class="filter-card">
             <CustomRow :gutter="12" class="toolbar">
               <CustomCol :xs="12" :sm="12" :md="8" :lg="8">
                 <CustomInput
                   v-model="ngayNghi.keyword"
-                  placeholder="Tìm theo tên ngày nghỉ..."
+                  placeholder="Tìm theo tên kỳ nghỉ & ngày lễ..."
                   clearable
                   style="width: 100%"
                   @clear="onSearchNgayNghi"
@@ -209,7 +209,7 @@
           <CustomCard shadow="hover" class="table-card">
             <template #header>
               <div class="card-header">
-                <span class="card-title">Danh sách ngày nghỉ</span>
+                <span class="card-title">Danh sách kỳ nghỉ & ngày lễ</span>
                 <div class="header-actions">
                   <TableColumnConfig :settings="ngayNghiColumnSettings" />
                   <CustomTooltip content="Thêm mới" placement="top">
@@ -232,7 +232,7 @@
               <el-table-column
                 v-if="ngayNghiColumnSettings.isColumnVisible('ten_ngay_nghi')"
                 prop="ten_ngay_nghi"
-                label="Tên ngày nghỉ"
+                label="Tên kỳ nghỉ & ngày lễ"
                 min-width="180"
                 show-overflow-tooltip
               />
@@ -260,7 +260,7 @@
               </el-table-column>
               <el-table-column
                 v-if="ngayNghiColumnSettings.isColumnVisible('so_ngay_nghi')"
-                label="Số ngày nghỉ"
+                label="Số ngày"
                 width="130"
                 align="center"
               >
@@ -407,16 +407,16 @@
       </template>
     </CustomDialog>
 
-    <!-- Dialog ngày nghỉ -->
+    <!-- Dialog kỳ nghỉ & ngày lễ -->
     <CustomDialog
       v-model="ngayNghi.dialogVisible"
-      :title="ngayNghi.editingId ? 'Sửa ngày nghỉ' : 'Thêm ngày nghỉ'"
+      :title="ngayNghi.editingId ? 'Sửa kỳ nghỉ & ngày lễ' : 'Thêm kỳ nghỉ & ngày lễ'"
       :width="640"
     >
       <CustomForm ref="ngayNghiFormRef" :model="ngayNghiForm" :rules="ngayNghiRules">
         <CustomRow :gutter="16">
           <CustomCol :span="24">
-            <CustomFormItem label="Tên ngày nghỉ" prop="ten_ngay_nghi">
+            <CustomFormItem label="Tên kỳ nghỉ & ngày lễ" prop="ten_ngay_nghi">
               <CustomInput
                 v-model="ngayNghiForm.ten_ngay_nghi"
                 placeholder="VD: Nghỉ lễ Quốc khánh"
@@ -513,15 +513,16 @@ const gioLamTableColumns = [
 const gioLamColumnSettings = useTableColumns('he-thong.gio-lam-viec', gioLamTableColumns)
 
 const ngayNghiTableColumns = [
-  { key: 'ten_ngay_nghi', label: 'Tên ngày nghỉ' },
+  { key: 'ten_ngay_nghi', label: 'Tên kỳ nghỉ & ngày lễ' },
   { key: 'ngay_bat_dau', label: 'Ngày bắt đầu' },
   { key: 'ngay_ket_thuc', label: 'Ngày kết thúc' },
-  { key: 'so_ngay_nghi', label: 'Số ngày nghỉ' },
+  { key: 'so_ngay_nghi', label: 'Số ngày' },
   { key: 'trang_thai', label: 'Trạng thái' },
 ]
 const ngayNghiColumnSettings = useTableColumns('he-thong.ngay-nghi', ngayNghiTableColumns)
 
-const activeTab = ref('gio-lam')
+const activeTab = ref('ngay-nghi')
+const showGioLamTab = false
 const loadedTabs = ref({ 'gio-lam': false, 'ngay-nghi': false })
 
 function formatTime(value) {
@@ -730,7 +731,7 @@ async function removeGioLam(row) {
   }
 }
 
-/* ========== Ngày nghỉ ========== */
+/* ========== Kỳ nghỉ & ngày lễ ========== */
 const ngayNghi = reactive({
   items: [],
   loading: false,
@@ -757,7 +758,7 @@ const emptyNgayNghiForm = () => ({
 const ngayNghiForm = reactive(emptyNgayNghiForm())
 
 const ngayNghiRules = {
-  ten_ngay_nghi: [{ required: true, message: 'Vui lòng nhập tên ngày nghỉ', trigger: 'blur' }],
+  ten_ngay_nghi: [{ required: true, message: 'Vui lòng nhập tên kỳ nghỉ & ngày lễ', trigger: 'blur' }],
   ngay_bat_dau: [{ required: true, message: 'Vui lòng chọn ngày bắt đầu', trigger: 'change' }],
   ngay_ket_thuc: [{ required: true, message: 'Vui lòng chọn ngày kết thúc', trigger: 'change' }],
   trang_thai: [{ required: true, message: 'Vui lòng chọn trạng thái', trigger: 'change' }],
@@ -797,7 +798,7 @@ function openCreateNgayNghi() {
 
 function openEditNgayNghi(row) {
   if (!row?.id) {
-    ElMessage.error('Không xác định được bản ghi ngày nghỉ.')
+    ElMessage.error('Không xác định được bản ghi kỳ nghỉ & ngày lễ.')
     return
   }
   ngayNghi.editingId = row.id
@@ -825,10 +826,10 @@ async function saveNgayNghi() {
   try {
     if (ngayNghi.editingId != null) {
       await updateNgayNghi(ngayNghi.editingId, payload)
-      ElMessage.success('Đã cập nhật ngày nghỉ.')
+      ElMessage.success('Đã cập nhật kỳ nghỉ & ngày lễ.')
     } else {
       await createNgayNghi(payload)
-      ElMessage.success('Đã thêm ngày nghỉ.')
+      ElMessage.success('Đã thêm kỳ nghỉ & ngày lễ.')
     }
     ngayNghi.dialogVisible = false
     await loadNgayNghi()
@@ -844,7 +845,7 @@ async function saveNgayNghi() {
 
 async function toggleTrangThai(row, value) {
   if (!row?.id) {
-    ElMessage.error('Không xác định được bản ghi ngày nghỉ.')
+    ElMessage.error('Không xác định được bản ghi kỳ nghỉ & ngày lễ.')
     return
   }
 
@@ -861,7 +862,7 @@ async function toggleTrangThai(row, value) {
       trang_thai: nextValue,
     })
     ElMessage.success(
-      nextValue === 'active' ? 'Đã bật ngày nghỉ.' : 'Đã tắt ngày nghỉ.',
+      nextValue === 'active' ? 'Đã bật kỳ nghỉ & ngày lễ.' : 'Đã tắt kỳ nghỉ & ngày lễ.',
     )
   } catch (error) {
     row.trang_thai = previous
@@ -875,11 +876,11 @@ async function toggleTrangThai(row, value) {
 
 async function removeNgayNghi(row) {
   if (!row?.id) {
-    ElMessage.error('Không xác định được bản ghi ngày nghỉ.')
+    ElMessage.error('Không xác định được bản ghi kỳ nghỉ & ngày lễ.')
     return
   }
 
-  await ElMessageBox.confirm(`Xóa ngày nghỉ "${row.ten_ngay_nghi}"?`, 'Xác nhận', {
+  await ElMessageBox.confirm(`Xóa kỳ nghỉ & ngày lễ "${row.ten_ngay_nghi}"?`, 'Xác nhận', {
     type: 'warning',
     confirmButtonText: 'Xóa',
     cancelButtonText: 'Hủy',
@@ -887,7 +888,7 @@ async function removeNgayNghi(row) {
 
   try {
     await deleteNgayNghi(row.id)
-    ElMessage.success('Đã xóa ngày nghỉ.')
+    ElMessage.success('Đã xóa kỳ nghỉ & ngày lễ.')
     await loadNgayNghi()
   } catch (error) {
     if (error?.message === 'ID ngày nghỉ không hợp lệ.') {
@@ -901,7 +902,7 @@ watch(activeTab, (tab) => {
   if (tab === 'ngay-nghi' && !loadedTabs.value['ngay-nghi']) loadNgayNghi()
 })
 
-onMounted(loadGioLam)
+onMounted(loadNgayNghi)
 </script>
 
 <style scoped>

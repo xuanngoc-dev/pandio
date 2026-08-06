@@ -20,6 +20,9 @@
                   <el-tag v-if="defaultStudio.mac_dinh === 'co'" size="small" type="success">
                     Mặc định
                   </el-tag>
+                  <CustomTooltip content="Cập nhật thông tin studio" placement="top">
+                    <CustomButton type="primary" link :icon="Edit" @click="openStudioEdit" />
+                  </CustomTooltip>
                 </div>
                 <p v-if="defaultStudio.khau_hieu" class="studio-info__slogan">
                   {{ defaultStudio.khau_hieu }}
@@ -40,8 +43,11 @@
                 </div>
               </div>
             </div>
-            <div v-else-if="!studioLoading" class="empty-state">
-              Chưa có thông tin studio.
+            <div v-else-if="!studioLoading" class="empty-state empty-state--studio">
+              <span>Chưa có thông tin studio.</span>
+              <CustomButton type="primary" :icon="Plus" @click="openStudioCreate">
+                Thêm thông tin studio
+              </CustomButton>
             </div>
           </CustomCard>
 
@@ -265,6 +271,93 @@
       </el-tab-pane>
     </el-tabs>
 
+    <!-- Dialog: Thông tin studio -->
+    <CustomDialog
+      v-model="studioDialogVisible"
+      :title="studioEditingId ? 'Sửa thông tin studio' : 'Thêm thông tin studio'"
+      :width="720"
+    >
+      <CustomForm ref="studioFormRef" :model="studioForm" :rules="studioRules">
+        <CustomRow :gutter="16">
+          <CustomCol :span="24">
+            <CustomFormItem label="Logo" prop="logo">
+              <div class="logo-slot">
+                <el-upload
+                  class="logo-uploader"
+                  :show-file-list="false"
+                  :auto-upload="false"
+                  accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                  :on-change="onLogoChange"
+                >
+                  <img
+                    v-if="logoPreviewUrl"
+                    :src="logoPreviewUrl"
+                    class="logo-image"
+                    alt="Logo studio"
+                  />
+                  <div v-else class="logo-placeholder">
+                    <el-icon><Plus /></el-icon>
+                    <span>Chọn logo</span>
+                  </div>
+                </el-upload>
+                <button
+                  v-if="logoPreviewUrl"
+                  type="button"
+                  class="logo-remove"
+                  title="Xóa logo"
+                  @click.stop="onLogoRemove"
+                >
+                  <el-icon><Delete /></el-icon>
+                </button>
+              </div>
+            </CustomFormItem>
+          </CustomCol>
+          <CustomCol :xs="24" :sm="12">
+            <CustomFormItem label="Tên studio" prop="ten_studio">
+              <CustomInput v-model="studioForm.ten_studio" placeholder="VD: Pandio Studio" />
+            </CustomFormItem>
+          </CustomCol>
+          <CustomCol :xs="24" :sm="12">
+            <CustomFormItem label="Khẩu hiệu" prop="khau_hieu">
+              <CustomInput v-model="studioForm.khau_hieu" placeholder="Khẩu hiệu (tuỳ chọn)" />
+            </CustomFormItem>
+          </CustomCol>
+          <CustomCol :span="24">
+            <CustomFormItem label="Địa chỉ" prop="dia_chi">
+              <CustomInput v-model="studioForm.dia_chi" placeholder="Địa chỉ studio" />
+            </CustomFormItem>
+          </CustomCol>
+          <CustomCol :xs="24" :sm="12">
+            <CustomFormItem label="Email" prop="email">
+              <CustomInput v-model="studioForm.email" placeholder="email@studio.com" />
+            </CustomFormItem>
+          </CustomCol>
+          <CustomCol :xs="24" :sm="12">
+            <CustomFormItem label="Số điện thoại" prop="so_dien_thoai">
+              <CustomInput v-model="studioForm.so_dien_thoai" placeholder="0123456789" />
+            </CustomFormItem>
+          </CustomCol>
+          <CustomCol :xs="24" :sm="12">
+            <CustomFormItem label="Mã số thuế" prop="ma_so_thue">
+              <CustomInput v-model="studioForm.ma_so_thue" placeholder="Mã số thuế" />
+            </CustomFormItem>
+          </CustomCol>
+          <CustomCol :xs="24" :sm="12">
+            <CustomFormItem label="Mặc định" prop="mac_dinh">
+              <CustomSelect v-model="studioForm.mac_dinh" style="width: 100%">
+                <CustomOption label="Có" value="co" />
+                <CustomOption label="Không" value="khong" />
+              </CustomSelect>
+            </CustomFormItem>
+          </CustomCol>
+        </CustomRow>
+      </CustomForm>
+      <template #footer>
+        <CustomButton @click="studioDialogVisible = false">Hủy</CustomButton>
+        <CustomButton type="primary" :loading="studioSaving" @click="saveStudio">Lưu</CustomButton>
+      </template>
+    </CustomDialog>
+
     <!-- Dialog: Tài khoản thanh toán -->
     <CustomDialog
       v-model="payment.dialogVisible"
@@ -342,7 +435,12 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Edit, Plus, Search } from '@element-plus/icons-vue'
-import { fetchThongTinStudio } from '@/api/thongTinStudio'
+import {
+  createThongTinStudio,
+  fetchThongTinStudio,
+  updateThongTinStudio,
+  uploadStudioLogo,
+} from '@/api/thongTinStudio'
 import {
   createTaiKhoanThanhToan,
   deleteTaiKhoanThanhToan,
@@ -542,7 +640,37 @@ const activeTab = ref('studio')
 const paymentLoaded = ref(false)
 
 const studioLoading = ref(false)
+const studioSaving = ref(false)
+const studioDialogVisible = ref(false)
+const studioEditingId = ref(null)
 const defaultStudio = ref(null)
+const studioFormRef = ref(null)
+const pendingLogoFile = ref(null)
+const pendingLogoPreview = ref('')
+
+const emptyStudioForm = () => ({
+  ten_studio: '',
+  khau_hieu: '',
+  logo: '',
+  dia_chi: '',
+  email: '',
+  so_dien_thoai: '',
+  ma_so_thue: '',
+  mac_dinh: 'co',
+})
+
+const studioForm = reactive(emptyStudioForm())
+
+const studioRules = {
+  ten_studio: [{ required: true, message: 'Vui lòng nhập tên studio', trigger: 'blur' }],
+  email: [{ type: 'email', message: 'Email không hợp lệ', trigger: 'blur' }],
+  mac_dinh: [{ required: true, message: 'Vui lòng chọn mặc định', trigger: 'change' }],
+}
+
+const logoPreviewUrl = computed(() => {
+  if (pendingLogoPreview.value) return pendingLogoPreview.value
+  return mediaUrl(studioForm.logo)
+})
 
 const orgLoading = ref(false)
 const ceo = ref(null)
@@ -749,6 +877,107 @@ async function loadDefaultStudio() {
     defaultStudio.value = null
   } finally {
     studioLoading.value = false
+  }
+}
+
+function clearPendingLogo() {
+  if (pendingLogoPreview.value) {
+    URL.revokeObjectURL(pendingLogoPreview.value)
+    pendingLogoPreview.value = ''
+  }
+  pendingLogoFile.value = null
+}
+
+function onLogoChange(uploadFile) {
+  const file = uploadFile.raw
+  if (!file) return
+
+  const okTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']
+  if (!okTypes.includes(file.type)) {
+    ElMessage.error('Chỉ chấp nhận ảnh JPEG, PNG, WEBP, GIF.')
+    return
+  }
+  if (file.size > 2 * 1024 * 1024) {
+    ElMessage.error('Logo tối đa 2MB.')
+    return
+  }
+
+  clearPendingLogo()
+  pendingLogoPreview.value = URL.createObjectURL(file)
+  pendingLogoFile.value = file
+}
+
+function onLogoRemove() {
+  clearPendingLogo()
+  studioForm.logo = ''
+}
+
+function openStudioCreate() {
+  studioEditingId.value = null
+  Object.assign(studioForm, emptyStudioForm())
+  clearPendingLogo()
+  studioDialogVisible.value = true
+}
+
+function openStudioEdit() {
+  const row = defaultStudio.value
+  if (!row) {
+    openStudioCreate()
+    return
+  }
+
+  studioEditingId.value = row.id
+  Object.assign(studioForm, {
+    ten_studio: row.ten_studio || '',
+    khau_hieu: row.khau_hieu || '',
+    logo: row.logo || '',
+    dia_chi: row.dia_chi || '',
+    email: row.email || '',
+    so_dien_thoai: row.so_dien_thoai || '',
+    ma_so_thue: row.ma_so_thue || '',
+    mac_dinh: row.mac_dinh || 'co',
+  })
+  clearPendingLogo()
+  studioDialogVisible.value = true
+}
+
+async function saveStudio() {
+  const valid = await studioFormRef.value?.validate().catch(() => false)
+  if (!valid) return
+
+  studioSaving.value = true
+  try {
+    if (pendingLogoFile.value) {
+      const { data } = await uploadStudioLogo(pendingLogoFile.value)
+      studioForm.logo = data.path
+      clearPendingLogo()
+    }
+
+    const payload = {
+      ten_studio: studioForm.ten_studio.trim(),
+      khau_hieu: studioForm.khau_hieu?.trim() || null,
+      logo: studioForm.logo?.trim() || null,
+      dia_chi: studioForm.dia_chi?.trim() || null,
+      email: studioForm.email?.trim() || null,
+      so_dien_thoai: studioForm.so_dien_thoai?.trim() || null,
+      ma_so_thue: studioForm.ma_so_thue?.trim() || null,
+      mac_dinh: studioForm.mac_dinh,
+    }
+
+    if (studioEditingId.value) {
+      await updateThongTinStudio(studioEditingId.value, payload)
+      ElMessage.success('Đã cập nhật thông tin studio.')
+    } else {
+      await createThongTinStudio(payload)
+      ElMessage.success('Đã thêm thông tin studio.')
+    }
+    studioDialogVisible.value = false
+    await loadDefaultStudio()
+    window.dispatchEvent(new CustomEvent('studio-brand-updated'))
+  } catch {
+    // Lỗi đã được axios interceptor xử lý
+  } finally {
+    studioSaving.value = false
   }
 }
 
@@ -1117,6 +1346,68 @@ onMounted(() => {
   text-align: center;
   color: var(--el-text-color-secondary);
   font-size: 14px;
+}
+
+.empty-state--studio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-slot {
+  position: relative;
+  display: inline-block;
+}
+
+.logo-uploader :deep(.el-upload) {
+  border: 1px dashed var(--el-border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.logo-uploader :deep(.el-upload:hover) {
+  border-color: var(--el-color-primary);
+}
+
+.logo-image {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  display: block;
+  background: var(--el-fill-color-light);
+}
+
+.logo-placeholder {
+  width: 96px;
+  height: 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  background: var(--el-fill-color-blank);
+}
+
+.logo-remove {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  background: var(--el-color-danger);
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
 }
 
 .payment-logo-preview {
