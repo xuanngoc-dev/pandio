@@ -351,12 +351,19 @@
                       />
                     </CustomFormItem>
                   </CustomCol>
-
                   <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
                     <CustomFormItem label="Trạng thái" prop="status">
                       <CustomSelect v-model="form.status" style="width: 100%">
                         <CustomOption label="Đang hoạt động" value="active" />
                         <CustomOption label="Không hoạt động" value="inactive" />
+                      </CustomSelect>
+                    </CustomFormItem>
+                  </CustomCol>
+                  <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
+                    <CustomFormItem label="Loại nhân viên" prop="loai_nhan_vien">
+                      <CustomSelect v-model="form.loai_nhan_vien" clearable placeholder="Chọn" style="width: 100%">
+                        <CustomOption label="Full time" value="full_time" />
+                        <CustomOption label="Part time" value="part_time" />
                       </CustomSelect>
                     </CustomFormItem>
                   </CustomCol>
@@ -381,7 +388,7 @@
                       </CustomSelect>
                     </CustomFormItem>
                   </CustomCol>
-                  <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
+                  <!-- <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
                     <CustomFormItem label="Vai trò (chức danh)" prop="vai_tro_id">
                       <CustomSelect
                         v-model="form.vai_tro_id"
@@ -397,6 +404,11 @@
                           :value="vt.id"
                         />
                       </CustomSelect>
+                    </CustomFormItem>
+                  </CustomCol> -->
+                  <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
+                    <CustomFormItem label="Vị trí làm việc" prop="vi_tri_lam_viec">
+                      <CustomInput v-model="form.vi_tri_lam_viec" placeholder="VD: Nhân viên kinh doanh" />
                     </CustomFormItem>
                   </CustomCol>
                   <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
@@ -432,14 +444,6 @@
                     </CustomFormItem>
                   </CustomCol>
                   <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
-                    <CustomFormItem label="Vị trí làm việc" prop="vi_tri_lam_viec">
-                      <CustomInput
-                        v-model="form.vi_tri_lam_viec"
-                        placeholder="VD: Nhân viên kinh doanh"
-                      />
-                    </CustomFormItem>
-                  </CustomCol>
-                  <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
                     <CustomFormItem label="Ngày vào công ty" prop="ngay_vao_cong_ty">
                       <el-date-picker
                         v-model="form.ngay_vao_cong_ty"
@@ -464,19 +468,7 @@
                       />
                     </CustomFormItem>
                   </CustomCol>
-                  <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
-                    <CustomFormItem label="Loại nhân viên" prop="loai_nhan_vien">
-                      <CustomSelect
-                        v-model="form.loai_nhan_vien"
-                        clearable
-                        placeholder="Chọn"
-                        style="width: 100%"
-                      >
-                        <CustomOption label="Full time" value="full_time" />
-                        <CustomOption label="Part time" value="part_time" />
-                      </CustomSelect>
-                    </CustomFormItem>
-                  </CustomCol>
+                  
                   <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
                     <CustomFormItem label="Loại hợp đồng" prop="loai_hop_dong">
                       <CustomSelect

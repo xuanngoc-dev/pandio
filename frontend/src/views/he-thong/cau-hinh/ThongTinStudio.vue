@@ -1,190 +1,69 @@
 <template>
   <ConfigSettingPage title="Thông tin studio">
     <el-tabs v-model="activeTab" class="studio-tabs">
-      <!-- Tab 1: Thông tin studio -->
+      <!-- Tab 1: Thông tin studio + cấu trúc tổ chức -->
       <el-tab-pane label="Thông tin studio" name="studio">
         <div class="tab-panel page-list">
-          <CustomCard shadow="hover" class="filter-card">
-            <CustomRow :gutter="12" class="toolbar">
-              <CustomCol :xs="12" :sm="12" :md="8" :lg="8">
-                <CustomInput
-                  v-model="studio.keyword"
-                  placeholder="Tìm theo tên, khẩu hiệu, email, SĐT..."
-                  clearable
-                  style="width: 100%"
-                  @clear="onStudioSearch"
-                  @keyup.enter="onStudioSearch"
-                >
-                  <template #prefix>
-                    <CustomIcon><Search /></CustomIcon>
-                  </template>
-                </CustomInput>
-              </CustomCol>
-              <CustomCol :xs="12" :sm="12" :md="8" :lg="8">
-                <CustomSelect
-                  v-model="studio.macDinhFilter"
-                  placeholder="Mặc định"
-                  clearable
-                  style="width: 100%"
-                  @change="onStudioSearch"
-                >
-                  <CustomOption label="Có" value="co" />
-                  <CustomOption label="Không" value="khong" />
-                </CustomSelect>
-              </CustomCol>
-              <CustomCol :xs="12" :sm="12" :md="8" :lg="4">
-                <CustomButton type="primary" plain @click="onStudioSearch">
-                  <CustomIcon><Search /></CustomIcon>
-                  Tìm kiếm
-                </CustomButton>
-              </CustomCol>
-            </CustomRow>
+          <CustomCard v-loading="studioLoading" shadow="hover" class="studio-info-card">
+            <div v-if="defaultStudio" class="studio-info">
+              <el-avatar
+                v-if="defaultStudio.logo"
+                :size="72"
+                shape="square"
+                :src="mediaUrl(defaultStudio.logo)"
+                class="studio-info__logo"
+              />
+              <div v-else class="studio-info__logo studio-info__logo--empty">—</div>
+              <div class="studio-info__body">
+                <div class="studio-info__title-row">
+                  <h3 class="studio-info__name">{{ defaultStudio.ten_studio }}</h3>
+                  <el-tag v-if="defaultStudio.mac_dinh === 'co'" size="small" type="success">
+                    Mặc định
+                  </el-tag>
+                </div>
+                <p v-if="defaultStudio.khau_hieu" class="studio-info__slogan">
+                  {{ defaultStudio.khau_hieu }}
+                </p>
+                <div class="studio-info__meta">
+                  <span v-if="defaultStudio.dia_chi">
+                    <strong>Địa chỉ:</strong> {{ defaultStudio.dia_chi }}
+                  </span>
+                  <span v-if="defaultStudio.email">
+                    <strong>Email:</strong> {{ defaultStudio.email }}
+                  </span>
+                  <span v-if="defaultStudio.so_dien_thoai">
+                    <strong>SĐT:</strong> {{ defaultStudio.so_dien_thoai }}
+                  </span>
+                  <span v-if="defaultStudio.ma_so_thue">
+                    <strong>MST:</strong> {{ defaultStudio.ma_so_thue }}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div v-else-if="!studioLoading" class="empty-state">
+              Chưa có thông tin studio.
+            </div>
           </CustomCard>
 
-          <CustomCard shadow="hover" class="table-card">
+          <CustomCard shadow="hover" class="org-card">
             <template #header>
               <div class="card-header">
-                <span class="card-title">Danh sách thông tin studio</span>
-                <div class="header-actions">
-                  <TableColumnConfig :settings="studioColumnSettings" />
-                  <CustomTooltip content="Thêm mới" placement="top">
-                    <CustomButton type="primary" @click="openStudioCreate">
-                      <CustomIcon><Plus /></CustomIcon>
-                      Thêm
-                    </CustomButton>
-                  </CustomTooltip>
-                </div>
+                <span class="card-title">Cấu trúc tổ chức</span>
               </div>
             </template>
 
-            <CustomTable v-loading="studio.loading" :data="studio.items" stripe style="width: 100%">
-              <CustomTableColumn label="STT" width="60" align="center">
-                <template #default="{ $index }">
-                  {{ (studio.page - 1) * studio.perPage + $index + 1 }}
-                </template>
-              </CustomTableColumn>
-              <CustomTableColumn
-                v-if="studioColumnSettings.isColumnVisible('logo')"
-                label="Logo"
-                width="80"
-                align="center"
-              >
-                <template #default="{ row }">
-                  <el-avatar
-                    v-if="row.logo"
-                    :size="40"
-                    shape="square"
-                    :src="mediaUrl(row.logo)"
-                  />
-                  <span v-else>—</span>
-                </template>
-              </CustomTableColumn>
-              <CustomTableColumn
-                v-if="studioColumnSettings.isColumnVisible('ten_studio')"
-                prop="ten_studio"
-                label="Tên studio"
-                min-width="160"
-              />
-              <CustomTableColumn
-                v-if="studioColumnSettings.isColumnVisible('khau_hieu')"
-                prop="khau_hieu"
-                label="Khẩu hiệu"
-                min-width="140"
-                show-overflow-tooltip
-              >
-                <template #default="{ row }">
-                  {{ row.khau_hieu || '—' }}
-                </template>
-              </CustomTableColumn>
-              <CustomTableColumn
-                v-if="studioColumnSettings.isColumnVisible('dia_chi')"
-                prop="dia_chi"
-                label="Địa chỉ"
-                min-width="200"
-                show-overflow-tooltip
-              >
-                <template #default="{ row }">
-                  {{ row.dia_chi || '—' }}
-                </template>
-              </CustomTableColumn>
-              <CustomTableColumn
-                v-if="studioColumnSettings.isColumnVisible('email')"
-                prop="email"
-                label="Email"
-                min-width="160"
-                show-overflow-tooltip
-              >
-                <template #default="{ row }">
-                  {{ row.email || '—' }}
-                </template>
-              </CustomTableColumn>
-              <CustomTableColumn
-                v-if="studioColumnSettings.isColumnVisible('so_dien_thoai')"
-                prop="so_dien_thoai"
-                label="Số điện thoại"
-                width="140"
-              >
-                <template #default="{ row }">
-                  {{ row.so_dien_thoai || '—' }}
-                </template>
-              </CustomTableColumn>
-              <CustomTableColumn
-                v-if="studioColumnSettings.isColumnVisible('ma_so_thue')"
-                prop="ma_so_thue"
-                label="Mã số thuế"
-                width="140"
-              >
-                <template #default="{ row }">
-                  {{ row.ma_so_thue || '—' }}
-                </template>
-              </CustomTableColumn>
-              <CustomTableColumn
-                v-if="studioColumnSettings.isColumnVisible('mac_dinh')"
-                prop="mac_dinh"
-                label="Mặc định"
-                width="160"
-                align="center"
-              >
-                <template #default="{ row }">
-                  <div class="status-cell">
-                    <el-switch
-                      :model-value="row.mac_dinh"
-                      active-value="co"
-                      inactive-value="khong"
-                      :loading="studio.togglingId === row.id"
-                      :disabled="studio.togglingId === row.id"
-                      :before-change="() => toggleStudioMacDinh(row)"
-                    />
-                    <span
-                      class="status-label"
-                      :class="row.mac_dinh === 'co' ? 'is-active' : 'is-inactive'"
-                    >
-                      {{ row.mac_dinh === 'co' ? 'Có' : 'Không' }}
-                    </span>
-                  </div>
-                </template>
-              </CustomTableColumn>
-              <CustomTableColumn label="Thao tác" width="100" fixed="right" align="center">
-                <template #default="{ row }">
-                  <div class="action-btns">
-                    <CustomTooltip content="Sửa" placement="top">
-                      <CustomButton type="primary" link :icon="Edit" @click="openStudioEdit(row)" />
-                    </CustomTooltip>
-                    <CustomTooltip content="Xóa" placement="top">
-                      <CustomButton type="danger" link :icon="Delete" @click="removeStudio(row)" />
-                    </CustomTooltip>
-                  </div>
-                </template>
-              </CustomTableColumn>
-            </CustomTable>
+            <div v-loading="orgLoading" class="org-chart-wrap">
+              <div v-if="!orgLoading && !departments.length" class="empty-state">
+                Chưa có phòng ban để hiển thị cấu trúc tổ chức.
+              </div>
 
-            <Pagination
-              v-model="studio.page"
-              v-model:page-size="studio.perPage"
-              :total="studio.total"
-              :disabled="studio.loading"
-              @change="loadStudios"
-            />
+              <ApexTreeChart
+                v-else-if="!orgLoading && orgTreeData"
+                :data="orgTreeData"
+                :options="orgTreeOptions"
+                class="org-apextree"
+              />
+            </div>
           </CustomCard>
         </div>
       </el-tab-pane>
@@ -386,93 +265,6 @@
       </el-tab-pane>
     </el-tabs>
 
-    <!-- Dialog: Thông tin studio -->
-    <CustomDialog
-      v-model="studio.dialogVisible"
-      :title="studio.editingId ? 'Sửa thông tin studio' : 'Thêm thông tin studio'"
-      :width="720"
-    >
-      <CustomForm ref="studioFormRef" :model="studioForm" :rules="studioRules">
-        <CustomRow :gutter="16">
-          <CustomCol :span="24">
-            <CustomFormItem label="Logo" prop="logo">
-              <div class="logo-slot">
-                <el-upload
-                  class="logo-uploader"
-                  :show-file-list="false"
-                  :auto-upload="false"
-                  accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
-                  :on-change="onLogoChange"
-                >
-                  <img
-                    v-if="logoPreviewUrl"
-                    :src="logoPreviewUrl"
-                    class="logo-image"
-                    alt="Logo studio"
-                  />
-                  <div v-else class="logo-placeholder">
-                    <el-icon><Plus /></el-icon>
-                    <span>Chọn logo</span>
-                  </div>
-                </el-upload>
-                <button
-                  v-if="logoPreviewUrl"
-                  type="button"
-                  class="logo-remove"
-                  title="Xóa logo"
-                  @click.stop="onLogoRemove"
-                >
-                  <el-icon><Delete /></el-icon>
-                </button>
-              </div>
-            </CustomFormItem>
-          </CustomCol>
-          <CustomCol :xs="24" :sm="12">
-            <CustomFormItem label="Tên studio" prop="ten_studio">
-              <CustomInput v-model="studioForm.ten_studio" placeholder="VD: Pandio Studio" />
-            </CustomFormItem>
-          </CustomCol>
-          <CustomCol :xs="24" :sm="12">
-            <CustomFormItem label="Khẩu hiệu" prop="khau_hieu">
-              <CustomInput v-model="studioForm.khau_hieu" placeholder="Khẩu hiệu (tuỳ chọn)" />
-            </CustomFormItem>
-          </CustomCol>
-          <CustomCol :span="24">
-            <CustomFormItem label="Địa chỉ" prop="dia_chi">
-              <CustomInput v-model="studioForm.dia_chi" placeholder="Địa chỉ studio" />
-            </CustomFormItem>
-          </CustomCol>
-          <CustomCol :xs="24" :sm="12">
-            <CustomFormItem label="Email" prop="email">
-              <CustomInput v-model="studioForm.email" placeholder="email@studio.com" />
-            </CustomFormItem>
-          </CustomCol>
-          <CustomCol :xs="24" :sm="12">
-            <CustomFormItem label="Số điện thoại" prop="so_dien_thoai">
-              <CustomInput v-model="studioForm.so_dien_thoai" placeholder="0123456789" />
-            </CustomFormItem>
-          </CustomCol>
-          <CustomCol :xs="24" :sm="12">
-            <CustomFormItem label="Mã số thuế" prop="ma_so_thue">
-              <CustomInput v-model="studioForm.ma_so_thue" placeholder="Mã số thuế" />
-            </CustomFormItem>
-          </CustomCol>
-          <CustomCol :xs="24" :sm="12">
-            <CustomFormItem label="Mặc định" prop="mac_dinh">
-              <CustomSelect v-model="studioForm.mac_dinh" style="width: 100%">
-                <CustomOption label="Có" value="co" />
-                <CustomOption label="Không" value="khong" />
-              </CustomSelect>
-            </CustomFormItem>
-          </CustomCol>
-        </CustomRow>
-      </CustomForm>
-      <template #footer>
-        <CustomButton @click="studio.dialogVisible = false">Hủy</CustomButton>
-        <CustomButton type="primary" :loading="studio.saving" @click="saveStudio">Lưu</CustomButton>
-      </template>
-    </CustomDialog>
-
     <!-- Dialog: Tài khoản thanh toán -->
     <CustomDialog
       v-model="payment.dialogVisible"
@@ -550,19 +342,16 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Edit, Plus, Search } from '@element-plus/icons-vue'
-import {
-  createThongTinStudio,
-  deleteThongTinStudio,
-  fetchThongTinStudio,
-  updateThongTinStudio,
-  uploadStudioLogo,
-} from '@/api/thongTinStudio'
+import { fetchThongTinStudio } from '@/api/thongTinStudio'
 import {
   createTaiKhoanThanhToan,
   deleteTaiKhoanThanhToan,
   fetchTaiKhoanThanhToan,
   updateTaiKhoanThanhToan,
 } from '@/api/taiKhoanThanhToan'
+import { fetchPhongBan, fetchPhongBanNhanVien } from '@/api/phongBan'
+import { fetchUsers } from '@/api/users'
+import { fetchVaiTro } from '@/api/vaiTro'
 import {
   CustomButton,
   CustomCard,
@@ -583,19 +372,160 @@ import Pagination from '@/components/Pagination.vue'
 import TableColumnConfig from '@/components/TableColumnConfig.vue'
 import { useTableColumns } from '@/composables/useTableColumns'
 import { mediaUrl } from '@/utils/media'
+import { ApexTreeChart } from 'vue-apextree'
 import ConfigSettingPage from './ConfigSettingPage.vue'
 
-const studioTableColumns = [
-  { key: 'logo', label: 'Logo' },
-  { key: 'ten_studio', label: 'Tên studio' },
-  { key: 'khau_hieu', label: 'Khẩu hiệu' },
-  { key: 'dia_chi', label: 'Địa chỉ' },
-  { key: 'email', label: 'Email' },
-  { key: 'so_dien_thoai', label: 'Số điện thoại' },
-  { key: 'ma_so_thue', label: 'Mã số thuế' },
-  { key: 'mac_dinh', label: 'Mặc định' },
+const DEPT_COLORS = [
+  { bg: '#EFF6FF', border: '#93C5FD', borderHover: '#3B82F6', accent: '#2563EB' },
+  { bg: '#FDF2F8', border: '#F9A8D4', borderHover: '#EC4899', accent: '#DB2777' },
+  { bg: '#FFF7ED', border: '#FDBA74', borderHover: '#F97316', accent: '#EA580C' },
+  { bg: '#F0FDF4', border: '#86EFAC', borderHover: '#22C55E', accent: '#16A34A' },
+  { bg: '#EEF2FF', border: '#A5B4FC', borderHover: '#6366F1', accent: '#4F46E5' },
+  { bg: '#F8FAFC', border: '#94A3B8', borderHover: '#64748B', accent: '#475569' },
 ]
-const studioColumnSettings = useTableColumns('he-thong.thong-tin-studio', studioTableColumns)
+
+const HQ_COLORS = {
+  bg: '#F8FAFC',
+  border: '#64748B',
+  borderHover: '#475569',
+  accent: '#475569',
+}
+
+/** ApexTree layout dùng nodeWidth/nodeHeight global cho node thường. */
+const EMP_CARD_WIDTH = 230
+/** Chiều cao tối thiểu cấp 1–2 (card CEO/phòng ban). */
+const LAYOUT_NODE_HEIGHT = 140
+
+function makeNodeOptions(colors) {
+  return {
+    nodeBGColor: colors.bg,
+    nodeBGColorHover: colors.bg,
+    borderColor: colors.border,
+    borderColorHover: colors.borderHover,
+  }
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function avatarSrc(name, url) {
+  if (url) return url
+  return `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(name || '?')}`
+}
+
+function buildEmployeeListHtml(employees, accent) {
+  if (!employees?.length) {
+    return `<div style="padding:10px 4px; color:#94a3b8; text-align:center;">Chưa có nhân viên</div>`
+  }
+
+  return employees
+    .map((emp, index) => {
+      const name = escapeHtml(emp.name)
+      const position = escapeHtml(emp.position || 'Nhân viên')
+      return `
+        <div style="
+          padding:6px 4px;
+          color:#1e293b;
+          font-size:13px;
+          line-height:1.45;
+          border-top:${index === 0 ? 'none' : `1px solid ${accent}22`};
+        ">
+          ${index + 1}. ${name} - ${position}
+        </div>`
+    })
+    .join('')
+}
+
+function orgNodeTemplate(content) {
+  const c = typeof content === 'string' ? JSON.parse(content) : content || {}
+  const accent = escapeHtml(c.accent || '#64748b')
+
+  if (c.type === 'dept') {
+    const deptName = escapeHtml(c.deptName)
+    const headName = escapeHtml(c.headName)
+
+    return `
+      <div style="
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        justify-content:center;
+        height:100%;
+        width:100%;
+        padding:12px 10px;
+        box-sizing:border-box;
+        text-align:center;
+        overflow:hidden;
+      ">
+        <div style="font-weight:700; font-size:14px; color:#0f172a; line-height:1.3;">
+          ${deptName}
+        </div>
+        <div style="font-size:11px; color:#64748b; margin-top:6px; line-height:1.3;">
+          TP: ${headName}
+        </div>
+      </div>`
+  }
+
+  if (c.type === 'employees') {
+    const listHtml = buildEmployeeListHtml(c.employees, accent)
+
+    return `
+      <div style="
+        display:flex;
+        flex-direction:column;
+        height:100%;
+        width:100%;
+        padding:12px 14px;
+        box-sizing:border-box;
+        overflow:hidden;
+      ">
+        <div style="font-size:12px; font-weight:600; color:${accent}; margin-bottom:8px; text-align:center; flex-shrink:0;">
+          Danh sách nhân viên
+        </div>
+        <div style="text-align:left; width:100%;">
+          ${listHtml}
+        </div>
+      </div>`
+  }
+
+  const name = escapeHtml(c.name)
+  const title = escapeHtml(c.title)
+  const dept = escapeHtml(c.dept)
+  const img = escapeHtml(c.img || '')
+
+  return `
+    <div style="
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      height:100%;
+      width:100%;
+      padding:10px 8px;
+      box-sizing:border-box;
+      text-align:center;
+      overflow:hidden;
+    ">
+      <img src="${img}" alt=""
+        style="
+          width: 40px; height: 40px;
+          border-radius: 50%;
+          object-fit: cover;
+          flex-shrink: 0;
+          border: 2px solid ${accent};
+          margin-bottom: 6px;
+        " />
+      <div style="font-weight: 600; font-size: 12px; color: #1e293b; line-height: 1.3;">${name}</div>
+      <div style="font-size: 10px; color: #64748b; margin-top: 2px;">${title}</div>
+      <div style="font-size: 9px; color: ${accent}; margin-top: 2px; font-weight: 500;">${dept}</div>
+    </div>`
+}
 
 const paymentTableColumns = [
   { key: 'hinh_anh_logo', label: 'Logo' },
@@ -611,19 +541,128 @@ const paymentColumnSettings = useTableColumns('he-thong.tai-khoan-thanh-toan', p
 const activeTab = ref('studio')
 const paymentLoaded = ref(false)
 
-const studio = reactive({
-  items: [],
-  loading: false,
-  saving: false,
-  togglingId: null,
-  page: 1,
-  perPage: 10,
-  total: 0,
-  keyword: '',
-  macDinhFilter: '',
-  dialogVisible: false,
-  editingId: null,
+const studioLoading = ref(false)
+const defaultStudio = ref(null)
+
+const orgLoading = ref(false)
+const ceo = ref(null)
+const departments = ref([])
+
+function normalizeText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+}
+
+function isBgdDept(dept) {
+  const ma = normalizeText(dept?.ma_phong_ban)
+  const ten = normalizeText(dept?.ten_phong_ban)
+  return ma === 'bgd' || ten.includes('ban giam doc')
+}
+
+/** Phòng ban cấp 2 (không gồm BGD — CEO đã đại diện cấp 1). */
+const chartDepartments = computed(() => departments.value.filter((dept) => !isBgdDept(dept)))
+
+const orgTreeData = computed(() => {
+  if (!departments.value.length) return null
+
+  const ceoName = ceo.value?.name || 'Chưa xác định CEO'
+  const ceoTitle = ceo.value?.title || 'CEO'
+  const ceoId = ceo.value?.id ?? null
+
+  return {
+    id: 'ceo',
+    name: ceoName,
+    data: {
+      type: 'ceo',
+      name: ceoName,
+      title: ceoTitle,
+      dept: 'Ban Giám đốc',
+      img: avatarSrc(ceoName, ceo.value?.avatarUrl),
+      accent: HQ_COLORS.accent,
+    },
+    options: {
+      ...makeNodeOptions(HQ_COLORS),
+    },
+    children: chartDepartments.value.map((dept, index) => {
+      const colors = DEPT_COLORS[index % DEPT_COLORS.length]
+      const headName = dept.truong_phong || 'Chưa có'
+      const employees = (dept.employees || [])
+        .filter((emp) => (ceoId == null ? true : emp.userId !== ceoId && emp.name !== ceoName))
+        .map((emp) => ({
+          name: emp.name,
+          position: emp.position || '',
+        }))
+      const empRows = Math.max(employees.length, 1)
+      const empNodeHeight = Math.max(LAYOUT_NODE_HEIGHT, 28 + 28 + empRows * 32 + 8)
+
+      return {
+        id: `dept-${dept.id}`,
+        name: dept.ten_phong_ban,
+        data: {
+          type: 'dept',
+          deptName: dept.ten_phong_ban,
+          headName,
+          accent: colors.accent,
+        },
+        options: {
+          ...makeNodeOptions(colors),
+        },
+        children: [
+          {
+            id: `emp-list-${dept.id}`,
+            name: `Nhân viên ${dept.ten_phong_ban}`,
+            data: {
+              type: 'employees',
+              employees,
+              accent: colors.accent,
+            },
+            options: {
+              ...makeNodeOptions(colors),
+              nodeWidth: EMP_CARD_WIDTH,
+              nodeHeight: empNodeHeight,
+            },
+            children: [],
+          },
+        ],
+      }
+    }),
+  }
 })
+
+const orgMaxEmpCardHeight = computed(() => {
+  if (!orgTreeData.value?.children?.length) return LAYOUT_NODE_HEIGHT
+  let maxH = LAYOUT_NODE_HEIGHT
+  for (const dept of orgTreeData.value.children) {
+    const empNode = dept.children?.[0]
+    const h = empNode?.options?.nodeHeight
+    if (typeof h === 'number' && h > maxH) maxH = h
+  }
+  return maxH
+})
+
+const orgTreeOptions = computed(() => ({
+  contentKey: 'data',
+  nodeTemplate: orgNodeTemplate,
+  width: '100%',
+  height: Math.max(820, 280 + orgMaxEmpCardHeight.value * 2),
+  viewPortWidth: Math.max(1400, EMP_CARD_WIDTH * Math.max(chartDepartments.value.length, 1) + 240),
+  viewPortHeight: Math.max(1000, 320 + orgMaxEmpCardHeight.value * 2),
+  nodeWidth: EMP_CARD_WIDTH,
+  nodeHeight: orgMaxEmpCardHeight.value,
+  // Theo demo Top to Bottom: https://apexcharts.com/apextree/demos/top-to-bottom/
+  childrenSpacing: 70,
+  siblingSpacing: 12,
+  direction: 'top',
+  edgeStyle: 'orthogonal',
+  edgeWidth: 1,
+  edgeColorMode: 'node',
+  enableExpandCollapse: false,
+  enableToolbar: true,
+  groupLeafNodes: false,
+  canvasStyle: 'border: 1px solid #e0e0e0; border-radius: 8px; background: #ffffff;',
+}))
 
 const payment = reactive({
   items: [],
@@ -641,21 +680,7 @@ const payment = reactive({
   editingId: null,
 })
 
-const studioFormRef = ref(null)
 const paymentFormRef = ref(null)
-const pendingLogoFile = ref(null)
-const pendingLogoPreview = ref('')
-
-const emptyStudioForm = () => ({
-  ten_studio: '',
-  khau_hieu: '',
-  logo: '',
-  dia_chi: '',
-  email: '',
-  so_dien_thoai: '',
-  ma_so_thue: '',
-  mac_dinh: 'khong',
-})
 
 const emptyPaymentForm = () => ({
   ngan_hang: '',
@@ -667,14 +692,7 @@ const emptyPaymentForm = () => ({
   trang_thai: 'dang_hoat_dong',
 })
 
-const studioForm = reactive(emptyStudioForm())
 const paymentForm = reactive(emptyPaymentForm())
-
-const studioRules = {
-  ten_studio: [{ required: true, message: 'Vui lòng nhập tên studio', trigger: 'blur' }],
-  email: [{ type: 'email', message: 'Email không hợp lệ', trigger: 'blur' }],
-  mac_dinh: [{ required: true, message: 'Vui lòng chọn mặc định', trigger: 'change' }],
-}
 
 const paymentRules = {
   ngan_hang: [{ required: true, message: 'Vui lòng nhập ngân hàng', trigger: 'blur' }],
@@ -684,62 +702,145 @@ const paymentRules = {
   trang_thai: [{ required: true, message: 'Vui lòng chọn trạng thái', trigger: 'change' }],
 }
 
-const logoPreviewUrl = computed(() => {
-  if (pendingLogoPreview.value) return pendingLogoPreview.value
-  return mediaUrl(studioForm.logo)
-})
-
 const paymentLogoPreviewUrl = computed(() => mediaUrl(paymentForm.hinh_anh_logo?.trim()))
 
-function clearPendingLogo() {
-  if (pendingLogoPreview.value) {
-    URL.revokeObjectURL(pendingLogoPreview.value)
-    pendingLogoPreview.value = ''
-  }
-  pendingLogoFile.value = null
+const CEO_CEO_RE = /\bceo\b/i
+const CEO_GIAM_DOC_RE = /gi[aá]m\s*đ?[oố]c|giam\s*doc/i
+
+function scoreCeoCandidate(roleName, position) {
+  const role = String(roleName || '')
+  const pos = String(position || '')
+  const combined = `${role} ${pos}`
+  if (CEO_CEO_RE.test(combined)) return 3
+  if (CEO_GIAM_DOC_RE.test(combined) || CEO_GIAM_DOC_RE.test(normalizeText(combined))) return 2
+  return 0
 }
 
-function onLogoChange(uploadFile) {
-  const file = uploadFile.raw
-  if (!file) return
-
-  const okTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']
-  if (!okTypes.includes(file.type)) {
-    ElMessage.error('Chỉ chấp nhận ảnh JPEG, PNG, WEBP, GIF.')
-    return
-  }
-  if (file.size > 2 * 1024 * 1024) {
-    ElMessage.error('Logo tối đa 2MB.')
-    return
-  }
-
-  clearPendingLogo()
-  pendingLogoPreview.value = URL.createObjectURL(file)
-  pendingLogoFile.value = file
+function userInDept(user, deptId) {
+  if (deptId == null) return false
+  const ids = user?.nhan_vien?.phong_ban_ids
+  if (!Array.isArray(ids)) return false
+  return ids.map(Number).includes(Number(deptId))
 }
 
-function onLogoRemove() {
-  clearPendingLogo()
-  studioForm.logo = ''
+function mapEmployee(row) {
+  const name = row?.user?.name || '—'
+  return {
+    id: row.id,
+    userId: row.user_id ?? row.user?.id ?? null,
+    name,
+    position: row.vi_tri_lam_viec || '',
+    avatarUrl: mediaUrl(row.hinh_anh),
+  }
 }
 
-async function loadStudios() {
-  studio.loading = true
+async function loadDefaultStudio() {
+  studioLoading.value = true
   try {
-    const { data } = await fetchThongTinStudio({
-      page: studio.page,
-      per_page: studio.perPage,
-      keyword: studio.keyword.trim() || undefined,
-      mac_dinh: studio.macDinhFilter || undefined,
-    })
-    studio.items = data.data || []
-    studio.total = data.total || 0
-    studio.page = data.current_page || studio.page
+    const { data } = await fetchThongTinStudio({ mac_dinh: 'co', per_page: 1 })
+    let item = (data.data || [])[0] || null
+    if (!item) {
+      const fallback = await fetchThongTinStudio({ per_page: 1 })
+      item = (fallback.data.data || [])[0] || null
+    }
+    defaultStudio.value = item
   } catch {
-    studio.items = []
-    studio.total = 0
+    defaultStudio.value = null
   } finally {
-    studio.loading = false
+    studioLoading.value = false
+  }
+}
+
+async function resolveCeo(vaiTroMap, bgdDept) {
+  try {
+    const { data } = await fetchUsers({ per_page: 100, status: 'active' })
+    const users = data.data || []
+    const bgdId = bgdDept?.id ?? null
+    const truongPhong = String(bgdDept?.truong_phong || '')
+      .trim()
+      .toLowerCase()
+
+    let best = null
+    let bestScore = -1
+
+    for (const user of users) {
+      const nv = user.nhan_vien || {}
+      const roleName = vaiTroMap.get(Number(nv.vai_tro_id)) || ''
+      let score = scoreCeoCandidate(roleName, nv.vi_tri_lam_viec)
+
+      if (userInDept(user, bgdId)) score += 5
+      if (truongPhong && String(user.name || '').trim().toLowerCase() === truongPhong) {
+        score += 4
+      }
+      // Ưu tiên thành viên BGD dù chưa gắn chức danh Giám đốc/CEO
+      if (score === 0 && userInDept(user, bgdId)) score = 1
+
+      if (score > bestScore) {
+        bestScore = score
+        best = {
+          id: user.id,
+          name: user.name,
+          title: roleName || nv.vi_tri_lam_viec || 'CEO',
+          avatarUrl: mediaUrl(nv.hinh_anh),
+        }
+      }
+    }
+
+    if (!best && bgdDept?.truong_phong) {
+      return {
+        id: null,
+        name: bgdDept.truong_phong,
+        title: 'CEO',
+        avatarUrl: '',
+      }
+    }
+
+    return best
+  } catch {
+    return null
+  }
+}
+
+async function loadOrgChart() {
+  orgLoading.value = true
+  try {
+    const [vaiTroRes, phongBanRes] = await Promise.all([
+      fetchVaiTro({ per_page: 100 }),
+      fetchPhongBan({ per_page: 100 }),
+    ])
+
+    const vaiTroMap = new Map(
+      (vaiTroRes.data.data || []).map((vt) => [Number(vt.id), vt.ten_vai_tro || '']),
+    )
+
+    const depts = phongBanRes.data.data || []
+    const bgdDept = depts.find((dept) => isBgdDept(dept)) || null
+
+    const employeeLists = await Promise.all(
+      depts.map(async (dept) => {
+        try {
+          const { data } = await fetchPhongBanNhanVien(dept.id, { per_page: 100 })
+          return (data.data || []).map(mapEmployee)
+        } catch {
+          return []
+        }
+      }),
+    )
+
+    departments.value = depts.map((dept, index) => ({
+      id: dept.id,
+      ten_phong_ban: dept.ten_phong_ban,
+      ma_phong_ban: dept.ma_phong_ban,
+      truong_phong: dept.truong_phong,
+      employees: employeeLists[index] || [],
+    }))
+
+    ceo.value = await resolveCeo(vaiTroMap, bgdDept)
+  } catch {
+    ceo.value = null
+    departments.value = []
+  } finally {
+    orgLoading.value = false
   }
 }
 
@@ -764,47 +865,9 @@ async function loadPayments() {
   }
 }
 
-function onStudioSearch() {
-  studio.page = 1
-  loadStudios()
-}
-
 function onPaymentSearch() {
   payment.page = 1
   loadPayments()
-}
-
-async function toggleStudioMacDinh(row) {
-  if (!row?.id) return false
-
-  const value = row.mac_dinh === 'co' ? 'khong' : 'co'
-  studio.togglingId = row.id
-
-  try {
-    await updateThongTinStudio(row.id, {
-      ten_studio: row.ten_studio,
-      khau_hieu: row.khau_hieu || null,
-      logo: row.logo || null,
-      dia_chi: row.dia_chi || null,
-      email: row.email || null,
-      so_dien_thoai: row.so_dien_thoai || null,
-      ma_so_thue: row.ma_so_thue || null,
-      mac_dinh: value,
-    })
-    if (value === 'co') {
-      studio.items.forEach((item) => {
-        item.mac_dinh = item.id === row.id ? 'co' : 'khong'
-      })
-    } else {
-      row.mac_dinh = 'khong'
-    }
-    ElMessage.success(value === 'co' ? 'Đã đặt làm studio mặc định.' : 'Đã bỏ mặc định.')
-    return true
-  } catch {
-    return false
-  } finally {
-    studio.togglingId = null
-  }
 }
 
 async function togglePaymentMacDinh(row) {
@@ -870,84 +933,6 @@ async function togglePaymentTrangThai(row) {
   } finally {
     payment.togglingId = null
     payment.togglingField = null
-  }
-}
-
-function openStudioCreate() {
-  studio.editingId = null
-  Object.assign(studioForm, emptyStudioForm())
-  clearPendingLogo()
-  studio.dialogVisible = true
-}
-
-function openStudioEdit(row) {
-  studio.editingId = row.id
-  Object.assign(studioForm, {
-    ten_studio: row.ten_studio || '',
-    khau_hieu: row.khau_hieu || '',
-    logo: row.logo || '',
-    dia_chi: row.dia_chi || '',
-    email: row.email || '',
-    so_dien_thoai: row.so_dien_thoai || '',
-    ma_so_thue: row.ma_so_thue || '',
-    mac_dinh: row.mac_dinh || 'khong',
-  })
-  clearPendingLogo()
-  studio.dialogVisible = true
-}
-
-async function saveStudio() {
-  const valid = await studioFormRef.value?.validate().catch(() => false)
-  if (!valid) return
-
-  studio.saving = true
-  try {
-    if (pendingLogoFile.value) {
-      const { data } = await uploadStudioLogo(pendingLogoFile.value)
-      studioForm.logo = data.path
-      clearPendingLogo()
-    }
-
-    const payload = {
-      ten_studio: studioForm.ten_studio.trim(),
-      khau_hieu: studioForm.khau_hieu?.trim() || null,
-      logo: studioForm.logo?.trim() || null,
-      dia_chi: studioForm.dia_chi?.trim() || null,
-      email: studioForm.email?.trim() || null,
-      so_dien_thoai: studioForm.so_dien_thoai?.trim() || null,
-      ma_so_thue: studioForm.ma_so_thue?.trim() || null,
-      mac_dinh: studioForm.mac_dinh,
-    }
-
-    if (studio.editingId) {
-      await updateThongTinStudio(studio.editingId, payload)
-      ElMessage.success('Đã cập nhật thông tin studio.')
-    } else {
-      await createThongTinStudio(payload)
-      ElMessage.success('Đã thêm thông tin studio.')
-    }
-    studio.dialogVisible = false
-    await loadStudios()
-  } catch {
-    // Lỗi đã được axios interceptor xử lý
-  } finally {
-    studio.saving = false
-  }
-}
-
-async function removeStudio(row) {
-  await ElMessageBox.confirm(`Xóa studio "${row.ten_studio}"?`, 'Xác nhận', {
-    type: 'warning',
-    confirmButtonText: 'Xóa',
-    cancelButtonText: 'Hủy',
-  })
-
-  try {
-    await deleteThongTinStudio(row.id)
-    ElMessage.success('Đã xóa thông tin studio.')
-    await loadStudios()
-  } catch {
-    // Lỗi đã được axios interceptor xử lý
   }
 }
 
@@ -1030,7 +1015,10 @@ watch(activeTab, (tab) => {
   }
 })
 
-onMounted(loadStudios)
+onMounted(() => {
+  loadDefaultStudio()
+  loadOrgChart()
+})
 </script>
 
 <style scoped>
@@ -1049,59 +1037,85 @@ onMounted(loadStudios)
   white-space: nowrap;
 }
 
-.logo-slot {
-  position: relative;
-  display: inline-block;
+.studio-info-card {
+  margin-bottom: 16px;
 }
 
-.logo-uploader :deep(.el-upload) {
-  border: 1px dashed var(--el-border-color);
-  border-radius: 8px;
-  cursor: pointer;
-  overflow: hidden;
-  transition: border-color 0.2s;
+.studio-info {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
 }
 
-.logo-uploader :deep(.el-upload:hover) {
-  border-color: var(--el-color-primary);
-}
-
-.logo-image {
-  width: 96px;
-  height: 96px;
-  object-fit: contain;
-  display: block;
+.studio-info__logo {
+  flex-shrink: 0;
+  border-radius: 10px;
   background: var(--el-fill-color-light);
 }
 
-.logo-placeholder {
-  width: 96px;
-  height: 96px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  color: var(--el-text-color-secondary);
-  font-size: 12px;
-  background: var(--el-fill-color-blank);
-}
-
-.logo-remove {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  width: 24px;
-  height: 24px;
-  border: none;
-  border-radius: 50%;
-  background: var(--el-color-danger);
-  color: #fff;
-  cursor: pointer;
+.studio-info__logo--empty {
+  width: 72px;
+  height: 72px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0;
+  border: 1px dashed var(--el-border-color);
+  color: var(--el-text-color-secondary);
+  font-size: 14px;
+}
+
+.studio-info__body {
+  min-width: 0;
+  flex: 1;
+}
+
+.studio-info__title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.studio-info__name {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.studio-info__slogan {
+  margin: 6px 0 0;
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+}
+
+.studio-info__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--el-text-color-regular);
+}
+
+.org-card {
+  margin-bottom: 0;
+}
+
+.org-chart-wrap {
+  min-height: 240px;
+}
+
+.org-apextree {
+  width: 100%;
+  min-height: 820px;
+}
+
+.empty-state {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--el-text-color-secondary);
+  font-size: 14px;
 }
 
 .payment-logo-preview {
@@ -1132,5 +1146,25 @@ onMounted(loadStudios)
   background: var(--el-fill-color-blank);
   color: var(--el-text-color-secondary);
   font-size: 12px;
+}
+
+@media (max-width: 768px) {
+  .studio-info {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .studio-info__title-row {
+    justify-content: center;
+  }
+
+  .studio-info__meta {
+    justify-content: center;
+  }
+
+  .org-apextree {
+    min-height: 480px;
+  }
 }
 </style>

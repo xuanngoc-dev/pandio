@@ -13,7 +13,7 @@
 
         <el-tabs v-model="activeTab" class="config-tabs">
           <!-- Tab Lương cơ bản -->
-          <el-tab-pane label="Lương cơ bản" name="luong_co_ban">
+          <el-tab-pane v-if="false" label="Lương cơ bản" name="luong_co_ban">
             <CustomForm :model="form.luong_co_ban" label-position="top">
               <div class="setting-list">
                 <div class="setting-item">
@@ -116,7 +116,7 @@
           </el-tab-pane>
 
           <!-- Tab Đơn giá lương -->
-          <el-tab-pane label="Đơn giá lương" name="don_gia_luong">
+          <el-tab-pane v-if="false" label="Đơn giá lương" name="don_gia_luong">
             <CustomForm :model="form.don_gia_luong" label-position="top">
               <div class="setting-list">
                 <div class="setting-item">
@@ -253,7 +253,7 @@
           </el-tab-pane>
 
           <!-- Tab Lương hoa hồng -->
-          <el-tab-pane label="Lương hoa hồng" name="luong_hoa_hong">
+          <el-tab-pane v-if="false" label="Lương hoa hồng" name="luong_hoa_hong">
             <CustomForm :model="form.luong_hoa_hong" label-position="top">
               <div class="setting-list">
                 <div class="setting-item">

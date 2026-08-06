@@ -11,10 +11,12 @@
   "dependencies": {
     "@dqcai/vn-lunar": "^1.0.1",
     "@element-plus/icons-vue": "^2.3.2",
+    "apextree": "^1.15.0",
     "axios": "^1.18.1",
     "element-plus": "^2.14.3",
     "pinia": "^4.0.2",
     "vue": "^3.5.39",
+    "vue-apextree": "^2.0.1",
     "vue-router": "^5.2.0"
   },
   "devDependencies": {

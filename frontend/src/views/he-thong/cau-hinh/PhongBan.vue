@@ -160,7 +160,20 @@
             </CustomCol>
             <CustomCol :xs="24" :sm="12" :md="8">
               <CustomFormItem label="Trưởng phòng" prop="truong_phong">
-                <CustomInput v-model="form.truong_phong" placeholder="Để trống nếu chưa có" />
+                <CustomSelect
+                  v-model="form.truong_phong"
+                  filterable
+                  clearable
+                  placeholder="Chọn người dùng đang hoạt động"
+                  style="width: 100%"
+                >
+                  <CustomOption
+                    v-for="user in truongPhongOptions"
+                    :key="user.id ?? user.name"
+                    :label="userLabel(user)"
+                    :value="user.name"
+                  />
+                </CustomSelect>
               </CustomFormItem>
             </CustomCol>
             <CustomCol :xs="24" :sm="12" :md="12">
@@ -288,6 +301,7 @@ import {
   removeNhanVienKhoiPhongBan,
   updatePhongBan,
 } from '@/api/phongBan'
+import { fetchUsers } from '@/api/users'
 import BulkActionBar from '@/components/BulkActionBar.vue'
 import TableColumnConfig from '@/components/TableColumnConfig.vue'
 import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
@@ -301,7 +315,9 @@ import {
   CustomFormItem,
   CustomIcon,
   CustomInput,
+  CustomOption,
   CustomRow,
+  CustomSelect,
   CustomTable,
   CustomTableColumn,
   CustomTag,
@@ -327,6 +343,7 @@ const page = ref(1)
 const perPage = ref(10)
 const total = ref(0)
 const keyword = ref('')
+const userOptions = ref([])
 
 const dialogVisible = ref(false)
 const editingId = ref(null)
@@ -364,6 +381,15 @@ const employeesDialogTitle = computed(() => {
   return name ? `Nhân viên — ${name}` : 'Danh sách nhân viên'
 })
 
+const truongPhongOptions = computed(() => {
+  const options = [...userOptions.value]
+  const current = form.truong_phong?.trim()
+  if (current && !options.some((user) => user.name === current)) {
+    options.unshift({ id: `legacy:${current}`, name: current })
+  }
+  return options
+})
+
 const emptyForm = () => ({
   ma_phong_ban: '',
   ten_phong_ban: '',
@@ -379,12 +405,26 @@ const rules = {
   ten_phong_ban: [{ required: true, message: 'Vui lòng nhập tên phòng ban', trigger: 'blur' }],
 }
 
+function userLabel(user) {
+  if (!user) return '—'
+  return user.email ? `${user.name} (${user.email})` : user.name
+}
+
 function statusLabel(status) {
   return { active: 'Đang hoạt động', inactive: 'Không hoạt động' }[status] || status || '—'
 }
 
 function statusType(status) {
   return { active: 'success', inactive: 'info' }[status] || 'info'
+}
+
+async function loadUsers() {
+  try {
+    const { data } = await fetchUsers({ per_page: 100, status: 'active' })
+    userOptions.value = data.data || []
+  } catch {
+    userOptions.value = []
+  }
 }
 
 function employeeCountOf(row) {
@@ -416,13 +456,14 @@ function onSearch() {
   loadDepartments()
 }
 
-function openCreate() {
+async function openCreate() {
   editingId.value = null
   Object.assign(form, emptyForm())
   dialogVisible.value = true
+  await loadUsers()
 }
 
-function openEdit(row) {
+async function openEdit(row) {
   editingId.value = row.id
   Object.assign(form, {
     ma_phong_ban: row.ma_phong_ban,
@@ -432,6 +473,7 @@ function openEdit(row) {
     ghi_chu: row.ghi_chu || '',
   })
   dialogVisible.value = true
+  await loadUsers()
 }
 
 async function save() {
@@ -442,7 +484,7 @@ async function save() {
   const payload = {
     ma_phong_ban: form.ma_phong_ban.trim(),
     ten_phong_ban: form.ten_phong_ban.trim(),
-    truong_phong: form.truong_phong?.trim() || null,
+    truong_phong: form.truong_phong || null,
     mo_ta: form.mo_ta?.trim() || null,
     ghi_chu: form.ghi_chu?.trim() || null,
   }
