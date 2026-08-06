@@ -2,7 +2,7 @@
   <div class="duyet-dat-mua-trang-phuc page-list">
     <CustomCard shadow="hover" class="table-card">
       <template #header>
-        <div class="card-header">
+        <div class="section-header">
           <span class="card-title">
             Đặt mua trang phục chờ duyệt
             <el-badge
@@ -12,12 +12,12 @@
               class="title-badge"
             />
           </span>
-          <div class="card-header-right">
+          <div class="filter-toolbar">
             <CustomInput
               v-model="keyword"
+              class="filter-toolbar__search"
               placeholder="Tìm NCC, loại đơn..."
               clearable
-              style="width: 220px"
               @clear="onSearch"
               @keyup.enter="onSearch"
             >
@@ -25,7 +25,7 @@
                 <CustomIcon><Search /></CustomIcon>
               </template>
             </CustomInput>
-            <BulkActionBar :actions="bulkActions" @action="onBulkAction" />
+            <BulkActionBar class="filter-toolbar__actions" :actions="bulkActions" @action="onBulkAction" />
           </div>
         </div>
       </template>
@@ -307,6 +307,13 @@ onMounted(loadItems)
 </script>
 
 <style scoped lang="scss">
+.section-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
 .card-title {
   display: inline-flex;
   align-items: center;
@@ -320,11 +327,33 @@ onMounted(loadItems)
   }
 }
 
-.card-header-right {
+.filter-toolbar {
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
-  flex-wrap: wrap;
   gap: 8px;
-  justify-content: flex-end;
+  width: 100%;
+  min-width: 0;
+
+  &__search {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto !important;
+  }
+
+  &__actions {
+    flex: 0 0 auto;
+    flex-wrap: nowrap !important;
+  }
+
+  @media (min-width: 768px) {
+    justify-content: flex-end;
+
+    &__search {
+      flex: 0 0 240px;
+      width: 240px !important;
+      max-width: 240px;
+    }
+  }
 }
 </style>
