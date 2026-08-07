@@ -98,6 +98,11 @@ class HopDongSuDungDichVu extends Model
                 'mo_ta' => null,
                 'gia_tri' => null,
             ],
+            'y_kien_khach_hang' => [
+                'ten' => 'Ý kiến khách hàng',
+                'mo_ta' => null,
+                'gia_tri' => null,
+            ],
         ];
     }
 

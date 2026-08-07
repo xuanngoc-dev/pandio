@@ -94,7 +94,8 @@ class HopDongSuDungDichVuController extends BaseApiController
      * Lọc hop_dong_su_dung_dich_vu có id user nằm trong
      * thong_tin_dieu_phoi.{quay_phim|tho_make|tho_edit|tho_chup}.gia_tri
      *
-     * Query: page, per_page, ket_qua_trang_thai
+     * Query: page, per_page, ket_qua_trang_thai,
+     * ngay_chup, ngay_tra_demo, ngay_tra_chinh_thuc
      * (cho_nhan = gia_tri null/rỗng; các tab khác = đúng giá trị)
      */
     public function congViecCuaToi(Request $request): JsonResponse
@@ -114,13 +115,18 @@ class HopDongSuDungDichVuController extends BaseApiController
                     'dang_xu_ly',
                     'gui_khach_kiem_tra',
                     'san_xuat_in_an',
+                    'cho_nghiem_thu',
                     'hoan_thanh',
                 ])],
+                'ngay_chup' => ['sometimes', 'nullable', 'date'],
+                'ngay_tra_demo' => ['sometimes', 'nullable', 'date'],
+                'ngay_tra_chinh_thuc' => ['sometimes', 'nullable', 'date'],
             ]);
             $perPage = $validated['per_page'] ?? 24;
             $ketQuaTrangThai = $validated['ket_qua_trang_thai'] ?? 'cho_nhan';
 
             $baseQuery = $this->congViecCuaToiBaseQuery($userId);
+            $this->applyCongViecDieuPhoiDateFilters($baseQuery, $validated);
             $query = (clone $baseQuery)
                 ->with(['loaiHopDong:id,ten_hop_dong,ma_hop_dong']);
             $this->applyKetQuaTrangThaiFilter($query, $ketQuaTrangThai);
@@ -300,6 +306,217 @@ class HopDongSuDungDichVuController extends BaseApiController
                 $hop_dong_su_dung_dich_vu->fresh()->load(['loaiHopDong:id,ten_hop_dong,ma_hop_dong'])
             );
         }, 'gửi khách kiểm tra');
+    }
+
+    /**
+     * Xử lý phản hồi khách sau khi gửi kiểm tra.
+     * dong_y → san_xuat_in_an; khong_dong_y → dang_xu_ly.
+     */
+    public function xuLyKhachKiemTra(Request $request, HopDongSuDungDichVu $hop_dong_su_dung_dich_vu): JsonResponse
+    {
+        return $this->handleApi(function () use ($request, $hop_dong_su_dung_dich_vu) {
+            $user = $request->user();
+            if (! $user) {
+                abort(401, 'Unauthenticated.');
+            }
+
+            $userId = (int) $user->id;
+            $assigned = $this->congViecCuaToiBaseQuery($userId)
+                ->where('hop_dong_su_dung_dich_vu.id', $hop_dong_su_dung_dich_vu->id)
+                ->exists();
+
+            if (! $assigned) {
+                abort(403, 'Bạn không được gán vào công việc điều phối này.');
+            }
+
+            $validated = $request->validate([
+                'ket_qua' => ['required', 'string', Rule::in(['dong_y', 'khong_dong_y'])],
+                'y_kien_khach_hang' => [
+                    'required_if:ket_qua,khong_dong_y',
+                    'nullable',
+                    'string',
+                    'max:5000',
+                ],
+            ]);
+
+            $defaults = HopDongSuDungDichVu::defaultKetQuaHopDong();
+            $ketQua = is_array($hop_dong_su_dung_dich_vu->ket_qua_hop_dong)
+                ? $hop_dong_su_dung_dich_vu->ket_qua_hop_dong
+                : $defaults;
+
+            foreach ($defaults as $fieldKey => $defaultField) {
+                if (! isset($ketQua[$fieldKey]) || ! is_array($ketQua[$fieldKey])) {
+                    $ketQua[$fieldKey] = $defaultField;
+                }
+            }
+
+            $current = $ketQua['trang_thai']['gia_tri'] ?? null;
+            if ($current !== 'gui_khach_kiem_tra') {
+                abort(422, 'Chỉ có thể xử lý khi công việc đang ở bước Gửi khách kiểm tra.');
+            }
+
+            $isDongY = $validated['ket_qua'] === 'dong_y';
+            $nextStatus = $isDongY ? 'san_xuat_in_an' : 'dang_xu_ly';
+
+            if (! $isDongY) {
+                $yKien = trim((string) ($validated['y_kien_khach_hang'] ?? ''));
+                if ($yKien === '') {
+                    abort(422, 'Vui lòng nhập ý kiến khách hàng.');
+                }
+
+                $ketQua['y_kien_khach_hang'] = array_merge(
+                    $defaults['y_kien_khach_hang'],
+                    is_array($ketQua['y_kien_khach_hang'] ?? null) ? $ketQua['y_kien_khach_hang'] : [],
+                    ['gia_tri' => $yKien]
+                );
+            }
+
+            $ketQua['trang_thai'] = array_merge(
+                $defaults['trang_thai'],
+                is_array($ketQua['trang_thai'] ?? null) ? $ketQua['trang_thai'] : [],
+                ['gia_tri' => $nextStatus]
+            );
+
+            $hop_dong_su_dung_dich_vu->update(['ket_qua_hop_dong' => $ketQua]);
+
+            return response()->json(
+                $hop_dong_su_dung_dich_vu->fresh()->load(['loaiHopDong:id,ten_hop_dong,ma_hop_dong'])
+            );
+        }, 'xử lý phản hồi khách kiểm tra');
+    }
+
+    /**
+     * Bàn giao sản phẩm → ket_qua_hop_dong.trang_thai = cho_nghiem_thu.
+     * Yêu cầu đã có link_giao_san_pham (file chính thức).
+     */
+    public function banGiao(Request $request, HopDongSuDungDichVu $hop_dong_su_dung_dich_vu): JsonResponse
+    {
+        return $this->handleApi(function () use ($request, $hop_dong_su_dung_dich_vu) {
+            $user = $request->user();
+            if (! $user) {
+                abort(401, 'Unauthenticated.');
+            }
+
+            $userId = (int) $user->id;
+            $assigned = $this->congViecCuaToiBaseQuery($userId)
+                ->where('hop_dong_su_dung_dich_vu.id', $hop_dong_su_dung_dich_vu->id)
+                ->exists();
+
+            if (! $assigned) {
+                abort(403, 'Bạn không được gán vào công việc điều phối này.');
+            }
+
+            $defaults = HopDongSuDungDichVu::defaultKetQuaHopDong();
+            $ketQua = is_array($hop_dong_su_dung_dich_vu->ket_qua_hop_dong)
+                ? $hop_dong_su_dung_dich_vu->ket_qua_hop_dong
+                : $defaults;
+
+            foreach ($defaults as $fieldKey => $defaultField) {
+                if (! isset($ketQua[$fieldKey]) || ! is_array($ketQua[$fieldKey])) {
+                    $ketQua[$fieldKey] = $defaultField;
+                }
+            }
+
+            $current = $ketQua['trang_thai']['gia_tri'] ?? null;
+            if ($current !== 'san_xuat_in_an') {
+                abort(422, 'Chỉ có thể bàn giao khi công việc đang ở bước Sản xuất & in ấn.');
+            }
+
+            $linkChinhThuc = trim((string) ($ketQua['link_giao_san_pham']['gia_tri'] ?? ''));
+            if ($linkChinhThuc === '') {
+                abort(422, 'Cần có File chính thức trước khi bàn giao.');
+            }
+
+            $ketQua['trang_thai'] = array_merge(
+                $defaults['trang_thai'],
+                is_array($ketQua['trang_thai'] ?? null) ? $ketQua['trang_thai'] : [],
+                ['gia_tri' => 'cho_nghiem_thu']
+            );
+
+            $hop_dong_su_dung_dich_vu->update(['ket_qua_hop_dong' => $ketQua]);
+
+            return response()->json(
+                $hop_dong_su_dung_dich_vu->fresh()->load(['loaiHopDong:id,ten_hop_dong,ma_hop_dong'])
+            );
+        }, 'bàn giao sản phẩm');
+    }
+
+    /**
+     * Xử lý nghiệm thu ở bước Nghiệm thu.
+     * lam_lai (+ y_kien) → san_xuat_in_an; hoan_thanh → hoan_thanh.
+     */
+    public function xuLyNghiemThu(Request $request, HopDongSuDungDichVu $hop_dong_su_dung_dich_vu): JsonResponse
+    {
+        return $this->handleApi(function () use ($request, $hop_dong_su_dung_dich_vu) {
+            $user = $request->user();
+            if (! $user) {
+                abort(401, 'Unauthenticated.');
+            }
+
+            $userId = (int) $user->id;
+            $assigned = $this->congViecCuaToiBaseQuery($userId)
+                ->where('hop_dong_su_dung_dich_vu.id', $hop_dong_su_dung_dich_vu->id)
+                ->exists();
+
+            if (! $assigned) {
+                abort(403, 'Bạn không được gán vào công việc điều phối này.');
+            }
+
+            $validated = $request->validate([
+                'hanh_dong' => ['required', 'string', Rule::in(['lam_lai', 'hoan_thanh'])],
+                'y_kien_khach_hang' => [
+                    'required_if:hanh_dong,lam_lai',
+                    'nullable',
+                    'string',
+                    'max:5000',
+                ],
+            ]);
+
+            $defaults = HopDongSuDungDichVu::defaultKetQuaHopDong();
+            $ketQua = is_array($hop_dong_su_dung_dich_vu->ket_qua_hop_dong)
+                ? $hop_dong_su_dung_dich_vu->ket_qua_hop_dong
+                : $defaults;
+
+            foreach ($defaults as $fieldKey => $defaultField) {
+                if (! isset($ketQua[$fieldKey]) || ! is_array($ketQua[$fieldKey])) {
+                    $ketQua[$fieldKey] = $defaultField;
+                }
+            }
+
+            $current = $ketQua['trang_thai']['gia_tri'] ?? null;
+            if ($current !== 'cho_nghiem_thu') {
+                abort(422, 'Chỉ có thể xử lý khi công việc đang chờ nghiệm thu.');
+            }
+
+            if ($validated['hanh_dong'] === 'lam_lai') {
+                $yKien = trim((string) ($validated['y_kien_khach_hang'] ?? ''));
+                if ($yKien === '') {
+                    abort(422, 'Vui lòng nhập ý kiến / yêu cầu của khách hàng.');
+                }
+
+                $ketQua['y_kien_khach_hang'] = array_merge(
+                    $defaults['y_kien_khach_hang'],
+                    is_array($ketQua['y_kien_khach_hang'] ?? null) ? $ketQua['y_kien_khach_hang'] : [],
+                    ['gia_tri' => $yKien]
+                );
+
+                $nextStatus = 'san_xuat_in_an';
+            } else {
+                $nextStatus = 'hoan_thanh';
+            }
+
+            $ketQua['trang_thai'] = array_merge(
+                $defaults['trang_thai'],
+                is_array($ketQua['trang_thai'] ?? null) ? $ketQua['trang_thai'] : [],
+                ['gia_tri' => $nextStatus]
+            );
+
+            $hop_dong_su_dung_dich_vu->update(['ket_qua_hop_dong' => $ketQua]);
+
+            return response()->json(
+                $hop_dong_su_dung_dich_vu->fresh()->load(['loaiHopDong:id,ten_hop_dong,ma_hop_dong'])
+            );
+        }, 'xử lý nghiệm thu');
     }
 
     /**
@@ -675,6 +892,25 @@ class HopDongSuDungDichVuController extends BaseApiController
     }
 
     /**
+     * Lọc theo các ngày trong thong_tin_dieu_phoi.*.gia_tri.
+     *
+     * @param  array<string, mixed>  $filters
+     */
+    private function applyCongViecDieuPhoiDateFilters($query, array $filters): void
+    {
+        $dateFields = ['ngay_chup', 'ngay_tra_demo', 'ngay_tra_chinh_thuc'];
+
+        foreach ($dateFields as $field) {
+            $value = $filters[$field] ?? null;
+            if ($value === null || $value === '') {
+                continue;
+            }
+
+            $query->where("thong_tin_dieu_phoi->{$field}->gia_tri", $value);
+        }
+    }
+
+    /**
      * Lọc theo ket_qua_hop_dong.trang_thai.gia_tri.
      * cho_nhan = null / thiếu / chuỗi rỗng.
      */
@@ -707,6 +943,7 @@ class HopDongSuDungDichVuController extends BaseApiController
             'dang_xu_ly',
             'gui_khach_kiem_tra',
             'san_xuat_in_an',
+            'cho_nghiem_thu',
             'hoan_thanh',
         ];
 

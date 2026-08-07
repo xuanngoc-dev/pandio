@@ -23,7 +23,10 @@ export function fetchHopDongSuDungDichVu(params = {}) {
  * @param {{
  *   page?: number,
  *   per_page?: number,
- *   ket_qua_trang_thai?: 'cho_nhan'|'dang_xu_ly'|'gui_khach_kiem_tra'|'san_xuat_in_an'|'hoan_thanh',
+ *   ket_qua_trang_thai?: 'cho_nhan'|'dang_xu_ly'|'gui_khach_kiem_tra'|'san_xuat_in_an'|'cho_nghiem_thu'|'hoan_thanh',
+ *   ngay_chup?: string,
+ *   ngay_tra_demo?: string,
+ *   ngay_tra_chinh_thuc?: string,
  * }} params
  */
 export function fetchCongViecDieuPhoiCuaToi(params = {}) {
@@ -53,6 +56,32 @@ export function capNhatKetQuaHopDong(id, payload) {
  */
 export function guiKhachKiemTra(id) {
   return api.post(`/hop-dong-su-dung-dich-vu/${id}/gui-khach-kiem-tra`)
+}
+
+/**
+ * Xử lý phản hồi khách kiểm tra.
+ * @param {number|string} id
+ * @param {{ ket_qua: 'dong_y'|'khong_dong_y', y_kien_khach_hang?: string }} payload
+ */
+export function xuLyKhachKiemTra(id, payload) {
+  return api.post(`/hop-dong-su-dung-dich-vu/${id}/xu-ly-khach-kiem-tra`, payload)
+}
+
+/**
+ * Bàn giao → ket_qua_hop_dong.trang_thai = cho_nghiem_thu.
+ * @param {number|string} id
+ */
+export function banGiaoCongViec(id) {
+  return api.post(`/hop-dong-su-dung-dich-vu/${id}/ban-giao`)
+}
+
+/**
+ * Xử lý nghiệm thu (làm lại / hoàn thành).
+ * @param {number|string} id
+ * @param {{ hanh_dong: 'lam_lai'|'hoan_thanh', y_kien_khach_hang?: string }} payload
+ */
+export function xuLyNghiemThu(id, payload) {
+  return api.post(`/hop-dong-su-dung-dich-vu/${id}/xu-ly-nghiem-thu`, payload)
 }
 
 /**

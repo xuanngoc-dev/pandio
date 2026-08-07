@@ -1,5 +1,49 @@
 <template>
   <div class="dieu-phoi-tu-dong">
+    <div class="filter-bar">
+      <CustomRow :gutter="12">
+        <CustomCol :xs="24" :sm="12" :md="8" :lg="6">
+          <el-date-picker
+            v-model="filters.ngay_chup"
+            type="date"
+            placeholder="Ngày chụp"
+            format="DD/MM/YYYY"
+            value-format="YYYY-MM-DD"
+            style="width: 100%"
+            clearable
+          />
+        </CustomCol>
+        <CustomCol :xs="24" :sm="12" :md="8" :lg="6">
+          <el-date-picker
+            v-model="filters.ngay_tra_demo"
+            type="date"
+            placeholder="Ngày trả demo"
+            format="DD/MM/YYYY"
+            value-format="YYYY-MM-DD"
+            style="width: 100%"
+            clearable
+          />
+        </CustomCol>
+        <CustomCol :xs="24" :sm="12" :md="8" :lg="6">
+          <el-date-picker
+            v-model="filters.ngay_tra_chinh_thuc"
+            type="date"
+            placeholder="Ngày trả chính thức"
+            format="DD/MM/YYYY"
+            value-format="YYYY-MM-DD"
+            style="width: 100%"
+            clearable
+          />
+        </CustomCol>
+        <CustomCol :xs="24" :sm="12" :md="8" :lg="4">
+          <CustomButton type="primary" plain :loading="loading" @click="onSearch">
+            <CustomIcon><Search /></CustomIcon>
+            Tìm kiếm
+          </CustomButton>
+        </CustomCol>
+      </CustomRow>
+    </div>
+
     <el-tabs v-model="activeTab" type="border-card" class="status-tabs" @tab-change="onTabChange">
       <el-tab-pane
         v-for="tab in tabs"
@@ -40,8 +84,7 @@
           >
             <DieuPhoiTuDongCard
               :item="item"
-              :show-nhan="activeTab === 'cho_nhan'"
-              :show-file-links="activeTab === 'dang_xu_ly'"
+              :step="activeTab"
               @accepted="onAccepted"
               @updated="onItemUpdated"
               @status-changed="onAccepted"
@@ -64,9 +107,10 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import { Search } from '@element-plus/icons-vue'
 import { fetchCongViecDieuPhoiCuaToi } from '@/api/hopDongSuDungDichVu'
 import Pagination from '@/components/Pagination.vue'
-import { CustomCol, CustomRow } from '@/components/element'
+import { CustomButton, CustomCol, CustomIcon, CustomRow } from '@/components/element'
 import DieuPhoiTuDongCard from './DieuPhoiTuDongCard.vue'
 
 const tabs = [
@@ -74,6 +118,7 @@ const tabs = [
   { name: 'dang_xu_ly', label: 'Đang xử lý' },
   { name: 'gui_khach_kiem_tra', label: 'Gửi khách kiểm tra' },
   { name: 'san_xuat_in_an', label: 'Sản xuất & in ấn' },
+  { name: 'cho_nghiem_thu', label: 'Nghiệm thu' },
   { name: 'hoan_thanh', label: 'Hoàn thành' },
 ]
 
@@ -84,7 +129,14 @@ const tabCounts = reactive({
   dang_xu_ly: 0,
   gui_khach_kiem_tra: 0,
   san_xuat_in_an: 0,
+  cho_nghiem_thu: 0,
   hoan_thanh: 0,
+})
+
+const filters = reactive({
+  ngay_chup: '',
+  ngay_tra_demo: '',
+  ngay_tra_chinh_thuc: '',
 })
 
 const items = ref([])
@@ -114,6 +166,9 @@ async function loadItems() {
       page: page.value,
       per_page: perPage.value,
       ket_qua_trang_thai: activeTab.value,
+      ngay_chup: filters.ngay_chup || undefined,
+      ngay_tra_demo: filters.ngay_tra_demo || undefined,
+      ngay_tra_chinh_thuc: filters.ngay_tra_chinh_thuc || undefined,
     })
     items.value = data.data || []
     total.value = data.total || 0
@@ -127,6 +182,11 @@ async function loadItems() {
 }
 
 function onTabChange() {
+  page.value = 1
+  loadItems()
+}
+
+function onSearch() {
   page.value = 1
   loadItems()
 }
@@ -155,6 +215,10 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .dieu-phoi-tu-dong {
+  .filter-bar {
+    margin-bottom: 12px;
+  }
+
   .status-tabs {
     :deep(.el-tabs__header) {
       margin-bottom: 0;

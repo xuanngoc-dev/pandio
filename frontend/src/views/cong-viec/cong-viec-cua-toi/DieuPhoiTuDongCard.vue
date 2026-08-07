@@ -5,7 +5,26 @@
         {{ loaiHopDong }}
       </h3>
       <div class="cong-viec-card__header-actions">
-        <CustomTag :type="trangThaiTagType(item.trang_thai)" size="small">
+        <CustomTooltip
+          v-if="showYKienIcon"
+          content="Xem ý kiến khách hàng"
+          placement="top"
+        >
+          <CustomButton
+            type="warning"
+            link
+            :icon="ChatDotRound"
+            @click.stop="openYKienView"
+          />
+        </CustomTooltip>
+        <CustomTag
+          v-if="ketQuaTrangThaiTag"
+          :type="ketQuaTrangThaiTag.type"
+          size="small"
+        >
+          {{ ketQuaTrangThaiTag.label }}
+        </CustomTag>
+        <CustomTag v-else :type="trangThaiTagType(item.trang_thai)" size="small">
           {{ trangThaiLabel(item.trang_thai) }}
         </CustomTag>
         <CustomTooltip v-if="canNhan" content="Nhận việc" placement="top">
@@ -39,7 +58,7 @@
         <span class="value">{{ ngayTraChinhThuc }}</span>
       </div>
 
-      <div v-if="showFileLinks" class="cong-viec-card__files">
+      <div class="cong-viec-card__files">
         <div
           v-for="field in fileLinkFields"
           :key="field.key"
@@ -58,7 +77,11 @@
               >
                 Mở
               </a>
-              <CustomTooltip content="Sửa link" placement="top">
+              <CustomTooltip
+                v-if="canEditFile(field)"
+                content="Sửa link"
+                placement="top"
+              >
                 <CustomButton
                   type="primary"
                   link
@@ -67,14 +90,17 @@
                 />
               </CustomTooltip>
             </template>
-            <CustomTooltip v-else content="Thêm link" placement="top">
-              <CustomButton
-                type="primary"
-                link
-                :icon="Plus"
-                @click.stop="openLinkModal(field)"
-              />
-            </CustomTooltip>
+            <template v-else-if="canEditFile(field)">
+              <CustomTooltip content="Thêm link" placement="top">
+                <CustomButton
+                  type="primary"
+                  link
+                  :icon="Plus"
+                  @click.stop="openLinkModal(field)"
+                />
+              </CustomTooltip>
+            </template>
+            <span v-else class="file-empty">—</span>
           </div>
         </div>
       </div>
@@ -94,7 +120,7 @@
         </div>
       </div>
 
-      <div v-if="showFileLinks" class="cong-viec-card__footer">
+      <div v-if="showGuiKhachFooter" class="cong-viec-card__footer">
         <CustomTooltip
           :content="
             canGuiKhachKiemTra
@@ -115,6 +141,100 @@
             </CustomButton>
           </span>
         </CustomTooltip>
+      </div>
+
+      <div v-else-if="showKhachKiemTraFooter" class="cong-viec-card__footer cong-viec-card__footer--split">
+        <div class="cong-viec-card__footer-col">
+          <CustomTooltip content="Khách đồng ý" placement="top">
+            <CustomButton
+              type="success"
+              size="small"
+              :icon="Check"
+              :loading="processingKhach === 'dong_y'"
+              :disabled="!!processingKhach"
+              class="btn-khach-response"
+              @click.stop="onXuLyKhachKiemTra('dong_y')"
+            >
+              <span class="btn-khach-response__label">Khách đồng ý</span>
+            </CustomButton>
+          </CustomTooltip>
+        </div>
+        <div class="cong-viec-card__footer-col">
+          <CustomTooltip content="Khách không đồng ý" placement="top">
+            <CustomButton
+              type="danger"
+              plain
+              size="small"
+              :icon="Close"
+              :loading="processingKhach === 'khong_dong_y'"
+              :disabled="!!processingKhach"
+              class="btn-khach-response"
+              @click.stop="openYKienModal('khong_dong_y')"
+            >
+              <span class="btn-khach-response__label">Khách không đồng ý</span>
+            </CustomButton>
+          </CustomTooltip>
+        </div>
+      </div>
+
+      <div v-else-if="showBanGiaoFooter" class="cong-viec-card__footer">
+        <CustomTooltip
+          :content="
+            canBanGiao
+              ? 'Bàn giao sản phẩm'
+              : 'Cần có File chính thức trước khi bàn giao'
+          "
+          placement="top"
+        >
+          <span class="cong-viec-card__footer-btn-wrap">
+            <CustomButton
+              type="primary"
+              size="small"
+              :disabled="!canBanGiao"
+              :loading="banningGiao"
+              @click.stop="onBanGiao"
+            >
+              Bàn giao
+            </CustomButton>
+          </span>
+        </CustomTooltip>
+      </div>
+
+      <div
+        v-else-if="showNghiemThuFooter"
+        class="cong-viec-card__footer cong-viec-card__footer--split"
+      >
+        <div class="cong-viec-card__footer-col">
+          <CustomTooltip content="Hoàn thành" placement="top">
+            <CustomButton
+              type="success"
+              size="small"
+              :icon="Check"
+              :loading="processingNghiemThu === 'hoan_thanh'"
+              :disabled="!!processingNghiemThu"
+              class="btn-khach-response"
+              @click.stop="onHoanThanh"
+            >
+              <span class="btn-khach-response__label">Hoàn thành</span>
+            </CustomButton>
+          </CustomTooltip>
+        </div>
+        <div class="cong-viec-card__footer-col">
+          <CustomTooltip content="Làm lại" placement="top">
+            <CustomButton
+              type="warning"
+              plain
+              size="small"
+              :icon="RefreshRight"
+              :loading="processingNghiemThu === 'lam_lai'"
+              :disabled="!!processingNghiemThu"
+              class="btn-khach-response"
+              @click.stop="openYKienModal('lam_lai')"
+            >
+              <span class="btn-khach-response__label">Làm lại</span>
+            </CustomButton>
+          </CustomTooltip>
+        </div>
       </div>
     </div>
 
@@ -140,17 +260,72 @@
         </CustomButton>
       </template>
     </CustomDialog>
+
+    <CustomDialog
+      v-model="yKienModalVisible"
+      :title="yKienModalTitle"
+      :width="520"
+    >
+      <el-form label-position="top" @submit.prevent="submitYKienModal">
+        <el-form-item :label="yKienModalLabel" required>
+          <el-input
+            v-model="yKienInput"
+            type="textarea"
+            :rows="5"
+            maxlength="5000"
+            show-word-limit
+            :placeholder="yKienModalPlaceholder"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <CustomButton @click="yKienModalVisible = false">Hủy</CustomButton>
+        <CustomButton
+          :type="yKienModalMode === 'lam_lai' ? 'warning' : 'danger'"
+          :loading="
+            processingKhach === 'khong_dong_y' ||
+            processingNghiemThu === 'lam_lai'
+          "
+          @click="submitYKienModal"
+        >
+          {{ yKienModalConfirmText }}
+        </CustomButton>
+      </template>
+    </CustomDialog>
+
+    <CustomDialog
+      v-model="yKienViewVisible"
+      title="Ý kiến khách hàng"
+      :width="520"
+    >
+      <div class="y-kien-view">
+        <p class="y-kien-view__meta">
+          Hợp đồng <strong>{{ maHopDong }}</strong>
+        </p>
+        <div class="y-kien-view__content">
+          {{ yKienKhachHang || '—' }}
+        </div>
+      </div>
+      <template #footer>
+        <CustomButton type="primary" @click="yKienViewVisible = false">
+          Đóng
+        </CustomButton>
+      </template>
+    </CustomDialog>
   </CustomCard>
 </template>
 
 <script setup>
 import { computed, ref } from 'vue'
-import { Edit, Plus, Select } from '@element-plus/icons-vue'
+import { ChatDotRound, Check, Close, Edit, Plus, RefreshRight, Select } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
+  banGiaoCongViec,
   capNhatKetQuaHopDong,
   guiKhachKiemTra,
   nhanCongViecDieuPhoi,
+  xuLyKhachKiemTra,
+  xuLyNghiemThu,
 } from '@/api/hopDongSuDungDichVu'
 import {
   CustomButton,
@@ -188,13 +363,9 @@ const props = defineProps({
     type: Object,
     required: true,
   },
-  showNhan: {
-    type: Boolean,
-    default: false,
-  },
-  showFileLinks: {
-    type: Boolean,
-    default: false,
+  step: {
+    type: String,
+    default: 'cho_nhan',
   },
 })
 
@@ -203,10 +374,17 @@ const emit = defineEmits(['accepted', 'updated', 'status-changed'])
 const authStore = useAuthStore()
 const accepting = ref(false)
 const sendingKhach = ref(false)
+const banningGiao = ref(false)
+const processingKhach = ref('')
+const processingNghiemThu = ref('')
 const linkModalVisible = ref(false)
 const linkModalField = ref(null)
 const linkInput = ref('')
 const savingLink = ref(false)
+const yKienModalVisible = ref(false)
+const yKienModalMode = ref('khong_dong_y')
+const yKienInput = ref('')
+const yKienViewVisible = ref(false)
 
 const ketQua = computed(() => {
   const raw = props.item?.ket_qua_hop_dong
@@ -219,7 +397,22 @@ const ketQuaTrangThai = computed(() => {
   return String(giaTri)
 })
 
-const canNhan = computed(() => props.showNhan && !ketQuaTrangThai.value)
+const ketQuaTrangThaiTag = computed(() => {
+  const map = {
+    cho_nghiem_thu: { label: 'Chờ nghiệm thu', type: 'warning' },
+    hoan_thanh: { label: 'Hoàn thành', type: 'success' },
+  }
+  if (!ketQuaTrangThai.value) return null
+  return map[ketQuaTrangThai.value] || null
+})
+
+const canNhan = computed(() => props.step === 'cho_nhan' && !ketQuaTrangThai.value)
+const showGuiKhachFooter = computed(() => props.step === 'dang_xu_ly')
+const showKhachKiemTraFooter = computed(() => props.step === 'gui_khach_kiem_tra')
+const showBanGiaoFooter = computed(() => props.step === 'san_xuat_in_an')
+const showNghiemThuFooter = computed(
+  () => props.step === 'cho_nghiem_thu' && ketQuaTrangThai.value === 'cho_nghiem_thu',
+)
 
 const hasLinkFileGoc = computed(() => {
   const giaTri = ketQua.value?.link_file_goc?.gia_tri
@@ -231,9 +424,59 @@ const hasLinkFileDemo = computed(() => {
   return giaTri != null && String(giaTri).trim() !== ''
 })
 
+const hasLinkFileChinhThuc = computed(() => {
+  const giaTri = ketQua.value?.link_giao_san_pham?.gia_tri
+  return giaTri != null && String(giaTri).trim() !== ''
+})
+
 const canGuiKhachKiemTra = computed(
-  () => props.showFileLinks && hasLinkFileGoc.value && hasLinkFileDemo.value,
+  () => showGuiKhachFooter.value && hasLinkFileGoc.value && hasLinkFileDemo.value,
 )
+
+const canBanGiao = computed(
+  () => showBanGiaoFooter.value && hasLinkFileChinhThuc.value,
+)
+
+const yKienKhachHang = computed(() => {
+  const giaTri = ketQua.value?.y_kien_khach_hang?.gia_tri
+  if (giaTri == null || String(giaTri).trim() === '') return ''
+  return String(giaTri).trim()
+})
+
+const showYKienIcon = computed(
+  () =>
+    !!yKienKhachHang.value &&
+    (props.step === 'dang_xu_ly' || props.step === 'san_xuat_in_an'),
+)
+
+const yKienModalTitle = computed(() =>
+  yKienModalMode.value === 'lam_lai'
+    ? 'Yêu cầu làm lại'
+    : 'Ý kiến khách hàng',
+)
+const yKienModalLabel = computed(() =>
+  yKienModalMode.value === 'lam_lai'
+    ? 'Yêu cầu của khách hàng'
+    : 'Ý kiến khách hàng',
+)
+const yKienModalPlaceholder = computed(() =>
+  yKienModalMode.value === 'lam_lai'
+    ? 'Nhập yêu cầu làm lại của khách hàng...'
+    : 'Nhập ý kiến / lý do khách không đồng ý...',
+)
+const yKienModalConfirmText = computed(() =>
+  yKienModalMode.value === 'lam_lai'
+    ? 'Xác nhận làm lại'
+    : 'Xác nhận không đồng ý',
+)
+
+function canEditFile(field) {
+  if (props.step === 'dang_xu_ly') return true
+  if (props.step === 'san_xuat_in_an') {
+    return field?.key === 'link_giao_san_pham'
+  }
+  return false
+}
 
 const fileLinkFields = computed(() =>
   FILE_LINK_DEFS.map((def) => {
@@ -467,6 +710,166 @@ async function onGuiKhachKiemTra() {
     sendingKhach.value = false
   }
 }
+
+async function onXuLyKhachKiemTra(ketQua) {
+  if (ketQua !== 'dong_y') return
+
+  try {
+    await ElMessageBox.confirm(
+      `Khách đồng ý với hợp đồng ${props.item.ma_hop_dong || ''}? Chuyển sang Sản xuất & in ấn.`,
+      'Khách đồng ý',
+      {
+        type: 'success',
+        confirmButtonText: 'Xác nhận',
+        cancelButtonText: 'Hủy',
+      },
+    )
+  } catch {
+    return
+  }
+
+  processingKhach.value = 'dong_y'
+  try {
+    await xuLyKhachKiemTra(props.item.id, { ket_qua: 'dong_y' })
+    ElMessage.success('Đã chuyển sang Sản xuất & in ấn')
+    emit('status-changed')
+  } catch (error) {
+    const msg =
+      error?.response?.data?.message ||
+      error?.message ||
+      'Không thể cập nhật trạng thái'
+    ElMessage.error(msg)
+  } finally {
+    processingKhach.value = ''
+  }
+}
+
+function openYKienModal(mode) {
+  yKienModalMode.value = mode
+  yKienInput.value = yKienKhachHang.value || ''
+  yKienModalVisible.value = true
+}
+
+function openYKienView() {
+  yKienViewVisible.value = true
+}
+
+async function submitYKienModal() {
+  const yKien = String(yKienInput.value || '').trim()
+  if (!yKien) {
+    ElMessage.warning(
+      yKienModalMode.value === 'lam_lai'
+        ? 'Vui lòng nhập yêu cầu của khách hàng'
+        : 'Vui lòng nhập ý kiến khách hàng',
+    )
+    return
+  }
+
+  if (yKienModalMode.value === 'lam_lai') {
+    processingNghiemThu.value = 'lam_lai'
+    try {
+      await xuLyNghiemThu(props.item.id, {
+        hanh_dong: 'lam_lai',
+        y_kien_khach_hang: yKien,
+      })
+      ElMessage.success('Đã chuyển lại Sản xuất & in ấn')
+      yKienModalVisible.value = false
+      emit('status-changed')
+    } catch (error) {
+      const msg =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Không thể cập nhật trạng thái'
+      ElMessage.error(msg)
+    } finally {
+      processingNghiemThu.value = ''
+    }
+    return
+  }
+
+  processingKhach.value = 'khong_dong_y'
+  try {
+    await xuLyKhachKiemTra(props.item.id, {
+      ket_qua: 'khong_dong_y',
+      y_kien_khach_hang: yKien,
+    })
+    ElMessage.success('Đã chuyển lại Đang xử lý')
+    yKienModalVisible.value = false
+    emit('status-changed')
+  } catch (error) {
+    const msg =
+      error?.response?.data?.message ||
+      error?.message ||
+      'Không thể cập nhật trạng thái'
+    ElMessage.error(msg)
+  } finally {
+    processingKhach.value = ''
+  }
+}
+
+async function onBanGiao() {
+  if (!canBanGiao.value) return
+
+  try {
+    await ElMessageBox.confirm(
+      `Bàn giao hợp đồng ${props.item.ma_hop_dong || ''}? Trạng thái sẽ chuyển sang Chờ nghiệm thu.`,
+      'Bàn giao',
+      {
+        type: 'info',
+        confirmButtonText: 'Bàn giao',
+        cancelButtonText: 'Hủy',
+      },
+    )
+  } catch {
+    return
+  }
+
+  banningGiao.value = true
+  try {
+    await banGiaoCongViec(props.item.id)
+    ElMessage.success('Đã bàn giao — chờ nghiệm thu')
+    emit('status-changed')
+  } catch (error) {
+    const msg =
+      error?.response?.data?.message ||
+      error?.message ||
+      'Không thể bàn giao'
+    ElMessage.error(msg)
+  } finally {
+    banningGiao.value = false
+  }
+}
+
+async function onHoanThanh() {
+  try {
+    await ElMessageBox.confirm(
+      `Hoàn thành hợp đồng ${props.item.ma_hop_dong || ''}?`,
+      'Hoàn thành',
+      {
+        type: 'success',
+        confirmButtonText: 'Hoàn thành',
+        cancelButtonText: 'Hủy',
+      },
+    )
+  } catch {
+    return
+  }
+
+  processingNghiemThu.value = 'hoan_thanh'
+  try {
+    await xuLyNghiemThu(props.item.id, { hanh_dong: 'hoan_thanh' })
+    ElMessage.success('Đã hoàn thành hợp đồng')
+    emit('status-changed')
+  } catch (error) {
+    const msg =
+      error?.response?.data?.message ||
+      error?.message ||
+      'Không thể hoàn thành'
+    ElMessage.error(msg)
+  } finally {
+    processingNghiemThu.value = ''
+  }
+}
 </script>
 
 <style scoped lang="scss">
@@ -628,6 +1031,24 @@ async function onGuiKhachKiemTra() {
   &__footer {
     margin-top: auto;
     padding-top: 8px;
+
+    &--split {
+      display: flex;
+      align-items: stretch;
+      gap: 12px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+  }
+
+  &__footer-col {
+    flex: 1 1 0;
+    min-width: 0;
+
+    :deep(.btn-khach-response) {
+      width: 100%;
+      justify-content: center;
+    }
   }
 
   &__footer-btn-wrap {
@@ -637,6 +1058,50 @@ async function onGuiKhachKiemTra() {
     :deep(.el-button) {
       width: 100%;
     }
+  }
+
+  .btn-khach-response {
+    &__label {
+      margin-left: 4px;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .btn-khach-response {
+      :deep(.el-icon) {
+        margin-right: 0;
+      }
+
+      &__label {
+        display: none;
+      }
+    }
+  }
+
+  .file-empty {
+    font-size: 13px;
+    color: var(--el-text-color-placeholder);
+    line-height: 24px;
+  }
+}
+
+.y-kien-view {
+  &__meta {
+    margin: 0 0 10px;
+    font-size: 13px;
+    color: var(--el-text-color-secondary);
+  }
+
+  &__content {
+    margin: 0;
+    padding: 12px;
+    border-radius: 6px;
+    background: var(--el-fill-color-light);
+    color: var(--el-text-color-primary);
+    font-size: 14px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-word;
   }
 }
 </style>
