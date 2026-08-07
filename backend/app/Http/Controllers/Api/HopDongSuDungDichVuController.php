@@ -185,6 +185,124 @@ class HopDongSuDungDichVuController extends BaseApiController
     }
 
     /**
+     * Cập nhật một field trong ket_qua_hop_dong (vd. link_file_demo, link_file_goc).
+     */
+    public function capNhatKetQuaHopDong(Request $request, HopDongSuDungDichVu $hop_dong_su_dung_dich_vu): JsonResponse
+    {
+        return $this->handleApi(function () use ($request, $hop_dong_su_dung_dich_vu) {
+            $user = $request->user();
+            if (! $user) {
+                abort(401, 'Unauthenticated.');
+            }
+
+            $userId = (int) $user->id;
+            $assigned = $this->congViecCuaToiBaseQuery($userId)
+                ->where('hop_dong_su_dung_dich_vu.id', $hop_dong_su_dung_dich_vu->id)
+                ->exists();
+
+            if (! $assigned) {
+                abort(403, 'Bạn không được gán vào công việc điều phối này.');
+            }
+
+            $allowedKeys = array_keys(HopDongSuDungDichVu::defaultKetQuaHopDong());
+            $validated = $request->validate([
+                'key' => ['required', 'string', Rule::in($allowedKeys)],
+                'gia_tri' => ['required', 'string', 'max:2048'],
+            ]);
+
+            $key = $validated['key'];
+            if ($key === 'trang_thai') {
+                abort(422, 'Không thể cập nhật trạng thái qua endpoint này.');
+            }
+
+            $giaTri = trim($validated['gia_tri']);
+            if ($giaTri === '') {
+                abort(422, 'Link không được để trống.');
+            }
+
+            $defaults = HopDongSuDungDichVu::defaultKetQuaHopDong();
+            $ketQua = is_array($hop_dong_su_dung_dich_vu->ket_qua_hop_dong)
+                ? $hop_dong_su_dung_dich_vu->ket_qua_hop_dong
+                : $defaults;
+
+            foreach ($defaults as $fieldKey => $defaultField) {
+                if (! isset($ketQua[$fieldKey]) || ! is_array($ketQua[$fieldKey])) {
+                    $ketQua[$fieldKey] = $defaultField;
+                }
+            }
+
+            $ketQua[$key] = array_merge(
+                $defaults[$key],
+                is_array($ketQua[$key] ?? null) ? $ketQua[$key] : [],
+                ['gia_tri' => $giaTri]
+            );
+
+            $hop_dong_su_dung_dich_vu->update(['ket_qua_hop_dong' => $ketQua]);
+
+            return response()->json(
+                $hop_dong_su_dung_dich_vu->fresh()->load(['loaiHopDong:id,ten_hop_dong,ma_hop_dong'])
+            );
+        }, 'cập nhật kết quả hợp đồng');
+    }
+
+    /**
+     * Gửi khách kiểm tra → ket_qua_hop_dong.trang_thai = gui_khach_kiem_tra.
+     * Yêu cầu đã có link_file_goc và link_file_demo.
+     */
+    public function guiKhachKiemTra(Request $request, HopDongSuDungDichVu $hop_dong_su_dung_dich_vu): JsonResponse
+    {
+        return $this->handleApi(function () use ($request, $hop_dong_su_dung_dich_vu) {
+            $user = $request->user();
+            if (! $user) {
+                abort(401, 'Unauthenticated.');
+            }
+
+            $userId = (int) $user->id;
+            $assigned = $this->congViecCuaToiBaseQuery($userId)
+                ->where('hop_dong_su_dung_dich_vu.id', $hop_dong_su_dung_dich_vu->id)
+                ->exists();
+
+            if (! $assigned) {
+                abort(403, 'Bạn không được gán vào công việc điều phối này.');
+            }
+
+            $defaults = HopDongSuDungDichVu::defaultKetQuaHopDong();
+            $ketQua = is_array($hop_dong_su_dung_dich_vu->ket_qua_hop_dong)
+                ? $hop_dong_su_dung_dich_vu->ket_qua_hop_dong
+                : $defaults;
+
+            foreach ($defaults as $fieldKey => $defaultField) {
+                if (! isset($ketQua[$fieldKey]) || ! is_array($ketQua[$fieldKey])) {
+                    $ketQua[$fieldKey] = $defaultField;
+                }
+            }
+
+            $current = $ketQua['trang_thai']['gia_tri'] ?? null;
+            if ($current !== 'dang_xu_ly') {
+                abort(422, 'Chỉ có thể gửi khách kiểm tra khi công việc đang xử lý.');
+            }
+
+            $linkGoc = trim((string) ($ketQua['link_file_goc']['gia_tri'] ?? ''));
+            $linkDemo = trim((string) ($ketQua['link_file_demo']['gia_tri'] ?? ''));
+            if ($linkGoc === '' || $linkDemo === '') {
+                abort(422, 'Cần có đủ File gốc và File demo trước khi gửi khách kiểm tra.');
+            }
+
+            $ketQua['trang_thai'] = array_merge(
+                $defaults['trang_thai'],
+                is_array($ketQua['trang_thai'] ?? null) ? $ketQua['trang_thai'] : [],
+                ['gia_tri' => 'gui_khach_kiem_tra']
+            );
+
+            $hop_dong_su_dung_dich_vu->update(['ket_qua_hop_dong' => $ketQua]);
+
+            return response()->json(
+                $hop_dong_su_dung_dich_vu->fresh()->load(['loaiHopDong:id,ten_hop_dong,ma_hop_dong'])
+            );
+        }, 'gửi khách kiểm tra');
+    }
+
+    /**
      * Khởi tạo hợp đồng nháp + sinh mã HDSDDV_DDMMYYYY{id}.
      */
     public function khoiTao(Request $request): JsonResponse

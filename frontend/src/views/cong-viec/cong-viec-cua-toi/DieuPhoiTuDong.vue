@@ -41,7 +41,10 @@
             <DieuPhoiTuDongCard
               :item="item"
               :show-nhan="activeTab === 'cho_nhan'"
+              :show-file-links="activeTab === 'dang_xu_ly'"
               @accepted="onAccepted"
+              @updated="onItemUpdated"
+              @status-changed="onAccepted"
             />
           </CustomCol>
         </CustomRow>
@@ -130,6 +133,19 @@ function onTabChange() {
 
 function onAccepted() {
   loadItems()
+}
+
+function onItemUpdated(updated) {
+  if (!updated?.id) {
+    loadItems()
+    return
+  }
+  const index = items.value.findIndex((row) => row.id === updated.id)
+  if (index === -1) {
+    loadItems()
+    return
+  }
+  items.value[index] = { ...items.value[index], ...updated }
 }
 
 onMounted(() => {

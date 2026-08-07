@@ -39,6 +39,23 @@ export function nhanCongViecDieuPhoi(id) {
 }
 
 /**
+ * Cập nhật một field trong ket_qua_hop_dong (link_file_demo, link_file_goc, ...).
+ * @param {number|string} id
+ * @param {{ key: string, gia_tri: string }} payload
+ */
+export function capNhatKetQuaHopDong(id, payload) {
+  return api.post(`/hop-dong-su-dung-dich-vu/${id}/ket-qua-hop-dong`, payload)
+}
+
+/**
+ * Gửi khách kiểm tra → ket_qua_hop_dong.trang_thai = gui_khach_kiem_tra.
+ * @param {number|string} id
+ */
+export function guiKhachKiemTra(id) {
+  return api.post(`/hop-dong-su-dung-dich-vu/${id}/gui-khach-kiem-tra`)
+}
+
+/**
  * Chi tiết hợp đồng sử dụng dịch vụ.
  * @param {number|string} id
  */
