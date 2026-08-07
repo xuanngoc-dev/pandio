@@ -181,9 +181,15 @@
             {{ formatDate(row.created_at) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Thao tác" width="100" fixed="right" align="center">
+        <CustomTableColumn label="Thao tác" width="160" fixed="right" align="center">
           <template #default="{ row }">
             <div class="action-btns">
+              <CustomTooltip content="Xem hợp đồng" placement="top">
+                <CustomButton type="info" link :icon="View" @click="openDetail(row)" />
+              </CustomTooltip>
+              <CustomTooltip content="Điều phối" placement="top">
+                <CustomButton type="warning" link :icon="Position" @click="openDieuPhoi(row)" />
+              </CustomTooltip>
               <CustomTooltip content="Sửa" placement="top">
                 <CustomButton type="primary" link :icon="Edit" @click="openEdit(row)" />
               </CustomTooltip>
@@ -217,6 +223,17 @@
       @saved="onFormSaved"
       @closed="onFormClosed"
     />
+
+    <HopDongSddvDieuPhoiModal
+      v-model="dieuPhoiModalVisible"
+      :hop-dong-id="dieuPhoiHopDongId"
+      @saved="loadItems"
+    />
+
+    <HopDongSddvDetailModal
+      v-model="detailModalVisible"
+      :hop-dong-id="detailHopDongId"
+    />
   </div>
 </template>
 
@@ -224,7 +241,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Delete, Document, Edit, Plus, Search } from '@element-plus/icons-vue'
+import { Delete, Document, Edit, Plus, Position, Search, View } from '@element-plus/icons-vue'
 import {
   deleteHopDongSuDungDichVu,
   fetchHopDongSuDungDichVu,
@@ -251,6 +268,8 @@ import {
   CustomTooltip,
 } from '@/components/element'
 import Pagination from '@/components/Pagination.vue'
+import HopDongSddvDetailModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvDetailModal.vue'
+import HopDongSddvDieuPhoiModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvDieuPhoiModal.vue'
 import HopDongSddvDraftModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvDraftModal.vue'
 import HopDongSddvFormModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvFormModal.vue'
 
@@ -292,6 +311,10 @@ const formModalVisible = ref(false)
 const draftModalVisible = ref(false)
 const draftModalRef = ref(null)
 const currentHopDong = ref(null)
+const dieuPhoiModalVisible = ref(false)
+const dieuPhoiHopDongId = ref(null)
+const detailModalVisible = ref(false)
+const detailHopDongId = ref(null)
 
 const { selectedCount, onSelectionChange, clearSelection, selectedIds } = useBulkSelection()
 
@@ -413,6 +436,20 @@ async function openCreate() {
 
 function openDrafts() {
   draftModalVisible.value = true
+}
+
+function openDetail(row) {
+  detailHopDongId.value = row.id
+  detailModalVisible.value = true
+}
+
+function openDieuPhoi(row) {
+  if (!row?.loai_hop_dong_id) {
+    ElMessage.warning('Hợp đồng chưa chọn loại hợp đồng.')
+    return
+  }
+  dieuPhoiHopDongId.value = row.id
+  dieuPhoiModalVisible.value = true
 }
 
 async function openEdit(row) {
