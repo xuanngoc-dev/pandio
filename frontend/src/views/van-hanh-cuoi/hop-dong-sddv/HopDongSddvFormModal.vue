@@ -354,12 +354,13 @@ async function saveStep3(silent = false) {
     const payload = step3Ref.value?.getPayload() || {}
     const { data } = await updateHopDongSuDungDichVu(form.id, {
       ...payload,
-      trang_thai: 'nhap',
+      trang_thai: 'dang_thuc_hien',
     })
     syncFormFromHopDong(data)
     step3Ref.value?.hydrate(data)
     emit('saved', data)
-    if (!silent) ElMessage.success('Đã lưu thanh toán.')
+    if (!silent) ElMessage.success('Đã lưu thanh toán. Hợp đồng chuyển sang Đang thực hiện.')
+    visible.value = false
     return true
   } catch {
     return false

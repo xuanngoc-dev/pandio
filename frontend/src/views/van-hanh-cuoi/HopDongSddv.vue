@@ -438,6 +438,13 @@ async function onContinueDraft(row) {
 
 function onFormSaved(hopDong) {
   currentHopDong.value = hopDong
+  // Sau khi hoàn thành bước thanh toán → tìm đúng HĐ vừa lưu trên danh sách
+  if (hopDong?.trang_thai === 'dang_thuc_hien' && hopDong?.ma_hop_dong) {
+    keyword.value = hopDong.ma_hop_dong
+    filterLoaiHopDongId.value = null
+    filterTrangThai.value = 'dang_thuc_hien'
+    page.value = 1
+  }
   loadItems()
   if (draftModalVisible.value) {
     draftModalRef.value?.reload?.()
