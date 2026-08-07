@@ -125,6 +125,12 @@ export const cauHinhSections = [
         path: 'form-danh-gia',
         component: 'FormDanhGia',
       },
+      {
+        label: 'Nguồn khách',
+        routeName: 'cau-hinh-nguon-khach',
+        path: 'nguon-khach',
+        component: 'NguonKhach',
+      },
     ],
   },
   {

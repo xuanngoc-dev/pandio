@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\CauHinhTaiKhoanThanhToanController;
 use App\Http\Controllers\Api\CauHinhThongTinStudioController;
 use App\Http\Controllers\Api\DanhMucConceptController;
 use App\Http\Controllers\Api\DanhMucLoaiThongBaoController;
+use App\Http\Controllers\Api\DanhMucNguonKhachController;
 use App\Http\Controllers\Api\HeThongThongBaoController;
 use App\Http\Controllers\Api\DanhMucTrangPhucController;
 use App\Http\Controllers\Api\DichVuDanhSachDichNhomDichVuController;
@@ -124,6 +125,9 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
 
     // Form đánh giá mẫu
     Route::apiResource('cau-hinh-form-danh-gia-mau', CauHinhFormDanhGiaMauController::class);
+
+    // Danh mục nguồn khách
+    Route::apiResource('danh-muc-nguon-khach', DanhMucNguonKhachController::class);
 
     // Cấu hình JSON động
     Route::get('/cau-hinh-json', [CauHinhJsonController::class, 'show']);

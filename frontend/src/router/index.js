@@ -218,6 +218,12 @@ const routes = [
         meta: { title: 'Form đánh giá', requiresAuth: true },
       },
       {
+        path: 'he-thong/cau-hinh-quan-tri/nguon-khach',
+        name: 'cau-hinh-nguon-khach',
+        component: () => import('@/views/he-thong/cau-hinh/NguonKhach.vue'),
+        meta: { title: 'Nguồn khách', requiresAuth: true },
+      },
+      {
         path: 'he-thong/cau-hinh-quan-tri/ke-toan-tai-chinh',
         name: 'cau-hinh-ke-toan-tai-chinh',
         component: () => import('@/views/he-thong/cau-hinh/KeToanTaiChinh.vue'),

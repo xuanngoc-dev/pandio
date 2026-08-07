@@ -146,10 +146,14 @@ class LoaiHopDongController extends BaseApiController
             'noi_dung.truong.*.options.*.value' => ['required_with:noi_dung.truong.*.options', 'string', 'max:255'],
             'thong_tin_dieu_phoi' => ['nullable', 'array'],
             'thong_tin_dieu_phoi.*' => ['nullable', 'array'],
-            'thong_tin_dieu_phoi.*.name' => ['required', 'string', 'max:255'],
-            'thong_tin_dieu_phoi.*.value' => ['nullable', 'string'],
-            'thong_tin_dieu_phoi.*.required' => ['nullable', 'boolean'],
-            'thong_tin_dieu_phoi.*.note' => ['nullable', 'string'],
+            'thong_tin_dieu_phoi.*.su_dung' => ['required', 'boolean'],
+            'thong_tin_dieu_phoi.*.ten_thong_tin' => ['required', 'string', 'max:255'],
+            'thong_tin_dieu_phoi.*.loai_du_lieu' => [
+                'required',
+                'string',
+                Rule::in(['string', 'textarea', 'number', 'date', 'time', 'datetime', 'array']),
+            ],
+            'thong_tin_dieu_phoi.*.gia_tri' => ['nullable'],
             'trang_thai' => ['required', Rule::in(['hoat_dong', 'ngung_hoat_dong'])],
         ]);
     }

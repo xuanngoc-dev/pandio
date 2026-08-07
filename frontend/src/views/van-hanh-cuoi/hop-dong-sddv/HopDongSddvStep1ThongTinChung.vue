@@ -47,8 +47,6 @@
               placeholder="Chọn kênh tiếp cận"
               clearable
               filterable
-              allow-create
-              default-first-option
               style="width: 100%"
             >
               <CustomOption

@@ -78,6 +78,7 @@
 <script setup>
 import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { fetchDanhMucNguonKhach } from '@/api/danhMucNguonKhach'
 import { updateHopDongSuDungDichVu } from '@/api/hopDongSuDungDichVu'
 import { fetchLoaiHopDong } from '@/api/loaiHopDong'
 import { fetchUsers } from '@/api/users'
@@ -104,17 +105,7 @@ const steps = [
   { key: 'thanh-toan', title: 'Thanh toán', description: 'Concept & trang phục' },
 ]
 
-const kenhTiepCanOptions = [
-  'Facebook',
-  'Zalo',
-  'TikTok',
-  'Instagram',
-  'Hotline',
-  'Website',
-  'Giới thiệu',
-  'Walk-in',
-  'Khác',
-]
+const kenhTiepCanOptions = ref([])
 
 const activeStep = ref(0)
 const saving = ref(false)
@@ -252,16 +243,19 @@ function syncFormFromHopDong(hopDong) {
 async function loadOptions() {
   if (optionsLoaded.value) return
   try {
-    const [loaiRes, userRes] = await Promise.all([
+    const [loaiRes, userRes, nguonRes] = await Promise.all([
       fetchLoaiHopDong({ per_page: 100, trang_thai: 'hoat_dong' }),
       fetchUsers({ per_page: 100, status: 'active' }),
+      fetchDanhMucNguonKhach({ per_page: 100, trang_thai: 'active' }),
     ])
     loaiHopDongOptions.value = loaiRes.data.data || []
     userOptions.value = userRes.data.data || []
+    kenhTiepCanOptions.value = (nguonRes.data.data || []).map((item) => item.ten_nguon_khach)
     optionsLoaded.value = true
   } catch {
     loaiHopDongOptions.value = []
     userOptions.value = []
+    kenhTiepCanOptions.value = []
   }
 }
 

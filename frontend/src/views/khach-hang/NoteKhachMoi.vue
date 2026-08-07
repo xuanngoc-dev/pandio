@@ -281,6 +281,7 @@
                 v-model="form.nguon_khach"
                 placeholder="Chọn nguồn khách"
                 clearable
+                filterable
                 style="width: 100%"
               >
                 <CustomOption
@@ -298,6 +299,7 @@
                 v-model="form.hinh_thuc_dat_coc"
                 placeholder="Chọn hình thức"
                 clearable
+                filterable
                 style="width: 100%"
               >
                 <CustomOption
@@ -383,6 +385,7 @@ import {
   fetchNoteKhachMoi,
   updateNoteKhachMoi,
 } from '@/api/noteKhachMoi'
+import { fetchDanhMucNguonKhach } from '@/api/danhMucNguonKhach'
 import { fetchUsers } from '@/api/users'
 import { useAuthStore } from '@/stores/auth'
 import BulkActionBar from '@/components/BulkActionBar.vue'
@@ -431,14 +434,7 @@ const trangThaiOptions = [
   { value: 'da_huy', label: 'Đã hủy' },
 ]
 
-const nguonKhachOptions = [
-  { value: 'tiktok', label: 'TikTok' },
-  { value: 'facebook', label: 'Facebook' },
-  { value: 'google', label: 'Google' },
-  { value: 'gioi_thieu', label: 'Giới thiệu' },
-  { value: 'walk_in', label: 'Walk-in' },
-  { value: 'khac', label: 'Khác' },
-]
+const nguonKhachOptions = ref([])
 
 const hinhThucDatCocOptions = [
   { value: 'tien_mat', label: 'Tiền mặt' },
@@ -530,7 +526,22 @@ function trangThaiTagType(value) {
 }
 
 function nguonKhachLabel(value) {
-  return nguonKhachOptions.find((opt) => opt.value === value)?.label || value || '—'
+  return nguonKhachOptions.value.find((opt) => opt.value === value)?.label || value || '—'
+}
+
+async function loadNguonKhachOptions() {
+  try {
+    const { data } = await fetchDanhMucNguonKhach({
+      per_page: 100,
+      trang_thai: 'active',
+    })
+    nguonKhachOptions.value = (data.data || []).map((item) => ({
+      value: item.ten_nguon_khach,
+      label: item.ten_nguon_khach,
+    }))
+  } catch {
+    nguonKhachOptions.value = []
+  }
 }
 
 function hinhThucDatCocLabel(value) {
@@ -702,7 +713,7 @@ async function remove(row) {
 }
 
 onMounted(async () => {
-  await loadUserOptions()
+  await Promise.all([loadUserOptions(), loadNguonKhachOptions()])
   await loadItems()
 })
 </script>

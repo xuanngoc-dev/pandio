@@ -150,7 +150,7 @@
 
       <CustomDialog
         v-model="dialogVisible"
-        :title="editingId ? 'Sửa thông tin hợp đồng' : 'Thêm thông tin hợp đồng'"
+        :title="dialogTitle"
         :width="1400"
       >
         <CustomForm ref="formRef" :model="form" :rules="rules" label-position="top">
@@ -346,105 +346,30 @@
                 </CustomIcon>
                 <span class="fields-title">Thông tin điều phối</span>
                 <span v-if="form.dieu_phoi.length" class="section-count">
-                  ({{ form.dieu_phoi.length }})
+                  ({{ form.dieu_phoi.filter((item) => item.su_dung).length }}/{{ form.dieu_phoi.length }})
                 </span>
               </div>
-              <CustomButton
-                v-if="form.dieu_phoi.length && dieuPhoiExpanded"
-                type="primary"
-                plain
-                @click.stop="addDieuPhoi"
-              >
-                <CustomIcon><Plus /></CustomIcon>
-                Thêm thông tin
-              </CustomButton>
             </div>
 
             <div v-show="dieuPhoiExpanded" class="section-body">
-              <div v-if="!form.dieu_phoi.length" class="fields-empty">
-                <p>Chưa có thông tin điều phối nào.</p>
-                <CustomButton type="primary" @click="addDieuPhoi">
-                  <CustomIcon><Plus /></CustomIcon>
-                  Thêm thông tin
-                </CustomButton>
-              </div>
-
-              <div
-                v-for="(item, index) in form.dieu_phoi"
-                :key="item._key"
-                class="field-card"
-              >
-                <CustomRow :gutter="12">
-                  <CustomCol :xs="24" :sm="5">
-                    <CustomFormItem
-                      label="Tên (name)"
-                      :prop="`dieu_phoi.${index}.name`"
-                      :rules="dieuPhoiRules.name"
-                    >
-                      <CustomInput
-                        v-model="item.name"
-                        placeholder="VD: Ngày cưới chính thức"
-                        @input="onDieuPhoiNameInput(item)"
-                      />
-                    </CustomFormItem>
-                  </CustomCol>
-                  <CustomCol :xs="24" :sm="4">
-                    <CustomFormItem
-                      label="Key"
-                      :prop="`dieu_phoi.${index}.key`"
-                      :rules="getDieuPhoiKeyRules(index)"
-                    >
-                      <CustomInput
-                        v-model="item.key"
-                        placeholder="VD: ngayCuoiChinhThuc"
-                        @input="onDieuPhoiKeyInput(index)"
-                      />
-                    </CustomFormItem>
-                  </CustomCol>
-                  <CustomCol :xs="24" :sm="5">
-                    <CustomFormItem
-                      label="Giá trị mặc định (value)"
-                      :prop="`dieu_phoi.${index}.value`"
-                    >
-                      <CustomInput
-                        v-model="item.value"
-                        placeholder="Giá trị mặc định"
-                      />
-                    </CustomFormItem>
-                  </CustomCol>
-                  <CustomCol :xs="24" :sm="5">
-                    <CustomFormItem
-                      label="Ghi chú (note)"
-                      :prop="`dieu_phoi.${index}.note`"
-                    >
-                      <CustomInput
-                        v-model="item.note"
-                        placeholder="Ghi chú (tuỳ chọn)"
-                      />
-                    </CustomFormItem>
-                  </CustomCol>
-                  <CustomCol :xs="24" :sm="5">
-                    <CustomFormItem label="Bắt buộc (required)">
-                      <div class="field-required-row">
-                        <el-switch
-                          v-model="item.required"
-                          inline-prompt
-                          active-text="Có"
-                          inactive-text="Không"
-                        />
-                        <CustomButton
-                          type="danger"
-                          link
-                          :icon="Delete"
-                          @click="removeDieuPhoi(index)"
-                        >
-                          Xóa
-                        </CustomButton>
-                      </div>
-                    </CustomFormItem>
-                  </CustomCol>
-                </CustomRow>
-              </div>
+              <CustomRow :gutter="12" class="dieu-phoi-grid">
+                <CustomCol
+                  v-for="item in form.dieu_phoi"
+                  :key="item._key"
+                  :xs="12"
+                  :sm="8"
+                  :md="6"
+                  :lg="4"
+                  :xl="4"
+                >
+                  <div class="dieu-phoi-item" :class="{ 'is-off': !item.su_dung }">
+                    <el-switch v-model="item.su_dung" />
+                    <span class="dieu-phoi-item__label" :title="item.ten_thong_tin">
+                      {{ item.ten_thong_tin }}
+                    </span>
+                  </div>
+                </CustomCol>
+              </CustomRow>
             </div>
           </div>
         </CustomForm>
@@ -591,6 +516,16 @@ const formRef = ref(null)
 const fieldsExpanded = ref(true)
 const dieuPhoiExpanded = ref(true)
 
+const dialogTitle = computed(() => {
+  if (!editingId.value) return 'Thêm thông tin hợp đồng'
+  const ten = form.ten_hop_dong?.trim()
+  const ma = form.ma_hop_dong?.trim()
+  if (ten && ma) return `Sửa thông tin hợp đồng: ${ten} - [${ma}]`
+  if (ten) return `Sửa thông tin hợp đồng: ${ten}`
+  if (ma) return `Sửa thông tin hợp đồng: [${ma}]`
+  return 'Sửa thông tin hợp đồng'
+})
+
 const { selectedCount, onSelectionChange, clearSelection, countByStatus, idsByStatus, selectedIds } =
   useBulkSelection(
     () => true,
@@ -660,9 +595,28 @@ const fieldRules = {
   optionValue: [{ required: true, message: 'Vui lòng nhập giá trị', trigger: 'blur' }],
 }
 
-const dieuPhoiRules = {
-  name: [{ required: true, message: 'Vui lòng nhập tên', trigger: 'blur' }],
-}
+const DEFAULT_DIEU_PHOI_FIELDS = [
+  { key: 'buoi_chup', ten_thong_tin: 'Buổi chụp', loai_du_lieu: 'string' },
+  { key: 'gio_chup', ten_thong_tin: 'Giờ chụp', loai_du_lieu: 'time' },
+  { key: 'ngay_chup', ten_thong_tin: 'Ngày chụp', loai_du_lieu: 'date' },
+  { key: 'ngay_tra_demo', ten_thong_tin: 'Ngày trả demo', loai_du_lieu: 'date' },
+  { key: 'ngay_tra_chinh_thuc', ten_thong_tin: 'Ngày trả chính thức', loai_du_lieu: 'date' },
+  { key: 'dia_diem_chup', ten_thong_tin: 'Địa điểm chụp', loai_du_lieu: 'array' },
+  { key: 'tho_chup', ten_thong_tin: 'Thợ chụp', loai_du_lieu: 'array' },
+  { key: 'tho_chup_ngoai', ten_thong_tin: 'Thợ chụp ngoài', loai_du_lieu: 'string' },
+  { key: 'tho_make', ten_thong_tin: 'Thợ make', loai_du_lieu: 'array' },
+  { key: 'tho_make_ngoai', ten_thong_tin: 'Thợ make ngoài', loai_du_lieu: 'string' },
+  { key: 'tho_edit', ten_thong_tin: 'Thợ edit', loai_du_lieu: 'array' },
+  { key: 'tho_edit_ngoai', ten_thong_tin: 'Thợ edit ngoài', loai_du_lieu: 'string' },
+  { key: 'quay_phim', ten_thong_tin: 'Quay phim', loai_du_lieu: 'array' },
+  { key: 'quay_phim_ngoai', ten_thong_tin: 'Quay phim ngoài', loai_du_lieu: 'string' },
+  { key: 'ghi_chu_dieu_phoi', ten_thong_tin: 'Ghi chú điều phối', loai_du_lieu: 'textarea' },
+  {
+    key: 'ghi_chu_trang_phuc_phu_kien',
+    ten_thong_tin: 'Yêu cầu khách hàng',
+    loai_du_lieu: 'textarea',
+  },
+]
 
 function isDuplicateKey(items, currentIndex, value) {
   const normalized = (value || '').trim()
@@ -683,27 +637,6 @@ function getFieldKeyRules(index) {
     {
       validator: (_rule, value, callback) => {
         if (isDuplicateKey(form.truong, index, value)) {
-          callback(new Error('Key bị trùng'))
-          return
-        }
-        callback()
-      },
-      trigger: ['blur', 'change'],
-    },
-  ]
-}
-
-function getDieuPhoiKeyRules(index) {
-  return [
-    { required: true, message: 'Vui lòng nhập key', trigger: ['blur', 'change'] },
-    {
-      pattern: /^[a-zA-Z][a-zA-Z0-9_]*$/,
-      message: 'Key chỉ gồm chữ, số, _ và bắt đầu bằng chữ',
-      trigger: ['blur', 'change'],
-    },
-    {
-      validator: (_rule, value, callback) => {
-        if (isDuplicateKey(form.dieu_phoi, index, value)) {
           callback(new Error('Key bị trùng'))
           return
         }
@@ -750,14 +683,24 @@ function createField(data = {}) {
   }
 }
 
+function defaultGiaTriByLoai(loai) {
+  return loai === 'array' ? [] : null
+}
+
 function createDieuPhoi(data = {}) {
+  const loai = data.loai_du_lieu || 'string'
   return {
     _key: nextDieuPhoiKey(),
     key: data.key || '',
-    name: data.name || '',
-    value: data.value ?? '',
-    required: !!data.required,
-    note: data.note || '',
+    su_dung: data.su_dung !== undefined ? !!data.su_dung : true,
+    ten_thong_tin: data.ten_thong_tin || data.name || '',
+    loai_du_lieu: loai,
+    gia_tri:
+      data.gia_tri !== undefined
+        ? data.gia_tri
+        : data.value !== undefined
+          ? data.value
+          : defaultGiaTriByLoai(loai),
   }
 }
 
@@ -767,17 +710,22 @@ function parseNoiDung(noiDung) {
 }
 
 function parseThongTinDieuPhoi(thongTin) {
-  if (!thongTin || typeof thongTin !== 'object' || Array.isArray(thongTin)) return []
+  const saved =
+    thongTin && typeof thongTin === 'object' && !Array.isArray(thongTin) ? thongTin : {}
 
-  return Object.entries(thongTin).map(([key, item]) =>
-    createDieuPhoi({
-      key,
-      name: item?.name,
-      value: item?.value,
-      required: item?.required,
-      note: item?.note,
-    }),
-  )
+  return DEFAULT_DIEU_PHOI_FIELDS.map((preset) => {
+    const item = saved[preset.key] || {}
+    return createDieuPhoi({
+      key: preset.key,
+      su_dung: item.su_dung !== undefined ? !!item.su_dung : true,
+      ten_thong_tin: preset.ten_thong_tin,
+      loai_du_lieu: item.loai_du_lieu || preset.loai_du_lieu,
+      gia_tri:
+        item.gia_tri !== undefined
+          ? item.gia_tri
+          : defaultGiaTriByLoai(item.loai_du_lieu || preset.loai_du_lieu),
+    })
+  })
 }
 
 function buildNoiDungPayload() {
@@ -808,10 +756,17 @@ function buildThongTinDieuPhoiPayload() {
     const key = item.key.trim()
     if (!key) continue
     result[key] = {
-      name: item.name.trim(),
-      value: typeof item.value === 'string' ? item.value.trim() : item.value ?? '',
-      required: !!item.required,
-      note: (item.note || '').trim(),
+      su_dung: !!item.su_dung,
+      ten_thong_tin: (item.ten_thong_tin || '').trim(),
+      loai_du_lieu: item.loai_du_lieu || 'string',
+      gia_tri:
+        item.loai_du_lieu === 'array'
+          ? Array.isArray(item.gia_tri)
+            ? item.gia_tri
+            : []
+          : item.gia_tri === '' || item.gia_tri === undefined
+            ? null
+            : item.gia_tri,
     }
   }
   return result
@@ -833,15 +788,6 @@ function addField() {
 
 function removeField(index) {
   form.truong.splice(index, 1)
-}
-
-function addDieuPhoi() {
-  form.dieu_phoi.push(createDieuPhoi())
-  dieuPhoiExpanded.value = true
-}
-
-function removeDieuPhoi(index) {
-  form.dieu_phoi.splice(index, 1)
 }
 
 function addOption(field) {
@@ -896,14 +842,6 @@ function revalidateFieldKeys() {
   })
 }
 
-function revalidateDieuPhoiKeys() {
-  nextTick(() => {
-    form.dieu_phoi.forEach((_, index) => {
-      formRef.value?.validateField(`dieu_phoi.${index}.key`, () => {})
-    })
-  })
-}
-
 function onFieldNameInput(item) {
   item.key = toCamelCaseKey(item.ten_truong)
   revalidateFieldKeys()
@@ -911,15 +849,6 @@ function onFieldNameInput(item) {
 
 function onFieldKeyInput() {
   revalidateFieldKeys()
-}
-
-function onDieuPhoiNameInput(item) {
-  item.key = toCamelCaseKey(item.name)
-  revalidateDieuPhoiKeys()
-}
-
-function onDieuPhoiKeyInput() {
-  revalidateDieuPhoiKeys()
 }
 
 function validateSelectOptions() {
@@ -1050,6 +979,7 @@ function onSearch() {
 function openCreate() {
   editingId.value = null
   Object.assign(form, emptyForm())
+  form.dieu_phoi = parseThongTinDieuPhoi(null)
   fieldsExpanded.value = true
   dieuPhoiExpanded.value = true
   dialogVisible.value = true
@@ -1211,6 +1141,38 @@ onMounted(loadItems)
   padding: 12px 14px 4px;
   margin-bottom: 12px;
   background: var(--el-fill-color-blank);
+}
+
+.dieu-phoi-grid {
+  margin-bottom: 4px;
+}
+
+.dieu-phoi-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  background: var(--el-fill-color-blank);
+}
+
+.dieu-phoi-item.is-off {
+  opacity: 0.65;
+  background: var(--el-fill-color-light);
+}
+
+.dieu-phoi-item__label {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--el-text-color-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .field-required-row {
