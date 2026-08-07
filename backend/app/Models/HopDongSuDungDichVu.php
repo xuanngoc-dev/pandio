@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'kenh_tiep_can',
     'thong_tin_hop_dong',
     'thong_tin_dieu_phoi',
+    'ket_qua_hop_dong',
     'nguoi_tao_id',
     'nguoi_tham_gia_ids',
     'trang_thai',
@@ -51,6 +52,7 @@ class HopDongSuDungDichVu extends Model
         return [
             'thong_tin_hop_dong' => 'array',
             'thong_tin_dieu_phoi' => 'array',
+            'ket_qua_hop_dong' => 'array',
             'nguoi_tham_gia_ids' => 'array',
             'tong_tien' => 'integer',
             'phat_sinh' => 'integer',
@@ -65,6 +67,37 @@ class HopDongSuDungDichVu extends Model
             'thoi_gian_thanh_toan_lan_3' => 'date',
             'han_thanh_toan_lan_2' => 'date',
             'han_thanh_toan_lan_3' => 'date',
+        ];
+    }
+
+    /**
+     * Cấu trúc mặc định ket_qua_hop_dong (mỗi key: ten, mo_ta, gia_tri).
+     *
+     * @return array<string, array{ten: string, mo_ta: mixed, gia_tri: mixed}>
+     */
+    public static function defaultKetQuaHopDong(): array
+    {
+        return [
+            'trang_thai' => [
+                'ten' => 'Trạng thái',
+                'mo_ta' => null,
+                'gia_tri' => null,
+            ],
+            'link_file_demo' => [
+                'ten' => 'Link file demo',
+                'mo_ta' => null,
+                'gia_tri' => null,
+            ],
+            'link_file_goc' => [
+                'ten' => 'Link file gốc',
+                'mo_ta' => null,
+                'gia_tri' => null,
+            ],
+            'link_giao_san_pham' => [
+                'ten' => 'Link giao sản phẩm',
+                'mo_ta' => null,
+                'gia_tri' => null,
+            ],
         ];
     }
 

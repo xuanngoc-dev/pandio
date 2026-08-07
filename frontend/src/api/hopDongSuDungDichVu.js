@@ -20,10 +20,22 @@ export function fetchHopDongSuDungDichVu(params = {}) {
 /**
  * Công việc điều phối của user đang đăng nhập
  * (user id nằm trong thong_tin_dieu_phoi staff fields).
- * @param {{ page?: number, per_page?: number }} params
+ * @param {{
+ *   page?: number,
+ *   per_page?: number,
+ *   ket_qua_trang_thai?: 'cho_nhan'|'dang_xu_ly'|'gui_khach_kiem_tra'|'san_xuat_in_an'|'hoan_thanh',
+ * }} params
  */
 export function fetchCongViecDieuPhoiCuaToi(params = {}) {
   return api.get('/hop-dong-su-dung-dich-vu/cong-viec-cua-toi', { params })
+}
+
+/**
+ * Nhận công việc điều phối → ket_qua_hop_dong.trang_thai = dang_xu_ly.
+ * @param {number|string} id
+ */
+export function nhanCongViecDieuPhoi(id) {
+  return api.post(`/hop-dong-su-dung-dich-vu/${id}/nhan-cong-viec`)
 }
 
 /**

@@ -94,7 +94,8 @@ class HopDongSuDungDichVuController extends BaseApiController
      * Lọc hop_dong_su_dung_dich_vu có id user nằm trong
      * thong_tin_dieu_phoi.{quay_phim|tho_make|tho_edit|tho_chup}.gia_tri
      *
-     * Query: page, per_page
+     * Query: page, per_page, ket_qua_trang_thai
+     * (cho_nhan = gia_tri null/rỗng; các tab khác = đúng giá trị)
      */
     public function congViecCuaToi(Request $request): JsonResponse
     {
@@ -108,27 +109,79 @@ class HopDongSuDungDichVuController extends BaseApiController
             $validated = $request->validate([
                 'page' => ['sometimes', 'integer', 'min:1'],
                 'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+                'ket_qua_trang_thai' => ['sometimes', 'nullable', 'string', Rule::in([
+                    'cho_nhan',
+                    'dang_xu_ly',
+                    'gui_khach_kiem_tra',
+                    'san_xuat_in_an',
+                    'hoan_thanh',
+                ])],
             ]);
             $perPage = $validated['per_page'] ?? 24;
+            $ketQuaTrangThai = $validated['ket_qua_trang_thai'] ?? 'cho_nhan';
 
-            $staffKeys = ['quay_phim', 'tho_make', 'tho_edit', 'tho_chup'];
+            $baseQuery = $this->congViecCuaToiBaseQuery($userId);
+            $query = (clone $baseQuery)
+                ->with(['loaiHopDong:id,ten_hop_dong,ma_hop_dong']);
+            $this->applyKetQuaTrangThaiFilter($query, $ketQuaTrangThai);
+            $query->orderByDesc('id');
 
-            $query = HopDongSuDungDichVu::query()
-                ->with(['loaiHopDong:id,ten_hop_dong,ma_hop_dong'])
-                ->whereNotIn('trang_thai', ['moi_tao', 'nhap'])
-                ->where(function ($q) use ($userId, $staffKeys) {
-                    foreach ($staffKeys as $key) {
-                        $path = "thong_tin_dieu_phoi->{$key}->gia_tri";
-                        $q->orWhere(function ($inner) use ($path, $userId) {
-                            $inner->whereJsonContains($path, $userId)
-                                ->orWhereJsonContains($path, (string) $userId);
-                        });
-                    }
-                })
-                ->orderByDesc('id');
+            $paginator = $query->paginate($perPage);
+            $payload = $paginator->toArray();
+            $payload['tab_counts'] = $this->congViecTabCounts($baseQuery);
 
-            return response()->json($query->paginate($perPage));
+            return response()->json($payload);
         }, 'lấy danh sách công việc điều phối của tôi');
+    }
+
+    /**
+     * Nhân viên nhận công việc điều phối → ket_qua_hop_dong.trang_thai = dang_xu_ly.
+     */
+    public function nhanCongViec(Request $request, HopDongSuDungDichVu $hop_dong_su_dung_dich_vu): JsonResponse
+    {
+        return $this->handleApi(function () use ($request, $hop_dong_su_dung_dich_vu) {
+            $user = $request->user();
+            if (! $user) {
+                abort(401, 'Unauthenticated.');
+            }
+
+            $userId = (int) $user->id;
+            $assigned = $this->congViecCuaToiBaseQuery($userId)
+                ->where('hop_dong_su_dung_dich_vu.id', $hop_dong_su_dung_dich_vu->id)
+                ->exists();
+
+            if (! $assigned) {
+                abort(403, 'Bạn không được gán vào công việc điều phối này.');
+            }
+
+            $ketQua = is_array($hop_dong_su_dung_dich_vu->ket_qua_hop_dong)
+                ? $hop_dong_su_dung_dich_vu->ket_qua_hop_dong
+                : HopDongSuDungDichVu::defaultKetQuaHopDong();
+
+            $defaults = HopDongSuDungDichVu::defaultKetQuaHopDong();
+            foreach ($defaults as $key => $defaultField) {
+                if (! isset($ketQua[$key]) || ! is_array($ketQua[$key])) {
+                    $ketQua[$key] = $defaultField;
+                }
+            }
+
+            $current = $ketQua['trang_thai']['gia_tri'] ?? null;
+            if ($current !== null && $current !== '') {
+                abort(422, 'Công việc đã được nhận.');
+            }
+
+            $ketQua['trang_thai'] = array_merge(
+                $defaults['trang_thai'],
+                is_array($ketQua['trang_thai'] ?? null) ? $ketQua['trang_thai'] : [],
+                ['gia_tri' => 'dang_xu_ly']
+            );
+
+            $hop_dong_su_dung_dich_vu->update(['ket_qua_hop_dong' => $ketQua]);
+
+            return response()->json(
+                $hop_dong_su_dung_dich_vu->fresh()->load(['loaiHopDong:id,ten_hop_dong,ma_hop_dong'])
+            );
+        }, 'nhận công việc điều phối');
     }
 
     /**
@@ -257,6 +310,7 @@ class HopDongSuDungDichVuController extends BaseApiController
             'kenh_tiep_can' => ['nullable', 'string', 'max:255'],
             'thong_tin_hop_dong' => ['nullable', 'array'],
             'thong_tin_dieu_phoi' => ['nullable', 'array'],
+            'ket_qua_hop_dong' => ['nullable', 'array'],
             'nguoi_tham_gia_ids' => ['nullable', 'array'],
             'nguoi_tham_gia_ids.*' => ['integer', 'exists:users,id'],
             'trang_thai' => ['sometimes', 'string', Rule::in([
@@ -480,5 +534,71 @@ class HopDongSuDungDichVuController extends BaseApiController
                 'ngay_ket_thuc' => $item['ngay_ket_thuc'] ?: null,
             ]);
         }
+    }
+
+    /**
+     * Query gốc: hợp đồng gán user vào các field nhân sự điều phối.
+     */
+    private function congViecCuaToiBaseQuery(int $userId)
+    {
+        $staffKeys = ['quay_phim', 'tho_make', 'tho_edit', 'tho_chup'];
+
+        return HopDongSuDungDichVu::query()
+            ->whereNotIn('trang_thai', ['moi_tao', 'nhap'])
+            ->where(function ($q) use ($userId, $staffKeys) {
+                foreach ($staffKeys as $key) {
+                    $path = "thong_tin_dieu_phoi->{$key}->gia_tri";
+                    $q->orWhere(function ($inner) use ($path, $userId) {
+                        $inner->whereJsonContains($path, $userId)
+                            ->orWhereJsonContains($path, (string) $userId);
+                    });
+                }
+            });
+    }
+
+    /**
+     * Lọc theo ket_qua_hop_dong.trang_thai.gia_tri.
+     * cho_nhan = null / thiếu / chuỗi rỗng.
+     */
+    private function applyKetQuaTrangThaiFilter($query, string $ketQuaTrangThai): void
+    {
+        if ($ketQuaTrangThai === 'cho_nhan') {
+            $query->where(function ($q) {
+                $q->whereNull('ket_qua_hop_dong')
+                    ->orWhereNull('ket_qua_hop_dong->trang_thai')
+                    ->orWhereNull('ket_qua_hop_dong->trang_thai->gia_tri')
+                    ->orWhere('ket_qua_hop_dong->trang_thai->gia_tri', '')
+                    ->orWhereRaw(
+                        "JSON_TYPE(JSON_EXTRACT(ket_qua_hop_dong, '$.trang_thai.gia_tri')) = 'NULL'"
+                    );
+            });
+
+            return;
+        }
+
+        $query->where('ket_qua_hop_dong->trang_thai->gia_tri', $ketQuaTrangThai);
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function congViecTabCounts($baseQuery): array
+    {
+        $statuses = [
+            'cho_nhan',
+            'dang_xu_ly',
+            'gui_khach_kiem_tra',
+            'san_xuat_in_an',
+            'hoan_thanh',
+        ];
+
+        $counts = [];
+        foreach ($statuses as $status) {
+            $q = clone $baseQuery;
+            $this->applyKetQuaTrangThaiFilter($q, $status);
+            $counts[$status] = (int) $q->count();
+        }
+
+        return $counts;
     }
 }

@@ -154,6 +154,7 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
     Route::apiResource('hop-dong-cho-thue-trang-phuc', HopDongChoThueTrangPhucController::class);
     Route::get('/hop-dong-su-dung-dich-vu/cong-viec-cua-toi', [HopDongSuDungDichVuController::class, 'congViecCuaToi']);
     Route::post('/hop-dong-su-dung-dich-vu/khoi-tao', [HopDongSuDungDichVuController::class, 'khoiTao']);
+    Route::post('/hop-dong-su-dung-dich-vu/{hop_dong_su_dung_dich_vu}/nhan-cong-viec', [HopDongSuDungDichVuController::class, 'nhanCongViec']);
     Route::apiResource('hop-dong-su-dung-dich-vu', HopDongSuDungDichVuController::class);
 
     // Report quảng cáo

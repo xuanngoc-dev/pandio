@@ -4,9 +4,20 @@
       <span class="cong-viec-card__code" :title="item.ma_hop_dong">
         {{ item.ma_hop_dong || '—' }}
       </span>
-      <CustomTag :type="trangThaiTagType(item.trang_thai)" size="small">
-        {{ trangThaiLabel(item.trang_thai) }}
-      </CustomTag>
+      <div class="cong-viec-card__header-actions">
+        <CustomTag :type="trangThaiTagType(item.trang_thai)" size="small">
+          {{ trangThaiLabel(item.trang_thai) }}
+        </CustomTag>
+        <CustomTooltip v-if="canNhan" content="Nhận việc" placement="top">
+          <CustomButton
+            type="primary"
+            link
+            :icon="Select"
+            :loading="accepting"
+            @click.stop="onNhan"
+          />
+        </CustomTooltip>
+      </div>
     </div>
 
     <div class="cong-viec-card__body">
@@ -38,8 +49,11 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { CustomCard, CustomTag } from '@/components/element'
+import { computed, ref } from 'vue'
+import { Select } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { nhanCongViecDieuPhoi } from '@/api/hopDongSuDungDichVu'
+import { CustomButton, CustomCard, CustomTag, CustomTooltip } from '@/components/element'
 import { useAuthStore } from '@/stores/auth'
 
 const STAFF_ROLE_LABELS = {
@@ -63,9 +77,24 @@ const props = defineProps({
     type: Object,
     required: true,
   },
+  showNhan: {
+    type: Boolean,
+    default: false,
+  },
 })
 
+const emit = defineEmits(['accepted'])
+
 const authStore = useAuthStore()
+const accepting = ref(false)
+
+const ketQuaTrangThai = computed(() => {
+  const giaTri = props.item?.ket_qua_hop_dong?.trang_thai?.gia_tri
+  if (giaTri == null || giaTri === '') return null
+  return String(giaTri)
+})
+
+const canNhan = computed(() => props.showNhan && !ketQuaTrangThai.value)
 
 const khachHang = computed(() => formatKhachHang(props.item))
 const loaiHopDong = computed(
@@ -135,6 +164,37 @@ function formatDate(value) {
   if (Number.isNaN(date.getTime())) return String(value)
   return date.toLocaleDateString('vi-VN')
 }
+
+async function onNhan() {
+  try {
+    await ElMessageBox.confirm(
+      `Nhận công việc ${props.item.ma_hop_dong || ''}? Trạng thái sẽ chuyển sang Đang xử lý.`,
+      'Nhận việc',
+      {
+        type: 'info',
+        confirmButtonText: 'Nhận',
+        cancelButtonText: 'Hủy',
+      },
+    )
+  } catch {
+    return
+  }
+
+  accepting.value = true
+  try {
+    await nhanCongViecDieuPhoi(props.item.id)
+    ElMessage.success('Đã nhận công việc')
+    emit('accepted')
+  } catch (error) {
+    const msg =
+      error?.response?.data?.message ||
+      error?.message ||
+      'Không thể nhận công việc'
+    ElMessage.error(msg)
+  } finally {
+    accepting.value = false
+  }
+}
 </script>
 
 <style scoped lang="scss">
@@ -154,6 +214,13 @@ function formatDate(value) {
     align-items: flex-start;
     justify-content: space-between;
     gap: 8px;
+  }
+
+  &__header-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
   }
 
   &__code {
