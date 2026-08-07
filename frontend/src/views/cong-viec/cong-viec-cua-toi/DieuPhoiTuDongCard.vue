@@ -5,6 +5,14 @@
         {{ loaiHopDong }}
       </h3>
       <div class="cong-viec-card__header-actions">
+        <CustomTooltip content="Xem chi tiết hợp đồng" placement="top">
+          <CustomButton
+            type="info"
+            link
+            :icon="View"
+            @click.stop="openDetail"
+          />
+        </CustomTooltip>
         <CustomTooltip
           v-if="showYKienIcon"
           content="Xem ý kiến khách hàng"
@@ -17,7 +25,7 @@
             @click.stop="openYKienView"
           />
         </CustomTooltip>
-        <CustomTag
+        <!-- <CustomTag
           v-if="ketQuaTrangThaiTag"
           :type="ketQuaTrangThaiTag.type"
           size="small"
@@ -26,7 +34,7 @@
         </CustomTag>
         <CustomTag v-else :type="trangThaiTagType(item.trang_thai)" size="small">
           {{ trangThaiLabel(item.trang_thai) }}
-        </CustomTag>
+        </CustomTag> -->
         <CustomTooltip v-if="canNhan" content="Nhận việc" placement="top">
           <CustomButton
             type="primary"
@@ -46,15 +54,60 @@
       </div>
 
       <div v-if="thoiGianChup" class="cong-viec-card__row">
-        <span class="label">Thời gian chụp</span>
+        <span class="label">
+          Thời gian chụp
+          <CustomTooltip
+            v-if="trangThaiChup"
+            :content="trangThaiChup.tooltip"
+            placement="top"
+          >
+            <CustomIcon
+              class="deadline-status-icon"
+              :class="trangThaiChup.late ? 'is-late' : 'is-ok'"
+            >
+              <WarningFilled v-if="trangThaiChup.late" />
+              <CircleCheckFilled v-else />
+            </CustomIcon>
+          </CustomTooltip>
+        </span>
         <span class="value">{{ thoiGianChup }}</span>
       </div>
       <div v-if="ngayTraDemo" class="cong-viec-card__row">
-        <span class="label">Ngày trả demo</span>
+        <span class="label">
+          Ngày trả demo
+          <CustomTooltip
+            v-if="trangThaiGiaoDemo"
+            :content="trangThaiGiaoDemo.tooltip"
+            placement="top"
+          >
+            <CustomIcon
+              class="deadline-status-icon"
+              :class="trangThaiGiaoDemo.late ? 'is-late' : 'is-ok'"
+            >
+              <WarningFilled v-if="trangThaiGiaoDemo.late" />
+              <CircleCheckFilled v-else />
+            </CustomIcon>
+          </CustomTooltip>
+        </span>
         <span class="value">{{ ngayTraDemo }}</span>
       </div>
       <div v-if="ngayTraChinhThuc" class="cong-viec-card__row">
-        <span class="label">Ngày trả chính thức</span>
+        <span class="label">
+          Ngày trả chính thức
+          <CustomTooltip
+            v-if="trangThaiBanGiao"
+            :content="trangThaiBanGiao.tooltip"
+            placement="top"
+          >
+            <CustomIcon
+              class="deadline-status-icon"
+              :class="trangThaiBanGiao.late ? 'is-late' : 'is-ok'"
+            >
+              <WarningFilled v-if="trangThaiBanGiao.late" />
+              <CircleCheckFilled v-else />
+            </CustomIcon>
+          </CustomTooltip>
+        </span>
         <span class="value">{{ ngayTraChinhThuc }}</span>
       </div>
 
@@ -312,12 +365,17 @@
         </CustomButton>
       </template>
     </CustomDialog>
+
+    <DieuPhoiTuDongDetailModal
+      v-model="detailModalVisible"
+      :hop-dong-id="item.id"
+    />
   </CustomCard>
 </template>
 
 <script setup>
 import { computed, ref } from 'vue'
-import { ChatDotRound, Check, Close, Edit, Plus, RefreshRight, Select } from '@element-plus/icons-vue'
+import { ChatDotRound, Check, CircleCheckFilled, Close, Edit, Plus, RefreshRight, Select, View, WarningFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   banGiaoCongViec,
@@ -331,10 +389,12 @@ import {
   CustomButton,
   CustomCard,
   CustomDialog,
+  CustomIcon,
   CustomTag,
   CustomTooltip,
 } from '@/components/element'
 import { useAuthStore } from '@/stores/auth'
+import DieuPhoiTuDongDetailModal from './DieuPhoiTuDongDetailModal.vue'
 
 const STAFF_ROLE_LABELS = {
   tho_chup: 'Thợ chụp',
@@ -385,6 +445,12 @@ const yKienModalVisible = ref(false)
 const yKienModalMode = ref('khong_dong_y')
 const yKienInput = ref('')
 const yKienViewVisible = ref(false)
+const detailModalVisible = ref(false)
+
+function openDetail() {
+  if (!props.item?.id) return
+  detailModalVisible.value = true
+}
 
 const ketQua = computed(() => {
   const raw = props.item?.ket_qua_hop_dong
@@ -522,6 +588,33 @@ const ngayTraChinhThuc = computed(() =>
   formatDate(thongTinDieuPhoi.value.ngay_tra_chinh_thuc?.gia_tri) || '',
 )
 
+const trangThaiChup = computed(() =>
+  buildDeadlineStatus({
+    dateValue: thongTinDieuPhoi.value.ngay_chup?.gia_tri,
+    hasFile: hasLinkFileGoc.value,
+    lateLabel: 'Trễ chụp',
+    okLabel: 'Đúng hạn chụp',
+  }),
+)
+
+const trangThaiGiaoDemo = computed(() =>
+  buildDeadlineStatus({
+    dateValue: thongTinDieuPhoi.value.ngay_tra_demo?.gia_tri,
+    hasFile: hasLinkFileDemo.value,
+    lateLabel: 'Trễ giao demo',
+    okLabel: 'Đúng hạn giao demo',
+  }),
+)
+
+const trangThaiBanGiao = computed(() =>
+  buildDeadlineStatus({
+    dateValue: thongTinDieuPhoi.value.ngay_tra_chinh_thuc?.gia_tri,
+    hasFile: hasLinkFileChinhThuc.value,
+    lateLabel: 'Trễ bàn giao',
+    okLabel: 'Đúng hạn bàn giao',
+  }),
+)
+
 const vaiTroLabels = computed(() => {
   const userId = authStore.user?.id
   if (userId == null) return []
@@ -579,6 +672,48 @@ function formatDate(value) {
   const mm = String(date.getMonth() + 1).padStart(2, '0')
   const yyyy = date.getFullYear()
   return `${dd}/${mm}/${yyyy}`
+}
+
+function toDateOnlyString(value) {
+  if (value == null || value === '') return ''
+  const raw = String(value).trim()
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`
+
+  const dmy = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/)
+  if (dmy) {
+    return `${dmy[3]}-${dmy[2].padStart(2, '0')}-${dmy[1].padStart(2, '0')}`
+  }
+
+  const date = new Date(raw)
+  if (Number.isNaN(date.getTime())) return ''
+  const yyyy = date.getFullYear()
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const dd = String(date.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
+function todayDateOnlyString() {
+  const today = new Date()
+  const yyyy = today.getFullYear()
+  const mm = String(today.getMonth() + 1).padStart(2, '0')
+  const dd = String(today.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
+function isDatePast(value) {
+  const dateStr = toDateOnlyString(value)
+  if (!dateStr) return false
+  return dateStr < todayDateOnlyString()
+}
+
+function buildDeadlineStatus({ dateValue, hasFile, lateLabel, okLabel }) {
+  if (dateValue == null || String(dateValue).trim() === '') return null
+  const late = isDatePast(dateValue) && !hasFile
+  return {
+    late,
+    tooltip: late ? lateLabel : okLabel,
+  }
 }
 
 function formatTime(value) {
@@ -955,6 +1090,9 @@ async function onHoanThanh() {
     min-width: 0;
 
     .label {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
       font-size: 11px;
       color: var(--el-text-color-secondary);
       line-height: 1.2;
@@ -966,6 +1104,20 @@ async function onHoanThanh() {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+  }
+
+  .deadline-status-icon {
+    font-size: 14px;
+    cursor: default;
+    vertical-align: middle;
+
+    &.is-ok {
+      color: var(--el-color-success);
+    }
+
+    &.is-late {
+      color: var(--el-color-danger);
     }
   }
 
@@ -999,7 +1151,7 @@ async function onHoanThanh() {
 
   .link-open {
     font-size: 13px;
-    font-weight: 500;
+    font-weight: 400;
     color: var(--el-color-primary);
     text-decoration: none;
     line-height: 24px;
