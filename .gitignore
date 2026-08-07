@@ -10,3 +10,5 @@ documents/
 .idea/
 .vscode/
 *.swp
+frontend/.env
+.env

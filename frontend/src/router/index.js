@@ -247,6 +247,12 @@ const routes = [
         component: () => import('@/views/he-thong/ThongBao.vue'),
         meta: { title: 'Thông báo', requiresAuth: true },
       },
+      {
+        path: 'he-thong/thoi-tiet',
+        name: 'thoi-tiet',
+        component: () => import('@/views/he-thong/ThoiTiet.vue'),
+        meta: { title: 'Thời tiết', requiresAuth: true },
+      },
 
       // Pandio SaaS
       {

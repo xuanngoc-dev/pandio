@@ -150,6 +150,12 @@
         "title": "Thông báo",
         "icon": "Bell",
         "component": "he-thong/ThongBao"
+      },
+      {
+        "index": "/he-thong/thoi-tiet",
+        "title": "Thời tiết",
+        "icon": "Sunny",
+        "component": "he-thong/ThoiTiet"
       }
     ]
   },
