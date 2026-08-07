@@ -90,6 +90,48 @@ class HopDongSuDungDichVuController extends BaseApiController
     }
 
     /**
+     * Công việc điều phối của user đang đăng nhập.
+     * Lọc hop_dong_su_dung_dich_vu có id user nằm trong
+     * thong_tin_dieu_phoi.{quay_phim|tho_make|tho_edit|tho_chup}.gia_tri
+     *
+     * Query: page, per_page
+     */
+    public function congViecCuaToi(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $user = $request->user();
+            if (! $user) {
+                abort(401, 'Unauthenticated.');
+            }
+
+            $userId = (int) $user->id;
+            $validated = $request->validate([
+                'page' => ['sometimes', 'integer', 'min:1'],
+                'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            ]);
+            $perPage = $validated['per_page'] ?? 24;
+
+            $staffKeys = ['quay_phim', 'tho_make', 'tho_edit', 'tho_chup'];
+
+            $query = HopDongSuDungDichVu::query()
+                ->with(['loaiHopDong:id,ten_hop_dong,ma_hop_dong'])
+                ->whereNotIn('trang_thai', ['moi_tao', 'nhap'])
+                ->where(function ($q) use ($userId, $staffKeys) {
+                    foreach ($staffKeys as $key) {
+                        $path = "thong_tin_dieu_phoi->{$key}->gia_tri";
+                        $q->orWhere(function ($inner) use ($path, $userId) {
+                            $inner->whereJsonContains($path, $userId)
+                                ->orWhereJsonContains($path, (string) $userId);
+                        });
+                    }
+                })
+                ->orderByDesc('id');
+
+            return response()->json($query->paginate($perPage));
+        }, 'lấy danh sách công việc điều phối của tôi');
+    }
+
+    /**
      * Khởi tạo hợp đồng nháp + sinh mã HDSDDV_DDMMYYYY{id}.
      */
     public function khoiTao(Request $request): JsonResponse

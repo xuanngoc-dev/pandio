@@ -18,6 +18,15 @@ export function fetchHopDongSuDungDichVu(params = {}) {
 }
 
 /**
+ * Công việc điều phối của user đang đăng nhập
+ * (user id nằm trong thong_tin_dieu_phoi staff fields).
+ * @param {{ page?: number, per_page?: number }} params
+ */
+export function fetchCongViecDieuPhoiCuaToi(params = {}) {
+  return api.get('/hop-dong-su-dung-dich-vu/cong-viec-cua-toi', { params })
+}
+
+/**
  * Chi tiết hợp đồng sử dụng dịch vụ.
  * @param {number|string} id
  */
