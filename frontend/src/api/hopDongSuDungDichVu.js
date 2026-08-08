@@ -138,3 +138,17 @@ export function deleteHopDongSuDungDichVu(id) {
 export function thanhToanHopDongSuDungDichVu(id, payload) {
   return api.post(`/hop-dong-su-dung-dich-vu/${id}/thanh-toan`, payload)
 }
+
+/**
+ * Đổi trạng thái hợp đồng từ vận hành cuối
+ * (hủy, tất toán, khách đồng ý/không đồng ý, nghiệm thu).
+ * @param {number|string} id
+ * @param {{
+ *   hanh_dong: 'huy'|'tat_toan'|'khach_dong_y'|'khach_khong_dong_y'|'nghiem_thu_hoan_thanh'|'nghiem_thu_lam_lai',
+ *   y_kien_khach_hang?: string|null,
+ *   ly_do?: string|null,
+ * }} payload
+ */
+export function doiTrangThaiHopDongSuDungDichVu(id, payload) {
+  return api.post(`/hop-dong-su-dung-dich-vu/${id}/doi-trang-thai`, payload)
+}

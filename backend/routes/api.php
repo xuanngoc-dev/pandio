@@ -162,6 +162,7 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
     Route::post('/hop-dong-su-dung-dich-vu/{hop_dong_su_dung_dich_vu}/ban-giao', [HopDongSuDungDichVuController::class, 'banGiao']);
     Route::post('/hop-dong-su-dung-dich-vu/{hop_dong_su_dung_dich_vu}/xu-ly-nghiem-thu', [HopDongSuDungDichVuController::class, 'xuLyNghiemThu']);
     Route::post('/hop-dong-su-dung-dich-vu/{hop_dong_su_dung_dich_vu}/thanh-toan', [HopDongSuDungDichVuController::class, 'thanhToan']);
+    Route::post('/hop-dong-su-dung-dich-vu/{hop_dong_su_dung_dich_vu}/doi-trang-thai', [HopDongSuDungDichVuController::class, 'doiTrangThai']);
     Route::apiResource('hop-dong-su-dung-dich-vu', HopDongSuDungDichVuController::class);
 
     // Công việc cá nhân

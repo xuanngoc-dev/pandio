@@ -698,6 +698,156 @@ class HopDongSuDungDichVuController extends BaseApiController
     }
 
     /**
+     * Đổi trạng thái từ màn vận hành cuối:
+     * hủy / tất toán / khách đồng ý|không đồng ý / nghiệm thu hoàn thành|làm lại.
+     * Đồng bộ logic với luồng Điều phối tự động (Công việc của tôi), không bắt buộc user được gán.
+     */
+    public function doiTrangThai(Request $request, HopDongSuDungDichVu $hop_dong_su_dung_dich_vu): JsonResponse
+    {
+        return $this->handleApi(function () use ($request, $hop_dong_su_dung_dich_vu) {
+            $validated = $request->validate([
+                'hanh_dong' => [
+                    'required',
+                    'string',
+                    Rule::in([
+                        'huy',
+                        'tat_toan',
+                        'khach_dong_y',
+                        'khach_khong_dong_y',
+                        'nghiem_thu_hoan_thanh',
+                        'nghiem_thu_lam_lai',
+                    ]),
+                ],
+                'y_kien_khach_hang' => [
+                    'required_if:hanh_dong,khach_khong_dong_y,nghiem_thu_lam_lai',
+                    'nullable',
+                    'string',
+                    'max:5000',
+                ],
+                'ly_do' => ['nullable', 'string', 'max:2000'],
+            ]);
+
+            $hanhDong = $validated['hanh_dong'];
+            $trangThaiHd = $hop_dong_su_dung_dich_vu->trang_thai;
+            $ketQua = $this->normalizeKetQuaHopDong($hop_dong_su_dung_dich_vu->ket_qua_hop_dong);
+            $ketQuaStatus = $ketQua['trang_thai']['gia_tri'] ?? null;
+
+            if (in_array($hanhDong, ['huy', 'tat_toan'], true)) {
+                if (in_array($trangThaiHd, ['da_huy', 'hoan_thanh'], true)) {
+                    return response()->json([
+                        'message' => 'Hợp đồng đã kết thúc, không thể đổi trạng thái.',
+                    ], 422);
+                }
+            }
+
+            if ($hanhDong === 'huy') {
+                $updateData = ['trang_thai' => 'da_huy'];
+                $lyDo = trim((string) ($validated['ly_do'] ?? ''));
+                if ($lyDo !== '') {
+                    $note = '[Hủy HĐ] '.$lyDo;
+                    $existing = trim((string) ($hop_dong_su_dung_dich_vu->ghi_chu_sale ?? ''));
+                    $updateData['ghi_chu_sale'] = $existing !== '' ? $existing."\n".$note : $note;
+                }
+                $hop_dong_su_dung_dich_vu->update($updateData);
+
+                return response()->json($this->loadDetail($hop_dong_su_dung_dich_vu->fresh()));
+            }
+
+            if ($hanhDong === 'tat_toan') {
+                if (! in_array($trangThaiHd, ['da_coc', 'dang_thuc_hien'], true)) {
+                    return response()->json([
+                        'message' => 'Chỉ tất toán hợp đồng đã cọc / đang thực hiện.',
+                    ], 422);
+                }
+
+                $conLai = $this->tinhConLaiThanhToan($hop_dong_su_dung_dich_vu);
+                if ($conLai > 0) {
+                    return response()->json([
+                        'message' => 'Hợp đồng còn thiếu thanh toán. Vui lòng thanh toán đủ trước khi tất toán.',
+                    ], 422);
+                }
+
+                $hop_dong_su_dung_dich_vu->update(['trang_thai' => 'hoan_thanh']);
+
+                return response()->json($this->loadDetail($hop_dong_su_dung_dich_vu->fresh()));
+            }
+
+            if (in_array($hanhDong, ['khach_dong_y', 'khach_khong_dong_y'], true)) {
+                if ($ketQuaStatus !== 'gui_khach_kiem_tra') {
+                    return response()->json([
+                        'message' => 'Chỉ xử lý khi điều phối đang ở bước Gửi khách kiểm tra.',
+                    ], 422);
+                }
+
+                $isDongY = $hanhDong === 'khach_dong_y';
+                $nextStatus = $isDongY ? 'san_xuat_in_an' : 'dang_xu_ly';
+
+                if (! $isDongY) {
+                    $yKien = trim((string) ($validated['y_kien_khach_hang'] ?? ''));
+                    if ($yKien === '') {
+                        return response()->json([
+                            'message' => 'Vui lòng nhập ý kiến khách hàng.',
+                            'errors' => [
+                                'y_kien_khach_hang' => ['Vui lòng nhập ý kiến khách hàng.'],
+                            ],
+                        ], 422);
+                    }
+                    $ketQua['y_kien_khach_hang'] = array_merge(
+                        $ketQua['y_kien_khach_hang'],
+                        ['gia_tri' => $yKien]
+                    );
+                }
+
+                $ketQua['trang_thai'] = array_merge(
+                    $ketQua['trang_thai'],
+                    ['gia_tri' => $nextStatus]
+                );
+                $hop_dong_su_dung_dich_vu->update(['ket_qua_hop_dong' => $ketQua]);
+
+                return response()->json($this->loadDetail($hop_dong_su_dung_dich_vu->fresh()));
+            }
+
+            // nghiem_thu_hoan_thanh | nghiem_thu_lam_lai
+            if ($ketQuaStatus !== 'cho_nghiem_thu') {
+                return response()->json([
+                    'message' => 'Chỉ xử lý khi điều phối đang chờ nghiệm thu.',
+                ], 422);
+            }
+
+            if ($hanhDong === 'nghiem_thu_lam_lai') {
+                $yKien = trim((string) ($validated['y_kien_khach_hang'] ?? ''));
+                if ($yKien === '') {
+                    return response()->json([
+                        'message' => 'Vui lòng nhập yêu cầu của khách hàng.',
+                        'errors' => [
+                            'y_kien_khach_hang' => ['Vui lòng nhập yêu cầu của khách hàng.'],
+                        ],
+                    ], 422);
+                }
+                $ketQua['y_kien_khach_hang'] = array_merge(
+                    $ketQua['y_kien_khach_hang'],
+                    ['gia_tri' => $yKien]
+                );
+                $ketQua['trang_thai'] = array_merge(
+                    $ketQua['trang_thai'],
+                    ['gia_tri' => 'san_xuat_in_an']
+                );
+                $hop_dong_su_dung_dich_vu->update(['ket_qua_hop_dong' => $ketQua]);
+
+                return response()->json($this->loadDetail($hop_dong_su_dung_dich_vu->fresh()));
+            }
+
+            $ketQua['trang_thai'] = array_merge(
+                $ketQua['trang_thai'],
+                ['gia_tri' => 'hoan_thanh']
+            );
+            $hop_dong_su_dung_dich_vu->update(['ket_qua_hop_dong' => $ketQua]);
+
+            return response()->json($this->loadDetail($hop_dong_su_dung_dich_vu->fresh()));
+        }, 'đổi trạng thái hợp đồng sử dụng dịch vụ');
+    }
+
+    /**
      * Xóa hợp đồng sử dụng dịch vụ.
      */
     public function destroy(HopDongSuDungDichVu $hop_dong_su_dung_dich_vu): JsonResponse
@@ -728,6 +878,42 @@ class HopDongSuDungDichVuController extends BaseApiController
     private function loadDetail(HopDongSuDungDichVu $hopDong): HopDongSuDungDichVu
     {
         return $hopDong->load($this->detailRelations());
+    }
+
+    /**
+     * @param  mixed  $raw
+     * @return array<string, array{ten: string, mo_ta: mixed, gia_tri: mixed}>
+     */
+    private function normalizeKetQuaHopDong(mixed $raw): array
+    {
+        $defaults = HopDongSuDungDichVu::defaultKetQuaHopDong();
+        $ketQua = is_array($raw) ? $raw : $defaults;
+
+        foreach ($defaults as $fieldKey => $defaultField) {
+            if (! isset($ketQua[$fieldKey]) || ! is_array($ketQua[$fieldKey])) {
+                $ketQua[$fieldKey] = $defaultField;
+            } else {
+                $ketQua[$fieldKey] = array_merge($defaultField, $ketQua[$fieldKey]);
+            }
+        }
+
+        return $ketQua;
+    }
+
+    private function tinhConLaiThanhToan(HopDongSuDungDichVu $hopDong): int
+    {
+        $khachPhaiTra = max(
+            0,
+            (int) $hopDong->tong_tien
+            + (int) $hopDong->phat_sinh
+            - (int) $hopDong->chiet_khau
+            - (int) $hopDong->khuyen_mai_theo_ma_giam_gia
+        );
+        $daThanhToan = (int) $hopDong->so_tien_thanh_toan_lan_1
+            + (int) $hopDong->so_tien_thanh_toan_lan_2
+            + (int) $hopDong->so_tien_thanh_toan_lan_3;
+
+        return max(0, $khachPhaiTra - $daThanhToan);
     }
 
     /**

@@ -181,7 +181,7 @@
             {{ formatDate(row.created_at) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Thao tác" width="200" fixed="right" align="center">
+        <CustomTableColumn label="Thao tác" width="230" fixed="right" align="center">
           <template #default="{ row }">
             <div class="action-btns">
               <CustomTooltip content="Xem hợp đồng" placement="top">
@@ -197,6 +197,17 @@
                   :icon="Wallet"
                   :disabled="!canOpenThanhToan(row)"
                   @click="openThanhToan(row)"
+                />
+              </CustomTooltip>
+              <CustomTooltip
+                :content="canDoiTrangThai(row) ? 'Thay đổi trạng thái' : doiTrangThaiDisabledReason(row)"
+                placement="top"
+              >
+                <CustomButton
+                  link
+                  :icon="Switch"
+                  :disabled="!canDoiTrangThai(row)"
+                  @click="openDoiTrangThai(row)"
                 />
               </CustomTooltip>
               <CustomTooltip content="Sửa" placement="top">
@@ -249,6 +260,12 @@
       :hop-dong="thanhToanHopDong"
       @saved="onThanhToanSaved"
     />
+
+    <HopDongSddvDoiTrangThaiModal
+      v-model="doiTrangThaiModalVisible"
+      :hop-dong="doiTrangThaiHopDong"
+      @saved="onDoiTrangThaiSaved"
+    />
   </div>
 </template>
 
@@ -256,7 +273,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Delete, Document, Edit, Plus, Position, Search, View, Wallet } from '@element-plus/icons-vue'
+import { Delete, Document, Edit, Plus, Position, Search, Switch, View, Wallet } from '@element-plus/icons-vue'
 import {
   deleteHopDongSuDungDichVu,
   fetchHopDongSuDungDichVu,
@@ -285,6 +302,7 @@ import {
 import Pagination from '@/components/Pagination.vue'
 import HopDongSddvDetailModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvDetailModal.vue'
 import HopDongSddvDieuPhoiModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvDieuPhoiModal.vue'
+import HopDongSddvDoiTrangThaiModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvDoiTrangThaiModal.vue'
 import HopDongSddvDraftModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvDraftModal.vue'
 import HopDongSddvFormModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvFormModal.vue'
 import HopDongSddvThanhToanModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvThanhToanModal.vue'
@@ -333,6 +351,8 @@ const detailModalVisible = ref(false)
 const detailHopDongId = ref(null)
 const thanhToanModalVisible = ref(false)
 const thanhToanHopDong = ref(null)
+const doiTrangThaiModalVisible = ref(false)
+const doiTrangThaiHopDong = ref(null)
 
 const { selectedCount, onSelectionChange, clearSelection, selectedIds } = useBulkSelection()
 
@@ -548,6 +568,58 @@ async function openThanhToan(row) {
 }
 
 function onThanhToanSaved() {
+  loadItems()
+}
+
+function getKetQuaTrangThai(row) {
+  const raw = row?.ket_qua_hop_dong
+  const ketQua = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
+  const giaTri = ketQua?.trang_thai?.gia_tri
+  return giaTri == null || giaTri === '' ? null : String(giaTri)
+}
+
+function canDoiTrangThai(row) {
+  if (!row?.id) return false
+  if (['nhap', 'moi_tao'].includes(row.trang_thai)) return false
+
+  const ended = ['da_huy', 'hoan_thanh'].includes(row.trang_thai)
+  const ketQua = getKetQuaTrangThai(row)
+  const hasWorkflowAction =
+    ketQua === 'gui_khach_kiem_tra' || ketQua === 'cho_nghiem_thu'
+  const canHuyOrTatToan = !ended
+
+  return canHuyOrTatToan || hasWorkflowAction
+}
+
+function doiTrangThaiDisabledReason(row) {
+  if (['nhap', 'moi_tao'].includes(row?.trang_thai)) {
+    return 'Hợp đồng nháp / mới tạo chưa đổi trạng thái tại đây'
+  }
+  if (['da_huy', 'hoan_thanh'].includes(row?.trang_thai)) {
+    const ketQua = getKetQuaTrangThai(row)
+    if (ketQua !== 'gui_khach_kiem_tra' && ketQua !== 'cho_nghiem_thu') {
+      return 'Hợp đồng đã kết thúc'
+    }
+  }
+  return 'Không thể đổi trạng thái'
+}
+
+async function openDoiTrangThai(row) {
+  if (!canDoiTrangThai(row)) {
+    ElMessage.warning(doiTrangThaiDisabledReason(row))
+    return
+  }
+  doiTrangThaiHopDong.value = row
+  doiTrangThaiModalVisible.value = true
+  try {
+    const { data } = await getHopDongSuDungDichVu(row.id)
+    doiTrangThaiHopDong.value = data
+  } catch {
+    // keep list row
+  }
+}
+
+function onDoiTrangThaiSaved() {
   loadItems()
 }
 
