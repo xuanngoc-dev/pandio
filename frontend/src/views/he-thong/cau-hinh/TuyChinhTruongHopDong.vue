@@ -601,7 +601,7 @@ const DEFAULT_DIEU_PHOI_FIELDS = [
   { key: 'ngay_chup', ten_thong_tin: 'Ngày chụp', loai_du_lieu: 'date' },
   { key: 'ngay_tra_demo', ten_thong_tin: 'Ngày trả demo', loai_du_lieu: 'date' },
   { key: 'ngay_tra_chinh_thuc', ten_thong_tin: 'Ngày trả chính thức', loai_du_lieu: 'date' },
-  { key: 'dia_diem_chup', ten_thong_tin: 'Địa điểm chụp', loai_du_lieu: 'array' },
+  { key: 'dia_diem_chup', ten_thong_tin: 'Địa điểm chụp', loai_du_lieu: 'string' },
   { key: 'tho_chup', ten_thong_tin: 'Thợ chụp', loai_du_lieu: 'array' },
   { key: 'tho_chup_ngoai', ten_thong_tin: 'Thợ chụp ngoài', loai_du_lieu: 'string' },
   { key: 'tho_make', ten_thong_tin: 'Thợ make', loai_du_lieu: 'array' },

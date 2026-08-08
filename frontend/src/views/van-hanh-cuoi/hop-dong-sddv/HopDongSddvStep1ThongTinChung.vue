@@ -187,6 +187,100 @@
             </CustomSelect>
           </CustomFormItem>
         </CustomCol>
+
+        <CustomCol
+          v-for="field in dieuPhoiNormalFields"
+          :key="`dieu-phoi-${field.key}`"
+          v-bind="getDieuPhoiFieldColProps(field)"
+        >
+          <CustomFormItem :label="field.ten_thong_tin">
+            <template v-if="field.key === 'buoi_chup'">
+              <CustomSelect
+                v-model="dieuPhoiValues[field.key]"
+                :placeholder="`Chọn ${field.ten_thong_tin.toLowerCase()}`"
+                clearable
+                style="width: 100%"
+              >
+                <CustomOption
+                  v-for="opt in buoiChupOptions"
+                  :key="opt.value"
+                  :label="opt.label"
+                  :value="opt.value"
+                />
+              </CustomSelect>
+            </template>
+
+            <template v-else-if="field.loai_du_lieu === 'date'">
+              <el-date-picker
+                v-model="dieuPhoiValues[field.key]"
+                type="date"
+                format="DD/MM/YYYY"
+                value-format="YYYY-MM-DD"
+                :placeholder="`Chọn ${field.ten_thong_tin.toLowerCase()}`"
+                style="width: 100%"
+                clearable
+              />
+            </template>
+
+            <template v-else-if="field.loai_du_lieu === 'time'">
+              <el-time-picker
+                v-model="dieuPhoiValues[field.key]"
+                format="HH:mm"
+                value-format="HH:mm"
+                :placeholder="`Chọn ${field.ten_thong_tin.toLowerCase()}`"
+                style="width: 100%"
+                clearable
+              />
+            </template>
+
+            <template v-else-if="field.loai_du_lieu === 'array'">
+              <CustomSelect
+                v-model="dieuPhoiValues[field.key]"
+                :placeholder="`Chọn hoặc nhập ${field.ten_thong_tin.toLowerCase()}`"
+                multiple
+                filterable
+                allow-create
+                default-first-option
+                collapse-tags
+                collapse-tags-tooltip
+                clearable
+                style="width: 100%"
+              >
+                <CustomOption
+                  v-for="opt in getDieuPhoiArrayOptions(field.key)"
+                  :key="opt"
+                  :label="opt"
+                  :value="opt"
+                />
+              </CustomSelect>
+            </template>
+
+            <template v-else>
+              <CustomInput
+                v-model="dieuPhoiValues[field.key]"
+                :placeholder="`Nhập ${field.ten_thong_tin.toLowerCase()}`"
+                clearable
+              />
+            </template>
+          </CustomFormItem>
+        </CustomCol>
+      </CustomRow>
+
+      <CustomRow v-if="dieuPhoiTextareaFields.length" :gutter="16">
+        <CustomCol
+          v-for="field in dieuPhoiTextareaFields"
+          :key="`dieu-phoi-${field.key}`"
+          v-bind="wideFieldColProps"
+        >
+          <CustomFormItem :label="field.ten_thong_tin">
+            <CustomInput
+              v-model="dieuPhoiValues[field.key]"
+              type="textarea"
+              :rows="3"
+              :placeholder="`Nhập ${field.ten_thong_tin.toLowerCase()}`"
+            />
+          </CustomFormItem>
+        </CustomCol>
       </CustomRow>
 
       <CustomRow :gutter="16">
@@ -206,7 +300,8 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
+import { getLoaiHopDong } from '@/api/loaiHopDong'
 import {
   CustomCol,
   CustomForm,
@@ -218,7 +313,25 @@ import {
   MoneyInput,
 } from '@/components/element'
 
-defineProps({
+/** Các trường điều phối cho phép cập nhật ngay tại bước thông tin chung */
+const STEP1_DIEU_PHOI_KEYS = [
+  'buoi_chup',
+  'gio_chup',
+  'ngay_chup',
+  'ngay_tra_demo',
+  'ngay_tra_chinh_thuc',
+  'dia_diem_chup',
+  'ghi_chu_trang_phuc_phu_kien',
+  'ghi_chu_dieu_phoi',
+]
+
+const buoiChupOptions = [
+  { value: 'sang', label: 'Sáng' },
+  { value: 'chieu', label: 'Chiều' },
+  { value: 'toi', label: 'Tối' },
+]
+
+const props = defineProps({
   form: { type: Object, required: true },
   loaiHopDongOptions: { type: Array, default: () => [] },
   userOptions: { type: Array, default: () => [] },
@@ -229,6 +342,10 @@ defineProps({
 const emit = defineEmits(['loai-hop-dong-change'])
 
 const formRef = ref(null)
+const dieuPhoiFields = ref([])
+const dieuPhoiMeta = ref({})
+const dieuPhoiValues = reactive({})
+let dieuPhoiLoadToken = 0
 
 /** xl/lg: 6/hàng · md: 3/hàng · sm/xs (mobile): 2/hàng */
 const fieldColProps = {
@@ -246,6 +363,14 @@ const wideFieldColProps = {
   lg: 12,
   xl: 12,
 }
+
+const dieuPhoiNormalFields = computed(() =>
+  dieuPhoiFields.value.filter((field) => field.loai_du_lieu !== 'textarea'),
+)
+
+const dieuPhoiTextareaFields = computed(() =>
+  dieuPhoiFields.value.filter((field) => field.loai_du_lieu === 'textarea'),
+)
 
 const step1Rules = {
   loai_hop_dong_id: [{ required: true, message: 'Vui lòng chọn loại hợp đồng', trigger: 'change' }],
@@ -273,6 +398,11 @@ function getFieldColProps(field) {
   if (isTextarea(field.kieu) || field.kieu === 'checkbox_group' || field.kieu === 'radio') {
     return wideFieldColProps
   }
+  return fieldColProps
+}
+
+function getDieuPhoiFieldColProps(field) {
+  if (field.loai_du_lieu === 'array') return wideFieldColProps
   return fieldColProps
 }
 
@@ -329,11 +459,156 @@ function getDynamicFieldRules(field) {
   ]
 }
 
+function defaultDieuPhoiValue(loai) {
+  return loai === 'array' ? [] : null
+}
+
+function normalizeDieuPhoiArray(value) {
+  if (Array.isArray(value)) return [...value]
+  if (value == null || value === '') return []
+  return [value]
+}
+
+function normalizeDieuPhoiScalar(value) {
+  if (Array.isArray(value)) {
+    const text = value
+      .map((item) => String(item).trim())
+      .filter(Boolean)
+      .join(', ')
+    return text || null
+  }
+  if (value == null || value === '') return null
+  return value
+}
+
+function clearDieuPhoiValues() {
+  Object.keys(dieuPhoiValues).forEach((key) => {
+    delete dieuPhoiValues[key]
+  })
+}
+
+function getDieuPhoiArrayOptions(key) {
+  const current = normalizeDieuPhoiArray(dieuPhoiValues[key])
+  return [...new Set(current.map((item) => String(item)).filter(Boolean))]
+}
+
+function cloneDieuPhoiMap(source) {
+  if (!source || typeof source !== 'object' || Array.isArray(source)) return {}
+  return JSON.parse(JSON.stringify(source))
+}
+
+function resolveDieuPhoiLoai(key, item) {
+  if (key === 'dia_diem_chup') return 'string'
+  return item?.loai_du_lieu || 'string'
+}
+
+function buildDieuPhoiFieldsFromSchema(schema, saved) {
+  const source =
+    schema && typeof schema === 'object' && !Array.isArray(schema) ? schema : {}
+  const savedMap =
+    saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {}
+
+  const nextFields = []
+  const nextMeta = {}
+
+  clearDieuPhoiValues()
+
+  for (const key of STEP1_DIEU_PHOI_KEYS) {
+    const item = source[key]
+    if (!item || typeof item !== 'object') continue
+    if (item.su_dung !== true) continue
+
+    const loai = resolveDieuPhoiLoai(key, item)
+    const savedItem =
+      savedMap[key] && typeof savedMap[key] === 'object' ? savedMap[key] : null
+    const rawValue =
+      savedItem?.gia_tri !== undefined
+        ? savedItem.gia_tri
+        : item.gia_tri !== undefined
+          ? item.gia_tri
+          : defaultDieuPhoiValue(loai)
+
+    nextFields.push({
+      key,
+      ten_thong_tin: item.ten_thong_tin || key,
+      loai_du_lieu: loai,
+    })
+    nextMeta[key] = {
+      su_dung: true,
+      ten_thong_tin: item.ten_thong_tin || key,
+      loai_du_lieu: loai,
+    }
+    dieuPhoiValues[key] =
+      loai === 'array'
+        ? normalizeDieuPhoiArray(rawValue)
+        : normalizeDieuPhoiScalar(rawValue)
+  }
+
+  dieuPhoiFields.value = nextFields
+  dieuPhoiMeta.value = nextMeta
+}
+
+async function loadDieuPhoiSchema() {
+  const loaiId = props.form?.loai_hop_dong_id
+  dieuPhoiLoadToken += 1
+  const token = dieuPhoiLoadToken
+
+  if (!loaiId) {
+    clearDieuPhoiValues()
+    dieuPhoiFields.value = []
+    dieuPhoiMeta.value = {}
+    return
+  }
+
+  try {
+    const { data: loaiHopDong } = await getLoaiHopDong(loaiId)
+    if (token !== dieuPhoiLoadToken) return
+    buildDieuPhoiFieldsFromSchema(
+      loaiHopDong?.thong_tin_dieu_phoi,
+      props.form?.thong_tin_dieu_phoi,
+    )
+  } catch {
+    if (token !== dieuPhoiLoadToken) return
+    clearDieuPhoiValues()
+    dieuPhoiFields.value = []
+    dieuPhoiMeta.value = {}
+  }
+}
+
+function getDieuPhoiPayload(existing = null) {
+  const result = cloneDieuPhoiMap(
+    existing !== null && existing !== undefined
+      ? existing
+      : props.form?.thong_tin_dieu_phoi,
+  )
+
+  for (const field of dieuPhoiFields.value) {
+    const meta = dieuPhoiMeta.value[field.key] || {}
+    const loai = field.loai_du_lieu || 'string'
+    let giaTri = dieuPhoiValues[field.key]
+
+    if (loai === 'array') {
+      giaTri = normalizeDieuPhoiArray(giaTri)
+    } else if (giaTri === '' || giaTri === undefined) {
+      giaTri = null
+    }
+
+    result[field.key] = {
+      su_dung: true,
+      ten_thong_tin: meta.ten_thong_tin || field.ten_thong_tin,
+      loai_du_lieu: loai,
+      gia_tri: giaTri,
+    }
+  }
+
+  return result
+}
+
 async function validate() {
   return formRef.value?.validate().catch(() => false)
 }
 
-defineExpose({ validate })
+defineExpose({ validate, getDieuPhoiPayload, loadDieuPhoiSchema })
 </script>
 
 <style scoped lang="scss">

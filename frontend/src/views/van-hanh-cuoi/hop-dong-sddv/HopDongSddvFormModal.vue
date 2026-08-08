@@ -125,6 +125,7 @@ const form = reactive({
   dia_chi: '',
   kenh_tiep_can: '',
   thong_tin_hop_dong: {},
+  thong_tin_dieu_phoi: {},
   nguoi_tham_gia_ids: [],
   ghi_chu_sale: '',
   tong_tien: 0,
@@ -203,7 +204,9 @@ function syncDynamicFields(preserveExisting = true) {
 
 function onLoaiHopDongChange() {
   form.thong_tin_hop_dong = {}
+  form.thong_tin_dieu_phoi = {}
   syncDynamicFields(false)
+  step1Ref.value?.loadDieuPhoiSchema?.()
   step2Ref.value?.reset()
 }
 
@@ -236,6 +239,10 @@ function syncFormFromHopDong(hopDong) {
   form.thong_tin_hop_dong =
     hopDong.thong_tin_hop_dong && typeof hopDong.thong_tin_hop_dong === 'object'
       ? { ...hopDong.thong_tin_hop_dong }
+      : {}
+  form.thong_tin_dieu_phoi =
+    hopDong.thong_tin_dieu_phoi && typeof hopDong.thong_tin_dieu_phoi === 'object'
+      ? JSON.parse(JSON.stringify(hopDong.thong_tin_dieu_phoi))
       : {}
   syncDynamicFields(true)
 }
@@ -296,6 +303,10 @@ async function saveStep1(silent = false) {
   saving.value = true
   try {
     const thongTinHopDong = buildThongTinHopDongPayload()
+    const thongTinDieuPhoi =
+      step1Ref.value?.getDieuPhoiPayload?.(form.thong_tin_dieu_phoi) ||
+      form.thong_tin_dieu_phoi ||
+      {}
     const { data } = await updateHopDongSuDungDichVu(form.id, {
       loai_hop_dong_id: form.loai_hop_dong_id,
       ten_khach_hang: form.ten_khach_hang?.trim() || null,
@@ -303,11 +314,13 @@ async function saveStep1(silent = false) {
       dia_chi: form.dia_chi?.trim() || null,
       kenh_tiep_can: form.kenh_tiep_can?.trim() || null,
       thong_tin_hop_dong: thongTinHopDong,
+      thong_tin_dieu_phoi: thongTinDieuPhoi,
       nguoi_tham_gia_ids: form.nguoi_tham_gia_ids || [],
       ghi_chu_sale: form.ghi_chu_sale?.trim() || null,
       trang_thai: 'nhap',
     })
     syncFormFromHopDong(data)
+    await step1Ref.value?.loadDieuPhoiSchema?.()
     emit('saved', data)
     if (!silent) ElMessage.success('Đã lưu thông tin chung.')
     return true
@@ -410,15 +423,17 @@ watch(
     // Load options xong mới gắn dynamicFields — tránh lần mở đầu bị xóa thong_tin_hop_dong
     syncFormFromHopDong(props.hopDong)
     hydrateChildSteps(props.hopDong)
+    await step1Ref.value?.loadDieuPhoiSchema?.()
   },
 )
 
 watch(
   () => props.hopDong,
-  (hopDong) => {
+  async (hopDong) => {
     if (props.modelValue) {
       syncFormFromHopDong(hopDong)
       hydrateChildSteps(hopDong)
+      await step1Ref.value?.loadDieuPhoiSchema?.()
     }
   },
 )

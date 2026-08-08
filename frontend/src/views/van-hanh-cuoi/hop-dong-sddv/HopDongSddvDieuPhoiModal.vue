@@ -210,6 +210,18 @@ function normalizeArrayValue(value) {
   return [value]
 }
 
+function normalizeScalarValue(value) {
+  if (Array.isArray(value)) {
+    const text = value
+      .map((item) => String(item).trim())
+      .filter(Boolean)
+      .join(', ')
+    return text || null
+  }
+  if (value == null || value === '') return null
+  return value
+}
+
 function clearValues() {
   Object.keys(values).forEach((key) => {
     delete values[key]
@@ -219,6 +231,11 @@ function clearValues() {
 function getArrayOptions(key) {
   const current = normalizeArrayValue(values[key])
   return [...new Set(current.map((item) => String(item)).filter(Boolean))]
+}
+
+function resolveLoaiDuLieu(key, item) {
+  if (key === 'dia_diem_chup') return 'string'
+  return item?.loai_du_lieu || 'string'
 }
 
 function buildFieldsFromSchema(schema, saved) {
@@ -234,7 +251,7 @@ function buildFieldsFromSchema(schema, saved) {
     if (!item || typeof item !== 'object') continue
     if (item.su_dung === false) continue
 
-    const loai = item.loai_du_lieu || 'string'
+    const loai = resolveLoaiDuLieu(key, item)
     const savedItem =
       savedMap[key] && typeof savedMap[key] === 'object' ? savedMap[key] : null
     const rawValue =
@@ -255,7 +272,7 @@ function buildFieldsFromSchema(schema, saved) {
       loai_du_lieu: loai,
     }
     values[key] =
-      loai === 'array' ? normalizeArrayValue(rawValue) : rawValue ?? null
+      loai === 'array' ? normalizeArrayValue(rawValue) : normalizeScalarValue(rawValue)
   }
 
   fields.value = nextFields
