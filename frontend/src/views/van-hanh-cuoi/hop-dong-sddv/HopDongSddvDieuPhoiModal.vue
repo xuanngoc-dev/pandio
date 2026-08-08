@@ -16,6 +16,7 @@
         v-else-if="fields.length"
         ref="formRef"
         :model="values"
+        :rules="formRules"
         label-position="top"
       >
         <CustomRow v-if="normalFields.length" :gutter="16">
@@ -24,7 +25,11 @@
             :key="field.key"
             v-bind="normalFieldColProps"
           >
-            <CustomFormItem :label="field.ten_thong_tin" :prop="field.key">
+            <CustomFormItem
+              :label="field.ten_thong_tin"
+              :prop="field.key"
+              :required="isDateField(field)"
+            >
               <template v-if="field.loai_du_lieu === 'date'">
                 <el-date-picker
                   v-model="values[field.key]"
@@ -159,6 +164,13 @@ import {
 
 const STAFF_FIELD_KEYS = new Set(['tho_chup', 'tho_make', 'tho_edit', 'quay_phim'])
 
+/** Các field ngày điều phối bắt buộc khi có trong schema */
+const REQUIRED_DATE_KEYS = new Set([
+  'ngay_chup',
+  'ngay_tra_demo',
+  'ngay_tra_chinh_thuc',
+])
+
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   hopDongId: { type: [Number, String], default: null },
@@ -193,11 +205,32 @@ const textareaFields = computed(() =>
   fields.value.filter((field) => field.loai_du_lieu === 'textarea'),
 )
 
+const formRules = computed(() => {
+  const rules = {}
+  for (const field of fields.value) {
+    if (!isDateField(field)) continue
+    rules[field.key] = [
+      {
+        required: true,
+        message: `Vui lòng chọn ${String(field.ten_thong_tin || field.key).toLowerCase()}`,
+        trigger: 'change',
+      },
+    ]
+  }
+  return rules
+})
+
 const normalFieldColProps = { xs: 12, sm: 8, md: 6, lg: 6, xl: 6 }
 const textareaFieldColProps = { xs: 24, sm: 12, md: 12, lg: 12, xl: 12 }
 
 function isStaffField(key) {
   return STAFF_FIELD_KEYS.has(key)
+}
+
+function isDateField(field) {
+  if (!field) return false
+  if (field.loai_du_lieu === 'date') return true
+  return REQUIRED_DATE_KEYS.has(field.key)
 }
 
 function defaultValueByLoai(loai) {
@@ -235,6 +268,7 @@ function getArrayOptions(key) {
 
 function resolveLoaiDuLieu(key, item) {
   if (key === 'dia_diem_chup') return 'string'
+  if (REQUIRED_DATE_KEYS.has(key)) return 'date'
   return item?.loai_du_lieu || 'string'
 }
 
@@ -342,6 +376,12 @@ function buildPayload() {
 async function save() {
   if (!props.hopDongId || !fields.value.length) return
 
+  const valid = await formRef.value?.validate().catch(() => false)
+  if (!valid) {
+    ElMessage.warning('Vui lòng điền đầy đủ các trường ngày bắt buộc.')
+    return
+  }
+
   saving.value = true
   try {
     const { data } = await updateHopDongSuDungDichVu(props.hopDongId, {
@@ -358,6 +398,7 @@ async function save() {
 }
 
 function onClosed() {
+  formRef.value?.clearValidate?.()
   clearValues()
   fields.value = []
   fieldMeta.value = {}
