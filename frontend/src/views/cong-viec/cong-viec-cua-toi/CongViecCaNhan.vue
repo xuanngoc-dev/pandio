@@ -5,7 +5,7 @@
         <CustomCol :xs="24" :sm="12" :md="8" :lg="8">
           <CustomInput
             v-model="keyword"
-            placeholder="Tìm theo tiêu đề, mô tả, ghi chú..."
+            placeholder="Tìm theo tiêu đề, mô tả, ghi chú, liên kết..."
             clearable
             style="width: 100%"
             @clear="onSearch"
@@ -106,6 +106,26 @@
           </template>
         </CustomTableColumn>
         <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('lien_ket')"
+          label="Liên kết"
+          min-width="160"
+          show-overflow-tooltip
+        >
+          <template #default="{ row }">
+            <a
+              v-if="row.lien_ket"
+              :href="normalizeLienKet(row.lien_ket)"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="lien-ket-link"
+              @click.stop
+            >
+              {{ row.lien_ket }}
+            </a>
+            <span v-else>—</span>
+          </template>
+        </CustomTableColumn>
+        <CustomTableColumn
           v-if="columnSettings.isColumnVisible('thoi_gian_thuc_hien')"
           label="Thời gian thực hiện"
           min-width="180"
@@ -123,7 +143,7 @@
         >
           <template #default="{ row }">
             <CustomTag :type="uuTienTagType(row.muc_do_uu_tien)" size="small">
-              {{ row.muc_do_uu_tien ?? '—' }}
+              {{ row.muc_do_uu_tien ? 'Mức ' + String(row.muc_do_uu_tien) : '—' }}
             </CustomTag>
           </template>
         </CustomTableColumn>
@@ -238,11 +258,16 @@
               </div>
             </CustomFormItem>
           </CustomCol>
-          <CustomCol :xs="24" :sm="6">
+          <CustomCol :xs="24" :sm="12" :md="12" :lg="12">
             <CustomFormItem label="Mức ưu tiên" prop="muc_do_uu_tien">
               <CustomSelect v-model="form.muc_do_uu_tien" style="width: 100%">
                 <CustomOption v-for="n in 5" :key="n" :label=" 'Mức ' + String(n)" :value="n" />
               </CustomSelect>
+            </CustomFormItem>
+          </CustomCol>
+          <CustomCol :xs="24" :sm="12" :md="12" :lg="12">
+            <CustomFormItem label="Liên kết" prop="lien_ket">
+              <CustomInput v-model="form.lien_ket" placeholder="https://... (tuỳ chọn)" clearable />
             </CustomFormItem>
           </CustomCol>
           <CustomCol :span="24">
@@ -331,6 +356,7 @@ const tableColumns = [
   { key: 'tieu_de', label: 'Tiêu đề' },
   { key: 'nguoi_giao_viec', label: 'Người giao' },
   { key: 'nguoi_phu_trach', label: 'Người phụ trách' },
+  { key: 'lien_ket', label: 'Liên kết' },
   { key: 'thoi_gian_thuc_hien', label: 'Thời gian thực hiện' },
   { key: 'muc_do_uu_tien', label: 'Ưu tiên' },
   { key: 'trang_thai', label: 'Trạng thái' },
@@ -382,6 +408,7 @@ const emptyForm = () => ({
   trang_thai: 'chua_hoan_thanh',
   mo_ta: '',
   ghi_chu: '',
+  lien_ket: '',
 })
 
 const form = reactive(emptyForm())
@@ -437,6 +464,13 @@ function formatNguoiPhuTrach(row) {
   }
   if (names.length <= 2) return names.join(', ')
   return `${names.slice(0, 2).join(', ')} +${names.length - 2}`
+}
+
+function normalizeLienKet(value) {
+  const raw = String(value || '').trim()
+  if (!raw) return '#'
+  if (/^https?:\/\//i.test(raw)) return raw
+  return `https://${raw}`
 }
 
 function formatThoiGian(value) {
@@ -572,6 +606,7 @@ function openEdit(row) {
     trang_thai: row.trang_thai || 'chua_hoan_thanh',
     mo_ta: row.mo_ta || '',
     ghi_chu: row.ghi_chu || '',
+    lien_ket: row.lien_ket || '',
   })
   dialogVisible.value = true
 }
@@ -592,6 +627,7 @@ function buildPayload() {
     trang_thai: editingId.value ? form.trang_thai : 'chua_hoan_thanh',
     mo_ta: form.mo_ta?.trim() || null,
     ghi_chu: form.ghi_chu?.trim() || null,
+    lien_ket: form.lien_ket?.trim() || null,
   }
 }
 
@@ -635,6 +671,7 @@ async function toggleTrangThai(row) {
       trang_thai: next,
       mo_ta: row.mo_ta || null,
       ghi_chu: row.ghi_chu || null,
+      lien_ket: row.lien_ket || null,
     })
     row.trang_thai = next
     ElMessage.success(
@@ -745,5 +782,14 @@ onMounted(async () => {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
+
+.lien-ket-link {
+  color: var(--el-color-primary);
+  text-decoration: none;
+}
+
+.lien-ket-link:hover {
+  text-decoration: underline;
 }
 </style>

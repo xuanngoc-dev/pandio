@@ -178,7 +178,7 @@
           :content="
             canGuiKhachKiemTra
               ? 'Gửi khách kiểm tra'
-              : 'Cần có đủ File gốc và File demo'
+              : 'Cần có đủ File gốc và File lẻ'
           "
           placement="top"
         >
@@ -235,7 +235,7 @@
           :content="
             canBanGiao
               ? 'Bàn giao sản phẩm'
-              : 'Cần có File chính thức trước khi bàn giao'
+              : 'Cần có File in trước khi bàn giao'
           "
           placement="top"
         >
@@ -414,8 +414,8 @@ const TRANG_THAI_OPTIONS = [
 
 const FILE_LINK_DEFS = [
   { key: 'link_file_goc', label: 'File gốc' },
-  { key: 'link_file_demo', label: 'File demo' },
-  { key: 'link_giao_san_pham', label: 'File chính thức' },
+  { key: 'link_file_demo', label: 'File lẻ' },
+  { key: 'link_giao_san_pham', label: 'File in' },
 ]
 
 const props = defineProps({

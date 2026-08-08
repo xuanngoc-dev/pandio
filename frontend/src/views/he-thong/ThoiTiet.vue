@@ -1,5 +1,5 @@
 <template>
-  <div class="thoi-tiet-page">
+  <div class="thoi-tiet-page" v-if="false">
     <div class="page-header">
       <div>
         <h2 class="page-title">Thời tiết</h2>

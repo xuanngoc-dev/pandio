@@ -2,13 +2,13 @@ import api from '@/api/axios'
 
 /**
  * Danh sách công việc cá nhân — phân trang.
+ * API chỉ trả việc do user hiện tại giao hoặc được giao phụ trách.
  * @param {{
  *   page?: number,
  *   per_page?: number,
  *   keyword?: string,
  *   trang_thai?: string,
  *   muc_do_uu_tien?: number,
- *   nguoi_giao_viec_id?: number,
  * }} params
  */
 export function fetchCongViecCaNhan(params = {}) {

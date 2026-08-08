@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'tieu_de',
     'mo_ta',
     'ghi_chu',
+    'lien_ket',
     'thoi_gian_thuc_hien',
     'muc_do_uu_tien',
     'trang_thai',

@@ -2,7 +2,38 @@
   <div class="dieu-phoi-tu-dong">
     <div class="filter-bar">
       <CustomRow :gutter="12">
-        <CustomCol :xs="24" :sm="12" :md="8" :lg="6">
+        <CustomCol :xs="24" :sm="12" :md="8" :lg="5">
+          <CustomInput
+            v-model="filters.keyword"
+            placeholder="Tìm theo mã HĐ, tên, SĐT khách hàng..."
+            clearable
+            style="width: 100%"
+            @clear="onSearch"
+            @keyup.enter="onSearch"
+          >
+            <template #prefix>
+              <CustomIcon><Search /></CustomIcon>
+            </template>
+          </CustomInput>
+        </CustomCol>
+        <CustomCol :xs="24" :sm="12" :md="8" :lg="4">
+          <CustomSelect
+            v-model="filters.loai_hop_dong_id"
+            placeholder="Loại hợp đồng"
+            clearable
+            filterable
+            style="width: 100%"
+            @change="onSearch"
+          >
+            <CustomOption
+              v-for="item in loaiHopDongOptions"
+              :key="item.id"
+              :label="item.ten_hop_dong"
+              :value="item.id"
+            />
+          </CustomSelect>
+        </CustomCol>
+        <CustomCol :xs="24" :sm="12" :md="8" :lg="4">
           <el-date-picker
             v-model="filters.ngay_chup"
             type="date"
@@ -13,7 +44,7 @@
             clearable
           />
         </CustomCol>
-        <CustomCol :xs="24" :sm="12" :md="8" :lg="6">
+        <CustomCol :xs="24" :sm="12" :md="8" :lg="4">
           <el-date-picker
             v-model="filters.ngay_tra_demo"
             type="date"
@@ -24,7 +55,7 @@
             clearable
           />
         </CustomCol>
-        <CustomCol :xs="24" :sm="12" :md="8" :lg="6">
+        <CustomCol :xs="24" :sm="12" :md="8" :lg="4">
           <el-date-picker
             v-model="filters.ngay_tra_chinh_thuc"
             type="date"
@@ -35,7 +66,7 @@
             clearable
           />
         </CustomCol>
-        <CustomCol :xs="24" :sm="12" :md="8" :lg="4">
+        <CustomCol :xs="24" :sm="12" :md="8" :lg="3">
           <CustomButton type="primary" plain :loading="loading" @click="onSearch">
             <CustomIcon><Search /></CustomIcon>
             Tìm kiếm
@@ -109,8 +140,17 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { Search } from '@element-plus/icons-vue'
 import { fetchCongViecDieuPhoiCuaToi } from '@/api/hopDongSuDungDichVu'
+import { fetchLoaiHopDong } from '@/api/loaiHopDong'
 import Pagination from '@/components/Pagination.vue'
-import { CustomButton, CustomCol, CustomIcon, CustomRow } from '@/components/element'
+import {
+  CustomButton,
+  CustomCol,
+  CustomIcon,
+  CustomInput,
+  CustomOption,
+  CustomRow,
+  CustomSelect,
+} from '@/components/element'
 import DieuPhoiTuDongCard from './DieuPhoiTuDongCard.vue'
 
 const tabs = [
@@ -134,11 +174,14 @@ const tabCounts = reactive({
 })
 
 const filters = reactive({
+  keyword: '',
+  loai_hop_dong_id: null,
   ngay_chup: '',
   ngay_tra_demo: '',
   ngay_tra_chinh_thuc: '',
 })
 
+const loaiHopDongOptions = ref([])
 const items = ref([])
 const loading = ref(false)
 const page = ref(1)
@@ -159,6 +202,15 @@ function applyTabCounts(counts) {
   }
 }
 
+async function loadLoaiHopDongOptions() {
+  try {
+    const { data } = await fetchLoaiHopDong({ per_page: 100, trang_thai: 'hoat_dong' })
+    loaiHopDongOptions.value = data.data || []
+  } catch {
+    loaiHopDongOptions.value = []
+  }
+}
+
 async function loadItems() {
   loading.value = true
   try {
@@ -166,6 +218,8 @@ async function loadItems() {
       page: page.value,
       per_page: perPage.value,
       ket_qua_trang_thai: activeTab.value,
+      keyword: filters.keyword.trim() || undefined,
+      loai_hop_dong_id: filters.loai_hop_dong_id || undefined,
       ngay_chup: filters.ngay_chup || undefined,
       ngay_tra_demo: filters.ngay_tra_demo || undefined,
       ngay_tra_chinh_thuc: filters.ngay_tra_chinh_thuc || undefined,
@@ -209,6 +263,7 @@ function onItemUpdated(updated) {
 }
 
 onMounted(() => {
+  loadLoaiHopDongOptions()
   loadItems()
 })
 </script>

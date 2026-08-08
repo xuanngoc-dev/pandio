@@ -24,6 +24,8 @@ export function fetchHopDongSuDungDichVu(params = {}) {
  *   page?: number,
  *   per_page?: number,
  *   ket_qua_trang_thai?: 'cho_nhan'|'dang_xu_ly'|'gui_khach_kiem_tra'|'san_xuat_in_an'|'cho_nghiem_thu'|'hoan_thanh',
+ *   keyword?: string,
+ *   loai_hop_dong_id?: number,
  *   ngay_chup?: string,
  *   ngay_tra_demo?: string,
  *   ngay_tra_chinh_thuc?: string,

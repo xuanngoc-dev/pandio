@@ -12,8 +12,9 @@ class CongViecCaNhanController extends BaseApiController
 {
     /**
      * Danh sách công việc cá nhân — phân trang + tìm kiếm.
+     * Chỉ trả về việc do user hiện tại giao hoặc được giao phụ trách.
      *
-     * Query: page, per_page, keyword, trang_thai, muc_do_uu_tien, nguoi_giao_viec_id
+     * Query: page, per_page, keyword, trang_thai, muc_do_uu_tien
      */
     public function index(Request $request): JsonResponse
     {
@@ -24,27 +25,35 @@ class CongViecCaNhanController extends BaseApiController
                 'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
                 'trang_thai' => ['sometimes', 'nullable', 'string', Rule::in(CongViecCaNhan::TRANG_THAI)],
                 'muc_do_uu_tien' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:5'],
-                'nguoi_giao_viec_id' => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
             ]);
 
             $perPage = $validated['per_page'] ?? 10;
             $keyword = trim((string) ($validated['keyword'] ?? ''));
             $trangThai = $validated['trang_thai'] ?? null;
             $mucDoUuTien = $validated['muc_do_uu_tien'] ?? null;
-            $nguoiGiaoViecId = $validated['nguoi_giao_viec_id'] ?? null;
+            $userId = (int) ($request->user()?->id ?? 0);
 
             $query = CongViecCaNhan::query()
                 ->with(['nguoiGiaoViec:id,name,email'])
+                ->when($userId > 0, function ($q) use ($userId) {
+                    // Chỉ việc mình giao hoặc mình nằm trong danh sách phụ trách
+                    $q->where(function ($inner) use ($userId) {
+                        $inner->where('nguoi_giao_viec_id', $userId)
+                            ->orWhereJsonContains('nguoi_phu_trach_viec_ids', $userId);
+                    });
+                }, function ($q) {
+                    $q->whereRaw('1 = 0');
+                })
                 ->when($keyword !== '', function ($q) use ($keyword) {
                     $q->where(function ($inner) use ($keyword) {
                         $inner->where('tieu_de', 'like', "%{$keyword}%")
                             ->orWhere('mo_ta', 'like', "%{$keyword}%")
-                            ->orWhere('ghi_chu', 'like', "%{$keyword}%");
+                            ->orWhere('ghi_chu', 'like', "%{$keyword}%")
+                            ->orWhere('lien_ket', 'like', "%{$keyword}%");
                     });
                 })
                 ->when($trangThai, fn ($q) => $q->where('trang_thai', $trangThai))
                 ->when($mucDoUuTien, fn ($q) => $q->where('muc_do_uu_tien', $mucDoUuTien))
-                ->when($nguoiGiaoViecId, fn ($q) => $q->where('nguoi_giao_viec_id', $nguoiGiaoViecId))
                 ->orderByDesc('id');
 
             $paginator = $query->paginate($perPage);
@@ -132,6 +141,7 @@ class CongViecCaNhanController extends BaseApiController
             'tieu_de' => ['required', 'string', 'max:255'],
             'mo_ta' => ['nullable', 'string'],
             'ghi_chu' => ['nullable', 'string'],
+            'lien_ket' => ['nullable', 'string', 'max:500'],
             'thoi_gian_thuc_hien' => ['nullable', 'array'],
             'thoi_gian_thuc_hien.bat_dau' => ['required_with:thoi_gian_thuc_hien', 'date_format:Y-m-d'],
             'thoi_gian_thuc_hien.ket_thuc' => [
@@ -168,6 +178,11 @@ class CongViecCaNhanController extends BaseApiController
 
         if (array_key_exists('thoi_gian_thuc_hien', $validated) && $validated['thoi_gian_thuc_hien'] === null) {
             $validated['thoi_gian_thuc_hien'] = null;
+        }
+
+        if (array_key_exists('lien_ket', $validated)) {
+            $lienKet = trim((string) ($validated['lien_ket'] ?? ''));
+            $validated['lien_ket'] = $lienKet !== '' ? $lienKet : null;
         }
 
         return $validated;

@@ -255,11 +255,14 @@
           </template>
         </CustomTableColumn>
 
-        <CustomTableColumn label="Thao tác" width="100" fixed="right" align="center">
+        <CustomTableColumn label="Thao tác" width="130" fixed="right" align="center">
           <template #default="{ row }">
             <div class="action-btns">
               <CustomTooltip content="Sửa" placement="top">
                 <CustomButton type="primary" link :icon="Edit" @click="openEdit(row)" />
+              </CustomTooltip>
+              <CustomTooltip content="Đổi mật khẩu" placement="top">
+                <CustomButton type="warning" link :icon="Key" @click="openChangePassword(row)" />
               </CustomTooltip>
               <CustomTooltip content="Xóa" placement="top">
                 <CustomButton type="danger" link :icon="Delete" @click="remove(row)" />
@@ -564,6 +567,70 @@
       </template>
     </CustomDialog>
 
+    <CustomDialog
+      v-model="passwordDialogVisible"
+      title="Đổi mật khẩu"
+      :width="820"
+      @closed="resetPasswordForm"
+    >
+      <CustomForm
+        ref="passwordFormRef"
+        :model="passwordForm"
+        :rules="passwordRules"
+        label-position="top"
+      >
+        <CustomRow :gutter="16">
+          <CustomCol :xs="24" :sm="12">
+            <CustomFormItem label="Họ tên">
+              <CustomInput :model-value="passwordUser?.name || '—'" readonly />
+            </CustomFormItem>
+          </CustomCol>
+          <CustomCol :xs="24" :sm="12">
+            <CustomFormItem label="Email">
+              <CustomInput :model-value="passwordUser?.email || '—'" readonly />
+            </CustomFormItem>
+          </CustomCol>
+          <CustomCol :xs="24" :sm="12">
+            <CustomFormItem label="Số điện thoại">
+              <CustomInput :model-value="passwordUser?.phone || '—'" readonly />
+            </CustomFormItem>
+          </CustomCol>
+          <CustomCol :xs="24" :sm="12">
+            <CustomFormItem label="Phòng ban">
+              <CustomInput :model-value="passwordUser ? deptName(passwordUser) : '—'" readonly />
+            </CustomFormItem>
+          </CustomCol>
+          <CustomCol :xs="24" :sm="12" :md="12" :lg="12">
+            <CustomFormItem label="Mật khẩu mới" prop="password">
+              <CustomInput
+                v-model="passwordForm.password"
+                type="password"
+                show-password
+                placeholder="Nhập mật khẩu mới"
+              />
+            </CustomFormItem>
+          </CustomCol>
+          <CustomCol :xs="24" :sm="12" :md="12" :lg="12">
+            <CustomFormItem label="Nhập lại mật khẩu mới" prop="password_confirmation">
+              <CustomInput
+                v-model="passwordForm.password_confirmation"
+                type="password"
+                show-password
+                placeholder="Nhập lại mật khẩu mới"
+              />
+            </CustomFormItem>
+          </CustomCol>
+        </CustomRow>
+      </CustomForm>
+
+      <template #footer>
+        <CustomButton @click="passwordDialogVisible = false">Hủy</CustomButton>
+        <CustomButton type="primary" :loading="passwordSaving" @click="savePassword">
+          Đổi mật khẩu
+        </CustomButton>
+      </template>
+    </CustomDialog>
+
   </div>
 </template>
 
@@ -571,7 +638,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Delete, Edit, Plus, Search } from '@element-plus/icons-vue'
+import { Delete, Edit, Key, Plus, Search } from '@element-plus/icons-vue'
 import { createUser, deleteUser, fetchUsers, updateUser, uploadNhanVienHinh } from '@/api/users'
 import { fetchPhongBan } from '@/api/phongBan'
 import { fetchVaiTro } from '@/api/vaiTro'
@@ -717,6 +784,35 @@ const formRef = ref(null)
 const activeTab = ref('personal')
 const pendingImageFile = ref(null)
 const pendingPreviewUrl = ref('')
+
+const passwordDialogVisible = ref(false)
+const passwordSaving = ref(false)
+const passwordUser = ref(null)
+const passwordFormRef = ref(null)
+const passwordForm = reactive({
+  password: '',
+  password_confirmation: '',
+})
+
+const passwordRules = {
+  password: [
+    { required: true, message: 'Vui lòng nhập mật khẩu mới', trigger: 'blur' },
+    { min: 8, message: 'Mật khẩu tối thiểu 8 ký tự', trigger: 'blur' },
+  ],
+  password_confirmation: [
+    { required: true, message: 'Vui lòng nhập lại mật khẩu mới', trigger: 'blur' },
+    {
+      validator: (_rule, value, callback) => {
+        if (value !== passwordForm.password) {
+          callback(new Error('Mật khẩu nhập lại không khớp'))
+          return
+        }
+        callback()
+      },
+      trigger: 'blur',
+    },
+  ],
+}
 
 const avatarPreviewUrl = computed(() => {
   if (pendingPreviewUrl.value) return pendingPreviewUrl.value
@@ -1178,6 +1274,43 @@ async function remove(row) {
     await loadEmployees()
   } catch {
     // Lỗi đã được axios interceptor xử lý
+  }
+}
+
+function resetPasswordForm() {
+  passwordUser.value = null
+  passwordForm.password = ''
+  passwordForm.password_confirmation = ''
+  passwordFormRef.value?.clearValidate?.()
+}
+
+function openChangePassword(row) {
+  resetPasswordForm()
+  passwordUser.value = row
+  passwordDialogVisible.value = true
+}
+
+async function savePassword() {
+  const valid = await passwordFormRef.value?.validate().catch(() => false)
+  if (!valid || !passwordUser.value) return
+
+  passwordSaving.value = true
+  try {
+    const user = passwordUser.value
+    await updateUser(user.id, {
+      name: user.name,
+      email: user.email,
+      phone: user.phone || '',
+      role: user.role || 'user',
+      status: user.status || 'active',
+      password: passwordForm.password,
+    })
+    ElMessage.success('Đã đổi mật khẩu.')
+    passwordDialogVisible.value = false
+  } catch {
+    // Lỗi đã được axios interceptor xử lý
+  } finally {
+    passwordSaving.value = false
   }
 }
 

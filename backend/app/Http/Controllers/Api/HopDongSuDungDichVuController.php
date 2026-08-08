@@ -94,7 +94,7 @@ class HopDongSuDungDichVuController extends BaseApiController
      * Lọc hop_dong_su_dung_dich_vu có id user nằm trong
      * thong_tin_dieu_phoi.{quay_phim|tho_make|tho_edit|tho_chup}.gia_tri
      *
-     * Query: page, per_page, ket_qua_trang_thai,
+     * Query: page, per_page, ket_qua_trang_thai, keyword, loai_hop_dong_id,
      * ngay_chup, ngay_tra_demo, ngay_tra_chinh_thuc
      * (cho_nhan = gia_tri null/rỗng; các tab khác = đúng giá trị)
      */
@@ -118,6 +118,8 @@ class HopDongSuDungDichVuController extends BaseApiController
                     'cho_nghiem_thu',
                     'hoan_thanh',
                 ])],
+                'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
+                'loai_hop_dong_id' => ['sometimes', 'nullable', 'integer', 'exists:danh_muc_loai_hop_dong,id'],
                 'ngay_chup' => ['sometimes', 'nullable', 'date'],
                 'ngay_tra_demo' => ['sometimes', 'nullable', 'date'],
                 'ngay_tra_chinh_thuc' => ['sometimes', 'nullable', 'date'],
@@ -126,7 +128,7 @@ class HopDongSuDungDichVuController extends BaseApiController
             $ketQuaTrangThai = $validated['ket_qua_trang_thai'] ?? 'cho_nhan';
 
             $baseQuery = $this->congViecCuaToiBaseQuery($userId);
-            $this->applyCongViecDieuPhoiDateFilters($baseQuery, $validated);
+            $this->applyCongViecDieuPhoiListFilters($baseQuery, $validated);
             $query = (clone $baseQuery)
                 ->with(['loaiHopDong:id,ten_hop_dong,ma_hop_dong']);
             $this->applyKetQuaTrangThaiFilter($query, $ketQuaTrangThai);
@@ -892,14 +894,32 @@ class HopDongSuDungDichVuController extends BaseApiController
     }
 
     /**
-     * Lọc theo các ngày trong thong_tin_dieu_phoi.*.gia_tri.
+     * Lọc danh sách công việc điều phối: keyword, loại HĐ, ngày trong thong_tin_dieu_phoi.
      *
      * @param  array<string, mixed>  $filters
      */
-    private function applyCongViecDieuPhoiDateFilters($query, array $filters): void
+    private function applyCongViecDieuPhoiListFilters($query, array $filters): void
     {
-        $dateFields = ['ngay_chup', 'ngay_tra_demo', 'ngay_tra_chinh_thuc'];
+        $keyword = trim((string) ($filters['keyword'] ?? ''));
+        if ($keyword !== '') {
+            $query->where(function ($inner) use ($keyword) {
+                $inner->where('ma_hop_dong', 'like', "%{$keyword}%")
+                    ->orWhere('ten_khach_hang', 'like', "%{$keyword}%")
+                    ->orWhere('sdt_khach_hang', 'like', "%{$keyword}%")
+                    ->orWhere('dia_chi', 'like', "%{$keyword}%")
+                    ->orWhere('kenh_tiep_can', 'like', "%{$keyword}%")
+                    ->orWhere('ma_giam_gia', 'like', "%{$keyword}%")
+                    ->orWhere('luot_gioi_thieu', 'like', "%{$keyword}%")
+                    ->orWhere('thong_tin_hop_dong', 'like', "%{$keyword}%");
+            });
+        }
 
+        $loaiHopDongId = $filters['loai_hop_dong_id'] ?? null;
+        if ($loaiHopDongId) {
+            $query->where('loai_hop_dong_id', $loaiHopDongId);
+        }
+
+        $dateFields = ['ngay_chup', 'ngay_tra_demo', 'ngay_tra_chinh_thuc'];
         foreach ($dateFields as $field) {
             $value = $filters[$field] ?? null;
             if ($value === null || $value === '') {
