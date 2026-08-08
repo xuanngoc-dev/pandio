@@ -82,6 +82,18 @@
               />
             </label>
             <span class="loai-config-hint">Bấm màu để đổi · bật/tắt để hiện/ẩn trên lịch</span>
+            <CustomTooltip content="Khôi phục toàn bộ màu mặc định" placement="top">
+              <el-button
+                class="loai-color-reset-all"
+                text
+                size="small"
+                :disabled="!hasCustomLoaiColor"
+                aria-label="Khôi phục toàn bộ màu mặc định"
+                @click="resetAllLoaiColors"
+              >
+                <el-icon :size="16"><Refresh /></el-icon>
+              </el-button>
+            </CustomTooltip>
           </div>
         </div>
         <div class="loai-config-list">
@@ -124,6 +136,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
+import { Refresh } from '@element-plus/icons-vue'
 import { fetchNgayNghi } from '@/api/ngayNghi'
 import { fetchLichChupMake } from '@/api/hopDongSuDungDichVu'
 import { formatLunarLabel, isLunarMonthStart } from '@/utils/lunar'
@@ -326,6 +339,26 @@ const calendarRenderKey = computed(() => {
 function setLoaiColor(loaiId, color) {
   if (!color) return
   patchLoaiPref(loaiId, { color })
+}
+
+/** Có ít nhất một loại HĐ đang dùng màu tuỳ chỉnh */
+const hasCustomLoaiColor = computed(() =>
+  Object.values(loaiPrefs.value).some((pref) => Boolean(pref?.color)),
+)
+
+/** Xóa toàn bộ màu tuỳ chỉnh → dùng lại màu mặc định theo mã HĐ */
+function resetAllLoaiColors() {
+  if (!hasCustomLoaiColor.value) return
+
+  const next = {}
+  for (const [key, pref] of Object.entries(loaiPrefs.value)) {
+    if (!pref || typeof pref !== 'object') continue
+    if (typeof pref.visible === 'boolean') {
+      next[key] = { visible: pref.visible }
+    }
+  }
+  loaiPrefs.value = next
+  persistLoaiPrefs()
 }
 
 function setLoaiVisible(loaiId, visible) {
@@ -600,7 +633,7 @@ onMounted(() => {
 
 .calendar-card {
   :deep(.el-calendar-table .el-calendar-day) {
-    height: 72px;
+    height: 100px;
     padding: 2px;
   }
 
@@ -828,6 +861,23 @@ onMounted(() => {
   :deep(.el-color-picker__icon),
   :deep(.el-color-picker__empty) {
     display: none;
+  }
+}
+
+.loai-color-reset-all {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  margin: 0;
+  color: var(--el-text-color-secondary);
+
+  &:not(:disabled):hover {
+    color: var(--el-color-primary);
+  }
+
+  &:disabled {
+    opacity: 0.35;
   }
 }
 
