@@ -172,6 +172,32 @@
           </template>
         </CustomTableColumn>
         <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('trang_thai_dieu_phoi')"
+          label="Trạng thái điều phối"
+          width="160"
+          align="center"
+        >
+          <template #default="{ row }">
+            <CustomTag :type="trangThaiDieuPhoiTagType(getKetQuaTrangThai(row))" size="small">
+              {{ trangThaiDieuPhoiLabel(getKetQuaTrangThai(row)) }}
+            </CustomTag>
+          </template>
+        </CustomTableColumn>
+        <template v-for="col in dieuPhoiTableColumns" :key="col.key">
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible(col.key)"
+            :label="col.label"
+            :min-width="col.minWidth"
+            :width="col.width"
+            :align="col.align || 'left'"
+            :show-overflow-tooltip="true"
+          >
+            <template #default="{ row }">
+              {{ formatDieuPhoiColumn(row, col.key) }}
+            </template>
+          </CustomTableColumn>
+        </template>
+        <CustomTableColumn
           v-if="columnSettings.isColumnVisible('created_at')"
           label="Ngày tạo"
           width="120"
@@ -281,6 +307,7 @@ import {
   khoiTaoHopDongSuDungDichVu,
 } from '@/api/hopDongSuDungDichVu'
 import { fetchLoaiHopDong } from '@/api/loaiHopDong'
+import { fetchUsers } from '@/api/users'
 import BulkActionBar from '@/components/BulkActionBar.vue'
 import TableColumnConfig from '@/components/TableColumnConfig.vue'
 import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
@@ -307,18 +334,63 @@ import HopDongSddvDraftModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSd
 import HopDongSddvFormModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvFormModal.vue'
 import HopDongSddvThanhToanModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvThanhToanModal.vue'
 
-const tableColumns = [
-  { key: 'ma_hop_dong', label: 'Mã HĐ' },
-  { key: 'loai_hop_dong', label: 'Loại hợp đồng' },
-  { key: 'khach_hang', label: 'Khách hàng' },
-  { key: 'kenh_tiep_can', label: 'Kênh tiếp cận' },
-  { key: 'tong_tien', label: 'Tổng tiền' },
-  { key: 'tien_coc', label: 'Tiền cọc' },
-  { key: 'nguoi_tao', label: 'Người tạo' },
-  { key: 'trang_thai', label: 'Trạng thái' },
-  { key: 'created_at', label: 'Ngày tạo' },
+/** Các field nhân viên trong thong_tin_dieu_phoi (gia_tri = mảng user id) */
+const STAFF_FIELD_KEYS = new Set(['tho_chup', 'tho_make', 'tho_edit', 'quay_phim'])
+
+/**
+ * Cột thông tin điều phối (từ hop_dong.thong_tin_dieu_phoi).
+ * Mặc định ẩn — bật trong Cấu hình cột hiển thị.
+ */
+const dieuPhoiTableColumns = [
+  { key: 'dp_buoi_chup', fieldKey: 'buoi_chup', label: 'Buổi chụp', minWidth: 110 },
+  { key: 'dp_gio_chup', fieldKey: 'gio_chup', label: 'Giờ chụp', width: 100, align: 'center' },
+  { key: 'dp_ngay_chup', fieldKey: 'ngay_chup', label: 'Ngày chụp', width: 120, align: 'center' },
+  { key: 'dp_ngay_tra_demo', fieldKey: 'ngay_tra_demo', label: 'Ngày trả demo', width: 130, align: 'center' },
+  {
+    key: 'dp_ngay_tra_chinh_thuc',
+    fieldKey: 'ngay_tra_chinh_thuc',
+    label: 'Ngày trả chính thức',
+    width: 150,
+    align: 'center',
+  },
+  { key: 'dp_dia_diem_chup', fieldKey: 'dia_diem_chup', label: 'Địa điểm chụp', minWidth: 160 },
+  { key: 'dp_tho_chup', fieldKey: 'tho_chup', label: 'Thợ chụp', minWidth: 140 },
+  { key: 'dp_tho_chup_ngoai', fieldKey: 'tho_chup_ngoai', label: 'Thợ chụp ngoài', minWidth: 140 },
+  { key: 'dp_tho_make', fieldKey: 'tho_make', label: 'Thợ make', minWidth: 140 },
+  { key: 'dp_tho_make_ngoai', fieldKey: 'tho_make_ngoai', label: 'Thợ make ngoài', minWidth: 140 },
+  { key: 'dp_tho_edit', fieldKey: 'tho_edit', label: 'Thợ edit', minWidth: 140 },
+  { key: 'dp_tho_edit_ngoai', fieldKey: 'tho_edit_ngoai', label: 'Thợ edit ngoài', minWidth: 140 },
+  { key: 'dp_quay_phim', fieldKey: 'quay_phim', label: 'Quay phim', minWidth: 140 },
+  { key: 'dp_quay_phim_ngoai', fieldKey: 'quay_phim_ngoai', label: 'Quay phim ngoài', minWidth: 140 },
+  { key: 'dp_ghi_chu_dieu_phoi', fieldKey: 'ghi_chu_dieu_phoi', label: 'Ghi chú điều phối', minWidth: 180 },
+  {
+    key: 'dp_ghi_chu_trang_phuc_phu_kien',
+    fieldKey: 'ghi_chu_trang_phuc_phu_kien',
+    label: 'Yêu cầu khách hàng',
+    minWidth: 180,
+  },
 ]
-const columnSettings = useTableColumns('van-hanh-cuoi.hop-dong-sddv', tableColumns)
+
+const tableColumns = [
+  { key: 'ma_hop_dong', label: 'Mã HĐ', group: 'Thông tin hợp đồng' },
+  { key: 'loai_hop_dong', label: 'Loại hợp đồng', group: 'Thông tin hợp đồng' },
+  { key: 'khach_hang', label: 'Khách hàng', group: 'Thông tin hợp đồng' },
+  { key: 'kenh_tiep_can', label: 'Kênh tiếp cận', group: 'Thông tin hợp đồng' },
+  { key: 'tong_tien', label: 'Tổng tiền', group: 'Thông tin hợp đồng' },
+  { key: 'tien_coc', label: 'Tiền cọc', group: 'Thông tin hợp đồng' },
+  { key: 'nguoi_tao', label: 'Người tạo', group: 'Thông tin hợp đồng' },
+  { key: 'trang_thai', label: 'Trạng thái', group: 'Thông tin hợp đồng' },
+  { key: 'created_at', label: 'Ngày tạo', group: 'Thông tin hợp đồng' },
+  // Trạng thái điều phối lưu ở ket_qua_hop_dong.trang_thai (workflow sau khi gán nhân sự trong thong_tin_dieu_phoi)
+  { key: 'trang_thai_dieu_phoi', label: 'Trạng thái điều phối', group: 'Thông tin điều phối' },
+  ...dieuPhoiTableColumns.map((col) => ({
+    key: col.key,
+    label: col.label,
+    defaultVisible: false,
+    group: 'Thông tin điều phối',
+  })),
+]
+const columnSettings = useTableColumns('van-hanh-cuoi.hop-dong-sddv.v2', tableColumns)
 
 const trangThaiOptions = [
   { value: 'moi_tao', label: 'Mới tạo' },
@@ -326,6 +398,26 @@ const trangThaiOptions = [
   { value: 'da_coc', label: 'Đã cọc' },
   { value: 'dang_thuc_hien', label: 'Đang thực hiện' },
   { value: 'da_huy', label: 'Đã hủy' },
+  { value: 'hoan_thanh', label: 'Hoàn thành' },
+]
+
+/**
+ * Trạng thái điều phối (ket_qua_hop_dong.trang_thai.gia_tri).
+ * null / rỗng được coi là "Chờ nhận" (nhân viên đã được gán nhưng chưa nhận việc).
+ *
+ * - cho_nhan: Chờ nhận — công việc đã gán nhân sự trong thong_tin_dieu_phoi, chờ nhân viên bấm nhận.
+ * - dang_xu_ly: Đang xử lý — nhân viên đã nhận; đang làm (upload file gốc / file demo…).
+ * - gui_khach_kiem_tra: Gửi khách kiểm tra — đã gửi khách xem; chờ phản hồi đồng ý / không đồng ý.
+ * - san_xuat_in_an: Sản xuất & in ấn — khách đồng ý; đang sản xuất / chuẩn bị bàn giao.
+ * - cho_nghiem_thu: Chờ nghiệm thu — đã bàn giao; chờ nghiệm thu hoàn thành hoặc làm lại.
+ * - hoan_thanh: Hoàn thành — nghiệm thu xong, kết thúc quy trình điều phối.
+ */
+const trangThaiDieuPhoiOptions = [
+  { value: 'cho_nhan', label: 'Chờ nhận' },
+  { value: 'dang_xu_ly', label: 'Đang xử lý' },
+  { value: 'gui_khach_kiem_tra', label: 'Gửi khách kiểm tra' },
+  { value: 'san_xuat_in_an', label: 'Sản xuất & in ấn' },
+  { value: 'cho_nghiem_thu', label: 'Chờ nghiệm thu' },
   { value: 'hoan_thanh', label: 'Hoàn thành' },
 ]
 
@@ -339,6 +431,7 @@ const keyword = ref(String(route.query.keyword || ''))
 const filterLoaiHopDongId = ref(null)
 const filterTrangThai = ref('')
 const loaiHopDongOptions = ref([])
+const userOptions = ref([])
 const bulkDeleting = ref(false)
 const creating = ref(false)
 const formModalVisible = ref(false)
@@ -355,6 +448,18 @@ const doiTrangThaiModalVisible = ref(false)
 const doiTrangThaiHopDong = ref(null)
 
 const { selectedCount, onSelectionChange, clearSelection, selectedIds } = useBulkSelection()
+
+const userNameMap = computed(() => {
+  const map = new Map()
+  for (const user of userOptions.value) {
+    map.set(Number(user.id), user.name)
+  }
+  return map
+})
+
+const dieuPhoiColumnByKey = Object.fromEntries(
+  dieuPhoiTableColumns.map((col) => [col.key, col]),
+)
 
 const bulkActions = computed(() => [
   {
@@ -386,6 +491,23 @@ function trangThaiTagType(value) {
   return map[value] || 'info'
 }
 
+function trangThaiDieuPhoiLabel(value) {
+  const key = value || 'cho_nhan'
+  return trangThaiDieuPhoiOptions.find((opt) => opt.value === key)?.label || value || '—'
+}
+
+function trangThaiDieuPhoiTagType(value) {
+  const map = {
+    cho_nhan: 'info',
+    dang_xu_ly: 'primary',
+    gui_khach_kiem_tra: 'warning',
+    san_xuat_in_an: '',
+    cho_nghiem_thu: 'warning',
+    hoan_thanh: 'success',
+  }
+  return map[value || 'cho_nhan'] || 'info'
+}
+
 function formatMoney(value) {
   if (value == null || value === '') return '—'
   const num = Number(value)
@@ -404,6 +526,45 @@ function getThongTin(row) {
   return row?.thong_tin_hop_dong && typeof row.thong_tin_hop_dong === 'object'
     ? row.thong_tin_hop_dong
     : {}
+}
+
+function getThongTinDieuPhoi(row) {
+  const raw = row?.thong_tin_dieu_phoi
+  return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
+}
+
+function getDieuPhoiGiaTri(row, fieldKey) {
+  const item = getThongTinDieuPhoi(row)[fieldKey]
+  if (!item || typeof item !== 'object') return null
+  return item.gia_tri !== undefined ? item.gia_tri : null
+}
+
+function formatStaffNames(value) {
+  const list = Array.isArray(value) ? value : value == null || value === '' ? [] : [value]
+  if (!list.length) return '—'
+  return list
+    .map((id) => userNameMap.value.get(Number(id)) || `#${id}`)
+    .join(', ')
+}
+
+function formatDieuPhoiColumn(row, columnKey) {
+  const col = dieuPhoiColumnByKey[columnKey]
+  if (!col) return '—'
+  const value = getDieuPhoiGiaTri(row, col.fieldKey)
+  if (value == null || value === '') return '—'
+
+  if (STAFF_FIELD_KEYS.has(col.fieldKey)) {
+    return formatStaffNames(value)
+  }
+
+  const loai = getThongTinDieuPhoi(row)[col.fieldKey]?.loai_du_lieu
+  if (loai === 'date' || col.fieldKey.startsWith('ngay_')) {
+    return formatDate(value)
+  }
+  if (Array.isArray(value)) {
+    return value.length ? value.map((item) => String(item)).join(', ') : '—'
+  }
+  return String(value)
 }
 
 function formatKhachHang(row) {
@@ -429,6 +590,15 @@ async function loadLoaiHopDongOptions() {
     loaiHopDongOptions.value = data.data || []
   } catch {
     loaiHopDongOptions.value = []
+  }
+}
+
+async function loadUserOptions() {
+  try {
+    const { data } = await fetchUsers({ per_page: 100, status: 'active' })
+    userOptions.value = data.data || []
+  } catch {
+    userOptions.value = []
   }
 }
 
@@ -709,6 +879,7 @@ async function remove(row) {
 
 onMounted(() => {
   loadLoaiHopDongOptions()
+  loadUserOptions()
   loadItems()
 })
 </script>
