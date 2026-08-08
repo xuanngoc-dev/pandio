@@ -596,6 +596,108 @@ class HopDongSuDungDichVuController extends BaseApiController
     }
 
     /**
+     * Ghi nhận thanh toán (lần 2 / lần 3) cho hợp đồng sử dụng dịch vụ.
+     */
+    public function thanhToan(Request $request, HopDongSuDungDichVu $hop_dong_su_dung_dich_vu): JsonResponse
+    {
+        return $this->handleApi(function () use ($request, $hop_dong_su_dung_dich_vu) {
+            if (! in_array($hop_dong_su_dung_dich_vu->trang_thai, ['da_coc', 'dang_thuc_hien'], true)) {
+                return response()->json([
+                    'message' => 'Chỉ thanh toán hợp đồng đang thực hiện hoặc đã cọc.',
+                ], 422);
+            }
+
+            $validated = $request->validate([
+                'so_tien_thanh_toan' => ['required', 'integer', 'min:1'],
+                'hinh_thuc_thanh_toan' => ['required', 'string', Rule::in(['tien_mat', 'chuyen_khoan'])],
+                'ghi_chu_sale' => ['nullable', 'string'],
+            ]);
+
+            $tongTien = (int) $hop_dong_su_dung_dich_vu->tong_tien;
+            $phatSinh = (int) $hop_dong_su_dung_dich_vu->phat_sinh;
+            $chietKhau = (int) $hop_dong_su_dung_dich_vu->chiet_khau;
+            $giamGia = (int) $hop_dong_su_dung_dich_vu->khuyen_mai_theo_ma_giam_gia;
+            $khachPhaiTra = max(0, $tongTien + $phatSinh - $chietKhau - $giamGia);
+
+            $lan1 = (int) $hop_dong_su_dung_dich_vu->so_tien_thanh_toan_lan_1;
+            $lan2 = (int) $hop_dong_su_dung_dich_vu->so_tien_thanh_toan_lan_2;
+            $lan3 = (int) $hop_dong_su_dung_dich_vu->so_tien_thanh_toan_lan_3;
+            $daThanhToan = $lan1 + $lan2 + $lan3;
+            $conLai = max(0, $khachPhaiTra - $daThanhToan);
+            $soTien = (int) $validated['so_tien_thanh_toan'];
+
+            if ($conLai <= 0) {
+                return response()->json([
+                    'message' => 'Hợp đồng đã thanh toán đủ.',
+                ], 422);
+            }
+
+            $slot = null;
+            if ($lan1 <= 0) {
+                $slot = 1;
+            } elseif ($lan2 <= 0) {
+                $slot = 2;
+            } elseif ($lan3 <= 0) {
+                $slot = 3;
+            }
+
+            if ($slot === null) {
+                return response()->json([
+                    'message' => 'Đã ghi nhận đủ 3 lần thanh toán. Không thể ghi thêm.',
+                ], 422);
+            }
+
+            // Lần 3: số tiền = khách phải TT − lần 1 − lần 2
+            if ($slot === 3) {
+                $soTien = max(0, $khachPhaiTra - $lan1 - $lan2);
+                if ($soTien <= 0) {
+                    return response()->json([
+                        'message' => 'Hợp đồng đã thanh toán đủ.',
+                    ], 422);
+                }
+            } elseif ($soTien > $conLai) {
+                return response()->json([
+                    'message' => 'Số tiền thanh toán không được vượt quá số tiền còn lại.',
+                    'errors' => [
+                        'so_tien_thanh_toan' => ['Số tiền thanh toán không được vượt quá số tiền còn lại.'],
+                    ],
+                ], 422);
+            }
+
+            $today = now()->toDateString();
+            $hinhThucLabel = $validated['hinh_thuc_thanh_toan'] === 'chuyen_khoan'
+                ? 'Chuyển khoản'
+                : 'Tiền mặt';
+            $noteLine = sprintf(
+                '[TT lần %d · %s · %s] %s',
+                $slot,
+                $today,
+                $hinhThucLabel,
+                number_format($soTien, 0, ',', '.').' đ'
+            );
+            $userNote = trim((string) ($validated['ghi_chu_sale'] ?? ''));
+            if ($userNote !== '') {
+                $noteLine .= ' — '.$userNote;
+            }
+            $existingNote = trim((string) ($hop_dong_su_dung_dich_vu->ghi_chu_sale ?? ''));
+
+            $updateData = [
+                "so_tien_thanh_toan_lan_{$slot}" => $soTien,
+                "thoi_gian_thanh_toan_lan_{$slot}" => $today,
+                'ghi_chu_sale' => $existingNote !== ''
+                    ? $existingNote."\n".$noteLine
+                    : $noteLine,
+            ];
+
+            DB::transaction(function () use ($hop_dong_su_dung_dich_vu, $updateData) {
+                $hop_dong_su_dung_dich_vu->update($updateData);
+            });
+
+            return response()->json($this->loadDetail($hop_dong_su_dung_dich_vu->fresh()));
+        }, 'thanh toán hợp đồng sử dụng dịch vụ');
+    }
+
+    /**
      * Xóa hợp đồng sử dụng dịch vụ.
      */
     public function destroy(HopDongSuDungDichVu $hop_dong_su_dung_dich_vu): JsonResponse

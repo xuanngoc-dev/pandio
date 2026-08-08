@@ -181,7 +181,7 @@
             {{ formatDate(row.created_at) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Thao tác" width="160" fixed="right" align="center">
+        <CustomTableColumn label="Thao tác" width="200" fixed="right" align="center">
           <template #default="{ row }">
             <div class="action-btns">
               <CustomTooltip content="Xem hợp đồng" placement="top">
@@ -189,6 +189,15 @@
               </CustomTooltip>
               <CustomTooltip content="Điều phối" placement="top">
                 <CustomButton type="warning" link :icon="Position" @click="openDieuPhoi(row)" />
+              </CustomTooltip>
+              <CustomTooltip :content="thanhToanTooltip(row)" placement="top">
+                <CustomButton
+                  type="success"
+                  link
+                  :icon="Wallet"
+                  :disabled="!canOpenThanhToan(row)"
+                  @click="openThanhToan(row)"
+                />
               </CustomTooltip>
               <CustomTooltip content="Sửa" placement="top">
                 <CustomButton type="primary" link :icon="Edit" @click="openEdit(row)" />
@@ -234,6 +243,12 @@
       v-model="detailModalVisible"
       :hop-dong-id="detailHopDongId"
     />
+
+    <HopDongSddvThanhToanModal
+      v-model="thanhToanModalVisible"
+      :hop-dong="thanhToanHopDong"
+      @saved="onThanhToanSaved"
+    />
   </div>
 </template>
 
@@ -241,7 +256,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Delete, Document, Edit, Plus, Position, Search, View } from '@element-plus/icons-vue'
+import { Delete, Document, Edit, Plus, Position, Search, View, Wallet } from '@element-plus/icons-vue'
 import {
   deleteHopDongSuDungDichVu,
   fetchHopDongSuDungDichVu,
@@ -272,6 +287,7 @@ import HopDongSddvDetailModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongS
 import HopDongSddvDieuPhoiModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvDieuPhoiModal.vue'
 import HopDongSddvDraftModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvDraftModal.vue'
 import HopDongSddvFormModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvFormModal.vue'
+import HopDongSddvThanhToanModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvThanhToanModal.vue'
 
 const tableColumns = [
   { key: 'ma_hop_dong', label: 'Mã HĐ' },
@@ -315,6 +331,8 @@ const dieuPhoiModalVisible = ref(false)
 const dieuPhoiHopDongId = ref(null)
 const detailModalVisible = ref(false)
 const detailHopDongId = ref(null)
+const thanhToanModalVisible = ref(false)
+const thanhToanHopDong = ref(null)
 
 const { selectedCount, onSelectionChange, clearSelection, selectedIds } = useBulkSelection()
 
@@ -450,6 +468,87 @@ function openDieuPhoi(row) {
   }
   dieuPhoiHopDongId.value = row.id
   dieuPhoiModalVisible.value = true
+}
+
+function getDaThanhToan(row) {
+  return (
+    (Number(row?.so_tien_thanh_toan_lan_1) || 0) +
+    (Number(row?.so_tien_thanh_toan_lan_2) || 0) +
+    (Number(row?.so_tien_thanh_toan_lan_3) || 0)
+  )
+}
+
+function getKhachPhaiThanhToan(row) {
+  const tong = Number(row?.tong_tien) || 0
+  const phatSinh = Number(row?.phat_sinh) || 0
+  const chietKhau = Number(row?.chiet_khau) || 0
+  const giamGia = Number(row?.khuyen_mai_theo_ma_giam_gia) || 0
+  return Math.max(0, tong + phatSinh - chietKhau - giamGia)
+}
+
+function getConLai(row) {
+  return Math.max(0, getKhachPhaiThanhToan(row) - getDaThanhToan(row))
+}
+
+function hasPaymentSlot(row) {
+  return (
+    (Number(row?.so_tien_thanh_toan_lan_1) || 0) <= 0 ||
+    (Number(row?.so_tien_thanh_toan_lan_2) || 0) <= 0 ||
+    (Number(row?.so_tien_thanh_toan_lan_3) || 0) <= 0
+  )
+}
+
+function canThanhToan(row) {
+  return (
+    ['da_coc', 'dang_thuc_hien'].includes(row?.trang_thai) &&
+    getConLai(row) > 0 &&
+    hasPaymentSlot(row)
+  )
+}
+
+function canViewLichSuThanhToan(row) {
+  return getDaThanhToan(row) > 0
+}
+
+function canOpenThanhToan(row) {
+  return canThanhToan(row) || canViewLichSuThanhToan(row)
+}
+
+function thanhToanTooltip(row) {
+  if (canThanhToan(row)) return 'Thanh toán'
+  if (canViewLichSuThanhToan(row)) return 'Xem lịch sử thanh toán'
+  return thanhToanDisabledReason(row)
+}
+
+function thanhToanDisabledReason(row) {
+  if (row?.trang_thai === 'da_huy') return 'Hợp đồng đã hủy'
+  if (row?.trang_thai === 'nhap' || row?.trang_thai === 'moi_tao') {
+    return 'Hợp đồng chưa đủ điều kiện thanh toán'
+  }
+  if (!['da_coc', 'dang_thuc_hien', 'hoan_thanh'].includes(row?.trang_thai)) {
+    return 'Không thể mở thanh toán'
+  }
+  if (getDaThanhToan(row) <= 0) return 'Chưa có lịch sử thanh toán'
+  return 'Không thể thanh toán'
+}
+
+async function openThanhToan(row) {
+  if (!canOpenThanhToan(row)) {
+    ElMessage.warning(thanhToanDisabledReason(row))
+    return
+  }
+  thanhToanHopDong.value = row
+  thanhToanModalVisible.value = true
+  try {
+    const { data } = await getHopDongSuDungDichVu(row.id)
+    thanhToanHopDong.value = data
+  } catch {
+    // keep list row as fallback; modal will also try reload
+  }
+}
+
+function onThanhToanSaved() {
+  loadItems()
 }
 
 async function openEdit(row) {

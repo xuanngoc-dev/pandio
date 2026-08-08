@@ -236,30 +236,6 @@
             <MoneyInput v-model="form.so_tien_thanh_toan_lan_1" style="width: 100%" />
           </CustomFormItem>
         </CustomCol>
-        <CustomCol v-bind="summaryFieldColProps">
-          <CustomFormItem label="Thời gian thanh toán lần 2">
-            <el-date-picker
-              v-model="form.thoi_gian_thanh_toan_lan_2"
-              type="date"
-              format="DD/MM/YYYY"
-              value-format="YYYY-MM-DD"
-              placeholder="Chọn ngày"
-              style="width: 100%"
-            />
-          </CustomFormItem>
-        </CustomCol>
-        <CustomCol v-bind="summaryFieldColProps">
-          <CustomFormItem label="Thời gian thanh toán lần 3">
-            <el-date-picker
-              v-model="form.thoi_gian_thanh_toan_lan_3"
-              type="date"
-              format="DD/MM/YYYY"
-              value-format="YYYY-MM-DD"
-              placeholder="Chọn ngày"
-              style="width: 100%"
-            />
-          </CustomFormItem>
-        </CustomCol>
         <CustomCol v-bind="summaryWideColProps">
           <CustomFormItem label="Quà tặng kèm">
             <CustomInput v-model="form.qua_tang_kem" placeholder="Nhập quà tặng kèm" clearable />

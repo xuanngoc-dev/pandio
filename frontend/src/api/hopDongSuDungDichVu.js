@@ -125,3 +125,16 @@ export function updateHopDongSuDungDichVu(id, payload) {
 export function deleteHopDongSuDungDichVu(id) {
   return api.delete(`/hop-dong-su-dung-dich-vu/${id}`)
 }
+
+/**
+ * Ghi nhận thanh toán (lần 2 / lần 3).
+ * @param {number|string} id
+ * @param {{
+ *   so_tien_thanh_toan: number,
+ *   hinh_thuc_thanh_toan: 'tien_mat'|'chuyen_khoan',
+ *   ghi_chu_sale?: string|null,
+ * }} payload
+ */
+export function thanhToanHopDongSuDungDichVu(id, payload) {
+  return api.post(`/hop-dong-su-dung-dich-vu/${id}/thanh-toan`, payload)
+}
