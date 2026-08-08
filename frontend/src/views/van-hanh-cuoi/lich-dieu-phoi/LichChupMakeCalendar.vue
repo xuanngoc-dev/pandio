@@ -11,7 +11,11 @@
         </div>
       </template>
 
-      <el-calendar :key="calendarRenderKey" v-model="selectedDate">
+      <el-calendar
+        :key="calendarRenderKey"
+        v-model="selectedDate"
+        :class="{ 'is-show-empty': hienHopDongTrong }"
+      >
         <template #header>
           <div class="el-calendar__title">{{ calendarTitle }}</div>
           <div class="el-calendar__button-group">
@@ -48,6 +52,7 @@
               >
                 <span
                   class="day-badge"
+                  :class="{ 'is-empty': item.so_luong <= 0 }"
                   :style="{
                     background: loaiColorMap[item.loai_hop_dong_id],
                     borderColor: loaiColorMap[item.loai_hop_dong_id],
@@ -65,7 +70,19 @@
       <div v-if="loaiHopDongLegend.length" class="loai-config">
         <div class="loai-config-head">
           <span class="loai-config-title">Ghi chú loại hợp đồng</span>
-          <span class="loai-config-hint">Bấm màu để đổi · bật/tắt để hiện/ẩn trên lịch</span>
+          <div class="loai-config-actions">
+            <label class="show-empty-toggle">
+              <span class="show-empty-label">Hiện HĐ trống</span>
+              <el-switch
+                v-model="hienHopDongTrong"
+                size="small"
+                inline-prompt
+                active-text="Có"
+                inactive-text="Không"
+              />
+            </label>
+            <span class="loai-config-hint">Bấm màu để đổi · bật/tắt để hiện/ẩn trên lịch</span>
+          </div>
         </div>
         <div class="loai-config-list">
           <div
@@ -113,6 +130,7 @@ import { formatLunarLabel, isLunarMonthStart } from '@/utils/lunar'
 import LichChupMakeChiTietModal from './LichChupMakeChiTietModal.vue'
 
 const PREFS_STORAGE_KEY = 'pandio.lichChupMake.loaiPrefs'
+const SHOW_EMPTY_STORAGE_KEY = 'pandio.lichChupMake.showEmpty'
 
 /** Palette mặc định theo ma_hop_dong (fallback theo index) */
 const LOAI_COLOR_BY_MA = {
@@ -210,6 +228,23 @@ const chiTietTenHopDong = ref('')
  */
 const loaiPrefs = ref({})
 
+/** Hiện badge loại HĐ có so_luong = 0 trên lịch (mặc định: không) */
+const hienHopDongTrong = ref(false)
+
+function loadShowEmptyPref() {
+  try {
+    const raw = localStorage.getItem(SHOW_EMPTY_STORAGE_KEY)
+    if (raw == null) return
+    hienHopDongTrong.value = raw === '1' || raw === 'true'
+  } catch {
+    // ignore
+  }
+}
+
+function persistShowEmptyPref() {
+  localStorage.setItem(SHOW_EMPTY_STORAGE_KEY, hienHopDongTrong.value ? '1' : '0')
+}
+
 function loadLoaiPrefs() {
   try {
     const raw = localStorage.getItem(PREFS_STORAGE_KEY)
@@ -278,13 +313,14 @@ const loaiVisibleMap = computed(() => {
   return map
 })
 
-/** Ép el-calendar render lại khi đổi màu / ẩn hiện */
+/** Ép el-calendar render lại khi đổi màu / ẩn hiện / hiện HĐ trống */
 const calendarRenderKey = computed(() => {
   const prefs = loaiPrefs.value
-  return Object.keys(prefs)
+  const prefsKey = Object.keys(prefs)
     .sort()
     .map((id) => `${id}:${prefs[id]?.color || ''}:${prefs[id]?.visible !== false ? 1 : 0}`)
     .join('|')
+  return `${prefsKey}|empty:${hienHopDongTrong.value ? 1 : 0}`
 })
 
 function setLoaiColor(loaiId, color) {
@@ -452,12 +488,18 @@ function hopDongByDate(day) {
   return hopDongStatsByDate.value[dayKey(day)] || []
 }
 
-/** Badge: có số lượng > 0 và loại đang bật hiển thị */
+/**
+ * Badge trên lịch:
+ * - Chỉ loại đang bật hiển thị
+ * - Mặc định ẩn so_luong = 0; khi "Hiện HĐ trống" thì hiện đủ mọi loại
+ */
 function hopDongVisibleByDate(day) {
   const visibleMap = loaiVisibleMap.value
-  return hopDongByDate(day).filter(
-    (item) => item.so_luong > 0 && visibleMap[item.loai_hop_dong_id] !== false,
-  )
+  const showEmpty = hienHopDongTrong.value
+  return hopDongByDate(day).filter((item) => {
+    if (visibleMap[item.loai_hop_dong_id] === false) return false
+    return showEmpty || item.so_luong > 0
+  })
 }
 
 function badgeTooltip(item) {
@@ -507,8 +549,13 @@ watch(
   },
 )
 
+watch(hienHopDongTrong, () => {
+  persistShowEmptyPref()
+})
+
 onMounted(() => {
   loadLoaiPrefs()
+  loadShowEmptyPref()
   loadActiveNgayNghi()
   loadLichChupMake()
 })
@@ -553,8 +600,12 @@ onMounted(() => {
 
 .calendar-card {
   :deep(.el-calendar-table .el-calendar-day) {
-    height: 104px;
-    padding: 4px;
+    height: 72px;
+    padding: 2px;
+  }
+
+  :deep(.el-calendar.is-show-empty .el-calendar-table .el-calendar-day) {
+    height: 100px;
   }
 
   /* Ẩn hoàn toàn ngày không thuộc tháng đang xem */
@@ -574,8 +625,8 @@ onMounted(() => {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 4px 6px;
+  gap: 2px;
+  padding: 2px 4px 1px;
   border-radius: 6px;
   line-height: 1.2;
   overflow: hidden;
@@ -624,8 +675,9 @@ onMounted(() => {
 .day-badges {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 3px;
   min-height: 0;
+  margin-top: 10px;
   overflow: hidden;
 }
 
@@ -633,9 +685,9 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 6px;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 5px;
   border-radius: 999px;
   border: 1px solid transparent;
   font-size: 11px;
@@ -648,6 +700,10 @@ onMounted(() => {
 
   &:hover {
     filter: brightness(1.08);
+  }
+
+  &.is-empty {
+    opacity: 0.42;
   }
 }
 
@@ -663,7 +719,7 @@ onMounted(() => {
 
 .loai-config-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
@@ -674,6 +730,28 @@ onMounted(() => {
   font-size: 14px;
   font-weight: 600;
   color: var(--el-text-color-primary);
+}
+
+.loai-config-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.show-empty-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.show-empty-label {
+  font-size: 13px;
+  color: var(--el-text-color-regular);
+  white-space: nowrap;
 }
 
 .loai-config-hint {
