@@ -29,67 +29,122 @@ function buildColumnGroups(columns) {
   return groups
 }
 
+function readSelectedKeys(storageKey) {
+  try {
+    const raw = localStorage.getItem(STORAGE_PREFIX + storageKey)
+    if (!raw) return null
+    const saved = JSON.parse(raw)
+    return Array.isArray(saved) ? saved : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * @param {Array<{ key: string, defaultVisible?: boolean }>} columns
+ * @param {string} storageKey
+ * @param {{ allowAllHidden?: boolean }} [opts]
+ */
+function visibilityForColumns(columns, storageKey, opts = {}) {
+  const { allowAllHidden = false } = opts
+  const defaults = Object.fromEntries(
+    columns.map((col) => [col.key, col.defaultVisible !== false]),
+  )
+  const saved = readSelectedKeys(storageKey)
+  if (!saved) return defaults
+  const next = Object.fromEntries(columns.map((col) => [col.key, saved.includes(col.key)]))
+  if (!allowAllHidden && !Object.values(next).some(Boolean)) return defaults
+  return next
+}
+
 /**
  * Ẩn/hiện cột bảng + lưu localStorage theo từng trang.
  *
  * @param {string} storageKey — khóa duy nhất (vd: 'van-hanh-cuoi.concept-list')
- * @param {Array<{ key: string, label: string, defaultVisible?: boolean, group?: string }>} columns
- *   — cột cấu hình được (không gồm STT / selection / Thao tác).
- *   `defaultVisible: false` ẩn cột khi chưa có cấu hình lưu.
- *   `group` — nhãn khu vực trong dialog cấu hình cột (tuỳ chọn).
+ * @param {Array<{ key: string, label: string, defaultVisible?: boolean, group?: string }>} baseColumns
+ *   — cột cố định (không gồm STT / selection / Thao tác).
+ * @param {{ onBeforeOpen?: () => void | Promise<void> }} [options]
  */
-export function useTableColumns(storageKey, columns) {
-  function isDefaultVisible(col) {
-    return col.defaultVisible !== false
+export function useTableColumns(storageKey, baseColumns, options = {}) {
+  const { onBeforeOpen } = options
+
+  let extraColumns = []
+  /** @type {string | null} */
+  let extraStorageKey = null
+
+  function allColumns() {
+    return [...baseColumns, ...extraColumns]
   }
 
-  function defaultVisibility() {
-    return Object.fromEntries(columns.map((col) => [col.key, isDefaultVisible(col)]))
+  function buildVisibility() {
+    const baseVis = visibilityForColumns(baseColumns, storageKey)
+    if (!extraColumns.length) return { ...baseVis }
+
+    const extraVis = extraStorageKey
+      ? visibilityForColumns(extraColumns, extraStorageKey, { allowAllHidden: true })
+      : Object.fromEntries(extraColumns.map((col) => [col.key, col.defaultVisible !== false]))
+
+    return { ...baseVis, ...extraVis }
   }
 
-  function loadVisibility() {
-    const defaults = defaultVisibility()
-    try {
-      const raw = localStorage.getItem(STORAGE_PREFIX + storageKey)
-      if (!raw) return defaults
-      const saved = JSON.parse(raw)
-      if (!Array.isArray(saved)) return defaults
-      const next = Object.fromEntries(columns.map((col) => [col.key, saved.includes(col.key)]))
-      if (!Object.values(next).some(Boolean)) return defaults
-      return next
-    } catch {
-      return defaults
+  function syncDraft() {
+    for (const col of allColumns()) {
+      state.draft[col.key] = state.visibility[col.key] !== false
     }
   }
 
-  const columnGroups = buildColumnGroups(columns)
+  function applyColumnsState() {
+    const cols = allColumns()
+    state.columns = cols
+    state.columnGroups = buildColumnGroups(cols)
+    state.visibility = buildVisibility()
+  }
 
   const state = reactive({
-    columns,
-    columnGroups,
-    visibility: loadVisibility(),
+    columns: allColumns(),
+    columnGroups: buildColumnGroups(allColumns()),
+    visibility: {},
     dialogVisible: false,
-    draft: defaultVisibility(),
+    configLoading: false,
+    draft: {},
 
     isColumnVisible(key) {
       return state.visibility[key] !== false
     },
 
-    openConfig() {
-      for (const col of columns) {
-        state.draft[col.key] = state.visibility[col.key] !== false
-      }
+    /**
+     * Gắn/gỡ cột động (vd: chi tiết theo loại HĐ).
+     * @param {Array<{ key: string, label: string, defaultVisible?: boolean, group?: string }>} columns
+     * @param {{ storageKey?: string | null }} [opts]
+     */
+    setExtraColumns(columns = [], opts = {}) {
+      extraColumns = Array.isArray(columns) ? [...columns] : []
+      extraStorageKey = opts.storageKey || null
+      applyColumnsState()
+      if (state.dialogVisible) syncDraft()
+    },
+
+    async openConfig() {
       state.dialogVisible = true
+      state.configLoading = true
+      try {
+        if (typeof onBeforeOpen === 'function') {
+          await onBeforeOpen()
+        }
+        syncDraft()
+      } finally {
+        state.configLoading = false
+      }
     },
 
     selectAllDraft() {
-      for (const col of columns) {
+      for (const col of allColumns()) {
         state.draft[col.key] = true
       }
     },
 
     selectGroupDraft(groupKey, checked = true) {
-      const group = columnGroups.find((item) => item.key === groupKey)
+      const group = state.columnGroups.find((item) => item.key === groupKey)
       if (!group) return
       for (const col of group.columns) {
         state.draft[col.key] = checked
@@ -97,19 +152,39 @@ export function useTableColumns(storageKey, columns) {
     },
 
     saveConfig() {
-      const selected = columns.filter((col) => state.draft[col.key]).map((col) => col.key)
+      const cols = allColumns()
+      const selected = cols.filter((col) => state.draft[col.key]).map((col) => col.key)
       if (!selected.length) {
         ElMessage.warning('Vui lòng chọn ít nhất một cột')
         return
       }
-      for (const col of columns) {
+
+      const baseKeySet = new Set(baseColumns.map((col) => col.key))
+      const extraKeySet = new Set(extraColumns.map((col) => col.key))
+      const baseSelected = selected.filter((key) => baseKeySet.has(key))
+      const extraSelected = selected.filter((key) => extraKeySet.has(key))
+
+      if (!baseSelected.length) {
+        ElMessage.warning('Vui lòng chọn ít nhất một cột')
+        return
+      }
+
+      for (const col of cols) {
         state.visibility[col.key] = !!state.draft[col.key]
       }
-      localStorage.setItem(STORAGE_PREFIX + storageKey, JSON.stringify(selected))
+
+      localStorage.setItem(STORAGE_PREFIX + storageKey, JSON.stringify(baseSelected))
+      if (extraStorageKey) {
+        localStorage.setItem(STORAGE_PREFIX + extraStorageKey, JSON.stringify(extraSelected))
+      }
+
       state.dialogVisible = false
       ElMessage.success('Đã lưu cấu hình cột')
     },
   })
+
+  state.visibility = buildVisibility()
+  syncDraft()
 
   return state
 }

@@ -16,7 +16,7 @@
         Chọn các cột muốn hiển thị trên bảng. Cấu hình được lưu trên trình duyệt này.
       </p>
 
-      <div class="column-config-body">
+      <div v-loading="settings.configLoading" class="column-config-body">
         <section
           v-for="group in settings.columnGroups"
           :key="group.key"
@@ -33,7 +33,7 @@
               {{ isGroupFullySelected(group) ? 'Bỏ chọn nhóm' : 'Chọn nhóm' }}
             </button>
           </div>
-          <div class="column-config-list">
+          <div v-if="group.columns.length" class="column-config-list">
             <label
               v-for="col in group.columns"
               :key="col.key"
@@ -44,6 +44,7 @@
               </el-checkbox>
             </label>
           </div>
+          <p v-else class="column-config-empty">Không có cột trong nhóm này.</p>
         </section>
       </div>
 
@@ -166,6 +167,13 @@ function isGroupFullySelected(group) {
   @media (max-width: 480px) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+.column-config-empty {
+  margin: 0;
+  padding: 4px 2px 8px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
 }
 
 .column-config-item {
