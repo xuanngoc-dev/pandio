@@ -151,8 +151,8 @@
             <CustomTableColumn label="Số tiền" min-width="140" align="right">
               <template #default="{ row }">{{ formatMoney(row.so_tien) }}</template>
             </CustomTableColumn>
-            <CustomTableColumn label="Thời gian" min-width="140" align="center">
-              <template #default="{ row }">{{ formatDate(row.thoi_gian) }}</template>
+            <CustomTableColumn label="Thời gian" min-width="170" align="center">
+              <template #default="{ row }">{{ formatPaymentDateTime(row.thoi_gian) }}</template>
             </CustomTableColumn>
             <CustomTableColumn label="Hạn" min-width="140" align="center">
               <template #default="{ row }">{{ formatDate(row.han) }}</template>
@@ -422,6 +422,19 @@ function formatDate(value) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return String(value)
   return date.toLocaleDateString('vi-VN')
+}
+
+/** Hiển thị thời gian thanh toán: hh:mm:ss dd/mm/yyyy */
+function formatPaymentDateTime(value) {
+  if (!value) return '—'
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (/^\d{2}:\d{2}:\d{2} \d{2}\/\d{2}\/\d{4}$/.test(trimmed)) return trimmed
+  }
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return String(value)
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())} ${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`
 }
 
 function fillFromHopDong(row) {

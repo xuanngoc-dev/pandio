@@ -62,9 +62,9 @@ class HopDongSuDungDichVu extends Model
             'so_tien_thanh_toan_lan_1' => 'integer',
             'so_tien_thanh_toan_lan_2' => 'integer',
             'so_tien_thanh_toan_lan_3' => 'integer',
-            'thoi_gian_thanh_toan_lan_1' => 'date',
-            'thoi_gian_thanh_toan_lan_2' => 'date',
-            'thoi_gian_thanh_toan_lan_3' => 'date',
+            'thoi_gian_thanh_toan_lan_1' => 'datetime',
+            'thoi_gian_thanh_toan_lan_2' => 'datetime',
+            'thoi_gian_thanh_toan_lan_3' => 'datetime',
             'han_thanh_toan_lan_2' => 'date',
             'han_thanh_toan_lan_3' => 'date',
         ];

@@ -245,7 +245,7 @@
               <CustomCol v-bind="fieldColProps">
                 <CustomFormItem label="Thời gian TT lần 1">
                   <CustomInput
-                    :model-value="formatDate(hopDong.thoi_gian_thanh_toan_lan_1)"
+                    :model-value="formatPaymentDateTime(hopDong.thoi_gian_thanh_toan_lan_1)"
                     readonly
                   />
                 </CustomFormItem>
@@ -261,7 +261,7 @@
               <CustomCol v-bind="fieldColProps">
                 <CustomFormItem label="Thời gian TT lần 2">
                   <CustomInput
-                    :model-value="formatDate(hopDong.thoi_gian_thanh_toan_lan_2)"
+                    :model-value="formatPaymentDateTime(hopDong.thoi_gian_thanh_toan_lan_2)"
                     readonly
                   />
                 </CustomFormItem>
@@ -285,7 +285,7 @@
               <CustomCol v-bind="fieldColProps">
                 <CustomFormItem label="Thời gian TT lần 3">
                   <CustomInput
-                    :model-value="formatDate(hopDong.thoi_gian_thanh_toan_lan_3)"
+                    :model-value="formatPaymentDateTime(hopDong.thoi_gian_thanh_toan_lan_3)"
                     readonly
                   />
                 </CustomFormItem>
@@ -578,6 +578,19 @@ function formatDate(value) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return String(value)
   return date.toLocaleDateString('vi-VN')
+}
+
+/** Hiển thị thời gian thanh toán: hh:mm:ss dd/mm/yyyy */
+function formatPaymentDateTime(value) {
+  if (!value) return '—'
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (/^\d{2}:\d{2}:\d{2} \d{2}\/\d{2}\/\d{4}$/.test(trimmed)) return trimmed
+  }
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return String(value)
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())} ${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`
 }
 
 function trangThaiLabel(value) {

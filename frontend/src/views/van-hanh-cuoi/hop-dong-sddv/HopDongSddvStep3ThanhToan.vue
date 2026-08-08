@@ -513,12 +513,37 @@ function getPayload() {
     so_tien_thanh_toan_lan_1: Number(props.form.so_tien_thanh_toan_lan_1) || 0,
     so_tien_thanh_toan_lan_2: Number(props.form.so_tien_thanh_toan_lan_2) || 0,
     so_tien_thanh_toan_lan_3: Number(props.form.so_tien_thanh_toan_lan_3) || 0,
-    thoi_gian_thanh_toan_lan_1: props.form.thoi_gian_thanh_toan_lan_1 || null,
-    thoi_gian_thanh_toan_lan_2: props.form.thoi_gian_thanh_toan_lan_2 || null,
-    thoi_gian_thanh_toan_lan_3: props.form.thoi_gian_thanh_toan_lan_3 || null,
+    thoi_gian_thanh_toan_lan_1: resolveThoiGianThanhToan(
+      props.form.so_tien_thanh_toan_lan_1,
+      props.form.thoi_gian_thanh_toan_lan_1,
+    ),
+    thoi_gian_thanh_toan_lan_2: resolveThoiGianThanhToan(
+      props.form.so_tien_thanh_toan_lan_2,
+      props.form.thoi_gian_thanh_toan_lan_2,
+    ),
+    thoi_gian_thanh_toan_lan_3: resolveThoiGianThanhToan(
+      props.form.so_tien_thanh_toan_lan_3,
+      props.form.thoi_gian_thanh_toan_lan_3,
+    ),
     qua_tang_kem: props.form.qua_tang_kem?.trim() || null,
     yeu_cau_dac_biet: props.form.yeu_cau_dac_biet?.trim() || null,
   }
+}
+
+/**
+ * Có số tiền → giữ thời gian cũ hoặc ghi nhận thời điểm hiện tại (Y-m-d H:i:s).
+ * Không có số tiền → xóa thời gian thanh toán.
+ */
+function resolveThoiGianThanhToan(amount, existing) {
+  if (!(Number(amount) > 0)) return null
+  if (existing) return existing
+  return formatNowPaymentDateTimeStorage()
+}
+
+/** Lưu DB datetime: Y-m-d H:i:s — hiển thị hh:mm:ss dd/mm/yyyy */
+function formatNowPaymentDateTimeStorage(date = new Date()) {
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
 }
 
 defineExpose({

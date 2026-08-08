@@ -13,9 +13,9 @@ return new class extends Migration
             $table->unsignedBigInteger('so_tien_thanh_toan_lan_1')->default(0)->after('tien_coc');
             $table->unsignedBigInteger('so_tien_thanh_toan_lan_2')->default(0)->after('so_tien_thanh_toan_lan_1');
             $table->unsignedBigInteger('so_tien_thanh_toan_lan_3')->default(0)->after('so_tien_thanh_toan_lan_2');
-            $table->date('thoi_gian_thanh_toan_lan_1')->nullable()->after('so_tien_thanh_toan_lan_3');
-            $table->date('thoi_gian_thanh_toan_lan_2')->nullable()->after('thoi_gian_thanh_toan_lan_1');
-            $table->date('thoi_gian_thanh_toan_lan_3')->nullable()->after('thoi_gian_thanh_toan_lan_2');
+            $table->dateTime('thoi_gian_thanh_toan_lan_1')->nullable()->after('so_tien_thanh_toan_lan_3');
+            $table->dateTime('thoi_gian_thanh_toan_lan_2')->nullable()->after('thoi_gian_thanh_toan_lan_1');
+            $table->dateTime('thoi_gian_thanh_toan_lan_3')->nullable()->after('thoi_gian_thanh_toan_lan_2');
         });
     }
 

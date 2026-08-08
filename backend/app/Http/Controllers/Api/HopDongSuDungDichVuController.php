@@ -664,14 +664,15 @@ class HopDongSuDungDichVuController extends BaseApiController
                 ], 422);
             }
 
-            $today = now()->toDateString();
+            $paidAt = now();
+            $paidAtLabel = $paidAt->format('H:i:s d/m/Y');
             $hinhThucLabel = $validated['hinh_thuc_thanh_toan'] === 'chuyen_khoan'
                 ? 'Chuyển khoản'
                 : 'Tiền mặt';
             $noteLine = sprintf(
                 '[TT lần %d · %s · %s] %s',
                 $slot,
-                $today,
+                $paidAtLabel,
                 $hinhThucLabel,
                 number_format($soTien, 0, ',', '.').' đ'
             );
@@ -683,7 +684,7 @@ class HopDongSuDungDichVuController extends BaseApiController
 
             $updateData = [
                 "so_tien_thanh_toan_lan_{$slot}" => $soTien,
-                "thoi_gian_thanh_toan_lan_{$slot}" => $today,
+                "thoi_gian_thanh_toan_lan_{$slot}" => $paidAt,
                 'ghi_chu_sale' => $existingNote !== ''
                     ? $existingNote."\n".$noteLine
                     : $noteLine,
