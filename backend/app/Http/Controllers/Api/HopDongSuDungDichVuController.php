@@ -7,6 +7,8 @@ use App\Models\HopDongDongSddvConcept;
 use App\Models\HopDongDongSddvDichVu;
 use App\Models\HopDongDongSddvTrangPhuc;
 use App\Models\HopDongSuDungDichVu;
+use App\Models\LoaiHopDong;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -87,6 +89,115 @@ class HopDongSuDungDichVuController extends BaseApiController
             return response()->json($this->loadDetail($hop_dong_su_dung_dich_vu));
 
         }, 'lấy chi tiết hợp đồng sử dụng dịch vụ');
+    }
+
+    /**
+     * Thống kê lịch chụp-make: số lượng HĐ theo ngày chụp + loại hợp đồng.
+     * Ngày lấy từ thong_tin_dieu_phoi.ngay_chup.gia_tri.
+     * Loại trừ trang_thai: moi_tao, nhap, da_huy.
+     * Mỗi ngày trong khoảng trả đủ tất cả loại HĐ đang hoạt động (so_luong = 0 nếu không có).
+     *
+     * Query: tu_ngay, den_ngay (bắt buộc để sinh đủ ngày × loại HĐ)
+     */
+    public function lichChupMake(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'tu_ngay' => ['required', 'date'],
+                'den_ngay' => ['required', 'date', 'after_or_equal:tu_ngay'],
+            ]);
+
+            $tuNgay = $validated['tu_ngay'];
+            $denNgay = $validated['den_ngay'];
+            $ngayChupExpr = "DATE(JSON_UNQUOTE(JSON_EXTRACT(hop_dong_su_dung_dich_vu.thong_tin_dieu_phoi, '$.ngay_chup.gia_tri')))";
+
+            $loaiHopDongs = LoaiHopDong::query()
+                ->where('trang_thai', 'hoat_dong')
+                ->orderBy('ten_hop_dong')
+                ->get(['id', 'ten_hop_dong', 'ma_hop_dong']);
+
+            $counts = HopDongSuDungDichVu::query()
+                ->whereNotIn('hop_dong_su_dung_dich_vu.trang_thai', ['moi_tao', 'nhap', 'da_huy'])
+                ->whereNotNull('hop_dong_su_dung_dich_vu.thong_tin_dieu_phoi->ngay_chup->gia_tri')
+                ->whereRaw("{$ngayChupExpr} IS NOT NULL")
+                ->whereRaw("{$ngayChupExpr} <> '0000-00-00'")
+                ->whereRaw("{$ngayChupExpr} >= ?", [$tuNgay])
+                ->whereRaw("{$ngayChupExpr} <= ?", [$denNgay])
+                ->selectRaw("
+                    {$ngayChupExpr} as ngay_chup,
+                    hop_dong_su_dung_dich_vu.loai_hop_dong_id,
+                    COUNT(*) as so_luong
+                ")
+                ->groupByRaw("{$ngayChupExpr}, hop_dong_su_dung_dich_vu.loai_hop_dong_id")
+                ->get();
+
+            $countMap = [];
+            foreach ($counts as $row) {
+                $dateKey = (string) $row->ngay_chup;
+                $loaiId = $row->loai_hop_dong_id !== null ? (int) $row->loai_hop_dong_id : 0;
+                $countMap[$dateKey][$loaiId] = (int) $row->so_luong;
+            }
+
+            $result = [];
+            $cursor = Carbon::parse($tuNgay)->startOfDay();
+            $end = Carbon::parse($denNgay)->startOfDay();
+
+            while ($cursor->lte($end)) {
+                $dateKey = $cursor->toDateString();
+                foreach ($loaiHopDongs as $loai) {
+                    $loaiId = (int) $loai->id;
+                    $result[] = [
+                        'ngay_chup' => $dateKey,
+                        'loai_hop_dong_id' => $loaiId,
+                        'ten_hop_dong' => $loai->ten_hop_dong,
+                        'ma_hop_dong' => $loai->ma_hop_dong,
+                        'so_luong' => $countMap[$dateKey][$loaiId] ?? 0,
+                    ];
+                }
+                $cursor->addDay();
+            }
+
+            return response()->json($result);
+
+        }, 'lấy thống kê lịch chụp make');
+    }
+
+    /**
+     * Danh sách hợp đồng lịch chụp-make theo ngày chụp (+ loại HĐ).
+     * Ngày lấy từ thong_tin_dieu_phoi.ngay_chup.gia_tri.
+     * Loại trừ trang_thai: moi_tao, nhap, da_huy.
+     *
+     * Query: ngay_chup (required), loai_hop_dong_id (optional), page, per_page
+     */
+    public function lichChupMakeChiTiet(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'ngay_chup' => ['required', 'date'],
+                'loai_hop_dong_id' => ['sometimes', 'nullable', 'integer', 'exists:danh_muc_loai_hop_dong,id'],
+                'page' => ['sometimes', 'integer', 'min:1'],
+                'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            ]);
+
+            $ngayChup = $validated['ngay_chup'];
+            $loaiHopDongId = $validated['loai_hop_dong_id'] ?? null;
+            $perPage = $validated['per_page'] ?? 20;
+            $ngayChupExpr = "DATE(JSON_UNQUOTE(JSON_EXTRACT(thong_tin_dieu_phoi, '$.ngay_chup.gia_tri')))";
+
+            $query = HopDongSuDungDichVu::query()
+                ->with([
+                    'loaiHopDong:id,ten_hop_dong,ma_hop_dong',
+                    'nguoiTao:id,name,phone',
+                ])
+                ->whereNotIn('trang_thai', ['moi_tao', 'nhap', 'da_huy'])
+                ->whereNotNull('thong_tin_dieu_phoi->ngay_chup->gia_tri')
+                ->whereRaw("{$ngayChupExpr} = ?", [$ngayChup])
+                ->when($loaiHopDongId, fn ($q) => $q->where('loai_hop_dong_id', $loaiHopDongId))
+                ->orderByDesc('id');
+
+            return response()->json($query->paginate($perPage));
+
+        }, 'lấy danh sách hợp đồng lịch chụp make');
     }
 
     /**

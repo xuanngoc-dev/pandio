@@ -18,6 +18,28 @@ export function fetchHopDongSuDungDichVu(params = {}) {
 }
 
 /**
+ * Thống kê lịch chụp-make: số HĐ theo ngày chụp + loại hợp đồng.
+ * Mỗi ngày trả đủ loại HĐ hoạt động (so_luong = 0 nếu không có).
+ * @param {{ tu_ngay: string, den_ngay: string }} params
+ */
+export function fetchLichChupMake(params = {}) {
+  return api.get('/hop-dong-su-dung-dich-vu/lich-chup-make', { params })
+}
+
+/**
+ * Danh sách HĐ lịch chụp-make theo ngày chụp (+ loại HĐ).
+ * @param {{
+ *   ngay_chup: string,
+ *   loai_hop_dong_id?: number,
+ *   page?: number,
+ *   per_page?: number,
+ * }} params
+ */
+export function fetchLichChupMakeChiTiet(params = {}) {
+  return api.get('/hop-dong-su-dung-dich-vu/lich-chup-make/chi-tiet', { params })
+}
+
+/**
  * Công việc điều phối của user đang đăng nhập
  * (user id nằm trong thong_tin_dieu_phoi staff fields).
  * @param {{

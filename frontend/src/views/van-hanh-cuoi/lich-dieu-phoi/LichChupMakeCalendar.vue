@@ -1,0 +1,766 @@
+<template>
+  <div class="lich-chup-make-calendar">
+    <CustomCard shadow="hover" class="calendar-card" v-loading="loading">
+      <template #header>
+        <div class="card-header">
+          <span class="card-title">Lịch chụp - make</span>
+          <div class="legend legend-meta">
+            <span class="legend-swatch is-ngay-nghi" />
+            <span class="legend-text">Ngày nghỉ</span>
+          </div>
+        </div>
+      </template>
+
+      <el-calendar :key="calendarRenderKey" v-model="selectedDate">
+        <template #header>
+          <div class="el-calendar__title">{{ calendarTitle }}</div>
+          <div class="el-calendar__button-group">
+            <el-button-group>
+              <el-button size="small" @click="shiftMonth(-1)">Tháng trước</el-button>
+              <el-button size="small" @click="goToday">Hôm nay</el-button>
+              <el-button size="small" @click="shiftMonth(1)">Tháng tới</el-button>
+            </el-button-group>
+          </div>
+        </template>
+        <template #date-cell="{ data }">
+          <div
+            v-if="data.type === 'current-month'"
+            class="day-cell"
+            :class="{
+              'is-ngay-nghi': isNgayNghi(data.day),
+              'is-lunar-month-start': isLunarMonthStart(data.day),
+            }"
+            :title="dayCellTitle(data.day)"
+          >
+            <div class="day-head">
+              <span class="day-solar">{{ data.day.split('-').pop() }}</span>
+              <span class="day-lunar">{{ formatLunarLabel(data.day) }}</span>
+            </div>
+            <span v-if="isNgayNghi(data.day)" class="day-nghi-label">
+              {{ ngayNghiLabel(data.day) }}
+            </span>
+            <div v-if="hopDongVisibleByDate(data.day).length" class="day-badges">
+              <CustomTooltip
+                v-for="item in hopDongVisibleByDate(data.day)"
+                :key="`${item.loai_hop_dong_id}-${loaiColorMap[item.loai_hop_dong_id]}`"
+                :content="badgeTooltip(item)"
+                placement="top"
+              >
+                <span
+                  class="day-badge"
+                  :style="{
+                    background: loaiColorMap[item.loai_hop_dong_id],
+                    borderColor: loaiColorMap[item.loai_hop_dong_id],
+                  }"
+                  @click.stop="openChiTiet(data.day, item)"
+                >
+                  {{ item.so_luong }}
+                </span>
+              </CustomTooltip>
+            </div>
+          </div>
+        </template>
+      </el-calendar>
+
+      <div v-if="loaiHopDongLegend.length" class="loai-config">
+        <div class="loai-config-head">
+          <span class="loai-config-title">Ghi chú loại hợp đồng</span>
+          <span class="loai-config-hint">Bấm màu để đổi · bật/tắt để hiện/ẩn trên lịch</span>
+        </div>
+        <div class="loai-config-list">
+          <div
+            v-for="item in loaiHopDongLegend"
+            :key="item.loai_hop_dong_id"
+            class="loai-config-item"
+            :class="{ 'is-hidden': !loaiVisibleMap[item.loai_hop_dong_id] }"
+          >
+            <el-switch
+              :model-value="loaiVisibleMap[item.loai_hop_dong_id]"
+              size="small"
+              inline-prompt
+              active-text="Hiện"
+              inactive-text="Ẩn"
+              @change="(visible) => setLoaiVisible(item.loai_hop_dong_id, visible)"
+            />
+            <el-color-picker
+              :model-value="loaiColorMap[item.loai_hop_dong_id]"
+              color-format="hex"
+              :predefine="PREDEFINE_COLORS"
+              @change="(color) => setLoaiColor(item.loai_hop_dong_id, color)"
+            />
+            <span class="loai-config-name" :title="item.ten_hop_dong">
+              {{ item.ten_hop_dong }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </CustomCard>
+
+    <LichChupMakeChiTietModal
+      v-model="chiTietVisible"
+      :ngay-chup="chiTietNgayChup"
+      :loai-hop-dong-id="chiTietLoaiId"
+      :ten-hop-dong="chiTietTenHopDong"
+    />
+  </div>
+</template>
+
+<script setup>
+import { computed, onMounted, ref, watch } from 'vue'
+import { fetchNgayNghi } from '@/api/ngayNghi'
+import { fetchLichChupMake } from '@/api/hopDongSuDungDichVu'
+import { formatLunarLabel, isLunarMonthStart } from '@/utils/lunar'
+import LichChupMakeChiTietModal from './LichChupMakeChiTietModal.vue'
+
+const PREFS_STORAGE_KEY = 'pandio.lichChupMake.loaiPrefs'
+
+/** Palette mặc định theo ma_hop_dong (fallback theo index) */
+const LOAI_COLOR_BY_MA = {
+  ANHOI: '#e53935',
+  CHANDUNG: '#1e88e5',
+  PREWED: '#fb8c00',
+  PSC: '#8e24aa',
+  GIADINH: '#43a047',
+  KYYEU: '#00acc1',
+  BEAUTY: '#ec407a',
+  BABYNB: '#5c6bc0',
+  COUPLE: '#f4511e',
+  MEBAU: '#7cb342',
+  SINHNHAT: '#3949ab',
+  SUKIEN: '#00897b',
+}
+
+const FALLBACK_COLORS = [
+  '#e53935',
+  '#1e88e5',
+  '#fb8c00',
+  '#43a047',
+  '#8e24aa',
+  '#00acc1',
+  '#ec407a',
+  '#5c6bc0',
+  '#f4511e',
+  '#7cb342',
+  '#3949ab',
+  '#00897b',
+]
+
+const PREDEFINE_COLORS = [
+  ...FALLBACK_COLORS,
+  '#c62828',
+  '#1565c0',
+  '#ef6c00',
+  '#2e7d32',
+  '#6a1b9a',
+  '#00838f',
+  '#ad1457',
+  '#283593',
+]
+
+/** Mặc định: tháng hiện tại */
+const selectedDate = ref(new Date())
+const loadingNgayNghi = ref(false)
+const loadingHopDong = ref(false)
+
+const loading = computed(() => loadingNgayNghi.value || loadingHopDong.value)
+
+/** Tiêu đề dạng: Tháng N năm M */
+const calendarTitle = computed(() => {
+  const d = selectedDate.value instanceof Date
+    ? selectedDate.value
+    : new Date(selectedDate.value)
+  return `Tháng ${d.getMonth() + 1} năm ${d.getFullYear()}`
+})
+
+function toSelectedDate() {
+  return selectedDate.value instanceof Date
+    ? selectedDate.value
+    : new Date(selectedDate.value)
+}
+
+function shiftMonth(delta) {
+  const d = toSelectedDate()
+  selectedDate.value = new Date(d.getFullYear(), d.getMonth() + delta, 1)
+}
+
+function goToday() {
+  selectedDate.value = new Date()
+}
+
+/** Map YYYY-MM-DD → cấu hình ngày nghỉ active */
+const ngayNghiByDate = ref({})
+
+/**
+ * Map YYYY-MM-DD → danh sách { loai_hop_dong_id, ten_hop_dong, ma_hop_dong, so_luong }
+ */
+const hopDongStatsByDate = ref({})
+
+/** Danh sách loại HĐ (màu mặc định theo mã) */
+const loaiHopDongLegend = ref([])
+
+/** Modal chi tiết theo ngày + loại HĐ */
+const chiTietVisible = ref(false)
+const chiTietNgayChup = ref('')
+const chiTietLoaiId = ref(null)
+const chiTietTenHopDong = ref('')
+
+/**
+ * Tuỳ chọn người dùng theo loai_hop_dong_id:
+ * { [id]: { color?: string, visible?: boolean } }
+ */
+const loaiPrefs = ref({})
+
+function loadLoaiPrefs() {
+  try {
+    const raw = localStorage.getItem(PREFS_STORAGE_KEY)
+    if (!raw) return
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object') return
+    const next = {}
+    for (const [id, value] of Object.entries(parsed)) {
+      if (!value || typeof value !== 'object') continue
+      next[id] = {
+        color: typeof value.color === 'string' ? value.color : undefined,
+        visible: typeof value.visible === 'boolean' ? value.visible : undefined,
+      }
+    }
+    loaiPrefs.value = next
+  } catch {
+    // ignore corrupt storage
+  }
+}
+
+function persistLoaiPrefs() {
+  localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify(loaiPrefs.value))
+}
+
+function prefKey(loaiId) {
+  return String(loaiId)
+}
+
+function patchLoaiPref(loaiId, patch) {
+  const key = prefKey(loaiId)
+  loaiPrefs.value = {
+    ...loaiPrefs.value,
+    [key]: {
+      ...loaiPrefs.value[key],
+      ...patch,
+    },
+  }
+  persistLoaiPrefs()
+}
+
+function isLoaiVisible(loaiId) {
+  return loaiPrefs.value[prefKey(loaiId)]?.visible !== false
+}
+
+function resolveLoaiColor(item) {
+  const pref = loaiPrefs.value[prefKey(item.loai_hop_dong_id)]
+  if (pref?.color) return pref.color
+  return item.defaultColor
+}
+
+/** Map id → màu đang dùng (prefs hoặc mặc định) */
+const loaiColorMap = computed(() => {
+  const map = {}
+  for (const item of loaiHopDongLegend.value) {
+    map[item.loai_hop_dong_id] = resolveLoaiColor(item)
+  }
+  return map
+})
+
+/** Map id → đang hiện trên lịch */
+const loaiVisibleMap = computed(() => {
+  const map = {}
+  for (const item of loaiHopDongLegend.value) {
+    map[item.loai_hop_dong_id] = isLoaiVisible(item.loai_hop_dong_id)
+  }
+  return map
+})
+
+/** Ép el-calendar render lại khi đổi màu / ẩn hiện */
+const calendarRenderKey = computed(() => {
+  const prefs = loaiPrefs.value
+  return Object.keys(prefs)
+    .sort()
+    .map((id) => `${id}:${prefs[id]?.color || ''}:${prefs[id]?.visible !== false ? 1 : 0}`)
+    .join('|')
+})
+
+function setLoaiColor(loaiId, color) {
+  if (!color) return
+  patchLoaiPref(loaiId, { color })
+}
+
+function setLoaiVisible(loaiId, visible) {
+  patchLoaiPref(loaiId, { visible: Boolean(visible) })
+}
+
+function toYmd(date) {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+/**
+ * Parse YYYY-MM-DD (hoặc datetime) thành Date local, tránh lệch timezone.
+ * @param {string} value
+ */
+function parseLocalDate(value) {
+  const raw = String(value || '').slice(0, 10)
+  const [y, m, d] = raw.split('-').map(Number)
+  if (!y || !m || !d) return null
+  return new Date(y, m - 1, d)
+}
+
+/**
+ * @param {Array<{ ngay_bat_dau: string, ngay_ket_thuc: string, ten_ngay_nghi: string }>} items
+ */
+function buildNgayNghiMap(items) {
+  const map = {}
+
+  for (const item of items) {
+    const start = parseLocalDate(item.ngay_bat_dau)
+    const end = parseLocalDate(item.ngay_ket_thuc)
+    if (!start || !end || start > end) continue
+
+    const cursor = new Date(start)
+    while (cursor <= end) {
+      const key = toYmd(cursor)
+      if (!map[key]) {
+        map[key] = item
+      }
+      cursor.setDate(cursor.getDate() + 1)
+    }
+  }
+
+  return map
+}
+
+/**
+ * @param {string|null|undefined} maHopDong
+ * @param {number} index
+ */
+function colorForLoai(maHopDong, index) {
+  const ma = String(maHopDong || '').toUpperCase()
+  if (ma && LOAI_COLOR_BY_MA[ma]) return LOAI_COLOR_BY_MA[ma]
+  return FALLBACK_COLORS[index % FALLBACK_COLORS.length]
+}
+
+/**
+ * @param {Array<{
+ *   ngay_chup: string,
+ *   loai_hop_dong_id: number|null,
+ *   ten_hop_dong: string|null,
+ *   ma_hop_dong: string|null,
+ *   so_luong: number,
+ * }>} rows
+ */
+function buildHopDongStats(rows) {
+  const legendMap = new Map()
+  const map = {}
+
+  for (const row of rows) {
+    const loaiId = row.loai_hop_dong_id
+    if (loaiId == null) continue
+    if (!legendMap.has(loaiId)) {
+      legendMap.set(loaiId, {
+        loai_hop_dong_id: loaiId,
+        ten_hop_dong: row.ten_hop_dong || 'Không loại',
+        ma_hop_dong: row.ma_hop_dong || '',
+      })
+    }
+  }
+
+  const legend = [...legendMap.values()]
+    .sort((a, b) => a.ten_hop_dong.localeCompare(b.ten_hop_dong, 'vi'))
+    .map((item, index) => ({
+      ...item,
+      defaultColor: colorForLoai(item.ma_hop_dong, index),
+    }))
+
+  for (const row of rows) {
+    const key = dayKey(row.ngay_chup)
+    if (!key || row.loai_hop_dong_id == null) continue
+    if (!map[key]) map[key] = []
+    map[key].push({
+      loai_hop_dong_id: row.loai_hop_dong_id,
+      ten_hop_dong: row.ten_hop_dong,
+      ma_hop_dong: row.ma_hop_dong,
+      so_luong: Number(row.so_luong) || 0,
+    })
+  }
+
+  return { map, legend }
+}
+
+function monthRange(date) {
+  const d = date instanceof Date ? date : new Date(date)
+  const first = new Date(d.getFullYear(), d.getMonth(), 1)
+  const last = new Date(d.getFullYear(), d.getMonth() + 1, 0)
+  return { tu_ngay: toYmd(first), den_ngay: toYmd(last) }
+}
+
+async function loadActiveNgayNghi() {
+  loadingNgayNghi.value = true
+  try {
+    const all = []
+    let page = 1
+    let lastPage = 1
+
+    do {
+      const { data } = await fetchNgayNghi({
+        page,
+        per_page: 100,
+        trang_thai: 'active',
+      })
+      all.push(...(data.data || []))
+      lastPage = data.last_page || 1
+      page += 1
+    } while (page <= lastPage)
+
+    ngayNghiByDate.value = buildNgayNghiMap(all)
+  } catch {
+    ngayNghiByDate.value = {}
+  } finally {
+    loadingNgayNghi.value = false
+  }
+}
+
+async function loadLichChupMake() {
+  loadingHopDong.value = true
+  try {
+    const { tu_ngay, den_ngay } = monthRange(toSelectedDate())
+    const { data } = await fetchLichChupMake({ tu_ngay, den_ngay })
+    const { map, legend } = buildHopDongStats(Array.isArray(data) ? data : [])
+    hopDongStatsByDate.value = map
+    loaiHopDongLegend.value = legend
+  } catch {
+    hopDongStatsByDate.value = {}
+    loaiHopDongLegend.value = []
+  } finally {
+    loadingHopDong.value = false
+  }
+}
+
+function dayKey(day) {
+  return String(day || '').slice(0, 10)
+}
+
+function hopDongByDate(day) {
+  return hopDongStatsByDate.value[dayKey(day)] || []
+}
+
+/** Badge: có số lượng > 0 và loại đang bật hiển thị */
+function hopDongVisibleByDate(day) {
+  const visibleMap = loaiVisibleMap.value
+  return hopDongByDate(day).filter(
+    (item) => item.so_luong > 0 && visibleMap[item.loai_hop_dong_id] !== false,
+  )
+}
+
+function badgeTooltip(item) {
+  const ten = item.ten_hop_dong || 'Loại hợp đồng'
+  return `${ten}: ${item.so_luong} hợp đồng`
+}
+
+function openChiTiet(day, item) {
+  chiTietNgayChup.value = dayKey(day)
+  chiTietLoaiId.value = item.loai_hop_dong_id
+  chiTietTenHopDong.value = item.ten_hop_dong || ''
+  chiTietVisible.value = true
+}
+
+function isNgayNghi(day) {
+  return Boolean(ngayNghiByDate.value[dayKey(day)])
+}
+
+function ngayNghiLabel(day) {
+  return ngayNghiByDate.value[dayKey(day)]?.ten_ngay_nghi || 'Nghỉ'
+}
+
+function dayCellTitle(day) {
+  const parts = []
+  const nghi = ngayNghiByDate.value[dayKey(day)]
+  if (nghi) parts.push(`Ngày nghỉ: ${nghi.ten_ngay_nghi}`)
+
+  const stats = hopDongVisibleByDate(day)
+  if (stats.length) {
+    parts.push(
+      stats
+        .map((item) => `${item.ten_hop_dong || 'Không loại'}: ${item.so_luong}`)
+        .join(', '),
+    )
+  }
+
+  return parts.join(' | ')
+}
+
+watch(
+  () => {
+    const d = toSelectedDate()
+    return `${d.getFullYear()}-${d.getMonth()}`
+  },
+  () => {
+    loadLichChupMake()
+  },
+)
+
+onMounted(() => {
+  loadLoaiPrefs()
+  loadActiveNgayNghi()
+  loadLichChupMake()
+})
+</script>
+
+<style scoped lang="scss">
+.lich-chup-make-calendar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+}
+
+.legend-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  flex-shrink: 0;
+
+  &.is-ngay-nghi {
+    background: color-mix(in srgb, var(--el-color-danger) 16%, transparent);
+    border-color: color-mix(in srgb, var(--el-color-danger) 35%, transparent);
+  }
+}
+
+.calendar-card {
+  :deep(.el-calendar-table .el-calendar-day) {
+    height: 104px;
+    padding: 4px;
+  }
+
+  /* Ẩn hoàn toàn ngày không thuộc tháng đang xem */
+  :deep(.el-calendar-table td.prev),
+  :deep(.el-calendar-table td.next) {
+    pointer-events: none;
+
+    .el-calendar-day {
+      visibility: hidden;
+      cursor: default;
+    }
+  }
+}
+
+.day-cell {
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  line-height: 1.2;
+  overflow: hidden;
+
+  &.is-ngay-nghi {
+    background: color-mix(in srgb, var(--el-color-danger) 14%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--el-color-danger) 28%, transparent);
+  }
+
+  &.is-lunar-month-start {
+    .day-lunar {
+      color: #a8071a;
+      font-weight: 700;
+    }
+  }
+}
+
+.day-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.day-solar {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--el-text-color-primary);
+}
+
+.day-lunar {
+  font-size: 11px;
+  color: var(--el-text-color-secondary);
+}
+
+.day-nghi-label {
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--el-color-danger);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.day-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.day-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  box-sizing: border-box;
+  cursor: pointer;
+  user-select: none;
+
+  &:hover {
+    filter: brightness(1.08);
+  }
+}
+
+.day-cell.is-ngay-nghi .day-solar {
+  color: var(--el-color-danger);
+}
+
+.loai-config {
+  margin-top: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+
+.loai-config-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.loai-config-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.loai-config-hint {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+
+.loai-config-list {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px 12px;
+
+  @media (max-width: 1199px) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  @media (max-width: 991px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  @media (max-width: 767px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.loai-config-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  background: var(--el-fill-color-blank);
+
+  &.is-hidden {
+    opacity: 0.55;
+  }
+
+  :deep(.el-switch) {
+    flex-shrink: 0;
+    height: 20px;
+    line-height: 20px;
+  }
+
+  :deep(.el-color-picker) {
+    flex-shrink: 0;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    line-height: 0;
+    vertical-align: middle;
+  }
+
+  /* Ô màu: thấp hơn, dài hơn — căn giữa theo hàng */
+  :deep(.el-color-picker__trigger) {
+    width: 42px;
+    height: 20px;
+    padding: 2px;
+    border-radius: 4px;
+    margin: 0;
+    vertical-align: middle;
+    box-sizing: border-box;
+  }
+
+  :deep(.el-color-picker__color) {
+    border-radius: 2px;
+  }
+
+  :deep(.el-color-picker__color-inner) {
+    border-radius: 2px;
+  }
+
+  :deep(.el-color-picker__icon),
+  :deep(.el-color-picker__empty) {
+    display: none;
+  }
+}
+
+.loai-config-name {
+  min-width: 0;
+  flex: 1;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--el-text-color-regular);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+</style>
