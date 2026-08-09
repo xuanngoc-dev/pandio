@@ -107,9 +107,11 @@ class HopDongSuDungDichVuController extends BaseApiController
                 'den_ngay' => ['required', 'date', 'after_or_equal:tu_ngay'],
             ]);
 
-            $tuNgay = $validated['tu_ngay'];
-            $denNgay = $validated['den_ngay'];
-            $ngayChupExpr = "DATE(JSON_UNQUOTE(JSON_EXTRACT(hop_dong_su_dung_dich_vu.thong_tin_dieu_phoi, '$.ngay_chup.gia_tri')))";
+            $tuNgay = Carbon::parse($validated['tu_ngay'])->toDateString();
+            $denNgay = Carbon::parse($validated['den_ngay'])->toDateString();
+
+            // Dùng LEFT(...,10) thay DATE(...) — tránh 500 trên MySQL strict khi gia_tri rỗng/invalid.
+            $ngayChupExpr = $this->ngayChupJsonExpr('hop_dong_su_dung_dich_vu.thong_tin_dieu_phoi');
 
             $loaiHopDongs = LoaiHopDong::query()
                 ->where('trang_thai', 'hoat_dong')
@@ -118,9 +120,8 @@ class HopDongSuDungDichVuController extends BaseApiController
 
             $counts = HopDongSuDungDichVu::query()
                 ->whereNotIn('hop_dong_su_dung_dich_vu.trang_thai', ['moi_tao', 'nhap', 'da_huy'])
-                ->whereNotNull('hop_dong_su_dung_dich_vu.thong_tin_dieu_phoi->ngay_chup->gia_tri')
-                ->whereRaw("{$ngayChupExpr} IS NOT NULL")
-                ->whereRaw("{$ngayChupExpr} <> '0000-00-00'")
+                ->whereRaw("JSON_EXTRACT(hop_dong_su_dung_dich_vu.thong_tin_dieu_phoi, '$.ngay_chup.gia_tri') IS NOT NULL")
+                ->whereRaw("{$ngayChupExpr} REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'")
                 ->whereRaw("{$ngayChupExpr} >= ?", [$tuNgay])
                 ->whereRaw("{$ngayChupExpr} <= ?", [$denNgay])
                 ->selectRaw("
@@ -179,10 +180,10 @@ class HopDongSuDungDichVuController extends BaseApiController
                 'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
             ]);
 
-            $ngayChup = $validated['ngay_chup'];
+            $ngayChup = Carbon::parse($validated['ngay_chup'])->toDateString();
             $loaiHopDongId = $validated['loai_hop_dong_id'] ?? null;
             $perPage = $validated['per_page'] ?? 20;
-            $ngayChupExpr = "DATE(JSON_UNQUOTE(JSON_EXTRACT(thong_tin_dieu_phoi, '$.ngay_chup.gia_tri')))";
+            $ngayChupExpr = $this->ngayChupJsonExpr('thong_tin_dieu_phoi');
 
             $query = HopDongSuDungDichVu::query()
                 ->with([
@@ -190,7 +191,7 @@ class HopDongSuDungDichVuController extends BaseApiController
                     'nguoiTao:id,name,phone',
                 ])
                 ->whereNotIn('trang_thai', ['moi_tao', 'nhap', 'da_huy'])
-                ->whereNotNull('thong_tin_dieu_phoi->ngay_chup->gia_tri')
+                ->whereRaw("JSON_EXTRACT(thong_tin_dieu_phoi, '$.ngay_chup.gia_tri') IS NOT NULL")
                 ->whereRaw("{$ngayChupExpr} = ?", [$ngayChup])
                 ->when($loaiHopDongId, fn ($q) => $q->where('loai_hop_dong_id', $loaiHopDongId))
                 ->orderByDesc('id');
@@ -198,6 +199,15 @@ class HopDongSuDungDichVuController extends BaseApiController
             return response()->json($query->paginate($perPage));
 
         }, 'lấy danh sách hợp đồng lịch chụp make');
+    }
+
+    /**
+     * Biểu thức SQL lấy ngày chụp YYYY-MM-DD từ JSON điều phối.
+     * Tránh DATE() vì giá trị rỗng/invalid dễ gây 500 với sql_mode NO_ZERO_DATE.
+     */
+    private function ngayChupJsonExpr(string $column): string
+    {
+        return "LEFT(JSON_UNQUOTE(JSON_EXTRACT({$column}, '$.ngay_chup.gia_tri')), 10)";
     }
 
     /**

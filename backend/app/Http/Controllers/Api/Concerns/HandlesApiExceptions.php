@@ -68,14 +68,20 @@ trait HandlesApiExceptions
         // report() → laravel.log; channel api → api-YYYY-MM-DD.log
         report($e);
 
-        $context = ApiExceptionHandler::exceptionContext($e, request(), $status);
-        $context['action'] = $action;
-        $context['controller'] = static::class;
+        try {
+            $context = ApiExceptionHandler::exceptionContext($e, request(), $status);
+            $context['action'] = $action;
+            $context['controller'] = static::class;
 
-        if ($status >= 500) {
-            Log::channel('api')->error('API handleApi Exception', $context);
-        } else {
-            Log::channel('api')->warning('API handleApi Exception', $context);
+            $level = $status >= 500 ? 'error' : 'warning';
+
+            if (array_key_exists('api', config('logging.channels', []))) {
+                Log::channel('api')->{$level}('API handleApi Exception', $context);
+            } else {
+                Log::{$level}('[api-fallback] API handleApi Exception', $context);
+            }
+        } catch (Throwable) {
+            // Không để logging làm hỏng response API
         }
     }
 

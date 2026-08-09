@@ -12,7 +12,7 @@ use Throwable;
 
 /**
  * Ghi log request + response cho mọi API (/api/*) để debug.
- * Exception cũng được bắt → vẫn trả JSON + ghi rõ file/line vào api.log.
+ * Logging luôn fail-safe: lỗi ghi log KHÔNG được làm API thành 500.
  * Xem: storage/logs/api-YYYY-MM-DD.log
  */
 class LogApiRequestResponse
@@ -41,7 +41,7 @@ class LogApiRequestResponse
 
         $request->attributes->set('api_log_request_id', $requestId);
 
-        Log::channel('api')->info('API Request', [
+        $this->safeLog('info', 'API Request', [
             'request_id' => $requestId,
             'method' => $request->method(),
             'url' => $request->fullUrl(),
@@ -58,10 +58,21 @@ class LogApiRequestResponse
             /** @var Response $response */
             $response = $next($request);
         } catch (Throwable $e) {
-            // Bắt exception để vẫn log response + biết lỗi ở đâu; trả JSON thống nhất
+            // Bắt exception để vẫn trả JSON + biết lỗi ở đâu
             report($e);
 
-            $handled = ApiExceptionHandler::render($e, $request);
+            try {
+                $handled = ApiExceptionHandler::render($e, $request);
+            } catch (Throwable $renderError) {
+                report($renderError);
+                $handled = response()->json([
+                    'message' => config('app.debug')
+                        ? $e->getMessage()
+                        : 'Lỗi máy chủ. Vui lòng thử lại sau.',
+                    'request_id' => $requestId,
+                ], 500);
+            }
+
             if ($handled === null) {
                 throw $e;
             }
@@ -73,7 +84,7 @@ class LogApiRequestResponse
         $status = $response->getStatusCode();
         $level = $status >= 500 ? 'error' : ($status >= 400 ? 'warning' : 'info');
 
-        Log::channel('api')->{$level}('API Response', [
+        $this->safeLog($level, 'API Response', [
             'request_id' => $requestId,
             'method' => $request->method(),
             'path' => '/'.$request->path(),
@@ -87,23 +98,50 @@ class LogApiRequestResponse
     }
 
     /**
+     * Ghi log an toàn — không bao giờ ném exception ra ngoài.
+     *
+     * @param  array<string, mixed>  $context
+     */
+    private function safeLog(string $level, string $message, array $context = []): void
+    {
+        try {
+            if (array_key_exists('api', config('logging.channels', []))) {
+                Log::channel('api')->{$level}($message, $context);
+            } else {
+                Log::{$level}('[api-fallback] '.$message, $context);
+            }
+        } catch (Throwable $e) {
+            // Cuối cùng cố ghi vào error_log PHP để vẫn debug được trên prod
+            try {
+                Log::{$level}('[api-fallback] '.$message, $context);
+            } catch (Throwable) {
+                error_log('[API LOG FAILED] '.$message.' | '.$e->getMessage());
+            }
+        }
+    }
+
+    /**
      * @return array<string, mixed>|string|null
      */
     private function requestBody(Request $request): array|string|null
     {
-        if ($request->isJson()) {
-            return $request->json()->all();
+        try {
+            if ($request->isJson()) {
+                return $request->json()->all();
+            }
+
+            $input = $request->except(['file', 'files', 'hinh_anh', 'logo', 'anh']);
+
+            if ($input !== []) {
+                return $input;
+            }
+
+            $raw = $request->getContent();
+
+            return $raw !== '' ? $raw : null;
+        } catch (Throwable) {
+            return '[unreadable body]';
         }
-
-        $input = $request->except(['file', 'files', 'hinh_anh', 'logo', 'anh']);
-
-        if ($input !== []) {
-            return $input;
-        }
-
-        $raw = $request->getContent();
-
-        return $raw !== '' ? $raw : null;
     }
 
     /**
@@ -165,34 +203,38 @@ class LogApiRequestResponse
 
     private function responseBody(Response $response): mixed
     {
-        $contentType = (string) $response->headers->get('Content-Type', '');
+        try {
+            $contentType = (string) $response->headers->get('Content-Type', '');
 
-        // Bỏ qua binary / file download
-        if ($contentType !== '' && ! str_contains($contentType, 'json') && ! str_contains($contentType, 'text/')) {
-            return '[non-text content: '.$contentType.']';
-        }
-
-        $content = $response->getContent();
-        if ($content === false || $content === '') {
-            return null;
-        }
-
-        $decoded = json_decode($content, true);
-        if (json_last_error() === JSON_ERROR_NONE) {
-            $redacted = $this->redact($decoded);
-            $encoded = json_encode($redacted, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-
-            if ($encoded !== false && strlen($encoded) > self::MAX_RESPONSE_CHARS) {
-                return substr($encoded, 0, self::MAX_RESPONSE_CHARS).'...[truncated]';
+            // Bỏ qua binary / file download
+            if ($contentType !== '' && ! str_contains($contentType, 'json') && ! str_contains($contentType, 'text/')) {
+                return '[non-text content: '.$contentType.']';
             }
 
-            return $redacted;
-        }
+            $content = $response->getContent();
+            if ($content === false || $content === '') {
+                return null;
+            }
 
-        if (strlen($content) > self::MAX_RESPONSE_CHARS) {
-            return substr($content, 0, self::MAX_RESPONSE_CHARS).'...[truncated]';
-        }
+            $decoded = json_decode($content, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $redacted = $this->redact($decoded);
+                $encoded = json_encode($redacted, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
-        return $content;
+                if ($encoded !== false && strlen($encoded) > self::MAX_RESPONSE_CHARS) {
+                    return substr($encoded, 0, self::MAX_RESPONSE_CHARS).'...[truncated]';
+                }
+
+                return $redacted;
+            }
+
+            if (strlen($content) > self::MAX_RESPONSE_CHARS) {
+                return substr($content, 0, self::MAX_RESPONSE_CHARS).'...[truncated]';
+            }
+
+            return $content;
+        } catch (Throwable) {
+            return '[unreadable response]';
+        }
     }
 }

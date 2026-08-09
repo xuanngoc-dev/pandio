@@ -85,17 +85,39 @@ class ApiExceptionHandler
 
     /**
      * Ghi chi tiết exception vào channel api (file, line, stack) để biết lỗi ở đâu.
+     * Fail-safe: lỗi ghi log không được làm vỡ response.
      */
     public static function logException(Throwable $e, Request $request, ?int $status = null): void
     {
-        $status ??= self::guessStatus($e);
-        $context = self::exceptionContext($e, $request, $status);
+        try {
+            $status ??= self::guessStatus($e);
+            $context = self::exceptionContext($e, $request, $status);
 
-        // 5xx / lỗi không mong đợi → error; còn lại → warning (vẫn thấy trong api.log)
-        if ($status >= 500) {
-            Log::channel('api')->error('API Exception', $context);
-        } elseif ($status >= 400 && ! $e instanceof ValidationException) {
-            Log::channel('api')->warning('API Exception', $context);
+            $level = $status >= 500 ? 'error' : 'warning';
+
+            // Validation 422 bỏ qua để tránh spam; còn lại ghi để debug
+            if ($e instanceof ValidationException) {
+                return;
+            }
+
+            if ($status < 400) {
+                return;
+            }
+
+            if (array_key_exists('api', config('logging.channels', []))) {
+                Log::channel('api')->{$level}('API Exception', $context);
+            } else {
+                Log::{$level}('[api-fallback] API Exception', $context);
+            }
+        } catch (Throwable $logError) {
+            try {
+                Log::error('[api-fallback] API Exception log failed', [
+                    'original' => $e->getMessage(),
+                    'log_error' => $logError->getMessage(),
+                ]);
+            } catch (Throwable) {
+                error_log('[API EXCEPTION LOG FAILED] '.$e->getMessage());
+            }
         }
     }
 
