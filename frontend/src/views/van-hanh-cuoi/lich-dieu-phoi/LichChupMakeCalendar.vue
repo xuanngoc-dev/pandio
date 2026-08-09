@@ -130,6 +130,7 @@
       :ngay-chup="chiTietNgayChup"
       :loai-hop-dong-id="chiTietLoaiId"
       :ten-hop-dong="chiTietTenHopDong"
+      @saved="loadLichChupMake"
     />
   </div>
 </template>

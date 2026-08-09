@@ -2,7 +2,7 @@
   <CustomDialog
     v-model="visible"
     :title="dialogTitle"
-    :width="960"
+    :width="1060"
     class="lich-chup-make-chi-tiet-modal"
     @closed="onClosed"
   >
@@ -20,11 +20,11 @@
         </template>
       </CustomTableColumn>
       <CustomTableColumn label="Mã HĐ" prop="ma_hop_dong" min-width="140" />
-      <CustomTableColumn label="Loại hợp đồng" min-width="150">
+      <!-- <CustomTableColumn label="Loại hợp đồng" min-width="150">
         <template #default="{ row }">
           {{ row.loai_hop_dong?.ten_hop_dong || meta.tenHopDong || '—' }}
         </template>
-      </CustomTableColumn>
+      </CustomTableColumn> -->
       <CustomTableColumn label="Khách hàng" min-width="180">
         <template #default="{ row }">
           <div>{{ formatKhachHang(row) }}</div>
@@ -43,9 +43,21 @@
           </CustomTag>
         </template>
       </CustomTableColumn>
-      <CustomTableColumn label="Tổng tiền" min-width="120" align="right">
+      <!-- <CustomTableColumn label="Tổng tiền" min-width="120" align="right">
         <template #default="{ row }">
           {{ formatMoney(row.tong_tien) }}
+        </template>
+      </CustomTableColumn> -->
+      <CustomTableColumn label="Thao tác" width="100" align="center" fixed="right">
+        <template #default="{ row }">
+          <CustomTooltip
+            v-if="row.trang_thai === 'dang_thuc_hien'"
+            content="Điều phối"
+            placement="top"
+          >
+            <CustomButton type="warning" link :icon="Position" @click="openDieuPhoi(row)" />
+          </CustomTooltip>
+          <span v-else>—</span>
         </template>
       </CustomTableColumn>
     </CustomTable>
@@ -61,11 +73,20 @@
       />
     </div>
   </CustomDialog>
+
+  <HopDongSddvDieuPhoiModal
+    v-model="dieuPhoiModalVisible"
+    :hop-dong-id="dieuPhoiHopDongId"
+    @saved="onDieuPhoiSaved"
+  />
 </template>
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { ElMessage } from 'element-plus'
+import { Position } from '@element-plus/icons-vue'
 import { fetchLichChupMakeChiTiet } from '@/api/hopDongSuDungDichVu'
+import HopDongSddvDieuPhoiModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvDieuPhoiModal.vue'
 
 const visible = defineModel({ type: Boolean, default: false })
 
@@ -75,11 +96,15 @@ const props = defineProps({
   tenHopDong: { type: String, default: '' },
 })
 
+const emit = defineEmits(['saved'])
+
 const loading = ref(false)
 const items = ref([])
 const page = ref(1)
 const perPage = 20
 const total = ref(0)
+const dieuPhoiModalVisible = ref(false)
+const dieuPhoiHopDongId = ref(null)
 
 const meta = computed(() => ({
   ngayChup: props.ngayChup,
@@ -135,6 +160,20 @@ function formatDateVi(value) {
 
 function formatKhachHang(row) {
   return row?.ten_khach_hang || '—'
+}
+
+function openDieuPhoi(row) {
+  if (!row?.loai_hop_dong_id) {
+    ElMessage.warning('Hợp đồng chưa chọn loại hợp đồng.')
+    return
+  }
+  dieuPhoiHopDongId.value = row.id
+  dieuPhoiModalVisible.value = true
+}
+
+function onDieuPhoiSaved() {
+  loadItems()
+  emit('saved')
 }
 
 async function loadItems() {
