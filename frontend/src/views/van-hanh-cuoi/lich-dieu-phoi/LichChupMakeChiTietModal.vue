@@ -115,7 +115,7 @@ const meta = computed(() => ({
 const dialogTitle = computed(() => {
   const ngay = formatDateVi(props.ngayChup)
   const loai = props.tenHopDong || 'Loại hợp đồng'
-  return `Hợp đồng ${loai} ngày ${ngay}`
+  return `Lịch chụp ${loai} ngày ${ngay}`
 })
 
 const TRANG_THAI_LABEL = {

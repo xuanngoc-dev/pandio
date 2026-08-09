@@ -50,6 +50,19 @@ export function isLunarMonthStart(date) {
 }
 
 /**
+ * Nhãn tooltip ngày âm lịch đầy đủ (ngày / tháng / năm).
+ * @param {Date|string} date
+ * @returns {string}
+ */
+export function formatLunarTooltip(date) {
+  const lunar = getLunarParts(date)
+  if (!lunar) return ''
+
+  const monthLabel = lunar.leap ? `${lunar.month} nhuận` : String(lunar.month)
+  return `Âm lịch: ${lunar.day}/${monthLabel}/${lunar.year}`
+}
+
+/**
  * @param {Date|string} date
  * @returns {{ day: number, month: number, year: number, leap?: boolean } | null}
  */

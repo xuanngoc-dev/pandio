@@ -37,8 +37,49 @@
             :title="dayCellTitle(data.day)"
           >
             <div class="day-head">
-              <span class="day-solar">{{ data.day.split('-').pop() }}</span>
-              <span class="day-lunar">{{ formatLunarLabel(data.day) }}</span>
+              <span class="day-solar" :class="{ 'is-today': isToday(data.day) }">
+                {{ data.day.split('-').pop() }}
+              </span>
+              <CustomTooltip
+                v-if="formatLunarTooltip(data.day)"
+                :content="formatLunarTooltip(data.day)"
+                placement="top"
+              >
+                <span class="day-lunar" @click.stop>
+                  {{ formatLunarLabel(data.day) }}
+                </span>
+              </CustomTooltip>
+              <span v-else class="day-lunar">{{ formatLunarLabel(data.day) }}</span>
+              <CustomTooltip
+                v-if="thoiTietIconUrl(data.day)"
+                placement="top"
+              >
+                <template #content>
+                  <div class="day-weather-tooltip">
+                    <div class="day-weather-tooltip__desc">{{ thoiTietMoTa(data.day) }}</div>
+                    <div v-if="thoiTietByDate(data.day)?.dia_diem">
+                      Địa điểm: {{ thoiTietByDate(data.day).dia_diem }}
+                    </div>
+                    <div v-if="thoiTietNhietDoLabel(data.day)">
+                      Nhiệt độ: {{ thoiTietNhietDoLabel(data.day) }}
+                    </div>
+                    <div v-if="thoiTietByDate(data.day)?.ty_le_mua != null">
+                      Tỷ lệ mưa: {{ thoiTietByDate(data.day).ty_le_mua }}%
+                    </div>
+                    <div>{{ thoiTietGioLabel(data.day) }}</div>
+                  </div>
+                </template>
+                <span class="day-weather" style="cursor: pointer;" @click.stop>
+                  <img
+                    class="day-weather-icon"
+                    :src="thoiTietIconUrl(data.day)"
+                    :alt="thoiTietByDate(data.day)?.mo_ta || 'Thời tiết'"
+                  />
+                  <span v-if="thoiTietNhietDoLabel(data.day)" class="day-weather-temp">
+                    {{ thoiTietNhietDoLabel(data.day) }}
+                  </span>
+                </span>
+              </CustomTooltip>
             </div>
             <span v-if="isNgayNghi(data.day)" class="day-nghi-label">
               {{ ngayNghiLabel(data.day) }}
@@ -140,7 +181,8 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { Refresh } from '@element-plus/icons-vue'
 import { fetchNgayNghi } from '@/api/ngayNghi'
 import { fetchLichChupMake } from '@/api/hopDongSuDungDichVu'
-import { formatLunarLabel, isLunarMonthStart } from '@/utils/lunar'
+import { fetchTienIchThoiTiet, weatherIconUrl } from '@/api/thoiTiet'
+import { formatLunarLabel, formatLunarTooltip, isLunarMonthStart } from '@/utils/lunar'
 import LichChupMakeChiTietModal from './LichChupMakeChiTietModal.vue'
 
 const PREFS_STORAGE_KEY = 'pandio.lichChupMake.loaiPrefs'
@@ -193,8 +235,13 @@ const PREDEFINE_COLORS = [
 const selectedDate = ref(new Date())
 const loadingNgayNghi = ref(false)
 const loadingHopDong = ref(false)
+const loadingThoiTiet = ref(false)
+/** @type {import('vue').Ref<Record<string, object>>} */
+const thoiTietMap = ref({})
 
-const loading = computed(() => loadingNgayNghi.value || loadingHopDong.value)
+const loading = computed(
+  () => loadingNgayNghi.value || loadingHopDong.value || loadingThoiTiet.value,
+)
 
 /** Tiêu đề dạng: Tháng N năm M */
 const calendarTitle = computed(() => {
@@ -514,6 +561,72 @@ async function loadLichChupMake() {
   }
 }
 
+/**
+ * @param {Array<object>} rows
+ * @returns {Record<string, object>}
+ */
+function buildThoiTietMap(rows) {
+  const map = {}
+  for (const row of rows || []) {
+    const key = dayKey(row.ngay)
+    if (!key) continue
+    map[key] = row
+  }
+  return map
+}
+
+async function loadThoiTiet() {
+  loadingThoiTiet.value = true
+  try {
+    const { tu_ngay, den_ngay } = monthRange(toSelectedDate())
+    const { data } = await fetchTienIchThoiTiet({
+      tu_ngay,
+      den_ngay,
+      per_page: 100,
+    })
+    thoiTietMap.value = buildThoiTietMap(data?.data || [])
+  } catch {
+    thoiTietMap.value = {}
+  } finally {
+    loadingThoiTiet.value = false
+  }
+}
+
+function thoiTietByDate(day) {
+  return thoiTietMap.value[dayKey(day)] || null
+}
+
+function thoiTietIconUrl(day) {
+  const item = thoiTietByDate(day)
+  return weatherIconUrl(item?.icon_code) || ''
+}
+
+function thoiTietMoTa(day) {
+  const item = thoiTietByDate(day)
+  if (!item) return ''
+  const moTa = item.mo_ta || item.icon || 'Thời tiết'
+  return moTa.charAt(0).toUpperCase() + moTa.slice(1)
+}
+
+function thoiTietGioLabel(day) {
+  const item = thoiTietByDate(day)
+  if (!item || item.toc_do_gio == null || item.toc_do_gio === '') {
+    return 'Tốc độ gió: —'
+  }
+  return `Tốc độ gió: ${Number(item.toc_do_gio).toFixed(1)} m/s`
+}
+
+function thoiTietNhietDoLabel(day) {
+  const item = thoiTietByDate(day)
+  if (!item) return ''
+  const min = item.nhiet_do_min
+  const max = item.nhiet_do_max
+  if (min == null && max == null) return ''
+  if (min != null && max != null) return `${min}-${max}°C`
+  if (max != null) return `${max}°C`
+  return `${min}°C`
+}
+
 function dayKey(day) {
   return String(day || '').slice(0, 10)
 }
@@ -552,6 +665,14 @@ function isNgayNghi(day) {
   return Boolean(ngayNghiByDate.value[dayKey(day)])
 }
 
+function isToday(day) {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const d = String(now.getDate()).padStart(2, '0')
+  return dayKey(day) === `${y}-${m}-${d}`
+}
+
 function ngayNghiLabel(day) {
   return ngayNghiByDate.value[dayKey(day)]?.ten_ngay_nghi || 'Nghỉ'
 }
@@ -580,6 +701,7 @@ watch(
   },
   () => {
     loadLichChupMake()
+    loadThoiTiet()
   },
 )
 
@@ -592,6 +714,7 @@ onMounted(() => {
   loadShowEmptyPref()
   loadActiveNgayNghi()
   loadLichChupMake()
+  loadThoiTiet()
 })
 </script>
 
@@ -634,12 +757,12 @@ onMounted(() => {
 
 .calendar-card {
   :deep(.el-calendar-table .el-calendar-day) {
-    height: 100px;
+    height: 105px;
     padding: 2px;
   }
 
   :deep(.el-calendar.is-show-empty .el-calendar-table .el-calendar-day) {
-    height: 100px;
+    height: 105px;
   }
 
   /* Ẩn hoàn toàn ngày không thuộc tháng đang xem */
@@ -680,20 +803,69 @@ onMounted(() => {
 
 .day-head {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
+  align-items: center;
+  gap: 4px;
   flex-shrink: 0;
+  min-height: 28px;
 }
 
 .day-solar {
   font-size: 14px;
   font-weight: 500;
   color: var(--el-text-color-primary);
+
+  &.is-today {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--el-color-primary);
+    line-height: 1;
+  }
 }
 
 .day-lunar {
   font-size: 11px;
   color: var(--el-text-color-secondary);
+  cursor: pointer;
+}
+
+.day-weather {
+  margin-left: auto;
+  margin-right: -2px;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1px;
+  line-height: 1;
+  flex-shrink: 0;
+  cursor: default;
+}
+
+.day-weather-icon {
+  width: 28px;
+  height: 28px;
+  display: block;
+  object-fit: contain;
+  image-rendering: -webkit-optimize-contrast;
+  filter: contrast(1.15) saturate(1.2) drop-shadow(0 1px 3px rgba(0, 0, 0, 0.42));
+}
+
+.day-weather-temp {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--el-text-color-regular);
+  white-space: nowrap;
+}
+
+.day-weather-tooltip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.35;
+  font-size: 12px;
+
+  &__desc {
+    font-weight: 600;
+  }
 }
 
 .day-nghi-label {
@@ -711,7 +883,7 @@ onMounted(() => {
   flex-wrap: wrap;
   gap: 3px;
   min-height: 0;
-  margin-top: 10px;
+  margin-top: 4px;
   overflow: hidden;
 }
 
@@ -741,7 +913,7 @@ onMounted(() => {
   }
 }
 
-.day-cell.is-ngay-nghi .day-solar {
+.day-cell.is-ngay-nghi .day-solar:not(.is-today) {
   color: var(--el-color-danger);
 }
 

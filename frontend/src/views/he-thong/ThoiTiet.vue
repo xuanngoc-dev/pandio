@@ -1,5 +1,5 @@
 <template>
-  <div class="thoi-tiet-page" v-if="false">
+  <div class="thoi-tiet-page">
     <div class="page-header">
       <div>
         <h2 class="page-title">Thời tiết</h2>
@@ -25,6 +25,14 @@
         </CustomSelect>
         <CustomButton :loading="loading" @click="loadWeather">
           Làm mới
+        </CustomButton>
+        <CustomButton
+          type="success"
+          :disabled="!days.length"
+          :loading="syncing"
+          @click="syncDailyWeather"
+        >
+          Đồng bộ dữ liệu
         </CustomButton>
       </div>
     </div>
@@ -122,7 +130,11 @@ import {
   CustomOption,
   CustomSelect,
 } from '@/components/element'
-import { fetchWeatherByCity } from '@/api/thoiTiet'
+import {
+  fetchWeatherByCity,
+  iconLabelFromCode,
+  syncTienIchThoiTiet,
+} from '@/api/thoiTiet'
 
 const DEFAULT_CITY =
   import.meta.env.VITE_WEATHER_DEFAULT_CITY || 'Ho Chi Minh'
@@ -141,6 +153,7 @@ const cityOptions = [
 
 const selectedCity = ref(DEFAULT_CITY)
 const loading = ref(false)
+const syncing = ref(false)
 const place = ref(null)
 const current = ref(null)
 const days = ref([])
@@ -179,6 +192,38 @@ const sourceNote = computed(() => {
 function capitalize(text) {
   if (!text) return ''
   return text.charAt(0).toUpperCase() + text.slice(1)
+}
+
+/**
+ * Bóc tách dự báo → mảng theo ngày rồi đồng bộ vào tien_ich_thoi_tiet (trùng ngày ghi đè).
+ */
+async function syncDailyWeather() {
+  if (!days.value.length) {
+    ElMessage.warning('Chưa có dữ liệu thời tiết để đồng bộ')
+    return
+  }
+
+  syncing.value = true
+  try {
+    const items = days.value.map((day) => ({
+      ngay: day.dateKey,
+      dia_diem: placeLabel.value || null,
+      mo_ta: day.description || null,
+      ty_le_mua: day.pop ?? 0,
+      toc_do_gio: day.windSpeed ?? null,
+      nhiet_do_min: day.tempMin ?? null,
+      nhiet_do_max: day.tempMax ?? null,
+      icon: day.iconLabel || iconLabelFromCode(day.iconCode) || day.description || null,
+      icon_code: day.iconCode || null,
+    }))
+
+    const { data } = await syncTienIchThoiTiet(items)
+    ElMessage.success(data?.message || `Đã đồng bộ ${items.length} ngày thời tiết`)
+  } catch {
+    // Lỗi đã được axios interceptor thông báo
+  } finally {
+    syncing.value = false
+  }
 }
 
 function formatWind(speed) {

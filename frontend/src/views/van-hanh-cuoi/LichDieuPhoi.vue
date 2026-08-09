@@ -4,11 +4,11 @@
       <el-tab-pane label="Lịch chụp - make" name="chup-make">
         <LichChupMake />
       </el-tab-pane>
-      <el-tab-pane label="Lịch cưới" name="cuoi">
-        <LichCuoi />
-      </el-tab-pane>
       <el-tab-pane label="Lịch hậu kỳ" name="hau-ky">
         <LichHauKy />
+      </el-tab-pane>
+      <el-tab-pane label="Lịch cưới" name="cuoi">
+        <LichCuoi />
       </el-tab-pane>
     </el-tabs>
   </div>
