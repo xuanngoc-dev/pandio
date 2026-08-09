@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\DanhMucConceptController;
 use App\Http\Controllers\Api\DanhMucLoaiThongBaoController;
 use App\Http\Controllers\Api\DanhMucNguonKhachController;
 use App\Http\Controllers\Api\HeThongThongBaoController;
+use App\Http\Controllers\Api\TienIchThoiTietController;
 use App\Http\Controllers\Api\DanhMucTrangPhucController;
 use App\Http\Controllers\Api\DichVuDanhSachDichNhomDichVuController;
 use App\Http\Controllers\Api\DichVuDanhSachDichVuLeController;
@@ -129,6 +130,10 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
 
     // Danh mục nguồn khách
     Route::apiResource('danh-muc-nguon-khach', DanhMucNguonKhachController::class);
+
+    // Tiện ích thời tiết
+    Route::get('tien-ich-thoi-tiet', [TienIchThoiTietController::class, 'index']);
+    Route::post('tien-ich-thoi-tiet/sync', [TienIchThoiTietController::class, 'sync']);
 
     // Cấu hình JSON động
     Route::get('/cau-hinh-json', [CauHinhJsonController::class, 'show']);
