@@ -89,7 +89,7 @@ class TienIchThoiTietController extends BaseApiController
             });
 
             return response()->json([
-                'message' => "Đã đồng bộ thời tiết: tạo mới {$created}, ghi đè {$updated}.",
+                'message' => "Đã đồng bộ dữ liệu thời tiết thành công.",
                 'created' => $created,
                 'updated' => $updated,
                 'data' => $rows,
