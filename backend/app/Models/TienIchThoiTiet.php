@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Model;
     'mo_ta',
     'ty_le_mua',
     'toc_do_gio',
+    'nhiet_do_min',
+    'nhiet_do_max',
     'icon',
     'icon_code',
 ])]
@@ -24,6 +26,8 @@ class TienIchThoiTiet extends Model
             'ngay' => 'date',
             'ty_le_mua' => 'integer',
             'toc_do_gio' => 'float',
+            'nhiet_do_min' => 'integer',
+            'nhiet_do_max' => 'integer',
         ];
     }
 }

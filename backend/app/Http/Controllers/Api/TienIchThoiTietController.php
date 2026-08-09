@@ -40,7 +40,7 @@ class TienIchThoiTietController extends BaseApiController
     /**
      * Đồng bộ hàng loạt — trùng ngày thì ghi đè.
      *
-     * Body: { items: [{ ngay, dia_diem?, mo_ta?, ty_le_mua?, toc_do_gio?, icon?, icon_code? }] }
+     * Body: { items: [{ ngay, dia_diem?, mo_ta?, ty_le_mua?, toc_do_gio?, nhiet_do_min?, nhiet_do_max?, icon?, icon_code? }] }
      */
     public function sync(Request $request): JsonResponse
     {
@@ -52,6 +52,8 @@ class TienIchThoiTietController extends BaseApiController
                 'items.*.mo_ta' => ['nullable', 'string', 'max:255'],
                 'items.*.ty_le_mua' => ['nullable', 'integer', 'min:0', 'max:100'],
                 'items.*.toc_do_gio' => ['nullable', 'numeric', 'min:0'],
+                'items.*.nhiet_do_min' => ['nullable', 'integer', 'min:-50', 'max:60'],
+                'items.*.nhiet_do_max' => ['nullable', 'integer', 'min:-50', 'max:60'],
                 'items.*.icon' => ['nullable', 'string', 'max:255'],
                 'items.*.icon_code' => ['nullable', 'string', 'max:16'],
             ]);
@@ -69,6 +71,8 @@ class TienIchThoiTietController extends BaseApiController
                             'mo_ta' => $item['mo_ta'] ?? null,
                             'ty_le_mua' => $item['ty_le_mua'] ?? 0,
                             'toc_do_gio' => $item['toc_do_gio'] ?? null,
+                            'nhiet_do_min' => $item['nhiet_do_min'] ?? null,
+                            'nhiet_do_max' => $item['nhiet_do_max'] ?? null,
                             'icon' => $item['icon'] ?? null,
                             'icon_code' => $item['icon_code'] ?? null,
                         ]
