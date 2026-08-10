@@ -32,6 +32,7 @@ use App\Http\Controllers\Api\DangKyCaLamViecController;
 use App\Http\Controllers\Api\DiemDanhController;
 use App\Http\Controllers\Api\IpDiemDanhController;
 use App\Http\Controllers\Api\LoaiHopDongController;
+use App\Http\Controllers\Api\TinhLuongController;
 use App\Http\Controllers\Api\PhongBanController;
 use App\Http\Controllers\Api\ReportQuangCaoController;
 use App\Http\Controllers\Api\UserController;
@@ -83,6 +84,9 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
     Route::post('/diem-danh/checkin', [DiemDanhController::class, 'checkin']);
     Route::post('/diem-danh/checkout', [DiemDanhController::class, 'checkout']);
     Route::get('/diem-danh', [DiemDanhController::class, 'index']);
+
+    // Tính lương
+    Route::get('/tinh-luong/chi-tiet-theo-ngay', [TinhLuongController::class, 'chiTietTheoNgay']);
 
     // Phòng ban
     Route::get('phong-ban/{phong_ban}/nhan-vien', [PhongBanController::class, 'nhanVien']);
