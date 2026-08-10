@@ -19,12 +19,17 @@
           {{ (page - 1) * perPage + $index + 1 }}
         </template>
       </CustomTableColumn>
-      <CustomTableColumn label="Mã HĐ" prop="ma_hop_dong" min-width="140" />
-      <!-- <CustomTableColumn label="Loại hợp đồng" min-width="150">
+      <CustomTableColumn label="Giờ chụp" width="100" align="center">
         <template #default="{ row }">
-          {{ row.loai_hop_dong?.ten_hop_dong || meta.tenHopDong || '—' }}
+          {{ formatGioChup(row) }}
         </template>
-      </CustomTableColumn> -->
+      </CustomTableColumn>
+      <CustomTableColumn label="Mã HĐ" prop="ma_hop_dong" min-width="140" />
+      <CustomTableColumn label="Loại hợp đồng" min-width="140">
+        <template #default="{ row }">
+          {{ row.loai_hop_dong?.ten_hop_dong || props.tenHopDong || '—' }}
+        </template>
+      </CustomTableColumn>
       <CustomTableColumn label="Khách hàng" min-width="180">
         <template #default="{ row }">
           <div>{{ formatKhachHang(row) }}</div>
@@ -106,16 +111,12 @@ const total = ref(0)
 const dieuPhoiModalVisible = ref(false)
 const dieuPhoiHopDongId = ref(null)
 
-const meta = computed(() => ({
-  ngayChup: props.ngayChup,
-  loaiHopDongId: props.loaiHopDongId,
-  tenHopDong: props.tenHopDong,
-}))
-
 const dialogTitle = computed(() => {
   const ngay = formatDateVi(props.ngayChup)
-  const loai = props.tenHopDong || 'Loại hợp đồng'
-  return `Lịch chụp ${loai} ngày ${ngay}`
+  if (props.tenHopDong) {
+    return `Lịch chụp ${props.tenHopDong} ngày ${ngay}`
+  }
+  return `Lịch chụp ngày ${ngay}`
 })
 
 const TRANG_THAI_LABEL = {
@@ -160,6 +161,15 @@ function formatDateVi(value) {
 
 function formatKhachHang(row) {
   return row?.ten_khach_hang || '—'
+}
+
+function formatGioChup(row) {
+  const raw = row?.thong_tin_dieu_phoi?.gio_chup?.gia_tri
+  if (raw == null || raw === '') return '—'
+  const text = String(raw).trim()
+  const match = text.match(/^(\d{1,2}):(\d{2})/)
+  if (!match) return text.slice(0, 5)
+  return `${match[1].padStart(2, '0')}:${match[2]}`
 }
 
 function openDieuPhoi(row) {

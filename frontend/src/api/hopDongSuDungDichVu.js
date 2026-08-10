@@ -18,9 +18,9 @@ export function fetchHopDongSuDungDichVu(params = {}) {
 }
 
 /**
- * Thống kê lịch chụp-make: số HĐ theo ngày chụp + loại hợp đồng.
- * Mỗi ngày trả đủ loại HĐ hoạt động (so_luong = 0 nếu không có).
+ * Lịch chụp-make: danh sách HĐ theo khoảng ngày chụp (sort theo gio_chup).
  * @param {{ tu_ngay: string, den_ngay: string }} params
+ * @returns {Promise<{ data: { loai_hop_dong: Array, items: Array } }>}
  */
 export function fetchLichChupMake(params = {}) {
   return api.get('/hop-dong-su-dung-dich-vu/lich-chup-make', { params })

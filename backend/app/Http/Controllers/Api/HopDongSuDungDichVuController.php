@@ -92,12 +92,13 @@ class HopDongSuDungDichVuController extends BaseApiController
     }
 
     /**
-     * Thống kê lịch chụp-make: số lượng HĐ theo ngày chụp + loại hợp đồng.
-     * Ngày lấy từ thong_tin_dieu_phoi.ngay_chup.gia_tri.
+     * Lịch chụp-make: danh sách hợp đồng theo khoảng ngày chụp.
+     * Ngày/giờ lấy từ thong_tin_dieu_phoi.{ngay_chup|gio_chup}.gia_tri.
      * Loại trừ trang_thai: moi_tao, nhap, da_huy.
-     * Mỗi ngày trong khoảng trả đủ tất cả loại HĐ đang hoạt động (so_luong = 0 nếu không có).
+     * Sắp xếp theo ngay_chup, gio_chup (null xuống cuối), id.
      *
-     * Query: tu_ngay, den_ngay (bắt buộc để sinh đủ ngày × loại HĐ)
+     * Query: tu_ngay, den_ngay
+     * Response: { loai_hop_dong: [...], items: [...] }
      */
     public function lichChupMake(Request $request): JsonResponse
     {
@@ -110,55 +111,69 @@ class HopDongSuDungDichVuController extends BaseApiController
             $tuNgay = Carbon::parse($validated['tu_ngay'])->toDateString();
             $denNgay = Carbon::parse($validated['den_ngay'])->toDateString();
 
-            // Dùng LEFT(...,10) thay DATE(...) — tránh 500 trên MySQL strict khi gia_tri rỗng/invalid.
+            // LEFT(...,10) thay DATE(...) — tránh 500 trên MySQL strict khi gia_tri rỗng/invalid.
             $ngayChupExpr = $this->ngayChupJsonExpr('hop_dong_su_dung_dich_vu.thong_tin_dieu_phoi');
+            $gioChupExpr = $this->gioChupJsonExpr('hop_dong_su_dung_dich_vu.thong_tin_dieu_phoi');
 
             $loaiHopDongs = LoaiHopDong::query()
                 ->where('trang_thai', 'hoat_dong')
                 ->orderBy('ten_hop_dong')
                 ->get(['id', 'ten_hop_dong', 'ma_hop_dong']);
 
-            $counts = HopDongSuDungDichVu::query()
+            $rows = HopDongSuDungDichVu::query()
+                ->with(['loaiHopDong:id,ten_hop_dong,ma_hop_dong'])
                 ->whereNotIn('hop_dong_su_dung_dich_vu.trang_thai', ['moi_tao', 'nhap', 'da_huy'])
                 ->whereRaw("JSON_EXTRACT(hop_dong_su_dung_dich_vu.thong_tin_dieu_phoi, '$.ngay_chup.gia_tri') IS NOT NULL")
                 ->whereRaw("{$ngayChupExpr} REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'")
                 ->whereRaw("{$ngayChupExpr} >= ?", [$tuNgay])
                 ->whereRaw("{$ngayChupExpr} <= ?", [$denNgay])
-                ->selectRaw("
-                    {$ngayChupExpr} as ngay_chup,
-                    hop_dong_su_dung_dich_vu.loai_hop_dong_id,
-                    COUNT(*) as so_luong
-                ")
-                ->groupByRaw("{$ngayChupExpr}, hop_dong_su_dung_dich_vu.loai_hop_dong_id")
+                ->select([
+                    'hop_dong_su_dung_dich_vu.id',
+                    'hop_dong_su_dung_dich_vu.ma_hop_dong',
+                    'hop_dong_su_dung_dich_vu.ten_khach_hang',
+                    'hop_dong_su_dung_dich_vu.sdt_khach_hang',
+                    'hop_dong_su_dung_dich_vu.loai_hop_dong_id',
+                    'hop_dong_su_dung_dich_vu.trang_thai',
+                    'hop_dong_su_dung_dich_vu.thong_tin_dieu_phoi',
+                ])
+                ->orderByRaw("{$ngayChupExpr} asc")
+                ->orderByRaw("CASE WHEN {$gioChupExpr} IS NULL OR {$gioChupExpr} = '' OR {$gioChupExpr} = 'null' THEN 1 ELSE 0 END asc")
+                ->orderByRaw("{$gioChupExpr} asc")
+                ->orderBy('hop_dong_su_dung_dich_vu.id')
                 ->get();
 
-            $countMap = [];
-            foreach ($counts as $row) {
-                $dateKey = (string) $row->ngay_chup;
-                $loaiId = $row->loai_hop_dong_id !== null ? (int) $row->loai_hop_dong_id : 0;
-                $countMap[$dateKey][$loaiId] = (int) $row->so_luong;
-            }
-
-            $result = [];
-            $cursor = Carbon::parse($tuNgay)->startOfDay();
-            $end = Carbon::parse($denNgay)->startOfDay();
-
-            while ($cursor->lte($end)) {
-                $dateKey = $cursor->toDateString();
-                foreach ($loaiHopDongs as $loai) {
-                    $loaiId = (int) $loai->id;
-                    $result[] = [
-                        'ngay_chup' => $dateKey,
-                        'loai_hop_dong_id' => $loaiId,
-                        'ten_hop_dong' => $loai->ten_hop_dong,
-                        'ma_hop_dong' => $loai->ma_hop_dong,
-                        'so_luong' => $countMap[$dateKey][$loaiId] ?? 0,
-                    ];
+            $items = $rows->map(function (HopDongSuDungDichVu $hd) {
+                $dieuPhoi = is_array($hd->thong_tin_dieu_phoi) ? $hd->thong_tin_dieu_phoi : [];
+                $ngayChup = (string) ($dieuPhoi['ngay_chup']['gia_tri'] ?? '');
+                $ngayChup = substr($ngayChup, 0, 10);
+                $gioChup = $dieuPhoi['gio_chup']['gia_tri'] ?? null;
+                if (is_string($gioChup)) {
+                    $gioChup = trim($gioChup);
+                    if ($gioChup === '' || $gioChup === 'null') {
+                        $gioChup = null;
+                    }
+                } else {
+                    $gioChup = null;
                 }
-                $cursor->addDay();
-            }
 
-            return response()->json($result);
+                return [
+                    'id' => $hd->id,
+                    'ngay_chup' => $ngayChup,
+                    'gio_chup' => $gioChup,
+                    'ma_hop_dong' => $hd->ma_hop_dong,
+                    'ten_khach_hang' => $hd->ten_khach_hang,
+                    'sdt_khach_hang' => $hd->sdt_khach_hang,
+                    'loai_hop_dong_id' => $hd->loai_hop_dong_id,
+                    'ten_hop_dong' => $hd->loaiHopDong?->ten_hop_dong,
+                    'ma_loai_hop_dong' => $hd->loaiHopDong?->ma_hop_dong,
+                    'trang_thai' => $hd->trang_thai,
+                ];
+            })->values();
+
+            return response()->json([
+                'loai_hop_dong' => $loaiHopDongs,
+                'items' => $items,
+            ]);
 
         }, 'lấy thống kê lịch chụp make');
     }
@@ -184,6 +199,7 @@ class HopDongSuDungDichVuController extends BaseApiController
             $loaiHopDongId = $validated['loai_hop_dong_id'] ?? null;
             $perPage = $validated['per_page'] ?? 20;
             $ngayChupExpr = $this->ngayChupJsonExpr('thong_tin_dieu_phoi');
+            $gioChupExpr = $this->gioChupJsonExpr('thong_tin_dieu_phoi');
 
             $query = HopDongSuDungDichVu::query()
                 ->with([
@@ -194,7 +210,9 @@ class HopDongSuDungDichVuController extends BaseApiController
                 ->whereRaw("JSON_EXTRACT(thong_tin_dieu_phoi, '$.ngay_chup.gia_tri') IS NOT NULL")
                 ->whereRaw("{$ngayChupExpr} = ?", [$ngayChup])
                 ->when($loaiHopDongId, fn ($q) => $q->where('loai_hop_dong_id', $loaiHopDongId))
-                ->orderByDesc('id');
+                ->orderByRaw("CASE WHEN {$gioChupExpr} IS NULL OR {$gioChupExpr} = '' OR {$gioChupExpr} = 'null' THEN 1 ELSE 0 END asc")
+                ->orderByRaw("{$gioChupExpr} asc")
+                ->orderBy('id');
 
             return response()->json($query->paginate($perPage));
 
@@ -208,6 +226,14 @@ class HopDongSuDungDichVuController extends BaseApiController
     private function ngayChupJsonExpr(string $column): string
     {
         return "LEFT(JSON_UNQUOTE(JSON_EXTRACT({$column}, '$.ngay_chup.gia_tri')), 10)";
+    }
+
+    /**
+     * Biểu thức SQL lấy giờ chụp từ JSON điều phối.
+     */
+    private function gioChupJsonExpr(string $column): string
+    {
+        return "JSON_UNQUOTE(JSON_EXTRACT({$column}, '$.gio_chup.gia_tri'))";
     }
 
     /**
