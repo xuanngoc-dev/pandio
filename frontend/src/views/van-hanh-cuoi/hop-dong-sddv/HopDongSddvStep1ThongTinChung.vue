@@ -144,6 +144,7 @@
                 :format="datePickerFormat(field.kieu)"
                 :value-format="datePickerValueFormat(field.kieu)"
                 :placeholder="`Chọn ${field.ten_truong.toLowerCase()}`"
+                :disabled-date="disabledPastDate"
                 style="width: 100%"
               />
             </template>
@@ -217,6 +218,7 @@
                 format="DD/MM/YYYY"
                 value-format="YYYY-MM-DD"
                 :placeholder="`Chọn ${field.ten_thong_tin.toLowerCase()}`"
+                :disabled-date="disabledPastDate"
                 style="width: 100%"
                 clearable
               />
@@ -392,6 +394,16 @@ function isNumberLike(kieu) {
 
 function isDateLike(kieu) {
   return ['date', 'datetime', 'month', 'year'].includes(kieu)
+}
+
+function startOfToday() {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return today
+}
+
+function disabledPastDate(date) {
+  return date.getTime() < startOfToday().getTime()
 }
 
 function getFieldColProps(field) {

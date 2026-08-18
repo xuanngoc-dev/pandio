@@ -101,6 +101,12 @@ const routes = [
         meta: { title: 'Chấm công · Nghỉ phép', requiresAuth: true },
       },
       {
+        path: 'nhan-su/luong-tong-hop',
+        name: 'luong-tong-hop',
+        component: () => import('@/views/nhan-su/LuongTongHop.vue'),
+        meta: { title: 'Lương tổng hợp', requiresAuth: true },
+      },
+      {
         path: 'nhan-su/tinh-luong',
         name: 'tinh-luong',
         component: () => import('@/views/nhan-su/TinhLuong.vue'),
@@ -241,6 +247,43 @@ const routes = [
         component: () => import('@/views/he-thong/TrungTamPheDuyet.vue'),
         meta: { title: 'Trung tâm Phê duyệt', requiresAuth: true },
       },
+
+      // Đào tạo
+      {
+        path: 'he-thong/dao-tao',
+        redirect: { name: 'dao-tao-hoc-vien' },
+      },
+      {
+        path: 'he-thong/dao-tao/hoc-vien',
+        name: 'dao-tao-hoc-vien',
+        component: () => import('@/views/he-thong/dao-tao/QuanLyHocVien.vue'),
+        meta: { title: 'Quản lý học viên', requiresAuth: true },
+      },
+      {
+        path: 'he-thong/dao-tao/lich-dao-tao',
+        name: 'dao-tao-lich-dao-tao',
+        component: () => import('@/views/he-thong/dao-tao/LichDaoTao.vue'),
+        meta: { title: 'Lịch đào tạo', requiresAuth: true },
+      },
+      {
+        path: 'he-thong/dao-tao/khoa-hoc',
+        name: 'dao-tao-khoa-hoc',
+        component: () => import('@/views/he-thong/dao-tao/KhoaHoc.vue'),
+        meta: { title: 'Khóa học', requiresAuth: true },
+      },
+      {
+        path: 'he-thong/dao-tao/diem-danh',
+        name: 'dao-tao-diem-danh',
+        component: () => import('@/views/he-thong/dao-tao/DiemDanhDaoTao.vue'),
+        meta: { title: 'Điểm danh đào tạo', requiresAuth: true },
+      },
+      {
+        path: 'he-thong/dao-tao/bao-cao',
+        name: 'dao-tao-bao-cao',
+        component: () => import('@/views/he-thong/dao-tao/BaoCaoDaoTao.vue'),
+        meta: { title: 'Báo cáo đào tạo', requiresAuth: true },
+      },
+
       {
         path: 'he-thong/thong-bao',
         name: 'thong-bao',

@@ -57,90 +57,190 @@ class TinhLuongController extends BaseApiController
                 ]);
             }
 
-            $start = Carbon::createFromFormat('Y-m', $validated['thang'], self::TIMEZONE)->startOfMonth();
-            $end = $start->copy()->endOfMonth();
-            $tuNgay = $start->toDateString();
-            $denNgay = $end->toDateString();
-            $userId = (int) $user->id;
+            $payload = $this->buildBangLuongThang($user, $nhanVien, $validated['thang'], includeDays: true);
 
-            $records = DiemDanh::query()
-                ->where('user_id', $userId)
-                ->whereDate('ngay_lam', '>=', $tuNgay)
-                ->whereDate('ngay_lam', '<=', $denNgay)
-                ->orderBy('ngay_lam')
-                ->get()
-                ->keyBy(fn (DiemDanh $item) => $item->ngay_lam?->format('Y-m-d'));
+            return response()->json($payload);
+        }, 'lấy bảng lương chi tiết theo ngày');
+    }
 
-            $loaiNhanVien = (string) ($nhanVien->loai_nhan_vien ?? '');
-            $congChuan = (float) ($nhanVien->cong_chuan ?? 0);
-            $luongCung = $nhanVien->getLuongValue('luong_cung');
-            $luongMem = $nhanVien->getLuongValue('luong_mem');
-            $luong1Gio = $nhanVien->getLuongValue('luong_1_gio');
-            $luongTangCa1Gio = $nhanVien->getLuongValue('luong_tang_ca_1_gio');
-            $phuCap = [
-                'phu_cap' => $nhanVien->getLuongValue('phu_cap'),
-                'phu_cap_xang' => $nhanVien->getLuongValue('phu_cap_xang'),
-                'phu_cap_an_trua' => $nhanVien->getLuongValue('phu_cap_an_trua'),
-                'phu_cap_dien_thoai' => $nhanVien->getLuongValue('phu_cap_dien_thoai'),
-                'phu_cap_nha_o' => $nhanVien->getLuongValue('phu_cap_nha_o'),
-            ];
-            $thuongChuyenCan = $nhanVien->getLuongValue('thuong_chuyen_can');
+    /**
+     * Lương tổng hợp theo tháng — danh sách nhân viên (phân trang).
+     *
+     * Query: thang (YYYY-MM, required), page, per_page, keyword
+     */
+    public function tongHop(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'thang' => ['required', 'string', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/'],
+                'page' => ['sometimes', 'integer', 'min:1'],
+                'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+                'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
+            ]);
 
-            $hoaHongTpByDate = $this->hoaHongTrangPhucByDate($userId, $tuNgay, $denNgay, $nhanVien->getLuongValue('hoa_hong_hop_dong_trang_phuc'));
-            $hoaHongSddvByDate = $this->hoaHongSddvByDate($userId, $tuNgay, $denNgay, $nhanVien->getLuongValue('hoa_hong_hop_dong_sddv'));
-            $sanXuatByDate = $this->sanXuatByDate($userId, $tuNgay, $denNgay, $nhanVien);
+            $perPage = $validated['per_page'] ?? 10;
+            $keyword = trim((string) ($validated['keyword'] ?? ''));
 
-            $days = [];
-            $tong = [
-                'gio_lam_co_ban' => 0.0,
-                'gio_lam_tang_ca' => 0.0,
-                'tong_luong_theo_gio' => 0.0,
-                'tong_tang_ca' => 0.0,
-                'hoa_hong_hd_tp' => 0.0,
-                'hoa_hong_hd_sddv' => 0.0,
-                'san_xuat_make' => 0.0,
-                'san_xuat_chup' => 0.0,
-                'san_xuat_quay_phim' => 0.0,
-                'san_xuat_edit' => 0.0,
-                'tien_phat_di_muon' => 0.0,
-                'tien_phat_ve_som' => 0.0,
-                'phat_phat_sinh' => 0.0,
-            ];
+            $query = User::query()
+                ->with(['nhanVien:id,user_id,loai_nhan_vien,cong_chuan,luong_thuong_phu_cap'])
+                ->select(['id', 'name', 'email', 'phone', 'status'])
+                ->where('status', 'active')
+                ->whereHas('nhanVien')
+                ->when($keyword !== '', function ($q) use ($keyword) {
+                    $q->where(function ($inner) use ($keyword) {
+                        $inner->where('name', 'like', "%{$keyword}%")
+                            ->orWhere('email', 'like', "%{$keyword}%")
+                            ->orWhere('phone', 'like', "%{$keyword}%");
+                    });
+                })
+                ->orderBy('name');
 
-            for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
-                $dateKey = $date->toDateString();
-                $record = $records->get($dateKey);
-                $hoaHongTp = round((float) ($hoaHongTpByDate[$dateKey] ?? 0), 2);
-                $hoaHongSddv = round((float) ($hoaHongSddvByDate[$dateKey] ?? 0), 2);
-                $sanXuat = $sanXuatByDate[$dateKey] ?? $this->emptySanXuat();
+            $paginator = $query->paginate($perPage);
+            $thang = $validated['thang'];
 
-                $gioLamCoBan = round((float) ($record?->gio_lam_co_ban ?? 0), 2);
-                $gioLamTangCa = round((float) ($record?->gio_lam_tang_ca ?? 0), 2);
-                [$tienTheoGio, $tienTangCa] = $this->tinhTienGioLam(
-                    $loaiNhanVien,
-                    $gioLamCoBan,
-                    $gioLamTangCa,
-                    $luongCung,
-                    $luong1Gio,
-                    $luongTangCa1Gio,
-                    $congChuan,
+            $items = collect($paginator->items())->map(function (User $user) use ($thang) {
+                $nhanVien = $user->nhanVien;
+                $payload = $this->buildBangLuongThang($user, $nhanVien, $thang, includeDays: false);
+                $tong = $payload['tong_ket'];
+
+                // Thưởng phát sinh sản xuất (make/chụp/quay); hậu kỳ = edit.
+                $thuong = round(
+                    (float) $tong['san_xuat_make']
+                    + (float) $tong['san_xuat_chup']
+                    + (float) $tong['san_xuat_quay_phim'],
+                    2
                 );
-                $tienPhatDiMuon = round((float) ($record?->tien_phat_di_muon ?? 0), 2);
-                $tienPhatVeSom = round((float) ($record?->tien_phat_ve_som ?? 0), 2);
+                $hauKy = round((float) $tong['san_xuat_edit'], 2);
 
-                $tong['gio_lam_co_ban'] += $gioLamCoBan;
-                $tong['gio_lam_tang_ca'] += $gioLamTangCa;
-                $tong['tong_luong_theo_gio'] += $tienTheoGio;
-                $tong['tong_tang_ca'] += $tienTangCa;
-                $tong['hoa_hong_hd_tp'] += $hoaHongTp;
-                $tong['hoa_hong_hd_sddv'] += $hoaHongSddv;
-                $tong['san_xuat_make'] += $sanXuat['make'];
-                $tong['san_xuat_chup'] += $sanXuat['chup'];
-                $tong['san_xuat_quay_phim'] += $sanXuat['quay_phim'];
-                $tong['san_xuat_edit'] += $sanXuat['edit'];
-                $tong['tien_phat_di_muon'] += $tienPhatDiMuon;
-                $tong['tien_phat_ve_som'] += $tienPhatVeSom;
+                return [
+                    'user_id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'phone' => $user->phone,
+                    'loai_nhan_vien' => $nhanVien?->loai_nhan_vien,
+                    'luong' => [
+                        'luong_cung' => $payload['nhan_vien']['luong_co_dinh']['luong_cung'],
+                        'luong_mem' => $payload['nhan_vien']['luong_co_dinh']['luong_mem'],
+                        'phu_cap' => $tong['tong_phu_cap'],
+                    ],
+                    'phat_sinh' => [
+                        'luong_theo_gio' => $tong['tong_luong_theo_gio'],
+                        'luong_tang_ca' => $tong['tong_tang_ca'],
+                        'thuong' => $thuong,
+                        'chuyen_can' => $tong['thuong_chuyen_can'],
+                        'hoa_hong' => $tong['tong_hoa_hong'],
+                        'hau_ky' => $hauKy,
+                    ],
+                    'khau_tru' => [
+                        'di_muon' => $tong['tien_phat_di_muon'],
+                        've_som' => $tong['tien_phat_ve_som'],
+                        'phat_sinh' => $tong['phat_phat_sinh'],
+                    ],
+                    'thuc_nhan' => $tong['thuc_nhan'],
+                ];
+            })->values();
 
+            return response()->json([
+                'thang' => $thang,
+                'data' => $items,
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+            ]);
+        }, 'lấy lương tổng hợp theo tháng');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildBangLuongThang(User $user, mixed $nhanVien, string $thang, bool $includeDays = true): array
+    {
+        $start = Carbon::createFromFormat('Y-m', $thang, self::TIMEZONE)->startOfMonth();
+        $end = $start->copy()->endOfMonth();
+        $tuNgay = $start->toDateString();
+        $denNgay = $end->toDateString();
+        $userId = (int) $user->id;
+
+        $records = DiemDanh::query()
+            ->where('user_id', $userId)
+            ->whereDate('ngay_lam', '>=', $tuNgay)
+            ->whereDate('ngay_lam', '<=', $denNgay)
+            ->orderBy('ngay_lam')
+            ->get()
+            ->keyBy(fn (DiemDanh $item) => $item->ngay_lam?->format('Y-m-d'));
+
+        $loaiNhanVien = (string) ($nhanVien->loai_nhan_vien ?? '');
+        $congChuan = (float) ($nhanVien->cong_chuan ?? 0);
+        $luongCung = $nhanVien->getLuongValue('luong_cung');
+        $luongMem = $nhanVien->getLuongValue('luong_mem');
+        $luong1Gio = $nhanVien->getLuongValue('luong_1_gio');
+        $luongTangCa1Gio = $nhanVien->getLuongValue('luong_tang_ca_1_gio');
+        $phuCap = [
+            'phu_cap' => $nhanVien->getLuongValue('phu_cap'),
+            'phu_cap_xang' => $nhanVien->getLuongValue('phu_cap_xang'),
+            'phu_cap_an_trua' => $nhanVien->getLuongValue('phu_cap_an_trua'),
+            'phu_cap_dien_thoai' => $nhanVien->getLuongValue('phu_cap_dien_thoai'),
+            'phu_cap_nha_o' => $nhanVien->getLuongValue('phu_cap_nha_o'),
+        ];
+        $thuongChuyenCan = $nhanVien->getLuongValue('thuong_chuyen_can');
+
+        $hoaHongTpByDate = $this->hoaHongTrangPhucByDate($userId, $tuNgay, $denNgay, $nhanVien->getLuongValue('hoa_hong_hop_dong_trang_phuc'));
+        $hoaHongSddvByDate = $this->hoaHongSddvByDate($userId, $tuNgay, $denNgay, $nhanVien->getLuongValue('hoa_hong_hop_dong_sddv'));
+        $sanXuatByDate = $this->sanXuatByDate($userId, $tuNgay, $denNgay, $nhanVien);
+
+        $days = [];
+        $tong = [
+            'gio_lam_co_ban' => 0.0,
+            'gio_lam_tang_ca' => 0.0,
+            'tong_luong_theo_gio' => 0.0,
+            'tong_tang_ca' => 0.0,
+            'hoa_hong_hd_tp' => 0.0,
+            'hoa_hong_hd_sddv' => 0.0,
+            'san_xuat_make' => 0.0,
+            'san_xuat_chup' => 0.0,
+            'san_xuat_quay_phim' => 0.0,
+            'san_xuat_edit' => 0.0,
+            'tien_phat_di_muon' => 0.0,
+            'tien_phat_ve_som' => 0.0,
+            'phat_phat_sinh' => 0.0,
+        ];
+
+        for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
+            $dateKey = $date->toDateString();
+            $record = $records->get($dateKey);
+            $hoaHongTp = round((float) ($hoaHongTpByDate[$dateKey] ?? 0), 2);
+            $hoaHongSddv = round((float) ($hoaHongSddvByDate[$dateKey] ?? 0), 2);
+            $sanXuat = $sanXuatByDate[$dateKey] ?? $this->emptySanXuat();
+
+            $gioLamCoBan = round((float) ($record?->gio_lam_co_ban ?? 0), 2);
+            $gioLamTangCa = round((float) ($record?->gio_lam_tang_ca ?? 0), 2);
+            [$tienTheoGio, $tienTangCa] = $this->tinhTienGioLam(
+                $loaiNhanVien,
+                $gioLamCoBan,
+                $gioLamTangCa,
+                $luongCung,
+                $luong1Gio,
+                $luongTangCa1Gio,
+                $congChuan,
+            );
+            $tienPhatDiMuon = round((float) ($record?->tien_phat_di_muon ?? 0), 2);
+            $tienPhatVeSom = round((float) ($record?->tien_phat_ve_som ?? 0), 2);
+
+            $tong['gio_lam_co_ban'] += $gioLamCoBan;
+            $tong['gio_lam_tang_ca'] += $gioLamTangCa;
+            $tong['tong_luong_theo_gio'] += $tienTheoGio;
+            $tong['tong_tang_ca'] += $tienTangCa;
+            $tong['hoa_hong_hd_tp'] += $hoaHongTp;
+            $tong['hoa_hong_hd_sddv'] += $hoaHongSddv;
+            $tong['san_xuat_make'] += $sanXuat['make'];
+            $tong['san_xuat_chup'] += $sanXuat['chup'];
+            $tong['san_xuat_quay_phim'] += $sanXuat['quay_phim'];
+            $tong['san_xuat_edit'] += $sanXuat['edit'];
+            $tong['tien_phat_di_muon'] += $tienPhatDiMuon;
+            $tong['tien_phat_ve_som'] += $tienPhatVeSom;
+
+            if ($includeDays) {
                 $days[] = [
                     'ngay' => $dateKey,
                     'ngay_trong_thang' => (int) $date->day,
@@ -158,71 +258,72 @@ class TinhLuongController extends BaseApiController
                     'san_xuat' => $sanXuat,
                 ];
             }
+        }
 
-            $tongPhuCap = array_sum($phuCap);
-            $tongHoaHong = $tong['hoa_hong_hd_tp'] + $tong['hoa_hong_hd_sddv'];
-            $tongSanXuat = $tong['san_xuat_make']
-                + $tong['san_xuat_chup']
-                + $tong['san_xuat_quay_phim']
-                + $tong['san_xuat_edit'];
+        $tongPhuCap = array_sum($phuCap);
+        $tongHoaHong = $tong['hoa_hong_hd_tp'] + $tong['hoa_hong_hd_sddv'];
+        $tongSanXuat = $tong['san_xuat_make']
+            + $tong['san_xuat_chup']
+            + $tong['san_xuat_quay_phim']
+            + $tong['san_xuat_edit'];
 
-            // A: Lương cứng & phụ cấp
-            $tongA = $luongCung + $luongMem + $tongPhuCap;
-            // B: Thu nhập phát sinh
-            $tongB = $tong['tong_luong_theo_gio']
-                + $tong['tong_tang_ca']
-                + $tongHoaHong
-                + $tongSanXuat
-                + $thuongChuyenCan;
-            // C: Khấu trừ
-            $tongC = $tong['tien_phat_di_muon']
-                + $tong['tien_phat_ve_som']
-                + $tong['phat_phat_sinh'];
-            // Thực nhận = A + B - C
-            $thucNhan = round($tongA + $tongB - $tongC, 2);
+        $tongA = $luongCung + $luongMem + $tongPhuCap;
+        $tongB = $tong['tong_luong_theo_gio']
+            + $tong['tong_tang_ca']
+            + $tongHoaHong
+            + $tongSanXuat
+            + $thuongChuyenCan;
+        $tongC = $tong['tien_phat_di_muon']
+            + $tong['tien_phat_ve_som']
+            + $tong['phat_phat_sinh'];
+        $thucNhan = round($tongA + $tongB - $tongC, 2);
 
-            return response()->json([
-                'thang' => $validated['thang'],
-                'tu_ngay' => $tuNgay,
-                'den_ngay' => $denNgay,
-                'nhan_vien' => [
-                    'user_id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'loai_nhan_vien' => $nhanVien->loai_nhan_vien,
-                    'luong_co_dinh' => [
-                        'luong_cung' => $luongCung,
-                        'luong_mem' => $luongMem,
-                    ],
-                    'phu_cap' => $phuCap,
+        $result = [
+            'thang' => $thang,
+            'tu_ngay' => $tuNgay,
+            'den_ngay' => $denNgay,
+            'nhan_vien' => [
+                'user_id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'loai_nhan_vien' => $nhanVien->loai_nhan_vien,
+                'luong_co_dinh' => [
+                    'luong_cung' => $luongCung,
+                    'luong_mem' => $luongMem,
                 ],
-                'tong_ket' => [
-                    'gio_lam_co_ban' => round($tong['gio_lam_co_ban'], 2),
-                    'gio_lam_tang_ca' => round($tong['gio_lam_tang_ca'], 2),
-                    'tong_luong_theo_gio' => round($tong['tong_luong_theo_gio'], 2),
-                    'tong_tang_ca' => round($tong['tong_tang_ca'], 2),
-                    'hoa_hong_hd_tp' => round($tong['hoa_hong_hd_tp'], 2),
-                    'hoa_hong_hd_sddv' => round($tong['hoa_hong_hd_sddv'], 2),
-                    'san_xuat_make' => round($tong['san_xuat_make'], 2),
-                    'san_xuat_chup' => round($tong['san_xuat_chup'], 2),
-                    'san_xuat_quay_phim' => round($tong['san_xuat_quay_phim'], 2),
-                    'san_xuat_edit' => round($tong['san_xuat_edit'], 2),
-                    'thuong_chuyen_can' => round($thuongChuyenCan, 2),
-                    'tong_hoa_hong' => round($tongHoaHong, 2),
-                    'tong_san_xuat' => round($tongSanXuat, 2),
-                    'tong_phu_cap' => round($tongPhuCap, 2),
-                    'tien_phat_di_muon' => round($tong['tien_phat_di_muon'], 2),
-                    'tien_phat_ve_som' => round($tong['tien_phat_ve_som'], 2),
-                    'phat_phat_sinh' => round($tong['phat_phat_sinh'], 2),
-                    'tong_a' => round($tongA, 2),
-                    'tong_b' => round($tongB, 2),
-                    'tong_c' => round($tongC, 2),
-                    'tong_khau_tru' => round($tongC, 2),
-                    'thuc_nhan' => $thucNhan,
-                ],
-                'days' => $days,
-            ]);
-        }, 'lấy bảng lương chi tiết theo ngày');
+                'phu_cap' => $phuCap,
+            ],
+            'tong_ket' => [
+                'gio_lam_co_ban' => round($tong['gio_lam_co_ban'], 2),
+                'gio_lam_tang_ca' => round($tong['gio_lam_tang_ca'], 2),
+                'tong_luong_theo_gio' => round($tong['tong_luong_theo_gio'], 2),
+                'tong_tang_ca' => round($tong['tong_tang_ca'], 2),
+                'hoa_hong_hd_tp' => round($tong['hoa_hong_hd_tp'], 2),
+                'hoa_hong_hd_sddv' => round($tong['hoa_hong_hd_sddv'], 2),
+                'san_xuat_make' => round($tong['san_xuat_make'], 2),
+                'san_xuat_chup' => round($tong['san_xuat_chup'], 2),
+                'san_xuat_quay_phim' => round($tong['san_xuat_quay_phim'], 2),
+                'san_xuat_edit' => round($tong['san_xuat_edit'], 2),
+                'thuong_chuyen_can' => round($thuongChuyenCan, 2),
+                'tong_hoa_hong' => round($tongHoaHong, 2),
+                'tong_san_xuat' => round($tongSanXuat, 2),
+                'tong_phu_cap' => round($tongPhuCap, 2),
+                'tien_phat_di_muon' => round($tong['tien_phat_di_muon'], 2),
+                'tien_phat_ve_som' => round($tong['tien_phat_ve_som'], 2),
+                'phat_phat_sinh' => round($tong['phat_phat_sinh'], 2),
+                'tong_a' => round($tongA, 2),
+                'tong_b' => round($tongB, 2),
+                'tong_c' => round($tongC, 2),
+                'tong_khau_tru' => round($tongC, 2),
+                'thuc_nhan' => $thucNhan,
+            ],
+        ];
+
+        if ($includeDays) {
+            $result['days'] = $days;
+        }
+
+        return $result;
     }
 
     /**

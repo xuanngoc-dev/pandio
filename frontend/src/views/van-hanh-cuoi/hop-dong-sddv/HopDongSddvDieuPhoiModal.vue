@@ -37,6 +37,7 @@
                   format="DD/MM/YYYY"
                   value-format="YYYY-MM-DD"
                   :placeholder="`Chọn ${field.ten_thong_tin.toLowerCase()}`"
+                  :disabled-date="disabledPastDate"
                   style="width: 100%"
                   clearable
                 />
@@ -231,6 +232,16 @@ function isDateField(field) {
   if (!field) return false
   if (field.loai_du_lieu === 'date') return true
   return REQUIRED_DATE_KEYS.has(field.key)
+}
+
+function startOfToday() {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return today
+}
+
+function disabledPastDate(date) {
+  return date.getTime() < startOfToday().getTime()
 }
 
 function defaultValueByLoai(loai) {

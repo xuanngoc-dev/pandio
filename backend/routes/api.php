@@ -87,6 +87,7 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
 
     // Tính lương
     Route::get('/tinh-luong/chi-tiet-theo-ngay', [TinhLuongController::class, 'chiTietTheoNgay']);
+    Route::get('/tinh-luong/tong-hop', [TinhLuongController::class, 'tongHop']);
 
     // Phòng ban
     Route::get('phong-ban/{phong_ban}/nhan-vien', [PhongBanController::class, 'nhanVien']);

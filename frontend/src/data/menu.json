@@ -104,6 +104,12 @@
         "component": "nhan-su/ChamCongNghiPhep"
       },
       {
+        "index": "/nhan-su/luong-tong-hop",
+        "title": "Lương tổng hợp",
+        "icon": "Wallet",
+        "component": "nhan-su/LuongTongHop"
+      },
+      {
         "index": "/nhan-su/tinh-luong",
         "title": "Tính lương",
         "icon": "Money",
@@ -144,6 +150,43 @@
         "title": "Trung tâm Phê duyệt",
         "icon": "CircleCheck",
         "component": "he-thong/TrungTamPheDuyet"
+      },
+      {
+        "index": "/he-thong/dao-tao",
+        "title": "Đào tạo",
+        "icon": "Reading",
+        "children": [
+          {
+            "index": "/he-thong/dao-tao/hoc-vien",
+            "title": "Quản lý học viên",
+            "icon": "User",
+            "component": "he-thong/dao-tao/QuanLyHocVien"
+          },
+          {
+            "index": "/he-thong/dao-tao/lich-dao-tao",
+            "title": "Lịch đào tạo",
+            "icon": "Calendar",
+            "component": "he-thong/dao-tao/LichDaoTao"
+          },
+          {
+            "index": "/he-thong/dao-tao/khoa-hoc",
+            "title": "Khóa học",
+            "icon": "Notebook",
+            "component": "he-thong/dao-tao/KhoaHoc"
+          },
+          {
+            "index": "/he-thong/dao-tao/diem-danh",
+            "title": "Điểm danh đào tạo",
+            "icon": "Checked",
+            "component": "he-thong/dao-tao/DiemDanhDaoTao"
+          },
+          {
+            "index": "/he-thong/dao-tao/bao-cao",
+            "title": "Báo cáo đào tạo",
+            "icon": "DataAnalysis",
+            "component": "he-thong/dao-tao/BaoCaoDaoTao"
+          }
+        ]
       },
       {
         "index": "/he-thong/thong-bao",

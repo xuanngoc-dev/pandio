@@ -24,7 +24,7 @@
           {{ formatGioChup(row) }}
         </template>
       </CustomTableColumn>
-      <CustomTableColumn label="Mã HĐ" prop="ma_hop_dong" min-width="140" />
+      <CustomTableColumn label="Mã HĐ" prop="ma_hop_dong" min-width="160" />
       <CustomTableColumn label="Loại hợp đồng" min-width="140">
         <template #default="{ row }">
           {{ row.loai_hop_dong?.ten_hop_dong || props.tenHopDong || '—' }}

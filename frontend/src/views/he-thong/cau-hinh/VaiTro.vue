@@ -266,10 +266,22 @@ const bulkActions = computed(() => [
 const menuTreeData = menuGroups.map((group, groupIndex) => ({
   id: `group:${groupIndex}`,
   label: group.header || 'Chung',
-  children: (group.items || []).map((item) => ({
-    id: item.index,
-    label: item.title,
-  })),
+  children: (group.items || []).flatMap((item) => {
+    if (item.children?.length) {
+      return [{
+        id: `submenu:${item.index}`,
+        label: item.title,
+        children: item.children.map((child) => ({
+          id: child.index,
+          label: child.title,
+        })),
+      }]
+    }
+    return [{
+      id: item.index,
+      label: item.title,
+    }]
+  }),
 }))
 
 const cauHinhTreeData = cauHinhSections.map((section) => ({
@@ -281,7 +293,13 @@ const cauHinhTreeData = cauHinhSections.map((section) => ({
   })),
 }))
 
-const allMenuLeafIds = menuTreeData.flatMap((g) => (g.children || []).map((c) => c.id))
+const allMenuLeafIds = menuTreeData.flatMap((g) =>
+  (g.children || []).flatMap((node) =>
+    node.children?.length
+      ? node.children.map((c) => c.id)
+      : [node.id],
+  ),
+)
 const allCauHinhLeafIds = cauHinhTreeData.flatMap((s) => (s.children || []).map((c) => c.id))
 
 const emptyForm = () => ({
