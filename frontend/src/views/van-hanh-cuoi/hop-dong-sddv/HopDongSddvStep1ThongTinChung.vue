@@ -1,302 +1,341 @@
 <template>
   <div class="step-panel">
     <CustomForm ref="formRef" :model="form" :rules="step1Rules" label-position="top">
-      <CustomRow :gutter="16">
-        <CustomCol v-bind="fieldColProps">
-          <CustomFormItem label="Mã hợp đồng" prop="ma_hop_dong">
-            <CustomInput v-model="form.ma_hop_dong" readonly />
-          </CustomFormItem>
-        </CustomCol>
-        <CustomCol v-bind="fieldColProps">
-          <CustomFormItem label="Loại hợp đồng" prop="loai_hop_dong_id">
-            <CustomSelect
-              v-model="form.loai_hop_dong_id"
-              placeholder="Chọn loại hợp đồng"
-              filterable
-              style="width: 100%"
-              @change="emit('loai-hop-dong-change')"
-            >
-              <CustomOption
-                v-for="item in loaiHopDongOptions"
-                :key="item.id"
-                :label="item.ten_hop_dong"
-                :value="item.id"
-              />
-            </CustomSelect>
-          </CustomFormItem>
-        </CustomCol>
-        <CustomCol v-bind="fieldColProps">
-          <CustomFormItem label="Tên khách hàng" prop="ten_khach_hang">
-            <CustomInput v-model="form.ten_khach_hang" placeholder="Nhập tên khách hàng" clearable />
-          </CustomFormItem>
-        </CustomCol>
-        <CustomCol v-bind="fieldColProps">
-          <CustomFormItem label="SĐT khách hàng" prop="sdt_khach_hang">
-            <CustomInput v-model="form.sdt_khach_hang" placeholder="Nhập số điện thoại" clearable />
-          </CustomFormItem>
-        </CustomCol>
-        <CustomCol v-bind="fieldColProps">
-          <CustomFormItem label="Địa chỉ" prop="dia_chi">
-            <CustomInput v-model="form.dia_chi" placeholder="Nhập địa chỉ" clearable />
-          </CustomFormItem>
-        </CustomCol>
-        <CustomCol v-bind="fieldColProps">
-          <CustomFormItem label="Kênh tiếp cận" prop="kenh_tiep_can">
-            <CustomSelect
-              v-model="form.kenh_tiep_can"
-              placeholder="Chọn kênh tiếp cận"
-              clearable
-              filterable
-              style="width: 100%"
-            >
-              <CustomOption
-                v-for="opt in kenhTiepCanOptions"
-                :key="opt"
-                :label="opt"
-                :value="opt"
-              />
-            </CustomSelect>
-          </CustomFormItem>
-        </CustomCol>
-
-        <CustomCol
-          v-for="field in dynamicFields"
-          :key="field.key"
-          v-bind="getFieldColProps(field)"
-        >
-          <CustomFormItem
-            :label="field.ten_truong"
-            :prop="`thong_tin_hop_dong.${field.key}`"
-            :rules="getDynamicFieldRules(field)"
-          >
-            <template v-if="isTextarea(field.kieu)">
-              <CustomInput
-                v-model="form.thong_tin_hop_dong[field.key]"
-                type="textarea"
-                :rows="3"
-                :placeholder="`Nhập ${field.ten_truong.toLowerCase()}`"
-              />
-            </template>
-            <template v-else-if="isMoney(field.kieu)">
-              <MoneyInput
-                v-model="form.thong_tin_hop_dong[field.key]"
-                :placeholder="`Nhập ${field.ten_truong.toLowerCase()}`"
-                style="width: 100%"
-              />
-            </template>
-            <template v-else-if="isNumberLike(field.kieu)">
-              <CustomInput
-                v-model="form.thong_tin_hop_dong[field.key]"
-                type="number"
-                :placeholder="`Nhập ${field.ten_truong.toLowerCase()}`"
-              />
-            </template>
-            <template v-else-if="field.kieu === 'select'">
+      <CustomCard shadow="never" class="info-card">
+        <template #header>
+          <span class="info-card-title">Thông tin khách hàng</span>
+        </template>
+        <CustomRow :gutter="16">
+          <CustomCol v-bind="fieldColProps">
+            <CustomFormItem label="Mã hợp đồng" prop="ma_hop_dong">
+              <CustomInput v-model="form.ma_hop_dong" readonly />
+            </CustomFormItem>
+          </CustomCol>
+          <CustomCol v-bind="fieldColProps">
+            <CustomFormItem label="Loại hợp đồng" prop="loai_hop_dong_id">
               <CustomSelect
-                v-model="form.thong_tin_hop_dong[field.key]"
-                :placeholder="`Chọn ${field.ten_truong.toLowerCase()}`"
+                v-model="form.loai_hop_dong_id"
+                placeholder="Chọn loại hợp đồng"
+                filterable
+                style="width: 100%"
+                @change="emit('loai-hop-dong-change')"
+              >
+                <CustomOption
+                  v-for="item in loaiHopDongOptions"
+                  :key="item.id"
+                  :label="item.ten_hop_dong"
+                  :value="item.id"
+                />
+              </CustomSelect>
+            </CustomFormItem>
+          </CustomCol>
+          <CustomCol v-bind="fieldColProps">
+            <CustomFormItem label="Tên khách hàng" prop="ten_khach_hang">
+              <CustomInput v-model="form.ten_khach_hang" placeholder="Nhập tên khách hàng" clearable />
+            </CustomFormItem>
+          </CustomCol>
+          <CustomCol v-bind="fieldColProps">
+            <CustomFormItem label="SĐT khách hàng" prop="sdt_khach_hang">
+              <CustomInput v-model="form.sdt_khach_hang" placeholder="Nhập số điện thoại" clearable />
+            </CustomFormItem>
+          </CustomCol>
+          <CustomCol v-bind="fieldColProps">
+            <CustomFormItem label="Địa chỉ" prop="dia_chi">
+              <CustomInput v-model="form.dia_chi" placeholder="Nhập địa chỉ" clearable />
+            </CustomFormItem>
+          </CustomCol>
+          <CustomCol v-bind="fieldColProps">
+            <CustomFormItem label="Kênh tiếp cận" prop="kenh_tiep_can">
+              <CustomSelect
+                v-model="form.kenh_tiep_can"
+                placeholder="Chọn kênh tiếp cận"
                 clearable
                 filterable
                 style="width: 100%"
               >
                 <CustomOption
-                  v-for="opt in field.options || []"
-                  :key="opt.value"
-                  :label="opt.label"
-                  :value="opt.value"
-                />
-              </CustomSelect>
-            </template>
-            <template v-else-if="field.kieu === 'radio'">
-              <el-radio-group v-model="form.thong_tin_hop_dong[field.key]">
-                <el-radio
-                  v-for="opt in field.options || []"
-                  :key="opt.value"
-                  :value="opt.value"
-                >
-                  {{ opt.label }}
-                </el-radio>
-              </el-radio-group>
-            </template>
-            <template v-else-if="field.kieu === 'checkbox'">
-              <el-checkbox v-model="form.thong_tin_hop_dong[field.key]">
-                {{ field.ten_truong }}
-              </el-checkbox>
-            </template>
-            <template v-else-if="field.kieu === 'checkbox_group'">
-              <el-checkbox-group v-model="form.thong_tin_hop_dong[field.key]">
-                <el-checkbox
-                  v-for="opt in field.options || []"
-                  :key="opt.value"
-                  :value="opt.value"
-                >
-                  {{ opt.label }}
-                </el-checkbox>
-              </el-checkbox-group>
-            </template>
-            <template v-else-if="field.kieu === 'switch'">
-              <el-switch v-model="form.thong_tin_hop_dong[field.key]" />
-            </template>
-            <template v-else-if="isDateLike(field.kieu)">
-              <el-date-picker
-                v-model="form.thong_tin_hop_dong[field.key]"
-                :type="datePickerType(field.kieu)"
-                :format="datePickerFormat(field.kieu)"
-                :value-format="datePickerValueFormat(field.kieu)"
-                :placeholder="`Chọn ${field.ten_truong.toLowerCase()}`"
-                :disabled-date="disabledPastDate"
-                style="width: 100%"
-              />
-            </template>
-            <template v-else-if="field.kieu === 'time'">
-              <el-time-picker
-                v-model="form.thong_tin_hop_dong[field.key]"
-                format="HH:mm"
-                value-format="HH:mm"
-                :placeholder="`Chọn ${field.ten_truong.toLowerCase()}`"
-                style="width: 100%"
-              />
-            </template>
-            <template v-else>
-              <CustomInput
-                v-model="form.thong_tin_hop_dong[field.key]"
-                :type="textInputType(field.kieu)"
-                :placeholder="`Nhập ${field.ten_truong.toLowerCase()}`"
-                clearable
-              />
-            </template>
-          </CustomFormItem>
-        </CustomCol>
-
-        <CustomCol v-bind="fieldColProps">
-          <CustomFormItem label="Người tham gia" prop="nguoi_tham_gia_ids">
-            <CustomSelect
-              v-model="form.nguoi_tham_gia_ids"
-              placeholder="Chọn người tham gia"
-              filterable
-              multiple
-              collapse-tags
-              collapse-tags-tooltip
-              style="width: 100%"
-            >
-              <CustomOption
-                v-for="user in userOptions"
-                :key="user.id"
-                :label="user.name"
-                :value="user.id"
-              />
-            </CustomSelect>
-          </CustomFormItem>
-        </CustomCol>
-
-        <CustomCol
-          v-for="field in dieuPhoiNormalFields"
-          :key="`dieu-phoi-${field.key}`"
-          v-bind="getDieuPhoiFieldColProps(field)"
-        >
-          <CustomFormItem :label="field.ten_thong_tin">
-            <template v-if="field.key === 'buoi_chup'">
-              <CustomSelect
-                v-model="dieuPhoiValues[field.key]"
-                :placeholder="`Chọn ${field.ten_thong_tin.toLowerCase()}`"
-                clearable
-                style="width: 100%"
-              >
-                <CustomOption
-                  v-for="opt in buoiChupOptions"
-                  :key="opt.value"
-                  :label="opt.label"
-                  :value="opt.value"
-                />
-              </CustomSelect>
-            </template>
-
-            <template v-else-if="field.loai_du_lieu === 'date'">
-              <el-date-picker
-                v-model="dieuPhoiValues[field.key]"
-                type="date"
-                format="DD/MM/YYYY"
-                value-format="YYYY-MM-DD"
-                :placeholder="`Chọn ${field.ten_thong_tin.toLowerCase()}`"
-                :disabled-date="disabledPastDate"
-                style="width: 100%"
-                clearable
-              />
-            </template>
-
-            <template v-else-if="field.loai_du_lieu === 'time'">
-              <el-time-picker
-                v-model="dieuPhoiValues[field.key]"
-                format="HH:mm"
-                value-format="HH:mm"
-                :placeholder="`Chọn ${field.ten_thong_tin.toLowerCase()}`"
-                style="width: 100%"
-                clearable
-              />
-            </template>
-
-            <template v-else-if="field.loai_du_lieu === 'array'">
-              <CustomSelect
-                v-model="dieuPhoiValues[field.key]"
-                :placeholder="`Chọn hoặc nhập ${field.ten_thong_tin.toLowerCase()}`"
-                multiple
-                filterable
-                allow-create
-                default-first-option
-                collapse-tags
-                collapse-tags-tooltip
-                clearable
-                style="width: 100%"
-              >
-                <CustomOption
-                  v-for="opt in getDieuPhoiArrayOptions(field.key)"
+                  v-for="opt in kenhTiepCanOptions"
                   :key="opt"
                   :label="opt"
                   :value="opt"
                 />
               </CustomSelect>
-            </template>
+            </CustomFormItem>
+          </CustomCol>
+        </CustomRow>
+      </CustomCard>
 
-            <template v-else>
+      <CustomCard shadow="never" class="info-card">
+        <template #header>
+          <span class="info-card-title">Thông tin hợp đồng</span>
+        </template>
+        <CustomRow v-if="dynamicFields.length" :gutter="16">
+          <CustomCol
+            v-for="field in dynamicFields"
+            :key="field.key"
+            v-bind="getFieldColProps(field)"
+          >
+            <CustomFormItem
+              :label="field.ten_truong"
+              :prop="`thong_tin_hop_dong.${field.key}`"
+              :rules="getDynamicFieldRules(field)"
+            >
+              <template v-if="isTextarea(field.kieu)">
+                <CustomInput
+                  v-model="form.thong_tin_hop_dong[field.key]"
+                  type="textarea"
+                  :rows="3"
+                  :placeholder="`Nhập ${field.ten_truong.toLowerCase()}`"
+                />
+              </template>
+              <template v-else-if="isMoney(field.kieu)">
+                <MoneyInput
+                  v-model="form.thong_tin_hop_dong[field.key]"
+                  :placeholder="`Nhập ${field.ten_truong.toLowerCase()}`"
+                  style="width: 100%"
+                />
+              </template>
+              <template v-else-if="isNumberLike(field.kieu)">
+                <CustomInput
+                  v-model="form.thong_tin_hop_dong[field.key]"
+                  type="number"
+                  :placeholder="`Nhập ${field.ten_truong.toLowerCase()}`"
+                />
+              </template>
+              <template v-else-if="field.kieu === 'select'">
+                <CustomSelect
+                  v-model="form.thong_tin_hop_dong[field.key]"
+                  :placeholder="`Chọn ${field.ten_truong.toLowerCase()}`"
+                  clearable
+                  filterable
+                  style="width: 100%"
+                >
+                  <CustomOption
+                    v-for="opt in field.options || []"
+                    :key="opt.value"
+                    :label="opt.label"
+                    :value="opt.value"
+                  />
+                </CustomSelect>
+              </template>
+              <template v-else-if="field.kieu === 'radio'">
+                <el-radio-group v-model="form.thong_tin_hop_dong[field.key]">
+                  <el-radio
+                    v-for="opt in field.options || []"
+                    :key="opt.value"
+                    :value="opt.value"
+                  >
+                    {{ opt.label }}
+                  </el-radio>
+                </el-radio-group>
+              </template>
+              <template v-else-if="field.kieu === 'checkbox'">
+                <el-checkbox v-model="form.thong_tin_hop_dong[field.key]">
+                  {{ field.ten_truong }}
+                </el-checkbox>
+              </template>
+              <template v-else-if="field.kieu === 'checkbox_group'">
+                <el-checkbox-group v-model="form.thong_tin_hop_dong[field.key]">
+                  <el-checkbox
+                    v-for="opt in field.options || []"
+                    :key="opt.value"
+                    :value="opt.value"
+                  >
+                    {{ opt.label }}
+                  </el-checkbox>
+                </el-checkbox-group>
+              </template>
+              <template v-else-if="field.kieu === 'switch'">
+                <el-switch v-model="form.thong_tin_hop_dong[field.key]" />
+              </template>
+              <template v-else-if="isDateLike(field.kieu)">
+                <el-date-picker
+                  v-model="form.thong_tin_hop_dong[field.key]"
+                  :type="datePickerType(field.kieu)"
+                  :format="datePickerFormat(field.kieu)"
+                  :value-format="datePickerValueFormat(field.kieu)"
+                  :placeholder="`Chọn ${field.ten_truong.toLowerCase()}`"
+                  :disabled-date="disabledPastDate"
+                  style="width: 100%"
+                />
+              </template>
+              <template v-else-if="field.kieu === 'time'">
+                <el-time-picker
+                  v-model="form.thong_tin_hop_dong[field.key]"
+                  format="HH:mm"
+                  value-format="HH:mm"
+                  :placeholder="`Chọn ${field.ten_truong.toLowerCase()}`"
+                  style="width: 100%"
+                />
+              </template>
+              <template v-else>
+                <CustomInput
+                  v-model="form.thong_tin_hop_dong[field.key]"
+                  :type="textInputType(field.kieu)"
+                  :placeholder="`Nhập ${field.ten_truong.toLowerCase()}`"
+                  clearable
+                />
+              </template>
+            </CustomFormItem>
+          </CustomCol>
+        </CustomRow>
+        <p v-else class="info-card-empty">
+          {{
+            form.loai_hop_dong_id
+              ? 'Loại hợp đồng này chưa có trường thông tin.'
+              : 'Chọn loại hợp đồng để hiển thị thông tin hợp đồng.'
+          }}
+        </p>
+      </CustomCard>
+
+      <CustomCard shadow="never" class="info-card">
+        <template #header>
+          <span class="info-card-title">Thông tin điều phối</span>
+        </template>
+        <template v-if="dieuPhoiNormalFields.length || dieuPhoiTextareaFields.length">
+          <CustomRow v-if="dieuPhoiNormalFields.length" :gutter="16">
+            <CustomCol
+              v-for="field in dieuPhoiNormalFields"
+              :key="`dieu-phoi-${field.key}`"
+              v-bind="getDieuPhoiFieldColProps(field)"
+            >
+              <CustomFormItem :label="field.ten_thong_tin">
+                <template v-if="field.key === 'buoi_chup'">
+                  <CustomSelect
+                    v-model="dieuPhoiValues[field.key]"
+                    :placeholder="`Chọn ${field.ten_thong_tin.toLowerCase()}`"
+                    clearable
+                    style="width: 100%"
+                  >
+                    <CustomOption
+                      v-for="opt in buoiChupOptions"
+                      :key="opt.value"
+                      :label="opt.label"
+                      :value="opt.value"
+                    />
+                  </CustomSelect>
+                </template>
+
+                <template v-else-if="field.loai_du_lieu === 'date'">
+                  <el-date-picker
+                    v-model="dieuPhoiValues[field.key]"
+                    type="date"
+                    format="DD/MM/YYYY"
+                    value-format="YYYY-MM-DD"
+                    :placeholder="`Chọn ${field.ten_thong_tin.toLowerCase()}`"
+                    :disabled-date="disabledPastDate"
+                    style="width: 100%"
+                    clearable
+                  />
+                </template>
+
+                <template v-else-if="field.loai_du_lieu === 'time'">
+                  <el-time-picker
+                    v-model="dieuPhoiValues[field.key]"
+                    format="HH:mm"
+                    value-format="HH:mm"
+                    :placeholder="`Chọn ${field.ten_thong_tin.toLowerCase()}`"
+                    style="width: 100%"
+                    clearable
+                  />
+                </template>
+
+                <template v-else-if="field.loai_du_lieu === 'array'">
+                  <CustomSelect
+                    v-model="dieuPhoiValues[field.key]"
+                    :placeholder="`Chọn hoặc nhập ${field.ten_thong_tin.toLowerCase()}`"
+                    multiple
+                    filterable
+                    allow-create
+                    default-first-option
+                    collapse-tags
+                    collapse-tags-tooltip
+                    clearable
+                    style="width: 100%"
+                  >
+                    <CustomOption
+                      v-for="opt in getDieuPhoiArrayOptions(field.key)"
+                      :key="opt"
+                      :label="opt"
+                      :value="opt"
+                    />
+                  </CustomSelect>
+                </template>
+
+                <template v-else>
+                  <CustomInput
+                    v-model="dieuPhoiValues[field.key]"
+                    :placeholder="`Nhập ${field.ten_thong_tin.toLowerCase()}`"
+                    clearable
+                  />
+                </template>
+              </CustomFormItem>
+            </CustomCol>
+          </CustomRow>
+
+          <CustomRow v-if="dieuPhoiTextareaFields.length" :gutter="16">
+            <CustomCol
+              v-for="field in dieuPhoiTextareaFields"
+              :key="`dieu-phoi-${field.key}`"
+              v-bind="wideFieldColProps"
+            >
+              <CustomFormItem :label="field.ten_thong_tin">
+                <CustomInput
+                  v-model="dieuPhoiValues[field.key]"
+                  type="textarea"
+                  :rows="3"
+                  :placeholder="`Nhập ${field.ten_thong_tin.toLowerCase()}`"
+                />
+              </CustomFormItem>
+            </CustomCol>
+          </CustomRow>
+        </template>
+        <p v-else class="info-card-empty">
+          {{
+            form.loai_hop_dong_id
+              ? 'Loại hợp đồng này chưa cấu hình thông tin điều phối.'
+              : 'Chọn loại hợp đồng để hiển thị thông tin điều phối.'
+          }}
+        </p>
+      </CustomCard>
+
+      <CustomCard shadow="never" class="info-card">
+        <template #header>
+          <span class="info-card-title">Lưu ý cửa hàng</span>
+        </template>
+        <CustomRow :gutter="16">
+          <CustomCol v-bind="wideFieldColProps">
+            <CustomFormItem label="Người tham gia" prop="nguoi_tham_gia_ids">
+              <CustomSelect
+                v-model="form.nguoi_tham_gia_ids"
+                placeholder="Chọn người tham gia"
+                filterable
+                multiple
+                collapse-tags
+                collapse-tags-tooltip
+                style="width: 100%"
+              >
+                <CustomOption
+                  v-for="user in userOptions"
+                  :key="user.id"
+                  :label="user.name"
+                  :value="user.id"
+                />
+              </CustomSelect>
+            </CustomFormItem>
+          </CustomCol>
+          <CustomCol v-bind="wideFieldColProps">
+            <CustomFormItem label="Ghi chú sale" prop="ghi_chu_sale">
               <CustomInput
-                v-model="dieuPhoiValues[field.key]"
-                :placeholder="`Nhập ${field.ten_thong_tin.toLowerCase()}`"
-                clearable
+                v-model="form.ghi_chu_sale"
+                type="textarea"
+                :rows="3"
+                placeholder="Ghi chú nội bộ của sale"
               />
-            </template>
-          </CustomFormItem>
-        </CustomCol>
-      </CustomRow>
-
-      <CustomRow v-if="dieuPhoiTextareaFields.length" :gutter="16">
-        <CustomCol
-          v-for="field in dieuPhoiTextareaFields"
-          :key="`dieu-phoi-${field.key}`"
-          v-bind="wideFieldColProps"
-        >
-          <CustomFormItem :label="field.ten_thong_tin">
-            <CustomInput
-              v-model="dieuPhoiValues[field.key]"
-              type="textarea"
-              :rows="3"
-              :placeholder="`Nhập ${field.ten_thong_tin.toLowerCase()}`"
-            />
-          </CustomFormItem>
-        </CustomCol>
-      </CustomRow>
-
-      <CustomRow :gutter="16">
-        <CustomCol :span="24">
-          <CustomFormItem label="Ghi chú sale" prop="ghi_chu_sale">
-            <CustomInput
-              v-model="form.ghi_chu_sale"
-              type="textarea"
-              :rows="3"
-              placeholder="Ghi chú nội bộ của sale"
-            />
-          </CustomFormItem>
-        </CustomCol>
-      </CustomRow>
+            </CustomFormItem>
+          </CustomCol>
+        </CustomRow>
+      </CustomCard>
     </CustomForm>
   </div>
 </template>
@@ -305,6 +344,7 @@
 import { computed, reactive, ref } from 'vue'
 import { getLoaiHopDong } from '@/api/loaiHopDong'
 import {
+  CustomCard,
   CustomCol,
   CustomForm,
   CustomFormItem,
@@ -626,5 +666,37 @@ defineExpose({ validate, getDieuPhoiPayload, loadDieuPhoiSchema })
 <style scoped lang="scss">
 .step-panel {
   min-height: 220px;
+
+  :deep(.el-form) {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+}
+
+.info-card {
+  border: 1px solid var(--el-border-color-lighter);
+}
+
+.info-card :deep(.el-card__header) {
+  padding: 10px 16px;
+  background: var(--el-fill-color-light);
+}
+
+.info-card :deep(.el-card__body) {
+  padding: 12px 16px 4px;
+}
+
+.info-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.info-card-empty {
+  margin: 0;
+  padding: 4px 0 12px;
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
 }
 </style>

@@ -18,7 +18,10 @@
           v-for="(step, index) in steps"
           :key="step.key"
           :title="step.title"
-          :class="{ 'is-clickable': index <= activeStep }"
+          :class="{
+            'is-clickable': index <= activeStep,
+            'is-current': index === activeStep,
+          }"
           @click="goToStep(index)"
         />
       </el-steps>
@@ -461,11 +464,18 @@ watch(activeStep, (step) => {
 <style scoped lang="scss">
 .steps-wrap {
   margin-bottom: 28px;
-  padding: 8px 8px 20px;
+  padding: 16px 8px 20px;
+  overflow: visible;
   border-bottom: 1px solid var(--el-border-color-lighter);
 }
 
 .sddv-steps {
+  overflow: visible;
+
+  :deep(.el-step) {
+    overflow: visible;
+  }
+
   :deep(.el-step__title) {
     font-size: 14px;
     font-weight: 500;
@@ -474,12 +484,15 @@ watch(activeStep, (step) => {
   }
 
   :deep(.el-step__head) {
+    overflow: visible;
+
     .el-step__icon {
       width: 36px;
       height: 36px;
       font-size: 15px;
       font-weight: 600;
       border-width: 2px;
+      overflow: visible;
       transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
     }
   }
@@ -512,36 +525,42 @@ watch(activeStep, (step) => {
     }
   }
 
-  :deep(.el-step.is-process) {
+  :deep(.el-step.is-process),
+  :deep(.el-step.is-current) {
     .el-step__head {
       color: var(--el-color-primary);
       border-color: var(--el-color-primary);
-    }
-
-    .el-step__icon {
-      position: relative;
-      z-index: 1;
-      background: var(--el-color-primary);
-      border-color: var(--el-color-primary);
-      color: #fff;
-      transform: scale(1.08);
-      box-shadow: 0 6px 16px color-mix(in srgb, var(--el-color-primary) 35%, transparent);
 
       &::before,
       &::after {
         content: '';
         position: absolute;
-        inset: 0;
+        left: 50%;
+        top: 18px;
+        z-index: 0;
+        width: 36px;
+        height: 36px;
         border-radius: 50%;
         border: 2px solid var(--el-color-primary);
-        opacity: 0.65;
-        animation: sddv-step-wave 2s ease-out infinite;
+        background: color-mix(in srgb, var(--el-color-primary) 16%, transparent);
+        transform: translate(-50%, -50%) scale(1);
+        animation: sddv-step-wave 2s cubic-bezier(0.22, 1, 0.36, 1) infinite;
         pointer-events: none;
       }
 
       &::after {
         animation-delay: 1s;
       }
+    }
+
+    .el-step__icon {
+      position: relative;
+      z-index: 2;
+      background: var(--el-color-primary);
+      border-color: var(--el-color-primary);
+      color: #fff;
+      transform: scale(1.1);
+      animation: sddv-step-glow 2s ease-in-out infinite;
     }
 
     .el-step__title {
@@ -574,15 +593,26 @@ watch(activeStep, (step) => {
 
 @keyframes sddv-step-wave {
   0% {
-    transform: scale(1);
-    opacity: 0.55;
-  }
-  70% {
-    opacity: 0.15;
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.7;
   }
   100% {
-    transform: scale(2.15);
+    transform: translate(-50%, -50%) scale(1.7);
     opacity: 0;
+  }
+}
+
+@keyframes sddv-step-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 3px color-mix(in srgb, var(--el-color-primary) 22%, transparent),
+      0 4px 12px color-mix(in srgb, var(--el-color-primary) 38%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 6px color-mix(in srgb, var(--el-color-primary) 10%, transparent),
+      0 6px 14px color-mix(in srgb, var(--el-color-primary) 45%, transparent);
   }
 }
 

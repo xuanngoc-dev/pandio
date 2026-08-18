@@ -88,7 +88,7 @@ defineExpose({
 </script>
 
 <template>
-  <el-select ref="selectRef" v-model="model" v-bind="$attrs">
+  <el-select ref="selectRef" v-model="model" clearable v-bind="$attrs">
     <template v-if="showSelectAllCheckbox" #header>
       <div class="custom-select__select-all" @click.stop @mousedown.stop>
         <el-checkbox
