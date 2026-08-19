@@ -24,6 +24,7 @@
       </template>
 
       <CustomTable
+        :column-settings="columnSettings"
         v-loading="loading"
         :data="items"
         stripe
@@ -246,7 +247,13 @@ const tableColumns = [
   { key: 'luong_tang_ca', label: 'Lương tăng ca' },
   { key: 'ghi_chu', label: 'Ghi chú' },
 ]
-const columnSettings = useTableColumns('nhan-su.diem-danh', tableColumns)
+const columnSettings = useTableColumns('nhan-su.diem-danh', tableColumns, {
+  pin: {
+    selection: false,
+    actions: false,
+    defaultLeft: ['__stt__', 'ho_ten'],
+  },
+})
 
 const items = ref([])
 const loading = ref(false)

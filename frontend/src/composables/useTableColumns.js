@@ -2,6 +2,23 @@ import { reactive } from 'vue'
 import { ElMessage } from 'element-plus'
 
 const STORAGE_PREFIX = 'pandio.tableColumns.'
+const FIXED_STORAGE_PREFIX = 'pandio.tableFixed.'
+
+export const TABLE_COLUMN_SETTINGS_KEY = 'tableColumnSettings'
+
+export const FIXED_COL = {
+  selection: '__selection__',
+  stt: '__stt__',
+  actions: '__actions__',
+}
+
+const SPECIAL_LABEL_TO_KEY = {
+  Checkbox: FIXED_COL.selection,
+  'Chọn hàng': FIXED_COL.selection,
+  STT: FIXED_COL.stt,
+  'Số thứ tự': FIXED_COL.stt,
+  'Thao tác': FIXED_COL.actions,
+}
 
 /**
  * Nhóm cột theo `group` (giữ thứ tự xuất hiện lần đầu).
@@ -40,6 +57,23 @@ function readSelectedKeys(storageKey) {
   }
 }
 
+function readFixedKeys(storageKey, defaults) {
+  try {
+    const raw = localStorage.getItem(FIXED_STORAGE_PREFIX + storageKey)
+    if (!raw) return { left: [...defaults.left], right: [...defaults.right] }
+    const saved = JSON.parse(raw)
+    if (!saved || typeof saved !== 'object') {
+      return { left: [...defaults.left], right: [...defaults.right] }
+    }
+    return {
+      left: Array.isArray(saved.left) ? saved.left : [...defaults.left],
+      right: Array.isArray(saved.right) ? saved.right : [...defaults.right],
+    }
+  } catch {
+    return { left: [...defaults.left], right: [...defaults.right] }
+  }
+}
+
 /**
  * @param {Array<{ key: string, defaultVisible?: boolean }>} columns
  * @param {string} storageKey
@@ -57,13 +91,71 @@ function visibilityForColumns(columns, storageKey, opts = {}) {
   return next
 }
 
+function uniqueKeys(keys) {
+  const seen = new Set()
+  const result = []
+  for (const key of keys) {
+    if (!key || seen.has(key)) continue
+    seen.add(key)
+    result.push(key)
+  }
+  return result
+}
+
+function resolvePinOptions(columns, options = {}) {
+  const pin = options.pin || {}
+  const hasSelection = pin.selection !== false
+  const hasStt = pin.stt !== false
+  const hasActions = pin.actions !== false
+
+  const specialLeft = [
+    hasSelection ? { key: FIXED_COL.selection, label: 'Checkbox' } : null,
+    hasStt ? { key: FIXED_COL.stt, label: 'Số thứ tự' } : null,
+  ].filter(Boolean)
+
+  const specialRight = [
+    hasActions ? { key: FIXED_COL.actions, label: 'Thao tác' } : null,
+  ].filter(Boolean)
+
+  const statusCol = columns.find((col) => col.key === 'trang_thai' || col.label === 'Trạng thái')
+
+  const defaultLeft = uniqueKeys(
+    pin.defaultLeft || [
+      ...(hasSelection ? [FIXED_COL.selection] : []),
+      ...(hasStt ? [FIXED_COL.stt] : []),
+    ],
+  )
+  const defaultRight = uniqueKeys(
+    pin.defaultRight || [
+      ...(hasActions ? [FIXED_COL.actions] : []),
+      ...(statusCol ? [statusCol.key] : []),
+    ],
+  )
+
+  return { specialLeft, specialRight, defaultLeft, defaultRight }
+}
+
+function sanitizeFixedKeys(keys, allowed) {
+  const allowedSet = new Set(allowed)
+  return uniqueKeys(keys).filter((key) => allowedSet.has(key))
+}
+
 /**
- * Ẩn/hiện cột bảng + lưu localStorage theo từng trang.
+ * Ẩn/hiện cột bảng + cấu hình cột cố định (left/right), lưu localStorage theo từng trang.
  *
  * @param {string} storageKey — khóa duy nhất (vd: 'van-hanh-cuoi.concept-list')
  * @param {Array<{ key: string, label: string, defaultVisible?: boolean, group?: string }>} baseColumns
- *   — cột cố định (không gồm STT / selection / Thao tác).
- * @param {{ onBeforeOpen?: () => void | Promise<void> }} [options]
+ *   — cột dữ liệu (không gồm STT / selection / Thao tác).
+ * @param {{
+ *   onBeforeOpen?: () => void | Promise<void>,
+ *   pin?: {
+ *     selection?: boolean,
+ *     stt?: boolean,
+ *     actions?: boolean,
+ *     defaultLeft?: string[],
+ *     defaultRight?: string[],
+ *   },
+ * }} [options]
  */
 export function useTableColumns(storageKey, baseColumns, options = {}) {
   const { onBeforeOpen } = options
@@ -74,6 +166,19 @@ export function useTableColumns(storageKey, baseColumns, options = {}) {
 
   function allColumns() {
     return [...baseColumns, ...extraColumns]
+  }
+
+  function pinOptions() {
+    return resolvePinOptions(allColumns(), options)
+  }
+
+  function allowedFixedKeys() {
+    const { specialLeft, specialRight } = pinOptions()
+    return [
+      ...specialLeft.map((col) => col.key),
+      ...allColumns().map((col) => col.key),
+      ...specialRight.map((col) => col.key),
+    ]
   }
 
   function buildVisibility() {
@@ -87,29 +192,106 @@ export function useTableColumns(storageKey, baseColumns, options = {}) {
     return { ...baseVis, ...extraVis }
   }
 
+  function buildFixed() {
+    const { defaultLeft, defaultRight } = pinOptions()
+    const saved = readFixedKeys(storageKey, { left: defaultLeft, right: defaultRight })
+    const allowed = allowedFixedKeys()
+    const left = sanitizeFixedKeys(saved.left, allowed)
+    const right = sanitizeFixedKeys(
+      saved.right.filter((key) => !left.includes(key)),
+      allowed,
+    )
+    return { left, right }
+  }
+
+  function buildPinGroups() {
+    const { specialLeft, specialRight } = pinOptions()
+    const dataColumns = allColumns().map((col) => ({ key: col.key, label: col.label }))
+    return {
+      left: [...specialLeft, ...dataColumns],
+      right: [...dataColumns, ...specialRight],
+    }
+  }
+
   function syncDraft() {
     for (const col of allColumns()) {
       state.draft[col.key] = state.visibility[col.key] !== false
     }
+    state.fixedDraft.left = [...state.fixedLeft]
+    state.fixedDraft.right = [...state.fixedRight]
   }
 
   function applyColumnsState() {
     const cols = allColumns()
+    const fixed = buildFixed()
     state.columns = cols
     state.columnGroups = buildColumnGroups(cols)
     state.visibility = buildVisibility()
+    state.pinGroups = buildPinGroups()
+    state.fixedLeft = fixed.left
+    state.fixedRight = fixed.right
+    state.fixedSignature = `${fixed.left.join(',')}|${fixed.right.join(',')}`
+  }
+
+  function resolvePinKey(key) {
+    if (!key) return null
+    if (SPECIAL_LABEL_TO_KEY[key]) return SPECIAL_LABEL_TO_KEY[key]
+    const match = allColumns().find((col) => col.key === key || col.label === key)
+    return match ? match.key : key
   }
 
   const state = reactive({
     columns: allColumns(),
     columnGroups: buildColumnGroups(allColumns()),
+    pinGroups: buildPinGroups(),
     visibility: {},
+    fixedLeft: [],
+    fixedRight: [],
+    fixedSignature: '|',
     dialogVisible: false,
     configLoading: false,
     draft: {},
+    fixedDraft: {
+      left: [],
+      right: [],
+    },
 
     isColumnVisible(key) {
       return state.visibility[key] !== false
+    },
+
+    /**
+     * @param {string} keyOrLabel
+     * @returns {'left' | 'right' | undefined}
+     */
+    columnFixed(keyOrLabel) {
+      const key = resolvePinKey(keyOrLabel)
+      if (!key) return undefined
+      if (state.fixedLeft.includes(key)) return 'left'
+      if (state.fixedRight.includes(key)) return 'right'
+      return undefined
+    },
+
+    isPinColumn(keyOrLabel) {
+      const key = resolvePinKey(keyOrLabel)
+      if (!key) return false
+      return allowedFixedKeys().includes(key)
+    },
+
+    isFixedDraftChecked(key, side) {
+      return state.fixedDraft[side].includes(key)
+    },
+
+    toggleFixedDraft(key, side, checked) {
+      const other = side === 'left' ? 'right' : 'left'
+      if (checked) {
+        if (!state.fixedDraft[side].includes(key)) {
+          state.fixedDraft[side] = [...state.fixedDraft[side], key]
+        }
+        state.fixedDraft[other] = state.fixedDraft[other].filter((item) => item !== key)
+        return
+      }
+      state.fixedDraft[side] = state.fixedDraft[side].filter((item) => item !== key)
     },
 
     /**
@@ -173,7 +355,21 @@ export function useTableColumns(storageKey, baseColumns, options = {}) {
         state.visibility[col.key] = !!state.draft[col.key]
       }
 
+      const allowed = allowedFixedKeys()
+      const nextLeft = sanitizeFixedKeys(state.fixedDraft.left, allowed)
+      const nextRight = sanitizeFixedKeys(
+        state.fixedDraft.right.filter((key) => !nextLeft.includes(key)),
+        allowed,
+      )
+      state.fixedLeft = nextLeft
+      state.fixedRight = nextRight
+      state.fixedSignature = `${nextLeft.join(',')}|${nextRight.join(',')}`
+
       localStorage.setItem(STORAGE_PREFIX + storageKey, JSON.stringify(baseSelected))
+      localStorage.setItem(
+        FIXED_STORAGE_PREFIX + storageKey,
+        JSON.stringify({ left: nextLeft, right: nextRight }),
+      )
       if (extraStorageKey) {
         localStorage.setItem(STORAGE_PREFIX + extraStorageKey, JSON.stringify(extraSelected))
       }
@@ -183,7 +379,7 @@ export function useTableColumns(storageKey, baseColumns, options = {}) {
     },
   })
 
-  state.visibility = buildVisibility()
+  applyColumnsState()
   syncDraft()
 
   return state

@@ -73,7 +73,7 @@
         </div>
       </template>
 
-      <CustomTable v-loading="loading" :data="items" stripe style="width: 100%">
+      <CustomTable :column-settings="columnSettings" v-loading="loading" :data="items" stripe style="width: 100%">
         <CustomTableColumn label="STT" width="60" align="center">
           <template #default="{ $index }">
             {{ (page - 1) * perPage + $index + 1 }}

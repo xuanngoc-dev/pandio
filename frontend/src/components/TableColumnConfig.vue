@@ -46,6 +46,54 @@
           </div>
           <p v-else class="column-config-empty">Không có cột trong nhóm này.</p>
         </section>
+
+        <section class="column-config-section column-config-fixed">
+          <div class="column-config-section-header">
+            <span class="column-config-section-title">Cột cố định</span>
+          </div>
+          <p class="column-config-fixed-hint">
+            Ghim cột khi cuộn ngang. Bên trái mặc định gồm checkbox và số thứ tự; bên phải mặc định
+            gồm thao tác và trạng thái (nếu có). Mỗi cột chỉ cố định một bên.
+          </p>
+          <div class="column-config-fixed-grid">
+            <div class="column-config-fixed-pane">
+              <div class="column-config-fixed-pane-title">Bên trái</div>
+              <div v-if="leftPinColumns.length" class="column-config-list column-config-list--pin">
+                <label
+                  v-for="col in leftPinColumns"
+                  :key="`left-${col.key}`"
+                  class="column-config-item"
+                >
+                  <el-checkbox
+                    :model-value="settings.isFixedDraftChecked(col.key, 'left')"
+                    @update:model-value="(val) => settings.toggleFixedDraft(col.key, 'left', val)"
+                  >
+                    {{ col.label }}
+                  </el-checkbox>
+                </label>
+              </div>
+              <p v-else class="column-config-empty">Không có cột.</p>
+            </div>
+            <div class="column-config-fixed-pane">
+              <div class="column-config-fixed-pane-title">Bên phải</div>
+              <div v-if="rightPinColumns.length" class="column-config-list column-config-list--pin">
+                <label
+                  v-for="col in rightPinColumns"
+                  :key="`right-${col.key}`"
+                  class="column-config-item"
+                >
+                  <el-checkbox
+                    :model-value="settings.isFixedDraftChecked(col.key, 'right')"
+                    @update:model-value="(val) => settings.toggleFixedDraft(col.key, 'right', val)"
+                  >
+                    {{ col.label }}
+                  </el-checkbox>
+                </label>
+              </div>
+              <p v-else class="column-config-empty">Không có cột.</p>
+            </div>
+          </div>
+        </section>
       </div>
 
       <template #footer>
@@ -78,6 +126,9 @@ const hasNamedGroups = computed(() =>
   (props.settings.columnGroups || []).some((group) => !!group.label),
 )
 
+const leftPinColumns = computed(() => props.settings.pinGroups?.left || [])
+const rightPinColumns = computed(() => props.settings.pinGroups?.right || [])
+
 function isGroupFullySelected(group) {
   return group.columns.every((col) => !!props.settings.draft[col.key])
 }
@@ -100,7 +151,7 @@ function isGroupFullySelected(group) {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  max-height: min(55vh, 480px);
+  max-height: min(70vh, 640px);
   overflow: auto;
   padding-right: 4px;
 }
@@ -167,6 +218,18 @@ function isGroupFullySelected(group) {
   @media (max-width: 480px) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  &--pin {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+
+    @media (max-width: 1100px) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    @media (max-width: 768px) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
 }
 
 .column-config-empty {
@@ -203,6 +266,38 @@ function isGroupFullySelected(group) {
     word-break: break-word;
     line-height: 1.35;
   }
+}
+
+.column-config-fixed-hint {
+  margin: -2px 0 12px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  line-height: 1.45;
+}
+
+.column-config-fixed-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.column-config-fixed-pane {
+  min-width: 0;
+  padding: 10px 12px 8px;
+  border: 1px solid var(--el-border-color-extra-light);
+  border-radius: 8px;
+  background: var(--el-fill-color-lighter);
+}
+
+.column-config-fixed-pane-title {
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--el-text-color-regular);
 }
 
 .column-config-footer {

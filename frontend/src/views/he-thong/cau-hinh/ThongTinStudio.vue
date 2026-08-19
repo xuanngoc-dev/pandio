@@ -142,7 +142,7 @@
               </div>
             </template>
 
-            <CustomTable v-loading="payment.loading" :data="payment.items" stripe style="width: 100%">
+            <CustomTable :column-settings="paymentColumnSettings" v-loading="payment.loading" :data="payment.items" stripe style="width: 100%">
               <CustomTableColumn label="STT" width="60" align="center">
                 <template #default="{ $index }">
                   {{ (payment.page - 1) * payment.perPage + $index + 1 }}
@@ -630,7 +630,9 @@ const paymentTableColumns = [
   { key: 'mac_dinh', label: 'Mặc định' },
   { key: 'trang_thai', label: 'Trạng thái' },
 ]
-const paymentColumnSettings = useTableColumns('he-thong.tai-khoan-thanh-toan', paymentTableColumns)
+const paymentColumnSettings = useTableColumns('he-thong.tai-khoan-thanh-toan', paymentTableColumns, {
+  pin: { selection: false },
+})
 
 const activeTab = ref('studio')
 const paymentLoaded = ref(false)

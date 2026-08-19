@@ -92,6 +92,7 @@
       </template>
 
       <CustomTable
+        :column-settings="columnSettings"
         ref="tableRef"
         v-loading="loading"
         :data="items"

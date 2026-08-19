@@ -81,6 +81,7 @@
       </template>
 
       <CustomTable
+        :column-settings="columnSettings"
         v-loading="loading"
         :data="items"
         stripe
@@ -194,6 +195,7 @@
         <template v-for="col in dieuPhoiTableColumns" :key="col.key">
           <CustomTableColumn
             v-if="columnSettings.isColumnVisible(col.key)"
+            :config-key="col.key"
             :label="col.label"
             :min-width="col.minWidth || 160"
             :align="col.align || 'left'"
@@ -231,6 +233,7 @@
         <template v-for="col in chiTietTableColumns" :key="col.key">
           <CustomTableColumn
             v-if="columnSettings.isColumnVisible(col.key)"
+            :config-key="col.key"
             :label="col.label"
             min-width="160"
             show-overflow-tooltip

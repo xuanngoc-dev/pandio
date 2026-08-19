@@ -3,9 +3,20 @@
  * CustomTable — wrapper el-table.
  * Default slot phải là con trực tiếp của el-table để cột được đăng ký đúng.
  */
-import { ref } from 'vue'
+import { provide, ref, toRef } from 'vue'
+import { TABLE_COLUMN_SETTINGS_KEY } from '@/composables/useTableColumns'
 
 defineOptions({ name: 'CustomTable', inheritAttrs: false })
+
+const props = defineProps({
+  /** Giá trị trả về từ useTableColumns(...) — dùng để ghim cột trái/phải. */
+  columnSettings: {
+    type: Object,
+    default: null,
+  },
+})
+
+provide(TABLE_COLUMN_SETTINGS_KEY, toRef(props, 'columnSettings'))
 
 const tableRef = ref(null)
 
@@ -22,7 +33,12 @@ defineExpose({
 </script>
 
 <template>
-  <el-table ref="tableRef" border v-bind="$attrs">
+  <el-table
+    ref="tableRef"
+    border
+    :key="columnSettings?.fixedSignature || undefined"
+    v-bind="$attrs"
+  >
     <slot />
     <template v-if="$slots.append" #append>
       <slot name="append" />

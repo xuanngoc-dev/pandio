@@ -57,21 +57,21 @@
               </div>
             </template>
 
-            <el-table
+            <CustomTable
+              :column-settings="gioLamColumnSettings"
               v-loading="gioLam.loading"
               :data="gioLam.items"
-              border
               stripe
               style="width: 100%"
             >
-              <el-table-column
+              <CustomTableColumn
                 v-if="gioLamColumnSettings.isColumnVisible('ten_cau_hinh')"
                 prop="ten_cau_hinh"
                 label="Tên cấu hình"
                 min-width="180"
                 show-overflow-tooltip
               />
-              <el-table-column
+              <CustomTableColumn
                 v-if="gioLamColumnSettings.isColumnVisible('gio_vao_buoi_sang')"
                 prop="gio_vao_buoi_sang"
                 label="Giờ vào buổi sáng"
@@ -81,8 +81,8 @@
                 <template #default="{ row }">
                   {{ formatTime(row.gio_vao_buoi_sang) }}
                 </template>
-              </el-table-column>
-              <el-table-column
+              </CustomTableColumn>
+              <CustomTableColumn
                 v-if="gioLamColumnSettings.isColumnVisible('gio_tan_buoi_sang')"
                 prop="gio_tan_buoi_sang"
                 label="Giờ tan buổi sáng"
@@ -92,8 +92,8 @@
                 <template #default="{ row }">
                   {{ formatTime(row.gio_tan_buoi_sang) }}
                 </template>
-              </el-table-column>
-              <el-table-column
+              </CustomTableColumn>
+              <CustomTableColumn
                 v-if="gioLamColumnSettings.isColumnVisible('gio_vao_buoi_chieu')"
                 prop="gio_vao_buoi_chieu"
                 label="Giờ vào buổi chiều"
@@ -103,8 +103,8 @@
                 <template #default="{ row }">
                   {{ formatTime(row.gio_vao_buoi_chieu) }}
                 </template>
-              </el-table-column>
-              <el-table-column
+              </CustomTableColumn>
+              <CustomTableColumn
                 v-if="gioLamColumnSettings.isColumnVisible('gio_tan_buoi_chieu')"
                 prop="gio_tan_buoi_chieu"
                 label="Giờ tan buổi chiều"
@@ -114,8 +114,8 @@
                 <template #default="{ row }">
                   {{ formatTime(row.gio_tan_buoi_chieu) }}
                 </template>
-              </el-table-column>
-              <el-table-column
+              </CustomTableColumn>
+              <CustomTableColumn
                 v-if="gioLamColumnSettings.isColumnVisible('su_dung')"
                 prop="su_dung"
                 label="Sử dụng"
@@ -140,8 +140,8 @@
                     </span>
                   </div>
                 </template>
-              </el-table-column>
-              <el-table-column label="Thao tác" width="100" fixed="right" align="center">
+              </CustomTableColumn>
+              <CustomTableColumn label="Thao tác" width="100" fixed="right" align="center">
                 <template #default="{ row }">
                   <div class="action-btns">
                     <CustomTooltip content="Sửa" placement="top">
@@ -152,8 +152,8 @@
                     </CustomTooltip>
                   </div>
                 </template>
-              </el-table-column>
-            </el-table>
+              </CustomTableColumn>
+            </CustomTable>
 
             <Pagination
               v-model="gioLam.page"
@@ -222,21 +222,21 @@
               </div>
             </template>
 
-            <el-table
+            <CustomTable
+              :column-settings="ngayNghiColumnSettings"
               v-loading="ngayNghi.loading"
               :data="ngayNghi.items"
-              border
               stripe
               style="width: 100%"
             >
-              <el-table-column
+              <CustomTableColumn
                 v-if="ngayNghiColumnSettings.isColumnVisible('ten_ngay_nghi')"
                 prop="ten_ngay_nghi"
                 label="Tên kỳ nghỉ & ngày lễ"
                 min-width="180"
                 show-overflow-tooltip
               />
-              <el-table-column
+              <CustomTableColumn
                 v-if="ngayNghiColumnSettings.isColumnVisible('ngay_bat_dau')"
                 prop="ngay_bat_dau"
                 label="Ngày bắt đầu"
@@ -246,8 +246,8 @@
                 <template #default="{ row }">
                   {{ formatDate(row.ngay_bat_dau) }}
                 </template>
-              </el-table-column>
-              <el-table-column
+              </CustomTableColumn>
+              <CustomTableColumn
                 v-if="ngayNghiColumnSettings.isColumnVisible('ngay_ket_thuc')"
                 prop="ngay_ket_thuc"
                 label="Ngày kết thúc"
@@ -257,8 +257,8 @@
                 <template #default="{ row }">
                   {{ formatDate(row.ngay_ket_thuc) }}
                 </template>
-              </el-table-column>
-              <el-table-column
+              </CustomTableColumn>
+              <CustomTableColumn
                 v-if="ngayNghiColumnSettings.isColumnVisible('so_ngay_nghi')"
                 label="Số ngày"
                 width="130"
@@ -267,8 +267,8 @@
                 <template #default="{ row }">
                   {{ countNgayNghi(row.ngay_bat_dau, row.ngay_ket_thuc) }}
                 </template>
-              </el-table-column>
-              <el-table-column
+              </CustomTableColumn>
+              <CustomTableColumn
                 v-if="ngayNghiColumnSettings.isColumnVisible('trang_thai')"
                 prop="trang_thai"
                 label="Trạng thái"
@@ -293,8 +293,8 @@
                     </span>
                   </div>
                 </template>
-              </el-table-column>
-              <el-table-column label="Thao tác" width="100" fixed="right" align="center">
+              </CustomTableColumn>
+              <CustomTableColumn label="Thao tác" width="100" fixed="right" align="center">
                 <template #default="{ row }">
                   <div class="action-btns">
                     <CustomTooltip content="Sửa" placement="top">
@@ -315,8 +315,8 @@
                     </CustomTooltip>
                   </div>
                 </template>
-              </el-table-column>
-            </el-table>
+              </CustomTableColumn>
+            </CustomTable>
 
             <Pagination
               v-model="ngayNghi.page"
@@ -495,6 +495,8 @@ import {
   CustomOption,
   CustomRow,
   CustomSelect,
+  CustomTable,
+  CustomTableColumn,
   CustomTooltip,
 } from '@/components/element'
 import Pagination from '@/components/Pagination.vue'
@@ -510,7 +512,9 @@ const gioLamTableColumns = [
   { key: 'gio_tan_buoi_chieu', label: 'Giờ tan buổi chiều' },
   { key: 'su_dung', label: 'Sử dụng' },
 ]
-const gioLamColumnSettings = useTableColumns('he-thong.gio-lam-viec', gioLamTableColumns)
+const gioLamColumnSettings = useTableColumns('he-thong.gio-lam-viec', gioLamTableColumns, {
+  pin: { selection: false, stt: false },
+})
 
 const ngayNghiTableColumns = [
   { key: 'ten_ngay_nghi', label: 'Tên kỳ nghỉ & ngày lễ' },
@@ -519,7 +523,9 @@ const ngayNghiTableColumns = [
   { key: 'so_ngay_nghi', label: 'Số ngày' },
   { key: 'trang_thai', label: 'Trạng thái' },
 ]
-const ngayNghiColumnSettings = useTableColumns('he-thong.ngay-nghi', ngayNghiTableColumns)
+const ngayNghiColumnSettings = useTableColumns('he-thong.ngay-nghi', ngayNghiTableColumns, {
+  pin: { selection: false, stt: false },
+})
 
 const activeTab = ref('ngay-nghi')
 const showGioLamTab = false

@@ -53,7 +53,7 @@
         </div>
       </template>
 
-      <CustomTable v-loading="loading" :data="employees" stripe row-key="id" style="width: 100%">
+      <CustomTable :column-settings="columnSettings" v-loading="loading" :data="employees" stripe row-key="id" style="width: 100%">
         <CustomTableColumn type="expand" width="40">
           <template #default="{ row }">
             <div class="expand-panel">
@@ -763,7 +763,9 @@ const tableColumns = [
   { key: 'bhxh', label: 'BHXH' },
   { key: 'tai_khoan', label: 'Tài khoản' },
 ]
-const columnSettings = useTableColumns('nhan-su.employee-list', tableColumns)
+const columnSettings = useTableColumns('nhan-su.employee-list', tableColumns, {
+  pin: { selection: false },
+})
 
 const route = useRoute()
 

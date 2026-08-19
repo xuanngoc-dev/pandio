@@ -54,6 +54,7 @@
       </template>
 
       <CustomTable
+        :column-settings="columnSettings"
         v-loading="loading"
         :data="items"
         stripe
