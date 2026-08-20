@@ -47,161 +47,178 @@ use Illuminate\Support\Facades\Route;
 | API Routes
 |--------------------------------------------------------------------------
 | Prefix mặc định: /api
+|
+| apiResource tạo 5 endpoint REST:
+|   GET    /{resource}           index    — danh sách
+|   POST   /{resource}           store    — tạo mới
+|   GET    /{resource}/{id}      show     — chi tiết
+|   PUT    /{resource}/{id}      update   — cập nhật (PATCH cũng được)
+|   DELETE /{resource}/{id}      destroy  — xóa
 */
 
+// ---------------------------------------------------------------------------
 // Auth công khai (không cần token)
+// ---------------------------------------------------------------------------
 Route::prefix('auth')->group(function () {
-    Route::post('/register', [AuthController::class, 'register']);
-    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/register', [AuthController::class, 'register']); // Đăng ký tài khoản mới
+    Route::post('/login', [AuthController::class, 'login']);       // Đăng nhập, trả token Sanctum
 });
 
-// Form đánh giá — công khai cho khách hàng điền
+// Form đánh giá — công khai cho khách hàng điền theo slug (không cần đăng nhập)
 Route::get('/public/form-danh-gia/{slug}', [CauHinhFormDanhGiaMauController::class, 'showBySlug']);
 
-// Auth bảo vệ bởi Sanctum — thiếu/sai token → 401 JSON, không cho gọi API
+// Auth bảo vệ bởi Sanctum — thiếu/sai token → 401 JSON; tài khoản không active → chặn
 Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function () {
-    Route::post('/auth/logout', [AuthController::class, 'logout']);
-    Route::get('/user', [AuthController::class, 'me']);
 
-    // Nhân sự (users + nhan_vien)
-    Route::post('/users/upload-hinh-anh', [UserController::class, 'uploadHinhAnh']);
-    Route::apiResource('users', UserController::class);
+    // --- Phiên đăng nhập ---
+    Route::post('/auth/logout', [AuthController::class, 'logout']); // Đăng xuất, thu hồi token hiện tại
+    Route::get('/user', [AuthController::class, 'me']);             // Thông tin user đang đăng nhập
 
-    // Xin nghỉ phép
-    Route::post('/xin-nghi-phep/bulk-duyet', [XinNghiPhepController::class, 'bulkDuyet']);
-    Route::post('/xin-nghi-phep/bulk-tu-choi', [XinNghiPhepController::class, 'bulkTuChoi']);
-    Route::post('/xin-nghi-phep/{xin_nghi_phep}/duyet', [XinNghiPhepController::class, 'duyet']);
-    Route::post('/xin-nghi-phep/{xin_nghi_phep}/tu-choi', [XinNghiPhepController::class, 'tuChoi']);
-    Route::apiResource('xin-nghi-phep', XinNghiPhepController::class);
+    // --- Nhân sự (users + hồ sơ nhan_vien) ---
+    Route::post('/users/upload-hinh-anh', [UserController::class, 'uploadHinhAnh']); // Upload ảnh nhân sự
+    Route::apiResource('users', UserController::class); // CRUD tài khoản + hồ sơ nhân viên
 
-    // Đăng ký ca làm việc
-    Route::post('/dang-ky-ca-lam-viec/sync-tuan', [DangKyCaLamViecController::class, 'syncTuan']);
-    Route::apiResource('dang-ky-ca-lam-viec', DangKyCaLamViecController::class);
+    // --- Xin nghỉ phép ---
+    Route::post('/xin-nghi-phep/bulk-duyet', [XinNghiPhepController::class, 'bulkDuyet']);           // Duyệt hàng loạt
+    Route::post('/xin-nghi-phep/bulk-tu-choi', [XinNghiPhepController::class, 'bulkTuChoi']);       // Từ chối hàng loạt
+    Route::post('/xin-nghi-phep/{xin_nghi_phep}/duyet', [XinNghiPhepController::class, 'duyet']);    // Duyệt 1 đơn
+    Route::post('/xin-nghi-phep/{xin_nghi_phep}/tu-choi', [XinNghiPhepController::class, 'tuChoi']); // Từ chối 1 đơn
+    Route::apiResource('xin-nghi-phep', XinNghiPhepController::class); // CRUD đơn xin nghỉ / đi muộn / về sớm
 
-    // Điểm danh
-    Route::get('/diem-danh/today', [DiemDanhController::class, 'today']);
-    Route::get('/diem-danh/ho-context', [DiemDanhController::class, 'hoContext']);
-    Route::post('/diem-danh/ho', [DiemDanhController::class, 'diemDanhHo']);
-    Route::post('/diem-danh/checkin', [DiemDanhController::class, 'checkin']);
-    Route::post('/diem-danh/checkout', [DiemDanhController::class, 'checkout']);
-    Route::get('/diem-danh', [DiemDanhController::class, 'index']);
+    // --- Đăng ký ca làm việc ---
+    Route::post('/dang-ky-ca-lam-viec/sync-tuan', [DangKyCaLamViecController::class, 'syncTuan']); // Đồng bộ ca theo tuần (ghi đè khoảng ngày)
+    Route::apiResource('dang-ky-ca-lam-viec', DangKyCaLamViecController::class); // CRUD đăng ký ca của nhân viên
 
-    // Tính lương
-    Route::get('/tinh-luong/chi-tiet-theo-ngay', [TinhLuongController::class, 'chiTietTheoNgay']);
-    Route::get('/tinh-luong/tong-hop', [TinhLuongController::class, 'tongHop']);
+    // --- Điểm danh ---
+    Route::get('/diem-danh/today', [DiemDanhController::class, 'today']);           // Trạng thái checkin/checkout hôm nay của tôi
+    Route::get('/diem-danh/ho-context', [DiemDanhController::class, 'hoContext']);   // Ngữ cảnh điểm danh hộ (ca, phép, bản ghi sẵn có)
+    Route::post('/diem-danh/ho', [DiemDanhController::class, 'diemDanhHo']);         // Điểm danh hộ cho nhân viên khác
+    Route::post('/diem-danh/checkin', [DiemDanhController::class, 'checkin']);       // Check-in (giờ vào)
+    Route::post('/diem-danh/checkout', [DiemDanhController::class, 'checkout']);     // Check-out (giờ ra)
+    Route::get('/diem-danh', [DiemDanhController::class, 'index']);                 // Danh sách lịch sử điểm danh
 
-    // Phòng ban
-    Route::get('phong-ban/{phong_ban}/nhan-vien', [PhongBanController::class, 'nhanVien']);
-    Route::delete('phong-ban/{phong_ban}/nhan-vien/{nhan_vien}', [PhongBanController::class, 'removeNhanVien']);
-    Route::apiResource('phong-ban', PhongBanController::class);
+    // --- Tính lương ---
+    Route::get('/tinh-luong/chi-tiet-theo-ngay', [TinhLuongController::class, 'chiTietTheoNgay']); // Bảng lương chi tiết từng ngày (user hiện tại)
+    Route::get('/tinh-luong/tong-hop', [TinhLuongController::class, 'tongHop']);                   // Lương tổng hợp theo tháng (danh sách nhân viên)
 
-    // IP điểm danh
-    Route::apiResource('ip-diem-danh', IpDiemDanhController::class);
+    // --- Phòng ban ---
+    Route::get('phong-ban/{phong_ban}/nhan-vien', [PhongBanController::class, 'nhanVien']);                       // Danh sách nhân viên trong phòng ban
+    Route::delete('phong-ban/{phong_ban}/nhan-vien/{nhan_vien}', [PhongBanController::class, 'removeNhanVien']); // Gỡ nhân viên khỏi phòng ban
+    Route::apiResource('phong-ban', PhongBanController::class); // CRUD phòng ban
 
-    // Cấu hình thông tin studio
-    Route::post('/cau-hinh-thong-tin-studio/upload-logo', [CauHinhThongTinStudioController::class, 'uploadLogo']);
-    Route::apiResource('cau-hinh-thong-tin-studio', CauHinhThongTinStudioController::class);
+    // --- IP điểm danh (whitelist IP được phép chấm công) ---
+    Route::apiResource('ip-diem-danh', IpDiemDanhController::class); // CRUD IP được phép điểm danh
 
-    // Cấu hình tài khoản thanh toán
-    Route::apiResource('cau-hinh-tai-khoan-thanh-toan', CauHinhTaiKhoanThanhToanController::class);
+    // --- Cấu hình thông tin studio ---
+    Route::post('/cau-hinh-thong-tin-studio/upload-logo', [CauHinhThongTinStudioController::class, 'uploadLogo']); // Upload logo studio
+    Route::apiResource('cau-hinh-thong-tin-studio', CauHinhThongTinStudioController::class); // CRUD thông tin studio (tên, địa chỉ, logo…)
 
-    // Cấu hình chi nhánh
-    Route::apiResource('cau-hinh-chi-nhanh', CauHinhChiNhanhController::class);
+    // --- Cấu hình tài khoản thanh toán (STK nhận tiền) ---
+    Route::apiResource('cau-hinh-tai-khoan-thanh-toan', CauHinhTaiKhoanThanhToanController::class); // CRUD tài khoản ngân hàng / ví
 
-    // Cấu hình giờ làm việc
-    Route::apiResource('cau-hinh-gio-lam-viec', CauHinhGioLamViecController::class);
+    // --- Cấu hình chi nhánh ---
+    Route::apiResource('cau-hinh-chi-nhanh', CauHinhChiNhanhController::class); // CRUD chi nhánh studio
 
-    // Cấu hình ngày nghỉ
-    Route::apiResource('cau-hinh-ngay-nghi', CauHinhNgayNghiController::class);
+    // --- Cấu hình giờ làm việc ---
+    Route::apiResource('cau-hinh-gio-lam-viec', CauHinhGioLamViecController::class); // CRUD khung giờ làm việc
 
-    // Cấu hình ca làm việc
-    Route::apiResource('cau-hinh-ca-lam-viec', CauHinhCaLamViecController::class);
+    // --- Cấu hình ngày nghỉ ---
+    Route::apiResource('cau-hinh-ngay-nghi', CauHinhNgayNghiController::class); // CRUD ngày nghỉ lễ / ngày nghỉ studio
 
-    // Vai trò (chức danh nhân sự)
-    Route::apiResource('vai-tro', VaiTroController::class);
+    // --- Cấu hình ca làm việc ---
+    Route::apiResource('cau-hinh-ca-lam-viec', CauHinhCaLamViecController::class); // CRUD ca (sáng/chiều/tối, giờ bắt đầu–kết thúc)
 
-    // Loại thông báo hệ thống
-    Route::apiResource('danh-muc-loai-thong-bao', DanhMucLoaiThongBaoController::class);
-    Route::get('he-thong-thong-bao/cua-toi', [HeThongThongBaoController::class, 'cuaToi']);
-    Route::post('he-thong-thong-bao/da-doc-tat-ca', [HeThongThongBaoController::class, 'danhDauTatCaDaDoc']);
-    Route::post('he-thong-thong-bao/{he_thong_thong_bao}/da-doc', [HeThongThongBaoController::class, 'danhDauDaDoc']);
-    Route::post('he-thong-thong-bao/{he_thong_thong_bao}/xoa-cua-toi', [HeThongThongBaoController::class, 'xoaCuaToi']);
-    Route::apiResource('he-thong-thong-bao', HeThongThongBaoController::class);
+    // --- Vai trò (chức danh nhân sự) ---
+    Route::apiResource('vai-tro', VaiTroController::class); // CRUD vai trò / chức danh
 
-    // Loại hợp đồng khách hàng (ký với khách, không phải nhân viên)
-    Route::apiResource('loai-hop-dong', LoaiHopDongController::class);
+    // --- Thông báo hệ thống ---
+    Route::apiResource('danh-muc-loai-thong-bao', DanhMucLoaiThongBaoController::class); // CRUD loại thông báo
+    Route::get('he-thong-thong-bao/cua-toi', [HeThongThongBaoController::class, 'cuaToi']);                         // Hộp thư thông báo của tôi
+    Route::post('he-thong-thong-bao/da-doc-tat-ca', [HeThongThongBaoController::class, 'danhDauTatCaDaDoc']);       // Đánh dấu đã đọc tất cả
+    Route::post('he-thong-thong-bao/{he_thong_thong_bao}/da-doc', [HeThongThongBaoController::class, 'danhDauDaDoc']); // Đánh dấu đã đọc 1 thông báo
+    Route::post('he-thong-thong-bao/{he_thong_thong_bao}/xoa-cua-toi', [HeThongThongBaoController::class, 'xoaCuaToi']); // Xóa thông báo khỏi hộp thư của tôi
+    Route::apiResource('he-thong-thong-bao', HeThongThongBaoController::class); // CRUD thông báo (admin gửi)
 
-    // Form đánh giá mẫu
-    Route::apiResource('cau-hinh-form-danh-gia-mau', CauHinhFormDanhGiaMauController::class);
+    // --- Loại hợp đồng khách hàng (ký với khách, không phải nhân viên) ---
+    Route::apiResource('loai-hop-dong', LoaiHopDongController::class); // CRUD loại HĐ dịch vụ (cưới, maternity…)
 
-    // Danh mục nguồn khách
-    Route::apiResource('danh-muc-nguon-khach', DanhMucNguonKhachController::class);
+    // --- Form đánh giá mẫu ---
+    Route::apiResource('cau-hinh-form-danh-gia-mau', CauHinhFormDanhGiaMauController::class); // CRUD form đánh giá (admin)
 
-    // Danh mục loại quay chụp
-    Route::apiResource('danh-muc-loai-quay-chup', DanhMucLoaiQuayChupController::class);
+    // --- Danh mục nguồn khách ---
+    Route::apiResource('danh-muc-nguon-khach', DanhMucNguonKhachController::class); // CRUD nguồn khách (Facebook, giới thiệu…)
 
-    // Tiện ích thời tiết
-    Route::get('tien-ich-thoi-tiet', [TienIchThoiTietController::class, 'index']);
-    Route::post('tien-ich-thoi-tiet/sync', [TienIchThoiTietController::class, 'sync']);
+    // --- Danh mục loại quay chụp ---
+    Route::apiResource('danh-muc-loai-quay-chup', DanhMucLoaiQuayChupController::class); // CRUD loại quay/chụp
 
-    // Cấu hình JSON động
-    Route::get('/cau-hinh-json', [CauHinhJsonController::class, 'show']);
-    Route::put('/cau-hinh-json', [CauHinhJsonController::class, 'update']);
+    // --- Tiện ích thời tiết ---
+    Route::get('tien-ich-thoi-tiet', [TienIchThoiTietController::class, 'index']);     // Danh sách thời tiết đã lưu
+    Route::post('tien-ich-thoi-tiet/sync', [TienIchThoiTietController::class, 'sync']); // Đồng bộ hàng loạt (trùng ngày thì ghi đè)
 
-    // Concept
-    Route::post('/concept/upload-hinh-anh', [ConceptController::class, 'uploadHinhAnh']);
-    Route::apiResource('concept', ConceptController::class);
-    Route::apiResource('danh-muc-concept', DanhMucConceptController::class);
+    // --- Cấu hình JSON động (singleton: mã giảm giá, setting linh hoạt…) ---
+    Route::get('/cau-hinh-json', [CauHinhJsonController::class, 'show']);   // Lấy cấu hình JSON hiện tại
+    Route::put('/cau-hinh-json', [CauHinhJsonController::class, 'update']); // Cập nhật / merge key cấu hình JSON
 
-    // Trang phục
-    Route::post('/trang-phuc/upload-hinh-anh', [TrangPhucController::class, 'uploadHinhAnh']);
-    Route::get('/trang-phuc/{trang_phuc}/lich-cho-thue', [TrangPhucController::class, 'lichChoThue']);
-    Route::apiResource('trang-phuc', TrangPhucController::class);
-    Route::apiResource('danh-muc-trang-phuc', DanhMucTrangPhucController::class);
-    Route::apiResource('nha-cung-cap-trang-phuc', NhaCungCapTrangPhucController::class);
-    Route::post('/dat-mua-trang-phuc/bulk-duyet', [DatMuaTrangPhucController::class, 'bulkDuyet']);
-    Route::post('/dat-mua-trang-phuc/bulk-huy-duyet', [DatMuaTrangPhucController::class, 'bulkHuyDuyet']);
-    Route::post('/dat-mua-trang-phuc/{dat_mua_trang_phuc}/duyet', [DatMuaTrangPhucController::class, 'duyet']);
-    Route::post('/dat-mua-trang-phuc/{dat_mua_trang_phuc}/huy-duyet', [DatMuaTrangPhucController::class, 'huyDuyet']);
-    Route::apiResource('dat-mua-trang-phuc', DatMuaTrangPhucController::class);
-    Route::post('/hop-dong-cho-thue-trang-phuc/khoi-tao', [HopDongChoThueTrangPhucController::class, 'khoiTao']);
-    Route::post('/hop-dong-cho-thue-trang-phuc/{hop_dong_cho_thue_trang_phuc}/thanh-toan', [HopDongChoThueTrangPhucController::class, 'thanhToan']);
-    Route::apiResource('hop-dong-cho-thue-trang-phuc', HopDongChoThueTrangPhucController::class);
-    Route::get('/hop-dong-su-dung-dich-vu/cong-viec-cua-toi', [HopDongSuDungDichVuController::class, 'congViecCuaToi']);
-    Route::get('/hop-dong-su-dung-dich-vu/lich-chup-make', [HopDongSuDungDichVuController::class, 'lichChupMake']);
-    Route::get('/hop-dong-su-dung-dich-vu/lich-chup-make/chi-tiet', [HopDongSuDungDichVuController::class, 'lichChupMakeChiTiet']);
-    Route::post('/hop-dong-su-dung-dich-vu/khoi-tao', [HopDongSuDungDichVuController::class, 'khoiTao']);
-    Route::post('/hop-dong-su-dung-dich-vu/kiem-tra-ma-giam-gia', [HopDongSuDungDichVuController::class, 'kiemTraMaGiamGia']);
-    Route::post('/hop-dong-su-dung-dich-vu/{hop_dong_su_dung_dich_vu}/nhan-cong-viec', [HopDongSuDungDichVuController::class, 'nhanCongViec']);
-    Route::post('/hop-dong-su-dung-dich-vu/{hop_dong_su_dung_dich_vu}/ket-qua-hop-dong', [HopDongSuDungDichVuController::class, 'capNhatKetQuaHopDong']);
-    Route::post('/hop-dong-su-dung-dich-vu/{hop_dong_su_dung_dich_vu}/gui-khach-kiem-tra', [HopDongSuDungDichVuController::class, 'guiKhachKiemTra']);
-    Route::post('/hop-dong-su-dung-dich-vu/{hop_dong_su_dung_dich_vu}/xu-ly-khach-kiem-tra', [HopDongSuDungDichVuController::class, 'xuLyKhachKiemTra']);
-    Route::post('/hop-dong-su-dung-dich-vu/{hop_dong_su_dung_dich_vu}/ban-giao', [HopDongSuDungDichVuController::class, 'banGiao']);
-    Route::post('/hop-dong-su-dung-dich-vu/{hop_dong_su_dung_dich_vu}/xu-ly-nghiem-thu', [HopDongSuDungDichVuController::class, 'xuLyNghiemThu']);
-    Route::post('/hop-dong-su-dung-dich-vu/{hop_dong_su_dung_dich_vu}/thanh-toan', [HopDongSuDungDichVuController::class, 'thanhToan']);
-    Route::post('/hop-dong-su-dung-dich-vu/{hop_dong_su_dung_dich_vu}/doi-trang-thai', [HopDongSuDungDichVuController::class, 'doiTrangThai']);
-    Route::apiResource('hop-dong-su-dung-dich-vu', HopDongSuDungDichVuController::class);
+    // --- Concept ---
+    Route::post('/concept/upload-hinh-anh', [ConceptController::class, 'uploadHinhAnh']); // Upload ảnh concept
+    Route::apiResource('concept', ConceptController::class);                 // CRUD concept chụp
+    Route::apiResource('danh-muc-concept', DanhMucConceptController::class); // CRUD danh mục concept
 
-    // Công việc cá nhân
-    Route::apiResource('cong-viec-ca-nhan', CongViecCaNhanController::class);
+    // --- Trang phục ---
+    Route::post('/trang-phuc/upload-hinh-anh', [TrangPhucController::class, 'uploadHinhAnh']); // Upload ảnh trang phục
+    Route::get('/trang-phuc/{trang_phuc}/lich-cho-thue', [TrangPhucController::class, 'lichChoThue']); // Lịch đang cho thuê của 1 bộ đồ
+    Route::apiResource('trang-phuc', TrangPhucController::class);                       // CRUD trang phục
+    Route::apiResource('danh-muc-trang-phuc', DanhMucTrangPhucController::class);       // CRUD danh mục trang phục
+    Route::apiResource('nha-cung-cap-trang-phuc', NhaCungCapTrangPhucController::class); // CRUD nhà cung cấp trang phục
 
-    // Report quảng cáo
-    Route::apiResource('report-quang-cao', ReportQuangCaoController::class);
+    // Đặt mua trang phục
+    Route::post('/dat-mua-trang-phuc/bulk-duyet', [DatMuaTrangPhucController::class, 'bulkDuyet']);                     // Duyệt hàng loạt đơn đặt mua
+    Route::post('/dat-mua-trang-phuc/bulk-huy-duyet', [DatMuaTrangPhucController::class, 'bulkHuyDuyet']);             // Hủy duyệt hàng loạt
+    Route::post('/dat-mua-trang-phuc/{dat_mua_trang_phuc}/duyet', [DatMuaTrangPhucController::class, 'duyet']);         // Duyệt 1 đơn đặt mua
+    Route::post('/dat-mua-trang-phuc/{dat_mua_trang_phuc}/huy-duyet', [DatMuaTrangPhucController::class, 'huyDuyet']); // Hủy duyệt 1 đơn
+    Route::apiResource('dat-mua-trang-phuc', DatMuaTrangPhucController::class); // CRUD đơn đặt mua trang phục
 
-    // Note khách mới (lịch khách hàng)
-    Route::apiResource('khach-hang-note-khach-moi', KhachHangNoteKhachMoiController::class);
+    // Hợp đồng cho thuê trang phục
+    Route::post('/hop-dong-cho-thue-trang-phuc/khoi-tao', [HopDongChoThueTrangPhucController::class, 'khoiTao']); // Tạo HĐ nháp + sinh mã HDTTP
+    Route::post('/hop-dong-cho-thue-trang-phuc/{hop_dong_cho_thue_trang_phuc}/thanh-toan', [HopDongChoThueTrangPhucController::class, 'thanhToan']); // Ghi nhận thanh toán HĐ thuê đồ
+    Route::apiResource('hop-dong-cho-thue-trang-phuc', HopDongChoThueTrangPhucController::class); // CRUD hợp đồng cho thuê trang phục
 
-    // Tài chính — kế toán thuế
-    Route::apiResource('hang-muc-loai-thu-chi', HangMucLoaiThuChiController::class);
-    Route::post('/phieu-thu-chi/bulk-delete', [PhieuThuChiController::class, 'bulkDestroy']);
-    Route::post('/phieu-thu-chi/bulk-update-status', [PhieuThuChiController::class, 'bulkUpdateStatus']);
-    Route::apiResource('phieu-thu-chi', PhieuThuChiController::class);
+    // Hợp đồng sử dụng dịch vụ (HĐ cưới / chụp)
+    Route::get('/hop-dong-su-dung-dich-vu/cong-viec-cua-toi', [HopDongSuDungDichVuController::class, 'congViecCuaToi']);     // Công việc điều phối được gán cho tôi
+    Route::get('/hop-dong-su-dung-dich-vu/lich-chup-make', [HopDongSuDungDichVuController::class, 'lichChupMake']);         // Lịch chụp/make theo khoảng ngày
+    Route::get('/hop-dong-su-dung-dich-vu/lich-chup-make/chi-tiet', [HopDongSuDungDichVuController::class, 'lichChupMakeChiTiet']); // Chi tiết 1 slot lịch chụp/make
+    Route::post('/hop-dong-su-dung-dich-vu/khoi-tao', [HopDongSuDungDichVuController::class, 'khoiTao']);                   // Tạo HĐ nháp + sinh mã
+    Route::post('/hop-dong-su-dung-dich-vu/kiem-tra-ma-giam-gia', [HopDongSuDungDichVuController::class, 'kiemTraMaGiamGia']); // Kiểm tra mã giảm giá, trả số tiền giảm
+    Route::post('/hop-dong-su-dung-dich-vu/{hop_dong_su_dung_dich_vu}/nhan-cong-viec', [HopDongSuDungDichVuController::class, 'nhanCongViec']); // Nhân viên nhận việc điều phối
+    Route::post('/hop-dong-su-dung-dich-vu/{hop_dong_su_dung_dich_vu}/ket-qua-hop-dong', [HopDongSuDungDichVuController::class, 'capNhatKetQuaHopDong']); // Cập nhật kết quả HĐ (file, trạng thái sản xuất)
+    Route::post('/hop-dong-su-dung-dich-vu/{hop_dong_su_dung_dich_vu}/gui-khach-kiem-tra', [HopDongSuDungDichVuController::class, 'guiKhachKiemTra']); // Gửi khách kiểm tra sản phẩm
+    Route::post('/hop-dong-su-dung-dich-vu/{hop_dong_su_dung_dich_vu}/xu-ly-khach-kiem-tra', [HopDongSuDungDichVuController::class, 'xuLyKhachKiemTra']); // Xử lý phản hồi khách sau kiểm tra
+    Route::post('/hop-dong-su-dung-dich-vu/{hop_dong_su_dung_dich_vu}/ban-giao', [HopDongSuDungDichVuController::class, 'banGiao']); // Bàn giao sản phẩm
+    Route::post('/hop-dong-su-dung-dich-vu/{hop_dong_su_dung_dich_vu}/xu-ly-nghiem-thu', [HopDongSuDungDichVuController::class, 'xuLyNghiemThu']); // Xử lý nghiệm thu (hoàn thành / làm lại)
+    Route::post('/hop-dong-su-dung-dich-vu/{hop_dong_su_dung_dich_vu}/thanh-toan', [HopDongSuDungDichVuController::class, 'thanhToan']); // Ghi nhận thanh toán HĐ dịch vụ
+    Route::post('/hop-dong-su-dung-dich-vu/{hop_dong_su_dung_dich_vu}/doi-trang-thai', [HopDongSuDungDichVuController::class, 'doiTrangThai']); // Đổi trạng thái vận hành (hủy, tất toán, khách đồng ý…)
+    Route::apiResource('hop-dong-su-dung-dich-vu', HopDongSuDungDichVuController::class); // CRUD hợp đồng sử dụng dịch vụ
 
-    // Dịch vụ
-    Route::apiResource('dich-vu-loai-dich-vu', DichVuLoaiDichVuController::class);
-    Route::apiResource('dich-vu-danh-sach-dich-vu-le', DichVuDanhSachDichVuLeController::class);
+    // --- Công việc cá nhân ---
+    Route::apiResource('cong-viec-ca-nhan', CongViecCaNhanController::class); // CRUD việc nội bộ (giao / phụ trách)
+
+    // --- Report quảng cáo ---
+    Route::apiResource('report-quang-cao', ReportQuangCaoController::class); // CRUD báo cáo chi phí / hiệu quả quảng cáo
+
+    // --- Note khách mới (lịch khách hàng) ---
+    Route::apiResource('khach-hang-note-khach-moi', KhachHangNoteKhachMoiController::class); // CRUD ghi chú / lịch khách tiềm năng
+
+    // --- Tài chính — kế toán thuế ---
+    Route::apiResource('hang-muc-loai-thu-chi', HangMucLoaiThuChiController::class); // CRUD hạng mục loại thu/chi
+    Route::post('/phieu-thu-chi/bulk-delete', [PhieuThuChiController::class, 'bulkDestroy']);           // Xóa hàng loạt phiếu
+    Route::post('/phieu-thu-chi/bulk-update-status', [PhieuThuChiController::class, 'bulkUpdateStatus']); // Đổi trạng thái hàng loạt phiếu
+    Route::apiResource('phieu-thu-chi', PhieuThuChiController::class); // CRUD phiếu thu / phiếu chi
+
+    // --- Dịch vụ ---
+    Route::apiResource('dich-vu-loai-dich-vu', DichVuLoaiDichVuController::class);                 // CRUD loại dịch vụ
+    Route::apiResource('dich-vu-danh-sach-dich-vu-le', DichVuDanhSachDichVuLeController::class);   // CRUD dịch vụ lẻ (item đơn)
     // Param rút ngắn vì Symfony giới hạn tên biến route ≤ 32 ký tự (tên mặc định dài 35).
     // Binding: {nhom_dich_vu} ↔ DichVuDanhSachDichNhomDichVu (bảng dich_vu_danh_sach_dich_nhom_dich_vu).
     Route::apiResource('dich-vu-danh-sach-dich-nhom-dich-vu', DichVuDanhSachDichNhomDichVuController::class)
-        ->parameters(['dich-vu-danh-sach-dich-nhom-dich-vu' => 'nhom_dich_vu']);
+        ->parameters(['dich-vu-danh-sach-dich-nhom-dich-vu' => 'nhom_dich_vu']); // CRUD nhóm dịch vụ (combo)
 });
