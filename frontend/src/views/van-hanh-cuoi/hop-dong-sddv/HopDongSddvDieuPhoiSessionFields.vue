@@ -73,6 +73,15 @@
             />
           </template>
 
+          <template v-else-if="field.loai_du_lieu === 'number'">
+            <CustomInput
+              v-model.number="values[field.key]"
+              type="number"
+              :min="field.key === 'so_diem_chup' ? 1 : 0"
+              :placeholder="`Nhập ${field.ten_thong_tin.toLowerCase()}`"
+            />
+          </template>
+
           <template v-else-if="field.loai_du_lieu === 'array' && isStaffField(field.key)">
             <CustomSelect
               v-model="values[field.key]"

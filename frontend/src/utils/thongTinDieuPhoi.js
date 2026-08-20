@@ -6,6 +6,7 @@ export const LICH_QUAY_CHUP_KEYS = [
   'buoi_chup',
   'gio_chup',
   'ngay_chup',
+  'so_diem_chup',
   'ngay_tra_demo',
   'ngay_tra_chinh_thuc',
   'dia_diem_chup',

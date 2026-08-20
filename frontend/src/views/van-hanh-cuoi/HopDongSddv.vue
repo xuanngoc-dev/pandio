@@ -396,6 +396,7 @@ const dieuPhoiTableColumns = [
   { key: 'dp_buoi_chup', fieldKey: 'buoi_chup', label: 'Buổi chụp', minWidth: 120 },
   { key: 'dp_gio_chup', fieldKey: 'gio_chup', label: 'Giờ chụp', minWidth: 100, align: 'center' },
   { key: 'dp_ngay_chup', fieldKey: 'ngay_chup', label: 'Ngày chụp', minWidth: 120, align: 'center' },
+  { key: 'dp_so_diem_chup', fieldKey: 'so_diem_chup', label: 'Số điểm chụp', minWidth: 120, align: 'center' },
   {
     key: 'dp_ngay_tra_demo',
     fieldKey: 'ngay_tra_demo',

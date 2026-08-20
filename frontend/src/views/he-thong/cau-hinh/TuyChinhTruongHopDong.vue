@@ -599,6 +599,7 @@ const DEFAULT_DIEU_PHOI_FIELDS = [
   { key: 'buoi_chup', ten_thong_tin: 'Buổi chụp', loai_du_lieu: 'string' },
   { key: 'gio_chup', ten_thong_tin: 'Giờ chụp', loai_du_lieu: 'time' },
   { key: 'ngay_chup', ten_thong_tin: 'Ngày chụp', loai_du_lieu: 'date' },
+  { key: 'so_diem_chup', ten_thong_tin: 'Số điểm chụp', loai_du_lieu: 'number', gia_tri: 1 },
   { key: 'ngay_tra_demo', ten_thong_tin: 'Ngày trả demo', loai_du_lieu: 'date' },
   { key: 'ngay_tra_chinh_thuc', ten_thong_tin: 'Ngày trả chính thức', loai_du_lieu: 'date' },
   { key: 'dia_diem_chup', ten_thong_tin: 'Địa điểm chụp', loai_du_lieu: 'string' },
@@ -683,8 +684,11 @@ function createField(data = {}) {
   }
 }
 
-function defaultGiaTriByLoai(loai) {
-  return loai === 'array' ? [] : null
+function defaultGiaTriByLoai(loai, presetGiaTri) {
+  if (presetGiaTri !== undefined) return presetGiaTri
+  if (loai === 'array') return []
+  if (loai === 'number') return 0
+  return null
 }
 
 function createDieuPhoi(data = {}) {
@@ -715,15 +719,16 @@ function parseThongTinDieuPhoi(thongTin) {
 
   return DEFAULT_DIEU_PHOI_FIELDS.map((preset) => {
     const item = saved[preset.key] || {}
+    const loai = item.loai_du_lieu || preset.loai_du_lieu
     return createDieuPhoi({
       key: preset.key,
       su_dung: item.su_dung !== undefined ? !!item.su_dung : true,
       ten_thong_tin: preset.ten_thong_tin,
-      loai_du_lieu: item.loai_du_lieu || preset.loai_du_lieu,
+      loai_du_lieu: loai,
       gia_tri:
         item.gia_tri !== undefined
           ? item.gia_tri
-          : defaultGiaTriByLoai(item.loai_du_lieu || preset.loai_du_lieu),
+          : defaultGiaTriByLoai(loai, preset.gia_tri),
     })
   })
 }

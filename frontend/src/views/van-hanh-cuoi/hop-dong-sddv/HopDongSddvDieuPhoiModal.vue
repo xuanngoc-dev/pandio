@@ -181,7 +181,8 @@ function isDateField(field) {
   return REQUIRED_DATE_KEYS.has(field.key)
 }
 
-function defaultValueByLoai(loai) {
+function defaultValueByLoai(loai, key) {
+  if (key === 'so_diem_chup') return 1
   return loai === 'array' ? [] : null
 }
 
@@ -247,7 +248,7 @@ function sessionFromSaved(savedMap, index = 0) {
     const rawValue =
       savedItem?.gia_tri !== undefined
         ? savedItem.gia_tri
-        : defaultValueByLoai(field.loai_du_lieu || meta.loai_du_lieu)
+        : defaultValueByLoai(field.loai_du_lieu || meta.loai_du_lieu, field.key)
 
     values[field.key] =
       field.loai_du_lieu === 'array'

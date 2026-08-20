@@ -220,6 +220,7 @@ class LoaiHopDongSeeder extends Seeder
             'buoi_chup' => $this->dieuPhoiField('Buổi chụp', 'string', true, null),
             'gio_chup' => $this->dieuPhoiField('Giờ chụp', 'time', true, null),
             'ngay_chup' => $this->dieuPhoiField('Ngày chụp', 'date', true, null),
+            'so_diem_chup' => $this->dieuPhoiField('Số điểm chụp', 'number', true, 1),
             'ngay_tra_demo' => $this->dieuPhoiField('Ngày trả demo', 'date', true, null),
             'ngay_tra_chinh_thuc' => $this->dieuPhoiField('Ngày trả chính thức', 'date', true, null),
             'dia_diem_chup' => $this->dieuPhoiField('Địa điểm chụp', 'string', true, null),

@@ -182,7 +182,8 @@ function nextUid() {
   return sessionUid
 }
 
-function defaultValue(loai) {
+function defaultValue(loai, key) {
+  if (key === 'so_diem_chup') return 1
   return loai === 'array' ? [] : null
 }
 
@@ -218,7 +219,7 @@ function createEmptySessionValues(index = formModel.sessions.length) {
     [LOAI_QUAY_CHUP_KEY]: null,
   }
   for (const field of dieuPhoiFields.value) {
-    values[field.key] = defaultValue(field.loai_du_lieu)
+    values[field.key] = defaultValue(field.loai_du_lieu, field.key)
   }
   return values
 }
@@ -235,7 +236,7 @@ function sessionValuesFromSaved(savedMap, index = 0) {
 
   for (const field of dieuPhoiFields.value) {
     const savedItem = source[field.key] && typeof source[field.key] === 'object' ? source[field.key] : null
-    const rawValue = savedItem?.gia_tri !== undefined ? savedItem.gia_tri : defaultValue(field.loai_du_lieu)
+    const rawValue = savedItem?.gia_tri !== undefined ? savedItem.gia_tri : defaultValue(field.loai_du_lieu, field.key)
     values[field.key] =
       field.loai_du_lieu === 'array' ? normalizeArray(rawValue) : normalizeScalar(rawValue)
   }
