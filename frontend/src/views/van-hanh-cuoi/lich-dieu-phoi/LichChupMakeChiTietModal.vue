@@ -2,7 +2,7 @@
   <CustomDialog
     v-model="visible"
     :title="dialogTitle"
-    :width="1060"
+    :width="1200"
     class="lich-chup-make-chi-tiet-modal"
     @closed="onClosed"
   >
@@ -10,7 +10,7 @@
       v-loading="loading"
       :data="items"
       stripe
-      row-key="id"
+      row-key="_rowKey"
       style="width: 100%"
       empty-text="Không có hợp đồng"
     >
@@ -28,6 +28,11 @@
       <CustomTableColumn label="Loại hợp đồng" min-width="140">
         <template #default="{ row }">
           {{ row.loai_hop_dong?.ten_hop_dong || props.tenHopDong || '—' }}
+        </template>
+      </CustomTableColumn>
+      <CustomTableColumn label="Loại dịch vụ" min-width="150">
+        <template #default="{ row }">
+          {{ formatLoaiDichVu(row) }}
         </template>
       </CustomTableColumn>
       <CustomTableColumn label="Khách hàng" min-width="180">
@@ -93,8 +98,10 @@ import { Position } from '@element-plus/icons-vue'
 import { fetchLichChupMakeChiTiet } from '@/api/hopDongSuDungDichVu'
 import HopDongSddvDieuPhoiModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvDieuPhoiModal.vue'
 import {
+  formatLoaiQuayChupLabel,
   getDieuPhoiGiaTriFromSession,
   normalizeDieuPhoiSessions,
+  parseSessionLoaiQuayChup,
 } from '@/utils/thongTinDieuPhoi'
 
 const visible = defineModel({ type: Boolean, default: false })
@@ -167,20 +174,46 @@ function formatKhachHang(row) {
   return row?.ten_khach_hang || '—'
 }
 
-function formatGioChup(row) {
+function sessionsOnNgayChup(row) {
   const sessions = normalizeDieuPhoiSessions(row?.thong_tin_dieu_phoi)
   const targetDate = String(props.ngayChup || '').slice(0, 10)
-  const matched =
-    sessions.find((session) => {
+  return sessions
+    .map((session, index) => ({ session, index }))
+    .filter(({ session }) => {
       const ngay = String(getDieuPhoiGiaTriFromSession(session, 'ngay_chup') || '').slice(0, 10)
       return ngay === targetDate
-    }) || sessions[0]
-  const raw = getDieuPhoiGiaTriFromSession(matched, 'gio_chup')
+    })
+}
+
+function expandHopDongRows(rows) {
+  const result = []
+  for (const row of rows) {
+    const matched = sessionsOnNgayChup(row)
+    const list = matched.length ? matched : [{ session: null, index: 0 }]
+    for (const { session, index } of list) {
+      result.push({
+        ...row,
+        _session: session,
+        _sessionIndex: index,
+        _rowKey: `${row.id}-${index}`,
+      })
+    }
+  }
+  return result
+}
+
+function formatGioChup(row) {
+  const raw = getDieuPhoiGiaTriFromSession(row?._session, 'gio_chup')
   if (raw == null || raw === '') return '—'
   const text = String(raw).trim()
   const match = text.match(/^(\d{1,2}):(\d{2})/)
   if (!match) return text.slice(0, 5)
   return `${match[1].padStart(2, '0')}:${match[2]}`
+}
+
+function formatLoaiDichVu(row) {
+  const loaiQuayChup = parseSessionLoaiQuayChup(row?._session)
+  return formatLoaiQuayChupLabel(loaiQuayChup) || '—'
 }
 
 function openDieuPhoi(row) {
@@ -212,7 +245,7 @@ async function loadItems() {
       page: page.value,
       per_page: perPage,
     })
-    items.value = data.data || []
+    items.value = expandHopDongRows(data.data || [])
     total.value = data.total || 0
   } catch {
     items.value = []
