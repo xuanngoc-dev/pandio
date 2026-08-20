@@ -62,7 +62,6 @@
             <TableColumnConfig :settings="columnSettings" />
             <CustomTooltip content="Thêm mới" placement="top">
               <CustomButton type="primary" @click="openCreate">
-                <CustomIcon><Plus /></CustomIcon>
                 Thêm
               </CustomButton>
             </CustomTooltip>

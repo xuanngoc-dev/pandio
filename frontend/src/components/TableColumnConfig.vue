@@ -2,7 +2,6 @@
   <span class="table-column-config">
     <CustomTooltip content="Cấu hình cột hiển thị" placement="top">
       <CustomButton @click="settings.openConfig()">
-        <CustomIcon><Setting /></CustomIcon>
         Cấu hình
       </CustomButton>
     </CustomTooltip>
