@@ -56,6 +56,12 @@ export const cauHinhSections = [
         path: 'tuy-chinh-mau-in',
         component: 'TuyChinhMauIn',
       },
+      {
+        label: 'Cấu hình mã giảm giá',
+        routeName: 'cau-hinh-ma-giam-gia',
+        path: 'ma-giam-gia',
+        component: 'MaGiamGia',
+      },
     ],
   },
   {

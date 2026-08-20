@@ -176,6 +176,12 @@ const routes = [
         meta: { title: 'Tuỳ chỉnh mẫu in', requiresAuth: true },
       },
       {
+        path: 'he-thong/cau-hinh-quan-tri/ma-giam-gia',
+        name: 'cau-hinh-ma-giam-gia',
+        component: () => import('@/views/he-thong/cau-hinh/MaGiamGia.vue'),
+        meta: { title: 'Cấu hình mã giảm giá', requiresAuth: true },
+      },
+      {
         path: 'he-thong/cau-hinh-quan-tri/dieu-phoi-san-xuat',
         name: 'cau-hinh-dieu-phoi-san-xuat',
         component: () => import('@/views/he-thong/cau-hinh/DieuPhoiSanXuat.vue'),
