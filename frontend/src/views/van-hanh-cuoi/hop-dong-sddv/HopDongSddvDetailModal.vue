@@ -317,12 +317,18 @@
           </CustomForm>
         </section>
 
-        <section v-if="dieuPhoiItems.length" class="detail-section">
-          <div class="detail-section__title">Thông tin điều phối</div>
+        <section
+          v-for="(session, sessionIndex) in dieuPhoiSessions"
+          :key="`dieu-phoi-${sessionIndex}`"
+          class="detail-section"
+        >
+          <div class="detail-section__title">
+            {{ session.title }}
+          </div>
           <CustomForm label-position="top">
-            <CustomRow v-if="dieuPhoiNormalItems.length" :gutter="16">
+            <CustomRow v-if="session.normalItems.length" :gutter="16">
               <CustomCol
-                v-for="item in dieuPhoiNormalItems"
+                v-for="item in session.normalItems"
                 :key="item.key"
                 v-bind="fieldColProps"
               >
@@ -332,9 +338,9 @@
               </CustomCol>
             </CustomRow>
 
-            <CustomRow v-if="dieuPhoiTextareaItems.length" :gutter="16">
+            <CustomRow v-if="session.textareaItems.length" :gutter="16">
               <CustomCol
-                v-for="item in dieuPhoiTextareaItems"
+                v-for="item in session.textareaItems"
                 :key="item.key"
                 v-bind="textareaColProps"
               >
@@ -377,6 +383,7 @@ import {
   CustomTable,
   CustomTableColumn,
 } from '@/components/element'
+import { getTenLichQuayChup, normalizeDieuPhoiSessions, TEN_LICH_KEY } from '@/utils/thongTinDieuPhoi'
 
 const STAFF_FIELD_KEYS = new Set(['tho_chup', 'tho_make', 'tho_edit', 'quay_phim'])
 
@@ -510,14 +517,7 @@ const khachPhaiThanhToan = computed(() => {
   return Math.max(0, tong + phatSinh - chietKhau - giamGia)
 })
 
-const dieuPhoiItems = computed(() => {
-  const saved =
-    hopDong.value?.thong_tin_dieu_phoi &&
-    typeof hopDong.value.thong_tin_dieu_phoi === 'object' &&
-    !Array.isArray(hopDong.value.thong_tin_dieu_phoi)
-      ? hopDong.value.thong_tin_dieu_phoi
-      : {}
-
+const dieuPhoiSessions = computed(() => {
   const schema =
     loaiHopDong.value?.thong_tin_dieu_phoi &&
     typeof loaiHopDong.value.thong_tin_dieu_phoi === 'object' &&
@@ -525,41 +525,46 @@ const dieuPhoiItems = computed(() => {
       ? loaiHopDong.value.thong_tin_dieu_phoi
       : {}
 
-  const keys = Object.keys(schema).length ? Object.keys(schema) : Object.keys(saved)
-  const items = []
+  const savedSessions = normalizeDieuPhoiSessions(hopDong.value?.thong_tin_dieu_phoi)
+  if (!savedSessions.length && !Object.keys(schema).length) return []
 
-  for (const key of keys) {
-    const schemaItem = schema[key] && typeof schema[key] === 'object' ? schema[key] : null
-    const savedItem = saved[key] && typeof saved[key] === 'object' ? saved[key] : null
-    if (schemaItem?.su_dung === false && !savedItem) continue
+  const sessions = savedSessions.length ? savedSessions : [{}]
+  const keys = Object.keys(schema).length
+    ? Object.keys(schema)
+    : [...new Set(sessions.flatMap((item) => Object.keys(item)))]
 
-    const loai = savedItem?.loai_du_lieu || schemaItem?.loai_du_lieu || 'string'
-    const label = savedItem?.ten_thong_tin || schemaItem?.ten_thong_tin || key
-    const raw =
-      savedItem?.gia_tri !== undefined
-        ? savedItem.gia_tri
-        : schemaItem?.gia_tri !== undefined
-          ? schemaItem.gia_tri
-          : null
+  return sessions.map((saved, index) => {
+    const items = []
+    for (const key of keys) {
+      if (key === TEN_LICH_KEY || String(key).startsWith('_')) continue
+      const schemaItem = schema[key] && typeof schema[key] === 'object' ? schema[key] : null
+      const savedItem = saved[key] && typeof saved[key] === 'object' ? saved[key] : null
+      if (schemaItem?.su_dung === false && !savedItem) continue
 
-    items.push({
-      key,
-      label,
-      wide: loai === 'textarea',
-      value: formatDieuPhoiValue(key, loai, raw),
-    })
-  }
+      const loai = savedItem?.loai_du_lieu || schemaItem?.loai_du_lieu || 'string'
+      const label = savedItem?.ten_thong_tin || schemaItem?.ten_thong_tin || key
+      const raw =
+        savedItem?.gia_tri !== undefined
+          ? savedItem.gia_tri
+          : schemaItem?.gia_tri !== undefined
+            ? schemaItem.gia_tri
+            : null
 
-  return items
+      items.push({
+        key,
+        label,
+        wide: loai === 'textarea',
+        value: formatDieuPhoiValue(key, loai, raw),
+      })
+    }
+
+    return {
+      title: getTenLichQuayChup(saved, index),
+      normalItems: items.filter((item) => !item.wide),
+      textareaItems: items.filter((item) => item.wide),
+    }
+  }).filter((session) => session.normalItems.length || session.textareaItems.length)
 })
-
-const dieuPhoiNormalItems = computed(() =>
-  dieuPhoiItems.value.filter((item) => !item.wide),
-)
-
-const dieuPhoiTextareaItems = computed(() =>
-  dieuPhoiItems.value.filter((item) => item.wide),
-)
 
 function display(value) {
   if (value == null || value === '') return '—'

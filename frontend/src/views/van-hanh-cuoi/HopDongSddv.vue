@@ -379,9 +379,14 @@ import HopDongSddvDoiTrangThaiModal from '@/views/van-hanh-cuoi/hop-dong-sddv/Ho
 import HopDongSddvDraftModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvDraftModal.vue'
 import HopDongSddvFormModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvFormModal.vue'
 import HopDongSddvThanhToanModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvThanhToanModal.vue'
+import {
+  DIEU_PHOI_STAFF_KEYS,
+  collectDieuPhoiGiaTri,
+  getDieuPhoiFieldMeta,
+} from '@/utils/thongTinDieuPhoi'
 
 /** Các field nhân viên trong thong_tin_dieu_phoi (gia_tri = mảng user id) */
-const STAFF_FIELD_KEYS = new Set(['tho_chup', 'tho_make', 'tho_edit', 'quay_phim'])
+const STAFF_FIELD_KEYS = DIEU_PHOI_STAFF_KEYS
 
 /**
  * Cột thông tin điều phối (từ hop_dong.thong_tin_dieu_phoi).
@@ -646,20 +651,25 @@ function getThongTin(row) {
     : {}
 }
 
-function getThongTinDieuPhoi(row) {
-  const raw = row?.thong_tin_dieu_phoi
-  return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
-}
-
 function getDieuPhoiGiaTri(row, fieldKey) {
-  const item = getThongTinDieuPhoi(row)[fieldKey]
-  if (!item || typeof item !== 'object') return null
-  return item.gia_tri !== undefined ? item.gia_tri : null
+  const values = collectDieuPhoiGiaTri(row?.thong_tin_dieu_phoi, fieldKey)
+  if (!values.length) return null
+  if (STAFF_FIELD_KEYS.has(fieldKey)) return values
+  if (values.length === 1) return values[0]
+  return values
 }
 
 function resolveStaffNames(value) {
   const list = Array.isArray(value) ? value : value == null || value === '' ? [] : [value]
-  return list.map((id) => userNameMap.value.get(Number(id)) || `#${id}`)
+  const seen = new Set()
+  const names = []
+  for (const id of list) {
+    const key = Number(id)
+    if (seen.has(key)) continue
+    seen.add(key)
+    names.push(userNameMap.value.get(key) || `#${id}`)
+  }
+  return names
 }
 
 /** Ô nhân sự: tên người đầu + vòng tròn +N (tooltip danh sách còn lại) */
@@ -687,14 +697,19 @@ function formatDieuPhoiColumn(row, columnKey) {
     return names.length ? names.join(', ') : '—'
   }
 
-  const loai = getThongTinDieuPhoi(row)[col.fieldKey]?.loai_du_lieu
+  const loai = getDieuPhoiFieldMeta(row?.thong_tin_dieu_phoi, col.fieldKey)?.loai_du_lieu
+  const values = Array.isArray(value) ? value : [value]
   if (loai === 'date' || col.fieldKey.startsWith('ngay_')) {
-    return formatDate(value)
+    const dates = values.map((item) => formatDate(item)).filter((item) => item && item !== '—')
+    return dates.length ? dates.join(', ') : '—'
   }
-  if (Array.isArray(value)) {
-    return value.length ? value.map((item) => String(item)).join(', ') : '—'
+  if (col.fieldKey === 'buoi_chup') {
+    const map = { sang: 'Sáng', chieu: 'Chiều', toi: 'Tối' }
+    return values
+      .map((item) => map[String(item).toLowerCase()] || String(item))
+      .join(', ')
   }
-  return String(value)
+  return values.map((item) => String(item)).join(', ')
 }
 
 function formatDynamicValue(value, kieu = '') {

@@ -298,6 +298,11 @@ import {
   CustomTooltip,
 } from '@/components/element'
 import { useAuthStore } from '@/stores/auth'
+import {
+  collectDieuPhoiGiaTri,
+  getDieuPhoiGiaTriFromSession,
+  normalizeDieuPhoiSessions,
+} from '@/utils/thongTinDieuPhoi'
 import DieuPhoiTuDongDetailModal from './DieuPhoiTuDongDetailModal.vue'
 
 const STAFF_ROLE_LABELS = {
@@ -446,29 +451,40 @@ const customerLine = computed(
   () => `Khách hàng: ${khachHang.value} - [${maHopDong.value}]`,
 )
 
-const thongTinDieuPhoi = computed(() => {
-  const raw = props.item?.thong_tin_dieu_phoi
-  return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
-})
+const dieuPhoiSessions = computed(() =>
+  normalizeDieuPhoiSessions(props.item?.thong_tin_dieu_phoi),
+)
 
 const thoiGianChup = computed(() => {
-  const gio = formatTime(thongTinDieuPhoi.value.gio_chup?.gia_tri)
-  const buoi = formatBuoi(thongTinDieuPhoi.value.buoi_chup?.gia_tri)
-  const ngay = formatDate(thongTinDieuPhoi.value.ngay_chup?.gia_tri)
-  const parts = [gio, buoi, ngay].filter(Boolean)
-  return parts.length ? parts.join(' ') : ''
+  return dieuPhoiSessions.value
+    .map((session) => {
+      const gio = formatTime(getDieuPhoiGiaTriFromSession(session, 'gio_chup'))
+      const buoi = formatBuoi(getDieuPhoiGiaTriFromSession(session, 'buoi_chup'))
+      const ngay = formatDate(getDieuPhoiGiaTriFromSession(session, 'ngay_chup'))
+      return [gio, buoi, ngay].filter(Boolean).join(' ')
+    })
+    .filter(Boolean)
+    .join('; ')
 })
 
 const ngayTraDemo = computed(() =>
-  formatDate(thongTinDieuPhoi.value.ngay_tra_demo?.gia_tri) || '',
+  collectDieuPhoiGiaTri(props.item?.thong_tin_dieu_phoi, 'ngay_tra_demo')
+    .map((item) => formatDate(item))
+    .filter(Boolean)
+    .join(', '),
 )
 const ngayTraChinhThuc = computed(() =>
-  formatDate(thongTinDieuPhoi.value.ngay_tra_chinh_thuc?.gia_tri) || '',
+  collectDieuPhoiGiaTri(props.item?.thong_tin_dieu_phoi, 'ngay_tra_chinh_thuc')
+    .map((item) => formatDate(item))
+    .filter(Boolean)
+    .join(', '),
 )
 
 const trangThaiChup = computed(() =>
   buildDeadlineStatus({
-    dateValue: thongTinDieuPhoi.value.ngay_chup?.gia_tri,
+    dateValue: earliestDate(
+      collectDieuPhoiGiaTri(props.item?.thong_tin_dieu_phoi, 'ngay_chup'),
+    ),
     hasFile: hasLinkFileGoc.value,
     lateLabel: 'Trễ chụp',
     okLabel: 'Đúng hạn chụp',
@@ -477,7 +493,9 @@ const trangThaiChup = computed(() =>
 
 const trangThaiGiaoDemo = computed(() =>
   buildDeadlineStatus({
-    dateValue: thongTinDieuPhoi.value.ngay_tra_demo?.gia_tri,
+    dateValue: earliestDate(
+      collectDieuPhoiGiaTri(props.item?.thong_tin_dieu_phoi, 'ngay_tra_demo'),
+    ),
     hasFile: hasLinkFileDemo.value,
     lateLabel: 'Trễ giao demo',
     okLabel: 'Đúng hạn giao demo',
@@ -486,7 +504,9 @@ const trangThaiGiaoDemo = computed(() =>
 
 const trangThaiBanGiao = computed(() =>
   buildDeadlineStatus({
-    dateValue: thongTinDieuPhoi.value.ngay_tra_chinh_thuc?.gia_tri,
+    dateValue: earliestDate(
+      collectDieuPhoiGiaTri(props.item?.thong_tin_dieu_phoi, 'ngay_tra_chinh_thuc'),
+    ),
     hasFile: hasLinkFileChinhThuc.value,
     lateLabel: 'Trễ bàn giao',
     okLabel: 'Đúng hạn bàn giao',
@@ -499,8 +519,7 @@ const vaiTroLabels = computed(() => {
 
   const roles = []
   for (const [key, label] of Object.entries(STAFF_ROLE_LABELS)) {
-    const giaTri = thongTinDieuPhoi.value[key]?.gia_tri
-    const list = Array.isArray(giaTri) ? giaTri : []
+    const list = collectDieuPhoiGiaTri(props.item?.thong_tin_dieu_phoi, key)
     const matched = list.some((id) => Number(id) === Number(userId))
     if (matched) roles.push(label)
   }
@@ -592,6 +611,14 @@ function buildDeadlineStatus({ dateValue, hasFile, lateLabel, okLabel }) {
     late,
     tooltip: late ? lateLabel : okLabel,
   }
+}
+
+function earliestDate(values) {
+  const dates = (Array.isArray(values) ? values : [])
+    .map((item) => String(item || '').slice(0, 10))
+    .filter((item) => /^\d{4}-\d{2}-\d{2}$/.test(item))
+    .sort()
+  return dates[0] || null
 }
 
 function formatTime(value) {

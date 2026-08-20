@@ -92,6 +92,10 @@ import { ElMessage } from 'element-plus'
 import { Position } from '@element-plus/icons-vue'
 import { fetchLichChupMakeChiTiet } from '@/api/hopDongSuDungDichVu'
 import HopDongSddvDieuPhoiModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvDieuPhoiModal.vue'
+import {
+  getDieuPhoiGiaTriFromSession,
+  normalizeDieuPhoiSessions,
+} from '@/utils/thongTinDieuPhoi'
 
 const visible = defineModel({ type: Boolean, default: false })
 
@@ -164,7 +168,14 @@ function formatKhachHang(row) {
 }
 
 function formatGioChup(row) {
-  const raw = row?.thong_tin_dieu_phoi?.gio_chup?.gia_tri
+  const sessions = normalizeDieuPhoiSessions(row?.thong_tin_dieu_phoi)
+  const targetDate = String(props.ngayChup || '').slice(0, 10)
+  const matched =
+    sessions.find((session) => {
+      const ngay = String(getDieuPhoiGiaTriFromSession(session, 'ngay_chup') || '').slice(0, 10)
+      return ngay === targetDate
+    }) || sessions[0]
+  const raw = getDieuPhoiGiaTriFromSession(matched, 'gio_chup')
   if (raw == null || raw === '') return '—'
   const text = String(raw).trim()
   const match = text.match(/^(\d{1,2}):(\d{2})/)

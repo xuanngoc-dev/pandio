@@ -45,8 +45,14 @@
       @tong-tien-change="onStep2TongTienChange"
     />
 
-    <HopDongSddvStep3ThanhToan
+    <HopDongSddvStep3LichQuayChup
       v-show="activeStep === 2"
+      ref="stepLichRef"
+      :form="form"
+    />
+
+    <HopDongSddvStep3ThanhToan
+      v-show="activeStep === 3"
       ref="step3Ref"
       :form="form"
       :tong-tien-dich-vu="step2TongTienDisplay"
@@ -57,7 +63,6 @@
         <CustomButton @click="visible = false">Đóng</CustomButton>
         <CustomButton v-if="activeStep > 0" @click="activeStep -= 1">Quay lại</CustomButton>
         <CustomButton
-          v-if="activeStep === 0 || activeStep === 1 || activeStep === 2"
           type="primary"
           plain
           :loading="saving"
@@ -86,8 +91,10 @@ import { updateHopDongSuDungDichVu } from '@/api/hopDongSuDungDichVu'
 import { fetchLoaiHopDong } from '@/api/loaiHopDong'
 import { fetchUsers } from '@/api/users'
 import { CustomButton, CustomDialog } from '@/components/element'
+import { normalizeDieuPhoiSessions } from '@/utils/thongTinDieuPhoi'
 import HopDongSddvStep1ThongTinChung from './HopDongSddvStep1ThongTinChung.vue'
 import HopDongSddvStep2DichVu from './HopDongSddvStep2DichVu.vue'
+import HopDongSddvStep3LichQuayChup from './HopDongSddvStep3LichQuayChup.vue'
 import HopDongSddvStep3ThanhToan from './HopDongSddvStep3ThanhToan.vue'
 
 const props = defineProps({
@@ -105,6 +112,7 @@ const visible = computed({
 const steps = [
   { key: 'thong-tin-chung', title: 'Thông tin chung', description: 'Mã HĐ & sale' },
   { key: 'dich-vu', title: 'Dịch vụ', description: 'Combo & dịch vụ lẻ' },
+  { key: 'lich-quay-chup', title: 'Lịch quay chụp', description: 'Ngày & buổi chụp' },
   { key: 'thanh-toan', title: 'Thanh toán', description: 'Concept & trang phục' },
 ]
 
@@ -114,6 +122,7 @@ const activeStep = ref(0)
 const saving = ref(false)
 const step1Ref = ref(null)
 const step2Ref = ref(null)
+const stepLichRef = ref(null)
 const step3Ref = ref(null)
 const loaiHopDongOptions = ref([])
 const userOptions = ref([])
@@ -128,7 +137,7 @@ const form = reactive({
   dia_chi: '',
   kenh_tiep_can: '',
   thong_tin_hop_dong: {},
-  thong_tin_dieu_phoi: {},
+  thong_tin_dieu_phoi: [],
   nguoi_tham_gia_ids: [],
   ghi_chu_sale: '',
   tong_tien: 0,
@@ -207,9 +216,10 @@ function syncDynamicFields(preserveExisting = true) {
 
 function onLoaiHopDongChange() {
   form.thong_tin_hop_dong = {}
-  form.thong_tin_dieu_phoi = {}
+  form.thong_tin_dieu_phoi = []
   syncDynamicFields(false)
-  step1Ref.value?.loadDieuPhoiSchema?.()
+  stepLichRef.value?.reset()
+  stepLichRef.value?.loadDieuPhoiSchema?.()
   step2Ref.value?.reset()
 }
 
@@ -243,10 +253,9 @@ function syncFormFromHopDong(hopDong) {
     hopDong.thong_tin_hop_dong && typeof hopDong.thong_tin_hop_dong === 'object'
       ? { ...hopDong.thong_tin_hop_dong }
       : {}
-  form.thong_tin_dieu_phoi =
-    hopDong.thong_tin_dieu_phoi && typeof hopDong.thong_tin_dieu_phoi === 'object'
-      ? JSON.parse(JSON.stringify(hopDong.thong_tin_dieu_phoi))
-      : {}
+  form.thong_tin_dieu_phoi = JSON.parse(
+    JSON.stringify(normalizeDieuPhoiSessions(hopDong.thong_tin_dieu_phoi)),
+  )
   syncDynamicFields(true)
 }
 
@@ -287,11 +296,13 @@ function buildThongTinHopDongPayload() {
 
 function hydrateChildSteps(hopDong) {
   step2Ref.value?.hydrate(hopDong)
+  stepLichRef.value?.hydrate(hopDong)
   step3Ref.value?.hydrate(hopDong)
 }
 
 function resetChildSteps() {
   step2Ref.value?.reset()
+  stepLichRef.value?.reset()
   step3Ref.value?.reset()
 }
 
@@ -306,10 +317,6 @@ async function saveStep1(silent = false) {
   saving.value = true
   try {
     const thongTinHopDong = buildThongTinHopDongPayload()
-    const thongTinDieuPhoi =
-      step1Ref.value?.getDieuPhoiPayload?.(form.thong_tin_dieu_phoi) ||
-      form.thong_tin_dieu_phoi ||
-      {}
     const { data } = await updateHopDongSuDungDichVu(form.id, {
       loai_hop_dong_id: form.loai_hop_dong_id,
       ten_khach_hang: form.ten_khach_hang?.trim() || null,
@@ -317,13 +324,11 @@ async function saveStep1(silent = false) {
       dia_chi: form.dia_chi?.trim() || null,
       kenh_tiep_can: form.kenh_tiep_can?.trim() || null,
       thong_tin_hop_dong: thongTinHopDong,
-      thong_tin_dieu_phoi: thongTinDieuPhoi,
       nguoi_tham_gia_ids: form.nguoi_tham_gia_ids || [],
       ghi_chu_sale: form.ghi_chu_sale?.trim() || null,
       trang_thai: 'nhap',
     })
     syncFormFromHopDong(data)
-    await step1Ref.value?.loadDieuPhoiSchema?.()
     emit('saved', data)
     if (!silent) ElMessage.success('Đã lưu thông tin chung.')
     return true
@@ -351,6 +356,33 @@ async function saveStep2(silent = false) {
     step2Ref.value?.hydrate(data)
     emit('saved', data)
     if (!silent) ElMessage.success('Đã lưu dịch vụ.')
+    return true
+  } catch {
+    return false
+  } finally {
+    saving.value = false
+  }
+}
+
+async function saveStepLich(silent = false) {
+  const valid = await stepLichRef.value?.validate()
+  if (!valid) return false
+  if (!form.id) {
+    ElMessage.error('Không tìm thấy hợp đồng để cập nhật.')
+    return false
+  }
+
+  saving.value = true
+  try {
+    const thongTinDieuPhoi = stepLichRef.value?.getDieuPhoiPayload?.(form.thong_tin_dieu_phoi) || []
+    const { data } = await updateHopDongSuDungDichVu(form.id, {
+      thong_tin_dieu_phoi: thongTinDieuPhoi,
+      trang_thai: 'nhap',
+    })
+    syncFormFromHopDong(data)
+    await stepLichRef.value?.hydrate(data)
+    emit('saved', data)
+    if (!silent) ElMessage.success('Đã lưu lịch quay chụp.')
     return true
   } catch {
     return false
@@ -388,7 +420,8 @@ async function saveStep3(silent = false) {
 async function onSaveCurrentStep() {
   if (activeStep.value === 0) return saveStep1(false)
   if (activeStep.value === 1) return saveStep2(false)
-  if (activeStep.value === 2) return saveStep3(false)
+  if (activeStep.value === 2) return saveStepLich(false)
+  if (activeStep.value === 3) return saveStep3(false)
   return false
 }
 
@@ -399,6 +432,10 @@ async function onNext() {
     await step2Ref.value?.loadOptions()
   } else if (activeStep.value === 1) {
     const ok = await saveStep2(true)
+    if (!ok) return
+    await stepLichRef.value?.loadDieuPhoiSchema()
+  } else if (activeStep.value === 2) {
+    const ok = await saveStepLich(true)
     if (!ok) return
     await step3Ref.value?.loadOptions()
   }
@@ -426,7 +463,7 @@ watch(
     // Load options xong mới gắn dynamicFields — tránh lần mở đầu bị xóa thong_tin_hop_dong
     syncFormFromHopDong(props.hopDong)
     hydrateChildSteps(props.hopDong)
-    await step1Ref.value?.loadDieuPhoiSchema?.()
+    await stepLichRef.value?.loadDieuPhoiSchema?.()
   },
 )
 
@@ -436,7 +473,7 @@ watch(
     if (props.modelValue) {
       syncFormFromHopDong(hopDong)
       hydrateChildSteps(hopDong)
-      await step1Ref.value?.loadDieuPhoiSchema?.()
+      await stepLichRef.value?.hydrate?.()
     }
   },
 )
@@ -457,7 +494,8 @@ watch(
 
 watch(activeStep, (step) => {
   if (step === 1) step2Ref.value?.loadOptions()
-  if (step === 2) step3Ref.value?.loadOptions()
+  if (step === 2) stepLichRef.value?.loadDieuPhoiSchema()
+  if (step === 3) step3Ref.value?.loadOptions()
 })
 </script>
 

@@ -15,114 +15,45 @@
       <CustomForm
         v-else-if="fields.length"
         ref="formRef"
-        :model="values"
+        :model="formModel"
         :rules="formRules"
         label-position="top"
       >
-        <CustomRow v-if="normalFields.length" :gutter="16">
-          <CustomCol
-            v-for="field in normalFields"
-            :key="field.key"
-            v-bind="normalFieldColProps"
-          >
-            <CustomFormItem
-              :label="field.ten_thong_tin"
-              :prop="field.key"
-              :required="isDateField(field)"
-            >
-              <template v-if="field.loai_du_lieu === 'date'">
-                <el-date-picker
-                  v-model="values[field.key]"
-                  type="date"
-                  format="DD/MM/YYYY"
-                  value-format="YYYY-MM-DD"
-                  :placeholder="`Chọn ${field.ten_thong_tin.toLowerCase()}`"
-                  :disabled-date="disabledPastDate"
-                  style="width: 100%"
-                  clearable
-                />
-              </template>
+        <CustomCard
+          v-for="(session, index) in formModel.sessions"
+          :key="session._uid"
+          shadow="never"
+          class="session-card"
+        >
+          <template #header>
+            <div class="session-header">
+              <span class="session-title">
+                {{ formModel.sessions.length > 1 ? `Lịch quay chụp ${index + 1}` : 'Lịch quay chụp' }}
+              </span>
+              <CustomButton
+                type="danger"
+                link
+                :disabled="formModel.sessions.length <= 1"
+                @click="removeSession(index)"
+              >
+                Xóa
+              </CustomButton>
+            </div>
+          </template>
+          <HopDongSddvDieuPhoiSessionFields
+            v-model="formModel.sessions[index]"
+            :fields="fields"
+            :user-options="userOptions"
+            :prop-prefix="`sessions.${index}`"
+            require-dates
+          />
+        </CustomCard>
 
-              <template v-else-if="field.loai_du_lieu === 'time'">
-                <el-time-picker
-                  v-model="values[field.key]"
-                  format="HH:mm"
-                  value-format="HH:mm"
-                  :placeholder="`Chọn ${field.ten_thong_tin.toLowerCase()}`"
-                  style="width: 100%"
-                  clearable
-                />
-              </template>
-
-              <template v-else-if="field.loai_du_lieu === 'array' && isStaffField(field.key)">
-                <CustomSelect
-                  v-model="values[field.key]"
-                  :placeholder="`Chọn ${field.ten_thong_tin.toLowerCase()}`"
-                  multiple
-                  filterable
-                  collapse-tags
-                  collapse-tags-tooltip
-                  clearable
-                  style="width: 100%"
-                >
-                  <CustomOption
-                    v-for="user in userOptions"
-                    :key="user.id"
-                    :label="user.name"
-                    :value="user.id"
-                  />
-                </CustomSelect>
-              </template>
-
-              <template v-else-if="field.loai_du_lieu === 'array'">
-                <CustomSelect
-                  v-model="values[field.key]"
-                  :placeholder="`Chọn hoặc nhập ${field.ten_thong_tin.toLowerCase()}`"
-                  multiple
-                  filterable
-                  allow-create
-                  default-first-option
-                  collapse-tags
-                  collapse-tags-tooltip
-                  clearable
-                  style="width: 100%"
-                >
-                  <CustomOption
-                    v-for="opt in getArrayOptions(field.key)"
-                    :key="opt"
-                    :label="opt"
-                    :value="opt"
-                  />
-                </CustomSelect>
-              </template>
-
-              <template v-else>
-                <CustomInput
-                  v-model="values[field.key]"
-                  :placeholder="`Nhập ${field.ten_thong_tin.toLowerCase()}`"
-                  clearable
-                />
-              </template>
-            </CustomFormItem>
-          </CustomCol>
-        </CustomRow>
-
-        <CustomRow v-if="textareaFields.length" :gutter="16" class="textarea-row">
-          <CustomCol
-            v-for="field in textareaFields"
-            :key="field.key"
-            v-bind="textareaFieldColProps"
-          >
-            <CustomFormItem :label="field.ten_thong_tin" :prop="field.key">
-              <CustomInput
-                v-model="values[field.key]"
-                type="textarea"
-                :rows="3"
-                :placeholder="`Nhập ${field.ten_thong_tin.toLowerCase()}`"
-              />
-            </CustomFormItem>
-          </CustomCol>
-        </CustomRow>
+        <div v-if="formModel.sessions.length < MAX_LICH_QUAY_CHUP" class="add-session-wrap">
+          <CustomButton type="primary" plain @click="addSession">
+            Thêm lịch quay chụp
+          </CustomButton>
+        </div>
       </CustomForm>
     </div>
 
@@ -153,19 +84,13 @@ import { getLoaiHopDong } from '@/api/loaiHopDong'
 import { fetchUsers } from '@/api/users'
 import {
   CustomButton,
-  CustomCol,
+  CustomCard,
   CustomDialog,
   CustomForm,
-  CustomFormItem,
-  CustomInput,
-  CustomOption,
-  CustomRow,
-  CustomSelect,
 } from '@/components/element'
+import { MAX_LICH_QUAY_CHUP, normalizeDieuPhoiSessions } from '@/utils/thongTinDieuPhoi'
+import HopDongSddvDieuPhoiSessionFields from './HopDongSddvDieuPhoiSessionFields.vue'
 
-const STAFF_FIELD_KEYS = new Set(['tho_chup', 'tho_make', 'tho_edit', 'quay_phim'])
-
-/** Các field ngày điều phối bắt buộc khi có trong schema */
 const REQUIRED_DATE_KEYS = new Set([
   'ngay_chup',
   'ngay_tra_demo',
@@ -189,59 +114,57 @@ const saving = ref(false)
 const formRef = ref(null)
 const hopDong = ref(null)
 const fields = ref([])
-const values = reactive({})
 const fieldMeta = ref({})
 const userOptions = ref([])
+let sessionUid = 0
+
+const formModel = reactive({
+  sessions: [],
+})
 
 const dialogTitle = computed(() => {
   const ma = hopDong.value?.ma_hop_dong
   return ma ? `Điều phối — ${ma}` : 'Điều phối'
 })
 
-const normalFields = computed(() =>
-  fields.value.filter((field) => field.loai_du_lieu !== 'textarea'),
-)
-
-const textareaFields = computed(() =>
-  fields.value.filter((field) => field.loai_du_lieu === 'textarea'),
-)
-
 const formRules = computed(() => {
-  const rules = {}
-  for (const field of fields.value) {
-    if (!isDateField(field)) continue
-    rules[field.key] = [
+  const rules = {
+    sessions: [
       {
+        type: 'array',
         required: true,
-        message: `Vui lòng chọn ${String(field.ten_thong_tin || field.key).toLowerCase()}`,
+        min: 1,
+        message: 'Cần ít nhất 1 lịch quay chụp',
         trigger: 'change',
       },
-    ]
+    ],
   }
+
+  for (const [index] of formModel.sessions.entries()) {
+    for (const field of fields.value) {
+      if (!isDateField(field)) continue
+      rules[`sessions.${index}.${field.key}`] = [
+        {
+          required: true,
+          message: `Vui lòng chọn ${String(field.ten_thong_tin || field.key).toLowerCase()}`,
+          trigger: 'change',
+        },
+      ]
+    }
+  }
+
   return rules
 })
 
-const normalFieldColProps = { xs: 12, sm: 8, md: 6, lg: 6, xl: 6 }
-const textareaFieldColProps = { xs: 24, sm: 12, md: 12, lg: 12, xl: 12 }
-
-function isStaffField(key) {
-  return STAFF_FIELD_KEYS.has(key)
+function nextUid() {
+  sessionUid += 1
+  return sessionUid
 }
 
 function isDateField(field) {
   if (!field) return false
   if (field.loai_du_lieu === 'date') return true
   return REQUIRED_DATE_KEYS.has(field.key)
-}
-
-function startOfToday() {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  return today
-}
-
-function disabledPastDate(date) {
-  return date.getTime() < startOfToday().getTime()
 }
 
 function defaultValueByLoai(loai) {
@@ -266,28 +189,44 @@ function normalizeScalarValue(value) {
   return value
 }
 
-function clearValues() {
-  Object.keys(values).forEach((key) => {
-    delete values[key]
-  })
-}
-
-function getArrayOptions(key) {
-  const current = normalizeArrayValue(values[key])
-  return [...new Set(current.map((item) => String(item)).filter(Boolean))]
-}
-
 function resolveLoaiDuLieu(key, item) {
   if (key === 'dia_diem_chup') return 'string'
   if (REQUIRED_DATE_KEYS.has(key)) return 'date'
   return item?.loai_du_lieu || 'string'
 }
 
-function buildFieldsFromSchema(schema, saved) {
+function createEmptySession() {
+  const values = { _uid: nextUid() }
+  for (const field of fields.value) {
+    values[field.key] = defaultValueByLoai(field.loai_du_lieu)
+  }
+  return values
+}
+
+function sessionFromSaved(savedMap) {
+  const values = { _uid: nextUid() }
+  const source = savedMap && typeof savedMap === 'object' && !Array.isArray(savedMap) ? savedMap : {}
+
+  for (const field of fields.value) {
+    const savedItem = source[field.key] && typeof source[field.key] === 'object' ? source[field.key] : null
+    const meta = fieldMeta.value[field.key] || {}
+    const rawValue =
+      savedItem?.gia_tri !== undefined
+        ? savedItem.gia_tri
+        : defaultValueByLoai(field.loai_du_lieu || meta.loai_du_lieu)
+
+    values[field.key] =
+      field.loai_du_lieu === 'array'
+        ? normalizeArrayValue(rawValue)
+        : normalizeScalarValue(rawValue)
+  }
+
+  return values
+}
+
+function buildFieldsFromSchema(schema) {
   const source =
     schema && typeof schema === 'object' && !Array.isArray(schema) ? schema : {}
-  const savedMap =
-    saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {}
 
   const nextFields = []
   const nextMeta = {}
@@ -297,15 +236,6 @@ function buildFieldsFromSchema(schema, saved) {
     if (item.su_dung === false) continue
 
     const loai = resolveLoaiDuLieu(key, item)
-    const savedItem =
-      savedMap[key] && typeof savedMap[key] === 'object' ? savedMap[key] : null
-    const rawValue =
-      savedItem?.gia_tri !== undefined
-        ? savedItem.gia_tri
-        : item.gia_tri !== undefined
-          ? item.gia_tri
-          : defaultValueByLoai(loai)
-
     nextFields.push({
       key,
       ten_thong_tin: item.ten_thong_tin || key,
@@ -316,21 +246,35 @@ function buildFieldsFromSchema(schema, saved) {
       ten_thong_tin: item.ten_thong_tin || key,
       loai_du_lieu: loai,
     }
-    values[key] =
-      loai === 'array' ? normalizeArrayValue(rawValue) : normalizeScalarValue(rawValue)
   }
 
   fields.value = nextFields
   fieldMeta.value = nextMeta
 }
 
+function addSession() {
+  if (formModel.sessions.length >= MAX_LICH_QUAY_CHUP) {
+    ElMessage.warning(`Tối đa ${MAX_LICH_QUAY_CHUP} lịch quay chụp.`)
+    return
+  }
+  formModel.sessions.push(createEmptySession())
+}
+
+function removeSession(index) {
+  if (formModel.sessions.length <= 1) {
+    ElMessage.warning('Cần ít nhất 1 lịch quay chụp.')
+    return
+  }
+  formModel.sessions.splice(index, 1)
+}
+
 async function loadData() {
   if (!props.hopDongId) return
 
   loading.value = true
-  clearValues()
   fields.value = []
   fieldMeta.value = {}
+  formModel.sessions = []
   hopDong.value = null
 
   try {
@@ -349,43 +293,58 @@ async function loadData() {
     }
 
     const { data: loaiHopDong } = await getLoaiHopDong(loaiId)
-    buildFieldsFromSchema(
-      loaiHopDong?.thong_tin_dieu_phoi,
-      hopDong.value?.thong_tin_dieu_phoi,
+    buildFieldsFromSchema(loaiHopDong?.thong_tin_dieu_phoi)
+
+    const savedSessions = normalizeDieuPhoiSessions(hopDong.value?.thong_tin_dieu_phoi).slice(
+      0,
+      MAX_LICH_QUAY_CHUP,
     )
+    formModel.sessions = savedSessions.length
+      ? savedSessions.map((item) => sessionFromSaved(item))
+      : fields.value.length
+        ? [createEmptySession()]
+        : []
   } catch {
     fields.value = []
     userOptions.value = []
+    formModel.sessions = []
   } finally {
     loading.value = false
   }
 }
 
 function buildPayload() {
-  const result = {}
-  for (const field of fields.value) {
-    const meta = fieldMeta.value[field.key] || {}
-    const loai = field.loai_du_lieu || 'string'
-    let giaTri = values[field.key]
+  return formModel.sessions.map((session) => {
+    const result = {}
+    for (const field of fields.value) {
+      const meta = fieldMeta.value[field.key] || {}
+      const loai = field.loai_du_lieu || 'string'
+      let giaTri = session[field.key]
 
-    if (loai === 'array') {
-      giaTri = normalizeArrayValue(giaTri)
-    } else if (giaTri === '' || giaTri === undefined) {
-      giaTri = null
-    }
+      if (loai === 'array') {
+        giaTri = normalizeArrayValue(giaTri)
+      } else if (giaTri === '' || giaTri === undefined) {
+        giaTri = null
+      }
 
-    result[field.key] = {
-      su_dung: true,
-      ten_thong_tin: meta.ten_thong_tin || field.ten_thong_tin,
-      loai_du_lieu: loai,
-      gia_tri: giaTri,
+      result[field.key] = {
+        su_dung: true,
+        ten_thong_tin: meta.ten_thong_tin || field.ten_thong_tin,
+        loai_du_lieu: loai,
+        gia_tri: giaTri,
+      }
     }
-  }
-  return result
+    return result
+  })
 }
 
 async function save() {
   if (!props.hopDongId || !fields.value.length) return
+
+  if (!formModel.sessions.length) {
+    ElMessage.warning('Cần ít nhất 1 lịch quay chụp.')
+    return
+  }
 
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) {
@@ -410,9 +369,9 @@ async function save() {
 
 function onClosed() {
   formRef.value?.clearValidate?.()
-  clearValues()
   fields.value = []
   fieldMeta.value = {}
+  formModel.sessions = []
   hopDong.value = null
   userOptions.value = []
   saving.value = false
@@ -431,10 +390,42 @@ watch(
 <style scoped lang="scss">
 .dieu-phoi-body {
   min-height: 180px;
+
+  :deep(.el-form) {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
 }
 
-.textarea-row {
-  margin-top: 0;
+.session-card {
+  border: 1px solid var(--el-border-color-lighter);
+}
+
+.session-card :deep(.el-card__header) {
+  padding: 10px 16px;
+  background: var(--el-fill-color-light);
+}
+
+.session-card :deep(.el-card__body) {
+  padding: 12px 16px 4px;
+}
+
+.session-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.session-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.add-session-wrap {
+  display: flex;
+  justify-content: flex-start;
 }
 
 .footer-actions {

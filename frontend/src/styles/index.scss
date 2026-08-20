@@ -76,6 +76,15 @@ html.dark .auth-wrapper {
     line-height: 1.35;
     padding: 0 8px;
   }
+
+  .el-icon svg {
+    width: 1.14em;
+    height: 1.14em;
+    overflow: visible;
+    stroke: currentColor;
+    stroke-width: 48;
+    paint-order: stroke fill;
+  }
 }
 
 /* Cần specificity cao hơn .el-table của EP (on-demand CSS có thể load sau index.scss) */

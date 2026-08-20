@@ -165,6 +165,11 @@ import {
   CustomTable,
   CustomTableColumn,
 } from '@/components/element'
+import {
+  collectDieuPhoiGiaTri,
+  getDieuPhoiGiaTriFromSession,
+  normalizeDieuPhoiSessions,
+} from '@/utils/thongTinDieuPhoi'
 
 const STAFF_FIELD_KEYS = new Set(['tho_chup', 'tho_make', 'tho_edit', 'quay_phim'])
 
@@ -240,15 +245,17 @@ const userNameMap = computed(() => {
   return map
 })
 
-const thongTinDieuPhoi = computed(() => {
-  const raw = hopDong.value?.thong_tin_dieu_phoi
-  return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
-})
+const dieuPhoiSessions = computed(() =>
+  normalizeDieuPhoiSessions(hopDong.value?.thong_tin_dieu_phoi),
+)
 
 const yeuCauKhachHang = computed(() => {
-  const giaTri = thongTinDieuPhoi.value?.ghi_chu_trang_phuc_phu_kien?.gia_tri
-  if (giaTri == null || String(giaTri).trim() === '') return ''
-  return String(giaTri).trim()
+  const values = collectDieuPhoiGiaTri(
+    hopDong.value?.thong_tin_dieu_phoi,
+    'ghi_chu_trang_phuc_phu_kien',
+  )
+  const text = values.map((item) => String(item).trim()).filter(Boolean).join('; ')
+  return text
 })
 
 const conceptRows = computed(() => {
@@ -269,21 +276,24 @@ const trangPhucRows = computed(() => {
 })
 
 const thoiGianChup = computed(() => {
-  const gio = formatTime(getDieuPhoiRaw('gio_chup'))
-  const buoi = formatBuoi(getDieuPhoiRaw('buoi_chup'))
-  const ngay = formatDateValue(getDieuPhoiRaw('ngay_chup'))
-  const parts = [gio, buoi, ngay].filter(Boolean)
-  return parts.length ? parts.join(' ') : ''
+  return dieuPhoiSessions.value
+    .map((session) => {
+      const gio = formatTime(getDieuPhoiGiaTriFromSession(session, 'gio_chup'))
+      const buoi = formatBuoi(getDieuPhoiGiaTriFromSession(session, 'buoi_chup'))
+      const ngay = formatDateValue(getDieuPhoiGiaTriFromSession(session, 'ngay_chup'))
+      return [gio, buoi, ngay].filter(Boolean).join(' ')
+    })
+    .filter(Boolean)
+    .join('; ')
 })
 
 const diaDiemChup = computed(() => {
-  const raw = getDieuPhoiRaw('dia_diem_chup')
-  if (raw == null || raw === '') return ''
-  if (Array.isArray(raw)) {
-    const list = raw.map((item) => String(item).trim()).filter(Boolean)
-    return list.length ? list.join(', ') : ''
-  }
-  return String(raw).trim()
+  const values = collectDieuPhoiGiaTri(hopDong.value?.thong_tin_dieu_phoi, 'dia_diem_chup')
+  return values
+    .flatMap((raw) => (Array.isArray(raw) ? raw : [raw]))
+    .map((item) => String(item).trim())
+    .filter(Boolean)
+    .join(', ')
 })
 
 const dieuPhoiRows = computed(() => {
@@ -311,9 +321,10 @@ const dieuPhoiRows = computed(() => {
 })
 
 function getDieuPhoiRaw(key) {
-  const item = thongTinDieuPhoi.value?.[key]
-  if (!item || typeof item !== 'object') return null
-  return item.gia_tri !== undefined ? item.gia_tri : null
+  const values = collectDieuPhoiGiaTri(hopDong.value?.thong_tin_dieu_phoi, key)
+  if (!values.length) return null
+  if (values.length === 1) return values[0]
+  return values
 }
 
 function display(value) {
@@ -370,8 +381,12 @@ function formatStaffValue(ids, ngoai, key) {
       }
     }
   }
-  if (ngoai != null && String(ngoai).trim() !== '') {
-    names.push(String(ngoai).trim())
+  if (ngoai != null && ngoai !== '') {
+    const extra = Array.isArray(ngoai) ? ngoai : [ngoai]
+    for (const item of extra) {
+      if (item == null || String(item).trim() === '') continue
+      names.push(String(item).trim())
+    }
   }
   return names.length ? names.join(', ') : ''
 }
