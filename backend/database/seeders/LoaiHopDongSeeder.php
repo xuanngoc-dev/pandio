@@ -212,7 +212,7 @@ class LoaiHopDongSeeder extends Seeder
     /**
      * Schema mặc định thông tin điều phối cho mỗi loại hợp đồng.
      *
-     * @return array<string, array{su_dung: bool, ten_thong_tin: string, loai_du_lieu: string, gia_tri: mixed}>
+     * @return array<string, array{su_dung: bool, ten_thong_tin: string, loai_du_lieu: string, gia_tri: mixed, gia_tri_toi_thieu?: int, gia_tri_toi_da?: int}>
      */
     public function defaultThongTinDieuPhoi(): array
     {
@@ -220,7 +220,13 @@ class LoaiHopDongSeeder extends Seeder
             'buoi_chup' => $this->dieuPhoiField('Buổi chụp', 'string', true, null),
             'gio_chup' => $this->dieuPhoiField('Giờ chụp', 'time', true, null),
             'ngay_chup' => $this->dieuPhoiField('Ngày chụp', 'date', true, null),
-            'so_diem_chup' => $this->dieuPhoiField('Số điểm chụp', 'number', true, 1),
+            'so_diem_chup' => array_merge(
+                $this->dieuPhoiField('Số điểm chụp', 'number', true, 1),
+                [
+                    'gia_tri_toi_thieu' => 1,
+                    'gia_tri_toi_da' => 3,
+                ]
+            ),
             'ngay_tra_demo' => $this->dieuPhoiField('Ngày trả demo', 'date', true, null),
             'ngay_tra_chinh_thuc' => $this->dieuPhoiField('Ngày trả chính thức', 'date', true, null),
             'dia_diem_chup' => $this->dieuPhoiField('Địa điểm chụp', 'string', true, null),

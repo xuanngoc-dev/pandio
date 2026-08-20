@@ -414,6 +414,13 @@ import {
   CustomTooltip,
 } from '@/components/element'
 import Pagination from '@/components/Pagination.vue'
+import {
+  SO_DIEM_CHUP_DEFAULT,
+  SO_DIEM_CHUP_KEY,
+  SO_DIEM_CHUP_MAX,
+  SO_DIEM_CHUP_MIN,
+  clampSoDiemChup,
+} from '@/utils/thongTinDieuPhoi'
 import ConfigSettingPage from './ConfigSettingPage.vue'
 
 const ACTIVE = 'hoat_dong'
@@ -599,7 +606,14 @@ const DEFAULT_DIEU_PHOI_FIELDS = [
   { key: 'buoi_chup', ten_thong_tin: 'Buổi chụp', loai_du_lieu: 'string' },
   { key: 'gio_chup', ten_thong_tin: 'Giờ chụp', loai_du_lieu: 'time' },
   { key: 'ngay_chup', ten_thong_tin: 'Ngày chụp', loai_du_lieu: 'date' },
-  { key: 'so_diem_chup', ten_thong_tin: 'Số điểm chụp', loai_du_lieu: 'number', gia_tri: 1 },
+  {
+    key: SO_DIEM_CHUP_KEY,
+    ten_thong_tin: 'Số điểm chụp',
+    loai_du_lieu: 'number',
+    gia_tri: SO_DIEM_CHUP_DEFAULT,
+    gia_tri_toi_thieu: SO_DIEM_CHUP_MIN,
+    gia_tri_toi_da: SO_DIEM_CHUP_MAX,
+  },
   { key: 'ngay_tra_demo', ten_thong_tin: 'Ngày trả demo', loai_du_lieu: 'date' },
   { key: 'ngay_tra_chinh_thuc', ten_thong_tin: 'Ngày trả chính thức', loai_du_lieu: 'date' },
   { key: 'dia_diem_chup', ten_thong_tin: 'Địa điểm chụp', loai_du_lieu: 'string' },
@@ -693,9 +707,10 @@ function defaultGiaTriByLoai(loai, presetGiaTri) {
 
 function createDieuPhoi(data = {}) {
   const loai = data.loai_du_lieu || 'string'
-  return {
+  const key = data.key || ''
+  const field = {
     _key: nextDieuPhoiKey(),
-    key: data.key || '',
+    key,
     su_dung: data.su_dung !== undefined ? !!data.su_dung : true,
     ten_thong_tin: data.ten_thong_tin || data.name || '',
     loai_du_lieu: loai,
@@ -706,6 +721,20 @@ function createDieuPhoi(data = {}) {
           ? data.value
           : defaultGiaTriByLoai(loai),
   }
+
+  if (data.gia_tri_toi_thieu !== undefined) {
+    field.gia_tri_toi_thieu = data.gia_tri_toi_thieu
+  }
+  if (data.gia_tri_toi_da !== undefined) {
+    field.gia_tri_toi_da = data.gia_tri_toi_da
+  }
+  if (key === SO_DIEM_CHUP_KEY) {
+    field.gia_tri_toi_thieu = field.gia_tri_toi_thieu ?? SO_DIEM_CHUP_MIN
+    field.gia_tri_toi_da = field.gia_tri_toi_da ?? SO_DIEM_CHUP_MAX
+    field.gia_tri = clampSoDiemChup(field.gia_tri)
+  }
+
+  return field
 }
 
 function parseNoiDung(noiDung) {
@@ -729,6 +758,8 @@ function parseThongTinDieuPhoi(thongTin) {
         item.gia_tri !== undefined
           ? item.gia_tri
           : defaultGiaTriByLoai(loai, preset.gia_tri),
+      gia_tri_toi_thieu: item.gia_tri_toi_thieu ?? preset.gia_tri_toi_thieu,
+      gia_tri_toi_da: item.gia_tri_toi_da ?? preset.gia_tri_toi_da,
     })
   })
 }
@@ -760,7 +791,7 @@ function buildThongTinDieuPhoiPayload() {
   for (const item of form.dieu_phoi) {
     const key = item.key.trim()
     if (!key) continue
-    result[key] = {
+    const payload = {
       su_dung: !!item.su_dung,
       ten_thong_tin: (item.ten_thong_tin || '').trim(),
       loai_du_lieu: item.loai_du_lieu || 'string',
@@ -773,6 +804,13 @@ function buildThongTinDieuPhoiPayload() {
             ? null
             : item.gia_tri,
     }
+    if (item.gia_tri_toi_thieu !== undefined) {
+      payload.gia_tri_toi_thieu = item.gia_tri_toi_thieu
+    }
+    if (item.gia_tri_toi_da !== undefined) {
+      payload.gia_tri_toi_da = item.gia_tri_toi_da
+    }
+    result[key] = payload
   }
   return result
 }

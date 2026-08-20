@@ -96,6 +96,8 @@ import {
   LICH_QUAY_CHUP_KEYS,
   LOAI_QUAY_CHUP_KEY,
   MAX_LICH_QUAY_CHUP,
+  SO_DIEM_CHUP_DEFAULT,
+  SO_DIEM_CHUP_KEY,
   TEN_LICH_KEY,
   TEN_LICH_MAX_LENGTH,
   TRANG_PHUC_FIELD_KEY,
@@ -103,6 +105,7 @@ import {
   buildLoaiQuayChupField,
   buildTenLichField,
   buildTrangPhucField,
+  clampSoDiemChup,
   defaultTenLichQuayChup,
   getTenLichQuayChup,
   mapHopDongConceptRows,
@@ -183,7 +186,7 @@ function nextUid() {
 }
 
 function defaultValue(loai, key) {
-  if (key === 'so_diem_chup') return 1
+  if (key === SO_DIEM_CHUP_KEY) return SO_DIEM_CHUP_DEFAULT
   return loai === 'array' ? [] : null
 }
 
@@ -237,8 +240,12 @@ function sessionValuesFromSaved(savedMap, index = 0) {
   for (const field of dieuPhoiFields.value) {
     const savedItem = source[field.key] && typeof source[field.key] === 'object' ? source[field.key] : null
     const rawValue = savedItem?.gia_tri !== undefined ? savedItem.gia_tri : defaultValue(field.loai_du_lieu, field.key)
-    values[field.key] =
-      field.loai_du_lieu === 'array' ? normalizeArray(rawValue) : normalizeScalar(rawValue)
+    if (field.key === SO_DIEM_CHUP_KEY) {
+      values[field.key] = clampSoDiemChup(rawValue)
+    } else {
+      values[field.key] =
+        field.loai_du_lieu === 'array' ? normalizeArray(rawValue) : normalizeScalar(rawValue)
+    }
   }
 
   const ngayChup = values.ngay_chup || null
@@ -278,6 +285,8 @@ function buildFieldsFromSchema(schema) {
       key,
       ten_thong_tin: item.ten_thong_tin || key,
       loai_du_lieu: loai,
+      gia_tri_toi_thieu: item.gia_tri_toi_thieu,
+      gia_tri_toi_da: item.gia_tri_toi_da,
     })
     nextMeta[key] = {
       su_dung: true,
@@ -486,7 +495,9 @@ function getDieuPhoiPayload(existing = null) {
       const loai = field.loai_du_lieu || 'string'
       let giaTri = session[field.key]
 
-      if (loai === 'array') {
+      if (field.key === SO_DIEM_CHUP_KEY) {
+        giaTri = clampSoDiemChup(giaTri)
+      } else if (loai === 'array') {
         giaTri = normalizeArray(giaTri)
       } else if (giaTri === '' || giaTri === undefined) {
         giaTri = null

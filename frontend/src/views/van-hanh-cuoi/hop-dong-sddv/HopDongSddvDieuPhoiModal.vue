@@ -88,9 +88,12 @@ import {
 import {
   LOAI_QUAY_CHUP_KEY,
   MAX_LICH_QUAY_CHUP,
+  SO_DIEM_CHUP_DEFAULT,
+  SO_DIEM_CHUP_KEY,
   TEN_LICH_KEY,
   buildLoaiQuayChupField,
   buildTenLichField,
+  clampSoDiemChup,
   defaultTenLichQuayChup,
   getTenLichQuayChup,
   isDieuPhoiExtraSessionKey,
@@ -182,7 +185,7 @@ function isDateField(field) {
 }
 
 function defaultValueByLoai(loai, key) {
-  if (key === 'so_diem_chup') return 1
+  if (key === SO_DIEM_CHUP_KEY) return SO_DIEM_CHUP_DEFAULT
   return loai === 'array' ? [] : null
 }
 
@@ -250,10 +253,14 @@ function sessionFromSaved(savedMap, index = 0) {
         ? savedItem.gia_tri
         : defaultValueByLoai(field.loai_du_lieu || meta.loai_du_lieu, field.key)
 
-    values[field.key] =
-      field.loai_du_lieu === 'array'
-        ? normalizeArrayValue(rawValue)
-        : normalizeScalarValue(rawValue)
+    if (field.key === SO_DIEM_CHUP_KEY) {
+      values[field.key] = clampSoDiemChup(rawValue)
+    } else {
+      values[field.key] =
+        field.loai_du_lieu === 'array'
+          ? normalizeArrayValue(rawValue)
+          : normalizeScalarValue(rawValue)
+    }
   }
 
   return values
@@ -276,6 +283,8 @@ function buildFieldsFromSchema(schema) {
       key,
       ten_thong_tin: item.ten_thong_tin || key,
       loai_du_lieu: loai,
+      gia_tri_toi_thieu: item.gia_tri_toi_thieu,
+      gia_tri_toi_da: item.gia_tri_toi_da,
     })
     nextMeta[key] = {
       su_dung: true,
@@ -347,7 +356,9 @@ function buildPayload() {
       const loai = field.loai_du_lieu || 'string'
       let giaTri = session[field.key]
 
-      if (loai === 'array') {
+      if (field.key === SO_DIEM_CHUP_KEY) {
+        giaTri = clampSoDiemChup(giaTri)
+      } else if (loai === 'array') {
         giaTri = normalizeArrayValue(giaTri)
       } else if (giaTri === '' || giaTri === undefined) {
         giaTri = null

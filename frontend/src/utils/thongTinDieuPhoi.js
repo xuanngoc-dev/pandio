@@ -1,6 +1,17 @@
 /** Field nhân sự trong thông tin điều phối (gia_tri = mảng user id) */
 export const DIEU_PHOI_STAFF_KEYS = new Set(['tho_chup', 'tho_make', 'tho_edit', 'quay_phim'])
 
+export const SO_DIEM_CHUP_KEY = 'so_diem_chup'
+export const SO_DIEM_CHUP_MIN = 1
+export const SO_DIEM_CHUP_MAX = 3
+export const SO_DIEM_CHUP_DEFAULT = 1
+
+export function clampSoDiemChup(value) {
+  const n = Math.round(Number(value))
+  if (!Number.isFinite(n)) return SO_DIEM_CHUP_DEFAULT
+  return Math.min(SO_DIEM_CHUP_MAX, Math.max(SO_DIEM_CHUP_MIN, n))
+}
+
 /** Field lịch quay chụp hiển thị ở bước tạo/sửa hợp đồng */
 export const LICH_QUAY_CHUP_KEYS = [
   'buoi_chup',

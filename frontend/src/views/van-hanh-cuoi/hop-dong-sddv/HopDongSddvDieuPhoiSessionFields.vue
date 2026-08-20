@@ -75,10 +75,13 @@
 
           <template v-else-if="field.loai_du_lieu === 'number'">
             <CustomInput
-              v-model.number="values[field.key]"
+              :model-value="values[field.key]"
               type="number"
-              :min="field.key === 'so_diem_chup' ? 1 : 0"
+              :min="numberFieldMin(field)"
+              :max="numberFieldMax(field)"
               :placeholder="`Nhập ${field.ten_thong_tin.toLowerCase()}`"
+              @update:model-value="onNumberFieldInput(field, $event)"
+              @blur="onNumberFieldBlur(field)"
             />
           </template>
 
@@ -163,6 +166,11 @@ import {
   BUOI_CHUP_OPTIONS,
   DIEU_PHOI_STAFF_KEYS,
   LOAI_QUAY_CHUP_KEY,
+  SO_DIEM_CHUP_DEFAULT,
+  SO_DIEM_CHUP_KEY,
+  SO_DIEM_CHUP_MAX,
+  SO_DIEM_CHUP_MIN,
+  clampSoDiemChup,
   getLoaiQuayChupId,
   normalizeLoaiQuayChupGiaTri,
 } from '@/utils/thongTinDieuPhoi'
@@ -282,6 +290,40 @@ function disabledPastDate(date) {
 function getArrayOptions(key) {
   const current = Array.isArray(values.value?.[key]) ? values.value[key] : []
   return [...new Set(current.map((item) => String(item)).filter(Boolean))]
+}
+
+function numberFieldMin(field) {
+  if (field.key === SO_DIEM_CHUP_KEY) {
+    const min = Number(field.gia_tri_toi_thieu ?? SO_DIEM_CHUP_MIN)
+    return Number.isFinite(min) ? min : SO_DIEM_CHUP_MIN
+  }
+  return 0
+}
+
+function numberFieldMax(field) {
+  if (field.key === SO_DIEM_CHUP_KEY) {
+    const max = Number(field.gia_tri_toi_da ?? SO_DIEM_CHUP_MAX)
+    return Number.isFinite(max) ? max : SO_DIEM_CHUP_MAX
+  }
+  return undefined
+}
+
+function clampNumberField(field, value) {
+  if (field.key !== SO_DIEM_CHUP_KEY) return value
+  if (value == null || value === '') return SO_DIEM_CHUP_DEFAULT
+  return clampSoDiemChup(value)
+}
+
+function onNumberFieldInput(field, value) {
+  if (value == null || value === '') {
+    values.value[field.key] = value
+    return
+  }
+  values.value[field.key] = clampNumberField(field, value)
+}
+
+function onNumberFieldBlur(field) {
+  values.value[field.key] = clampNumberField(field, values.value[field.key])
 }
 
 async function loadLoaiQuayChupOptions() {
