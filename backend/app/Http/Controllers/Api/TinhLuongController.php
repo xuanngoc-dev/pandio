@@ -446,18 +446,14 @@ class TinhLuongController extends BaseApiController
             })
             ->get(['id', 'thong_tin_dieu_phoi']);
 
-        $rates = [
-            'chup' => [
-                1 => $nhanVien->getLuongValue('chup_1_diem'),
-                2 => $nhanVien->getLuongValue('chup_2_diem'),
-                3 => $nhanVien->getLuongValue('chup_3_diem'),
-            ],
-            'make' => [
-                1 => $nhanVien->getLuongValue('make_1_diem'),
-                2 => $nhanVien->getLuongValue('make_2_diem'),
-                3 => $nhanVien->getLuongValue('make_3_diem'),
-            ],
-        ];
+        $rates = [];
+        foreach (['chup', 'make', 'quay_phim'] as $role) {
+            $rates[$role] = [
+                1 => $nhanVien->getLuongTheoDichVu($role, 1),
+                2 => $nhanVien->getLuongTheoDichVu($role, 2),
+                3 => $nhanVien->getLuongTheoDichVu($role, 3),
+            ];
+        }
 
         $map = [];
         foreach ($contracts as $hd) {
@@ -485,13 +481,12 @@ class TinhLuongController extends BaseApiController
                 foreach ($roles as $role) {
                     $map[$dateKey]['so_job'][$role] = (int) ($map[$dateKey]['so_job'][$role] ?? 0) + 1;
 
-                    if ($role === 'chup' || $role === 'make') {
+                    if (isset($rates[$role])) {
                         $map[$dateKey][$role] = round(
                             $map[$dateKey][$role] + $this->tienTheoDiem($rates[$role], $diem),
                             2
                         );
                     }
-                    // quay_phim / edit: chưa có đơn giá trên hồ sơ NV → giữ 0, chỉ đếm so_job
                 }
             }
         }

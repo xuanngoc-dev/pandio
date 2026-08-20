@@ -69,14 +69,19 @@ class NhanVien extends Model
             'thuong_chuyen_can' => 'Thưởng chuyên cần',
             'hoa_hong_hop_dong_sddv' => 'Hoa hồng HĐ sử dụng dịch vụ',
             'hoa_hong_hop_dong_trang_phuc' => 'Hoa hồng HĐ trang phục',
-            'chup_1_diem' => 'Chụp 1 điểm',
-            'chup_2_diem' => 'Chụp 2 điểm',
-            'chup_3_diem' => 'Chụp 3 điểm',
-            'make_1_diem' => 'Make 1 điểm',
-            'make_2_diem' => 'Make 2 điểm',
-            'make_3_diem' => 'Make 3 điểm',
             'phi_xu_ly_hd_thue_trang_phuc' => 'Phí xử lý HĐ thuê trang phục',
+            'luong_theo_dich_vu' => 'Lương theo dịch vụ',
         ];
+    }
+
+    /**
+     * Vai trò có đơn giá theo điểm trong luong_theo_dich_vu.
+     *
+     * @return list<string>
+     */
+    public static function salaryDichVuRoles(): array
+    {
+        return ['chup', 'make', 'quay_phim'];
     }
 
     /**
@@ -147,6 +152,58 @@ class NhanVien extends Model
         $value = $data[$key]['value'] ?? null;
 
         return $value !== null && $value !== '' ? (float) $value : $default;
+    }
+
+    /**
+     * Đơn giá chụp/make/quay phim theo số điểm và loại dịch vụ.
+     *
+     * @param  'chup'|'make'|'quay_phim'  $role
+     */
+    public function getLuongTheoDichVu(string $role, int $diem, int|string|null $loaiId = null, float $default = 0.0): float
+    {
+        $items = $this->luong_thuong_phu_cap['luong_theo_dich_vu']['items'] ?? [];
+        if (! is_array($items) || $items === []) {
+            return $default;
+        }
+
+        $list = array_is_list($items) ? $items : array_values($items);
+        $level = (string) min(3, max(1, $diem));
+
+        $pick = static function (array $item) use ($role, $level, $default): float {
+            $map = $item[$role] ?? [];
+            if (! is_array($map)) {
+                return $default;
+            }
+            $value = $map[$level] ?? $map[(int) $level] ?? null;
+
+            return $value !== null && $value !== '' ? (float) $value : $default;
+        };
+
+        if ($loaiId !== null && $loaiId !== '') {
+            foreach ($list as $item) {
+                if (! is_array($item)) {
+                    continue;
+                }
+                $id = $item['id'] ?? $item['danh_muc_loai_quay_chup_id'] ?? null;
+                if ((string) $id === (string) $loaiId) {
+                    return $pick($item);
+                }
+            }
+        }
+
+        foreach ($list as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+            $value = $pick($item);
+            if ($value > 0) {
+                return $value;
+            }
+        }
+
+        $first = $list[0] ?? null;
+
+        return is_array($first) ? $pick($first) : $default;
     }
 
     public function user(): BelongsTo

@@ -252,6 +252,15 @@ class UserController extends BaseApiController
             'luong_thuong_phu_cap.*.name' => ['nullable', 'string', 'max:255'],
             'luong_thuong_phu_cap.*.value' => ['nullable', 'numeric', 'min:0'],
             'luong_thuong_phu_cap.*.note' => ['nullable', 'string', 'max:1000'],
+            'luong_thuong_phu_cap.luong_theo_dich_vu.items' => ['nullable', 'array'],
+            'luong_thuong_phu_cap.luong_theo_dich_vu.items.*.id' => ['nullable', 'integer', 'min:1'],
+            'luong_thuong_phu_cap.luong_theo_dich_vu.items.*.ten_dich_vu' => ['nullable', 'string', 'max:255'],
+            'luong_thuong_phu_cap.luong_theo_dich_vu.items.*.chup' => ['nullable', 'array'],
+            'luong_thuong_phu_cap.luong_theo_dich_vu.items.*.chup.*' => ['nullable', 'numeric', 'min:0'],
+            'luong_thuong_phu_cap.luong_theo_dich_vu.items.*.make' => ['nullable', 'array'],
+            'luong_thuong_phu_cap.luong_theo_dich_vu.items.*.make.*' => ['nullable', 'numeric', 'min:0'],
+            'luong_thuong_phu_cap.luong_theo_dich_vu.items.*.quay_phim' => ['nullable', 'array'],
+            'luong_thuong_phu_cap.luong_theo_dich_vu.items.*.quay_phim.*' => ['nullable', 'numeric', 'min:0'],
         ], [
             'phone.regex' => 'Số điện thoại không hợp lệ (VD: 0912345678).',
             'phone.unique' => 'Số điện thoại đã được sử dụng.',
@@ -332,7 +341,7 @@ class UserController extends BaseApiController
      * Chuẩn hóa object JSON lương/thưởng/phụ cấp.
      *
      * @param  mixed  $input
-     * @return array<string, array{name: string, value: float|null, note: string|null}>|null
+     * @return array<string, mixed>|null
      */
     private function normalizeLuongThuongPhuCap(mixed $input): ?array
     {
@@ -345,8 +354,14 @@ class UserController extends BaseApiController
         $result = [];
 
         foreach ($definitions as $key => $defaultName) {
-            $defaultNote = $defaultNotes[$key] ?? null;
             $item = $input[$key] ?? null;
+
+            if ($key === 'luong_theo_dich_vu') {
+                $result[$key] = $this->normalizeLuongTheoDichVu($item, $defaultName);
+                continue;
+            }
+
+            $defaultNote = $defaultNotes[$key] ?? null;
             if (! is_array($item)) {
                 $result[$key] = [
                     'name' => $defaultName,
@@ -365,6 +380,69 @@ class UserController extends BaseApiController
                 'value' => $value === null || $value === '' ? null : (float) $value,
                 'note' => $normalizedNote ?? $defaultNote,
             ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return array{name: string, items: list<array<string, mixed>>}
+     */
+    private function normalizeLuongTheoDichVu(mixed $item, string $defaultName): array
+    {
+        $rows = [];
+        if (is_array($item)) {
+            $rows = $item['items'] ?? [];
+            if (! is_array($rows)) {
+                $rows = [];
+            }
+        }
+
+        if ($rows !== [] && ! array_is_list($rows)) {
+            $rows = array_values($rows);
+        }
+
+        $roles = \App\Models\NhanVien::salaryDichVuRoles();
+        $items = [];
+
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $id = (int) ($row['id'] ?? $row['danh_muc_loai_quay_chup_id'] ?? 0);
+            if ($id <= 0) {
+                continue;
+            }
+
+            $entry = [
+                'id' => $id,
+                'ten_dich_vu' => trim((string) ($row['ten_dich_vu'] ?? '')) ?: null,
+            ];
+            foreach ($roles as $role) {
+                $entry[$role] = $this->normalizeDiemMap($row[$role] ?? null);
+            }
+            $items[] = $entry;
+        }
+
+        return [
+            'name' => $defaultName,
+            'items' => $items,
+        ];
+    }
+
+    /**
+     * @return array{1: float|null, 2: float|null, 3: float|null}
+     */
+    private function normalizeDiemMap(mixed $input): array
+    {
+        $result = [1 => null, 2 => null, 3 => null];
+        if (! is_array($input)) {
+            return $result;
+        }
+
+        foreach ([1, 2, 3] as $level) {
+            $amount = $input[$level] ?? $input[(string) $level] ?? null;
+            $result[$level] = $amount === null || $amount === '' ? null : (float) $amount;
         }
 
         return $result;
