@@ -54,6 +54,7 @@
           <HopDongSddvDieuPhoiSessionFields
             v-model="formModel.sessions[index]"
             :fields="dieuPhoiFields"
+            :loai-quay-chup-options="loaiQuayChupOptions"
             :prop-prefix="`sessions.${index}`"
             require-ngay-chup
           >
@@ -87,16 +88,19 @@
 import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { EditPen } from '@element-plus/icons-vue'
+import { fetchDanhMucLoaiQuayChup } from '@/api/danhMucLoaiQuayChup'
 import { getLoaiHopDong } from '@/api/loaiHopDong'
 import { CustomCard, CustomForm, CustomIcon } from '@/components/element'
 import {
   CONCEPT_FIELD_KEY,
   LICH_QUAY_CHUP_KEYS,
+  LOAI_QUAY_CHUP_KEY,
   MAX_LICH_QUAY_CHUP,
   TEN_LICH_KEY,
   TEN_LICH_MAX_LENGTH,
   TRANG_PHUC_FIELD_KEY,
   buildConceptField,
+  buildLoaiQuayChupField,
   buildTenLichField,
   buildTrangPhucField,
   defaultTenLichQuayChup,
@@ -107,7 +111,9 @@ import {
   normalizeDieuPhoiSessions,
   normalizeTenLichQuayChup,
   parseSessionConceptItems,
+  parseSessionLoaiQuayChup,
   parseSessionTrangPhucItems,
+  loaiQuayChupRequiredRule,
 } from '@/utils/thongTinDieuPhoi'
 import HopDongSddvConceptTrangPhucPicker from './HopDongSddvConceptTrangPhucPicker.vue'
 import HopDongSddvDieuPhoiSessionFields from './HopDongSddvDieuPhoiSessionFields.vue'
@@ -120,6 +126,7 @@ const formRef = ref(null)
 const loading = ref(false)
 const dieuPhoiFields = ref([])
 const dieuPhoiMeta = ref({})
+const loaiQuayChupOptions = ref([])
 const activeSessionName = ref('')
 const slideDirection = ref('right')
 const editingUid = ref(null)
@@ -149,6 +156,10 @@ const formRules = computed(() => {
       trigger: 'change',
     },
   ]
+
+  formModel.sessions.forEach((_, index) => {
+    rules[`sessions.${index}.${LOAI_QUAY_CHUP_KEY}`] = [loaiQuayChupRequiredRule()]
+  })
 
   const hasNgayChup = dieuPhoiFields.value.some((field) => field.key === 'ngay_chup')
   if (!hasNgayChup) return rules
@@ -204,6 +215,7 @@ function createEmptySessionValues(index = formModel.sessions.length) {
     _ten_lich: defaultTenLichQuayChup(index),
     concepts: [],
     trang_phucs: [],
+    [LOAI_QUAY_CHUP_KEY]: null,
   }
   for (const field of dieuPhoiFields.value) {
     values[field.key] = defaultValue(field.loai_du_lieu)
@@ -217,6 +229,7 @@ function sessionValuesFromSaved(savedMap, index = 0) {
     _ten_lich: getTenLichQuayChup(savedMap, index),
     concepts: [],
     trang_phucs: [],
+    [LOAI_QUAY_CHUP_KEY]: parseSessionLoaiQuayChup(savedMap),
   }
   const source = savedMap && typeof savedMap === 'object' && !Array.isArray(savedMap) ? savedMap : {}
 
@@ -420,6 +433,7 @@ async function loadDieuPhoiSchema() {
   if (!loaiId) {
     dieuPhoiFields.value = []
     dieuPhoiMeta.value = {}
+    loaiQuayChupOptions.value = []
     formModel.sessions = []
     activeSessionName.value = ''
     cancelRename()
@@ -428,8 +442,14 @@ async function loadDieuPhoiSchema() {
 
   loading.value = true
   try {
-    const { data: loaiHopDong } = await getLoaiHopDong(loaiId)
+    const [{ data: loaiHopDong }, loaiQuayChupRes] = await Promise.all([
+      getLoaiHopDong(loaiId),
+      fetchDanhMucLoaiQuayChup({ per_page: 100, trang_thai: 'active' }).catch(() => ({ data: { data: [] } })),
+    ])
     if (token !== schemaLoadToken) return
+    loaiQuayChupOptions.value = (loaiQuayChupRes.data?.data || []).slice().sort((a, b) =>
+      String(a.ten_dich_vu || '').localeCompare(String(b.ten_dich_vu || ''), 'vi'),
+    )
     buildFieldsFromSchema(loaiHopDong?.thong_tin_dieu_phoi)
     hydrateSessionsFromForm()
     nextTick(() => loadActivePickerOptions())
@@ -437,6 +457,7 @@ async function loadDieuPhoiSchema() {
     if (token !== schemaLoadToken) return
     dieuPhoiFields.value = []
     dieuPhoiMeta.value = {}
+    loaiQuayChupOptions.value = []
     formModel.sessions = []
     activeSessionName.value = ''
     cancelRename()
@@ -477,6 +498,7 @@ function getDieuPhoiPayload(existing = null) {
         gia_tri: giaTri,
       }
     }
+    result[LOAI_QUAY_CHUP_KEY] = buildLoaiQuayChupField(session[LOAI_QUAY_CHUP_KEY])
     result[CONCEPT_FIELD_KEY] = buildConceptField(session.concepts)
     result[TRANG_PHUC_FIELD_KEY] = buildTrangPhucField(session.trang_phucs)
     return result
@@ -572,6 +594,7 @@ function reset() {
   schemaLoadToken += 1
   dieuPhoiFields.value = []
   dieuPhoiMeta.value = {}
+  loaiQuayChupOptions.value = []
   formModel.sessions = []
   activeSessionName.value = ''
   pickerRefs.clear()

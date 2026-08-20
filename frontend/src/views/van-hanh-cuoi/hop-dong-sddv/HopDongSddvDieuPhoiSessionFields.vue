@@ -1,6 +1,28 @@
 <template>
   <div class="dieu-phoi-session-fields">
-    <CustomRow v-if="normalFields.length" :gutter="16">
+    <CustomRow :gutter="16">
+      <CustomCol v-bind="fieldColProps">
+        <CustomFormItem
+          label="Loại quay chụp"
+          :prop="propFor(LOAI_QUAY_CHUP_KEY)"
+          required
+        >
+          <CustomSelect
+            v-model="selectedLoaiQuayChupId"
+            placeholder="Chọn loại quay chụp"
+            filterable
+            clearable
+            style="width: 100%"
+          >
+            <CustomOption
+              v-for="opt in loaiQuayChupSelectOptions"
+              :key="opt.id"
+              :label="opt.ten_dich_vu || `Loại #${opt.id}`"
+              :value="opt.id"
+            />
+          </CustomSelect>
+        </CustomFormItem>
+      </CustomCol>
       <CustomCol
         v-for="field in normalFields"
         :key="field.key"
@@ -126,10 +148,14 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { fetchDanhMucLoaiQuayChup } from '@/api/danhMucLoaiQuayChup'
 import {
   BUOI_CHUP_OPTIONS,
   DIEU_PHOI_STAFF_KEYS,
+  LOAI_QUAY_CHUP_KEY,
+  getLoaiQuayChupId,
+  normalizeLoaiQuayChupGiaTri,
 } from '@/utils/thongTinDieuPhoi'
 import {
   CustomCol,
@@ -147,19 +173,53 @@ const REQUIRED_DATE_KEYS = new Set(['ngay_chup', 'ngay_tra_demo', 'ngay_tra_chin
 const props = defineProps({
   fields: { type: Array, default: () => [] },
   userOptions: { type: Array, default: () => [] },
+  loaiQuayChupOptions: { type: Array, default: () => [] },
   propPrefix: { type: String, default: '' },
   requireDates: { type: Boolean, default: false },
   requireNgayChup: { type: Boolean, default: false },
 })
 
 const buoiChupOptions = BUOI_CHUP_OPTIONS
+const loadedLoaiQuayChupOptions = ref([])
+
+const resolvedLoaiQuayChupOptions = computed(() =>
+  props.loaiQuayChupOptions.length ? props.loaiQuayChupOptions : loadedLoaiQuayChupOptions.value,
+)
+
+const selectedLoaiQuayChupId = computed({
+  get() {
+    return getLoaiQuayChupId(values.value?.[LOAI_QUAY_CHUP_KEY])
+  },
+  set(id) {
+    const nextId = Number(id)
+    if (!Number.isFinite(nextId) || nextId <= 0) {
+      values.value[LOAI_QUAY_CHUP_KEY] = null
+      return
+    }
+    const opt = loaiQuayChupSelectOptions.value.find((item) => Number(item.id) === nextId)
+    values.value[LOAI_QUAY_CHUP_KEY] = normalizeLoaiQuayChupGiaTri(
+      opt || { id: nextId, ten_dich_vu: '' },
+    )
+  },
+})
+
+const loaiQuayChupSelectOptions = computed(() => {
+  const list = (resolvedLoaiQuayChupOptions.value || [])
+    .map((item) => normalizeLoaiQuayChupGiaTri(item))
+    .filter(Boolean)
+  const current = normalizeLoaiQuayChupGiaTri(values.value?.[LOAI_QUAY_CHUP_KEY])
+  if (current && !list.some((item) => item.id === current.id)) {
+    list.unshift(current)
+  }
+  return list
+})
 
 const fieldColProps = {
   xs: 12,
   sm: 12,
   md: 8,
-  lg: 4,
-  xl: 4,
+  lg: 6,
+  xl: 6,
 }
 
 const wideFieldColProps = {
@@ -196,7 +256,7 @@ function propFor(key) {
 }
 
 function getFieldColProps(field) {
-  if (field.loai_du_lieu === 'array') return wideFieldColProps
+  if (field.loai_du_lieu === 'array' && !isStaffField(field.key)) return wideFieldColProps
   return fieldColProps
 }
 
@@ -214,4 +274,20 @@ function getArrayOptions(key) {
   const current = Array.isArray(values.value?.[key]) ? values.value[key] : []
   return [...new Set(current.map((item) => String(item)).filter(Boolean))]
 }
+
+async function loadLoaiQuayChupOptions() {
+  if (props.loaiQuayChupOptions.length) return
+  try {
+    const { data } = await fetchDanhMucLoaiQuayChup({ per_page: 100, trang_thai: 'active' })
+    loadedLoaiQuayChupOptions.value = (data.data || []).slice().sort((a, b) =>
+      String(a.ten_dich_vu || '').localeCompare(String(b.ten_dich_vu || ''), 'vi'),
+    )
+  } catch {
+    loadedLoaiQuayChupOptions.value = []
+  }
+}
+
+onMounted(() => {
+  loadLoaiQuayChupOptions()
+})
 </script>

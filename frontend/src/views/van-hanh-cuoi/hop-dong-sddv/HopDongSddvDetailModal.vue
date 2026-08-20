@@ -389,7 +389,14 @@ import {
   CustomTable,
   CustomTableColumn,
 } from '@/components/element'
-import { getTenLichQuayChup, isDieuPhoiExtraSessionKey, normalizeDieuPhoiSessions } from '@/utils/thongTinDieuPhoi'
+import {
+  LOAI_QUAY_CHUP_KEY,
+  formatLoaiQuayChupLabel,
+  getTenLichQuayChup,
+  isDieuPhoiExtraSessionKey,
+  normalizeDieuPhoiSessions,
+  parseSessionLoaiQuayChup,
+} from '@/utils/thongTinDieuPhoi'
 
 const STAFF_FIELD_KEYS = new Set(['tho_chup', 'tho_make', 'tho_edit', 'quay_phim'])
 
@@ -543,6 +550,16 @@ const dieuPhoiSessions = computed(() => {
 
   return sessions.map((saved, index) => {
     const items = []
+    const loaiQuayChup = parseSessionLoaiQuayChup(saved)
+    if (loaiQuayChup) {
+      items.push({
+        key: LOAI_QUAY_CHUP_KEY,
+        label: saved?.[LOAI_QUAY_CHUP_KEY]?.ten_thong_tin || 'Loại quay chụp',
+        wide: false,
+        value: formatLoaiQuayChupLabel(loaiQuayChup) || '—',
+      })
+    }
+
     for (const key of keys) {
       if (isDieuPhoiExtraSessionKey(key) || String(key).startsWith('_')) continue
       const schemaItem = schema[key] && typeof schema[key] === 'object' ? schema[key] : null

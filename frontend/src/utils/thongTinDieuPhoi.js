@@ -22,6 +22,9 @@ export const MAX_LICH_QUAY_CHUP = 6
 export const CONCEPT_FIELD_KEY = 'concepts'
 export const TRANG_PHUC_FIELD_KEY = 'trang_phucs'
 
+/** Field loại quay chụp (danh_muc_loai_quay_chup) lưu kèm từng buổi */
+export const LOAI_QUAY_CHUP_KEY = 'loai_quay_chup'
+
 export const BUOI_CHUP_OPTIONS = [
   { value: 'sang', label: 'Sáng' },
   { value: 'chieu', label: 'Chiều' },
@@ -144,6 +147,7 @@ export function isDieuPhoiExtraSessionKey(key) {
     key === TEN_LICH_KEY ||
     key === CONCEPT_FIELD_KEY ||
     key === TRANG_PHUC_FIELD_KEY ||
+    key === LOAI_QUAY_CHUP_KEY ||
     String(key).startsWith('_')
   )
 }
@@ -152,6 +156,63 @@ function normalizeDateValue(value) {
   if (value == null || value === '') return null
   const text = String(value).slice(0, 10)
   return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : null
+}
+
+export function normalizeLoaiQuayChupGiaTri(raw) {
+  if (raw == null || raw === '') return null
+  if (typeof raw === 'number' || (typeof raw === 'string' && /^\d+$/.test(String(raw).trim()))) {
+    const id = Number(raw)
+    if (!Number.isFinite(id) || id <= 0) return null
+    return { id, ten_dich_vu: '' }
+  }
+  if (typeof raw !== 'object' || Array.isArray(raw)) return null
+  const id = Number(raw.id ?? raw.danh_muc_loai_quay_chup_id)
+  if (!Number.isFinite(id) || id <= 0) return null
+  return {
+    id,
+    ten_dich_vu: String(raw.ten_dich_vu || '').trim(),
+  }
+}
+
+export function parseSessionLoaiQuayChup(session) {
+  const fromField = getDieuPhoiGiaTriFromSession(session, LOAI_QUAY_CHUP_KEY)
+  if (fromField != null && fromField !== '') {
+    return normalizeLoaiQuayChupGiaTri(fromField)
+  }
+  return normalizeLoaiQuayChupGiaTri(session?.[LOAI_QUAY_CHUP_KEY])
+}
+
+export function buildLoaiQuayChupField(value) {
+  return {
+    su_dung: true,
+    ten_thong_tin: 'Loại quay chụp',
+    loai_du_lieu: 'object',
+    gia_tri: normalizeLoaiQuayChupGiaTri(value),
+  }
+}
+
+export function formatLoaiQuayChupLabel(value) {
+  const item = normalizeLoaiQuayChupGiaTri(value)
+  if (!item) return ''
+  return item.ten_dich_vu || `Loại #${item.id}`
+}
+
+export function getLoaiQuayChupId(value) {
+  return normalizeLoaiQuayChupGiaTri(value)?.id ?? null
+}
+
+export function loaiQuayChupRequiredRule() {
+  return {
+    required: true,
+    validator(_rule, value, callback) {
+      if (!getLoaiQuayChupId(value)) {
+        callback(new Error('Vui lòng chọn loại quay chụp'))
+        return
+      }
+      callback()
+    },
+    trigger: 'change',
+  }
 }
 
 export function buildConceptField(items) {

@@ -12,48 +12,48 @@
         description="Loại hợp đồng chưa cấu hình thông tin điều phối."
       />
 
+      <el-empty
+        v-else-if="!loading && !formModel.sessions.length"
+        description="Chưa có lịch quay chụp. Vui lòng thêm lịch ở form hợp đồng."
+      />
+
       <CustomForm
-        v-else-if="fields.length"
+        v-else-if="fields.length && formModel.sessions.length"
         ref="formRef"
         :model="formModel"
         :rules="formRules"
         label-position="top"
       >
-        <CustomCard
-          v-for="(session, index) in formModel.sessions"
-          :key="session._uid"
-          shadow="never"
-          class="session-card"
+        <el-tabs
+          v-model="activeSessionName"
+          type="border-card"
+          class="session-tabs"
+          :class="{
+            'is-slide-left': slideDirection === 'left',
+            'is-slide-right': slideDirection !== 'left',
+          }"
         >
-          <template #header>
-            <div class="session-header">
-              <span class="session-title">
-                {{ formModel.sessions.length > 1 ? `Lịch quay chụp ${index + 1}` : 'Lịch quay chụp' }}
+          <el-tab-pane
+            v-for="(session, index) in formModel.sessions"
+            :key="session._uid"
+            :name="String(session._uid)"
+            lazy
+          >
+            <template #label>
+              <span class="session-tab-label" :title="displayTenLich(session, index)">
+                {{ displayTenLich(session, index) }}
               </span>
-              <CustomButton
-                type="danger"
-                link
-                :disabled="formModel.sessions.length <= 1"
-                @click="removeSession(index)"
-              >
-                Xóa
-              </CustomButton>
-            </div>
-          </template>
-          <HopDongSddvDieuPhoiSessionFields
-            v-model="formModel.sessions[index]"
-            :fields="fields"
-            :user-options="userOptions"
-            :prop-prefix="`sessions.${index}`"
-            require-dates
-          />
-        </CustomCard>
-
-        <div v-if="formModel.sessions.length < MAX_LICH_QUAY_CHUP" class="add-session-wrap">
-          <CustomButton type="primary" plain @click="addSession">
-            Thêm lịch quay chụp
-          </CustomButton>
-        </div>
+            </template>
+            <HopDongSddvDieuPhoiSessionFields
+              v-model="formModel.sessions[index]"
+              :fields="fields"
+              :user-options="userOptions"
+              :loai-quay-chup-options="loaiQuayChupOptions"
+              :prop-prefix="`sessions.${index}`"
+              require-dates
+            />
+          </el-tab-pane>
+        </el-tabs>
       </CustomForm>
     </div>
 
@@ -63,7 +63,7 @@
         <CustomButton
           type="primary"
           :loading="saving"
-          :disabled="loading || !fields.length"
+          :disabled="loading || !fields.length || !formModel.sessions.length"
           @click="save"
         >
           Lưu
@@ -76,22 +76,28 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import {
-  getHopDongSuDungDichVu,
-  updateHopDongSuDungDichVu,
-} from '@/api/hopDongSuDungDichVu'
+import { fetchDanhMucLoaiQuayChup } from '@/api/danhMucLoaiQuayChup'
+import { getHopDongSuDungDichVu, updateHopDongSuDungDichVu } from '@/api/hopDongSuDungDichVu'
 import { getLoaiHopDong } from '@/api/loaiHopDong'
 import { fetchUsers } from '@/api/users'
 import {
   CustomButton,
-  CustomCard,
   CustomDialog,
   CustomForm,
 } from '@/components/element'
 import {
+  LOAI_QUAY_CHUP_KEY,
   MAX_LICH_QUAY_CHUP,
+  TEN_LICH_KEY,
+  buildLoaiQuayChupField,
+  buildTenLichField,
+  defaultTenLichQuayChup,
+  getTenLichQuayChup,
+  isDieuPhoiExtraSessionKey,
   mergeDieuPhoiSessions,
   normalizeDieuPhoiSessions,
+  parseSessionLoaiQuayChup,
+  loaiQuayChupRequiredRule,
 } from '@/utils/thongTinDieuPhoi'
 import HopDongSddvDieuPhoiSessionFields from './HopDongSddvDieuPhoiSessionFields.vue'
 
@@ -120,6 +126,9 @@ const hopDong = ref(null)
 const fields = ref([])
 const fieldMeta = ref({})
 const userOptions = ref([])
+const loaiQuayChupOptions = ref([])
+const activeSessionName = ref('')
+const slideDirection = ref('right')
 let sessionUid = 0
 
 const formModel = reactive({
@@ -145,6 +154,7 @@ const formRules = computed(() => {
   }
 
   for (const [index] of formModel.sessions.entries()) {
+    rules[`sessions.${index}.${LOAI_QUAY_CHUP_KEY}`] = [loaiQuayChupRequiredRule()]
     for (const field of fields.value) {
       if (!isDateField(field)) continue
       rules[`sessions.${index}.${field.key}`] = [
@@ -199,16 +209,36 @@ function resolveLoaiDuLieu(key, item) {
   return item?.loai_du_lieu || 'string'
 }
 
-function createEmptySession() {
-  const values = { _uid: nextUid() }
-  for (const field of fields.value) {
-    values[field.key] = defaultValueByLoai(field.loai_du_lieu)
-  }
-  return values
+function sessionName(session) {
+  return String(session?._uid ?? '')
 }
 
-function sessionFromSaved(savedMap) {
-  const values = { _uid: nextUid() }
+function syncActiveSession(preferredName = '') {
+  const names = formModel.sessions.map(sessionName).filter(Boolean)
+  if (!names.length) {
+    activeSessionName.value = ''
+    return
+  }
+  if (preferredName && names.includes(String(preferredName))) {
+    activeSessionName.value = String(preferredName)
+    return
+  }
+  if (!names.includes(String(activeSessionName.value))) {
+    activeSessionName.value = names[0]
+  }
+}
+
+function displayTenLich(session, index) {
+  const name = String(session?._ten_lich || '').trim()
+  return name || defaultTenLichQuayChup(index)
+}
+
+function sessionFromSaved(savedMap, index = 0) {
+  const values = {
+    _uid: nextUid(),
+    _ten_lich: getTenLichQuayChup(savedMap, index),
+    [LOAI_QUAY_CHUP_KEY]: parseSessionLoaiQuayChup(savedMap),
+  }
   const source = savedMap && typeof savedMap === 'object' && !Array.isArray(savedMap) ? savedMap : {}
 
   for (const field of fields.value) {
@@ -238,6 +268,7 @@ function buildFieldsFromSchema(schema) {
   for (const [key, item] of Object.entries(source)) {
     if (!item || typeof item !== 'object') continue
     if (item.su_dung === false) continue
+    if (isDieuPhoiExtraSessionKey(key)) continue
 
     const loai = resolveLoaiDuLieu(key, item)
     nextFields.push({
@@ -256,22 +287,6 @@ function buildFieldsFromSchema(schema) {
   fieldMeta.value = nextMeta
 }
 
-function addSession() {
-  if (formModel.sessions.length >= MAX_LICH_QUAY_CHUP) {
-    ElMessage.warning(`Tối đa ${MAX_LICH_QUAY_CHUP} lịch quay chụp.`)
-    return
-  }
-  formModel.sessions.push(createEmptySession())
-}
-
-function removeSession(index) {
-  if (formModel.sessions.length <= 1) {
-    ElMessage.warning('Cần ít nhất 1 lịch quay chụp.')
-    return
-  }
-  formModel.sessions.splice(index, 1)
-}
-
 async function loadData() {
   if (!props.hopDongId) return
 
@@ -280,15 +295,20 @@ async function loadData() {
   fieldMeta.value = {}
   formModel.sessions = []
   hopDong.value = null
+  activeSessionName.value = ''
 
   try {
-    const [hopDongRes, usersRes] = await Promise.all([
+    const [hopDongRes, usersRes, loaiQuayChupRes] = await Promise.all([
       getHopDongSuDungDichVu(props.hopDongId),
       fetchUsers({ per_page: 100, status: 'active' }),
+      fetchDanhMucLoaiQuayChup({ per_page: 100, trang_thai: 'active' }).catch(() => ({ data: { data: [] } })),
     ])
 
     hopDong.value = hopDongRes.data
     userOptions.value = usersRes.data.data || []
+    loaiQuayChupOptions.value = (loaiQuayChupRes.data?.data || []).slice().sort((a, b) =>
+      String(a.ten_dich_vu || '').localeCompare(String(b.ten_dich_vu || ''), 'vi'),
+    )
 
     const loaiId = hopDong.value?.loai_hop_dong_id
     if (!loaiId) {
@@ -303,23 +323,24 @@ async function loadData() {
       0,
       MAX_LICH_QUAY_CHUP,
     )
-    formModel.sessions = savedSessions.length
-      ? savedSessions.map((item) => sessionFromSaved(item))
-      : fields.value.length
-        ? [createEmptySession()]
-        : []
+    formModel.sessions = savedSessions.map((item, index) => sessionFromSaved(item, index))
+    syncActiveSession()
   } catch {
     fields.value = []
     userOptions.value = []
+    loaiQuayChupOptions.value = []
     formModel.sessions = []
+    activeSessionName.value = ''
   } finally {
     loading.value = false
   }
 }
 
 function buildPayload() {
-  return formModel.sessions.map((session) => {
-    const result = {}
+  const built = formModel.sessions.map((session, index) => {
+    const result = {
+      [TEN_LICH_KEY]: buildTenLichField(session._ten_lich, index),
+    }
     for (const field of fields.value) {
       const meta = fieldMeta.value[field.key] || {}
       const loai = field.loai_du_lieu || 'string'
@@ -338,28 +359,47 @@ function buildPayload() {
         gia_tri: giaTri,
       }
     }
+    result[LOAI_QUAY_CHUP_KEY] = buildLoaiQuayChupField(session[LOAI_QUAY_CHUP_KEY])
     return result
   })
+
+  return mergeDieuPhoiSessions(hopDong.value?.thong_tin_dieu_phoi, built)
+}
+
+function focusFirstInvalidSession(invalidFields) {
+  if (!invalidFields || typeof invalidFields !== 'object') return
+  for (const key of Object.keys(invalidFields)) {
+    const match = key.match(/^sessions\.(\d+)/)
+    if (!match) continue
+    const session = formModel.sessions[Number(match[1])]
+    if (session) {
+      activeSessionName.value = sessionName(session)
+      return
+    }
+  }
 }
 
 async function save() {
   if (!props.hopDongId || !fields.value.length) return
 
   if (!formModel.sessions.length) {
-    ElMessage.warning('Cần ít nhất 1 lịch quay chụp.')
+    ElMessage.warning('Chưa có lịch quay chụp để điều phối.')
     return
   }
 
-  const valid = await formRef.value?.validate().catch(() => false)
+  const valid = await formRef.value?.validate().catch((invalidFields) => {
+    focusFirstInvalidSession(invalidFields)
+    return false
+  })
   if (!valid) {
-    ElMessage.warning('Vui lòng điền đầy đủ các trường ngày bắt buộc.')
+    ElMessage.warning('Vui lòng điền đầy đủ các trường bắt buộc.')
     return
   }
 
   saving.value = true
   try {
     const { data } = await updateHopDongSuDungDichVu(props.hopDongId, {
-      thong_tin_dieu_phoi: mergeDieuPhoiSessions(hopDong.value?.thong_tin_dieu_phoi, buildPayload()),
+      thong_tin_dieu_phoi: buildPayload(),
     })
     ElMessage.success('Đã lưu thông tin điều phối.')
     emit('saved', data)
@@ -378,9 +418,22 @@ function onClosed() {
   formModel.sessions = []
   hopDong.value = null
   userOptions.value = []
+  loaiQuayChupOptions.value = []
+  activeSessionName.value = ''
   saving.value = false
   emit('closed')
 }
+
+watch(activeSessionName, (next, prev) => {
+  const names = formModel.sessions.map(sessionName)
+  const nextIndex = names.indexOf(String(next))
+  const prevIndex = names.indexOf(String(prev))
+  if (nextIndex === -1 || prevIndex === -1) {
+    slideDirection.value = 'right'
+  } else {
+    slideDirection.value = nextIndex < prevIndex ? 'left' : 'right'
+  }
+})
 
 watch(
   () => props.modelValue,
@@ -402,34 +455,64 @@ watch(
   }
 }
 
-.session-card {
-  border: 1px solid var(--el-border-color-lighter);
+.session-tabs {
+  :deep(.el-tabs__header) {
+    margin-bottom: 0;
+  }
+
+  :deep(.el-tabs__content) {
+    overflow: hidden;
+    padding: 16px 16px 4px;
+  }
+
+  :deep(.el-tabs__item) {
+    height: 40px;
+    font-weight: 600;
+  }
+
+  :deep(.el-tab-pane) {
+    animation: session-tab-in-right 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  &.is-slide-left :deep(.el-tab-pane) {
+    animation-name: session-tab-in-left;
+  }
 }
 
-.session-card :deep(.el-card__header) {
-  padding: 10px 16px;
-  background: var(--el-fill-color-light);
+.session-tab-label {
+  display: inline-block;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.session-card :deep(.el-card__body) {
-  padding: 12px 16px 4px;
+@keyframes session-tab-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
-.session-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+@keyframes session-tab-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
-.session-title {
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.add-session-wrap {
-  display: flex;
-  justify-content: flex-start;
+@media (prefers-reduced-motion: reduce) {
+  .session-tabs :deep(.el-tab-pane) {
+    animation: none;
+  }
 }
 
 .footer-actions {
