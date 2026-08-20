@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\CauHinhTaiKhoanThanhToanController;
 use App\Http\Controllers\Api\CauHinhThongTinStudioController;
 use App\Http\Controllers\Api\DanhMucConceptController;
 use App\Http\Controllers\Api\DanhMucLoaiThongBaoController;
+use App\Http\Controllers\Api\DanhMucLoaiQuayChupController;
 use App\Http\Controllers\Api\DanhMucNguonKhachController;
 use App\Http\Controllers\Api\HeThongThongBaoController;
 use App\Http\Controllers\Api\TienIchThoiTietController;
@@ -135,6 +136,9 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
 
     // Danh mục nguồn khách
     Route::apiResource('danh-muc-nguon-khach', DanhMucNguonKhachController::class);
+
+    // Danh mục loại quay chụp
+    Route::apiResource('danh-muc-loai-quay-chup', DanhMucLoaiQuayChupController::class);
 
     // Tiện ích thời tiết
     Route::get('tien-ich-thoi-tiet', [TienIchThoiTietController::class, 'index']);

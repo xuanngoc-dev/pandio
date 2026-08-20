@@ -182,6 +182,12 @@ const routes = [
         meta: { title: 'Điều phối & Sản xuất', requiresAuth: true },
       },
       {
+        path: 'he-thong/cau-hinh-quan-tri/danh-muc-dich-vu',
+        name: 'cau-hinh-danh-muc-dich-vu',
+        component: () => import('@/views/he-thong/cau-hinh/DanhMucDichVu.vue'),
+        meta: { title: 'Danh mục dịch vụ', requiresAuth: true },
+      },
+      {
         path: 'he-thong/cau-hinh-quan-tri/cham-cong-tang-ca',
         name: 'cau-hinh-cham-cong-tang-ca',
         component: () => import('@/views/he-thong/cau-hinh/ChamCongTangCa.vue'),

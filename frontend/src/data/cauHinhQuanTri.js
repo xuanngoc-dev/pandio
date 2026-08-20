@@ -69,6 +69,12 @@ export const cauHinhSections = [
         path: 'dieu-phoi-san-xuat',
         component: 'DieuPhoiSanXuat',
       },
+      {
+        label: 'Danh mục dịch vụ',
+        routeName: 'cau-hinh-danh-muc-dich-vu',
+        path: 'danh-muc-dich-vu',
+        component: 'DanhMucDichVu',
+      },
     ],
   },
   {
