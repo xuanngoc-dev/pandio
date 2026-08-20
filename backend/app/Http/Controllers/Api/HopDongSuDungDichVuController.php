@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Models\CauHinhJson;
 use App\Models\HopDongDongSddvCombo;
 use App\Models\HopDongDongSddvConcept;
 use App\Models\HopDongDongSddvDichVu;
@@ -662,6 +663,52 @@ class HopDongSuDungDichVuController extends BaseApiController
                 $hop_dong_su_dung_dich_vu->fresh()->load(['loaiHopDong:id,ten_hop_dong,ma_hop_dong'])
             );
         }, 'xử lý nghiệm thu');
+    }
+
+    /**
+     * Kiểm tra mã giảm giá: mã mặc định hoặc SĐT khách hàng của HĐ hoàn thành.
+     * Số tiền giảm = % cơ sở tính, không vượt số tiền giảm tối đa.
+     */
+    public function kiemTraMaGiamGia(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'ma_giam_gia' => ['required', 'string', 'max:100'],
+                'co_so_tinh' => ['sometimes', 'nullable', 'integer', 'min:0'],
+            ]);
+
+            $ma = trim((string) $validated['ma_giam_gia']);
+            $coSoTinh = (int) ($validated['co_so_tinh'] ?? 0);
+            $config = $this->maGiamGiaConfig();
+            $macDinh = trim((string) ($config['ma_giam_gia_mac_dinh'] ?? ''));
+
+            $loai = null;
+            if ($macDinh !== '' && strcasecmp($ma, $macDinh) === 0) {
+                $loai = 'mac_dinh';
+            } elseif ($this->hopDongHoanThanhTheoSdt($ma)) {
+                $loai = 'sdt_khach_hang';
+            }
+
+            if ($loai === null) {
+                return response()->json([
+                    'hop_le' => false,
+                    'so_tien_giam' => 0,
+                    'message' => 'Mã giảm giá không khớp',
+                ]);
+            }
+
+            $soTienGiam = $this->tinhSoTienGiamGia(
+                $coSoTinh,
+                (int) ($config['phan_tram_giam_gia'] ?? 0),
+                (int) ($config['so_tien_giam_toi_da'] ?? 0),
+            );
+
+            return response()->json([
+                'hop_le' => true,
+                'so_tien_giam' => $soTienGiam,
+                'loai' => $loai,
+            ]);
+        }, 'kiểm tra mã giảm giá');
     }
 
     /**
@@ -1478,5 +1525,49 @@ class HopDongSuDungDichVuController extends BaseApiController
         }
 
         return $counts;
+    }
+
+    /**
+     * @return array{phan_tram_giam_gia?: mixed, so_tien_giam_toi_da?: mixed, ma_giam_gia_mac_dinh?: mixed}
+     */
+    private function maGiamGiaConfig(): array
+    {
+        $row = CauHinhJson::query()->first();
+        $all = is_array($row?->thong_tin_cau_hinh) ? $row->thong_tin_cau_hinh : [];
+
+        return is_array($all['ma_giam_gia'] ?? null) ? $all['ma_giam_gia'] : [];
+    }
+
+    private function hopDongHoanThanhTheoSdt(string $ma): bool
+    {
+        $digits = preg_replace('/\D+/', '', $ma) ?? '';
+        if ($digits === '') {
+            return false;
+        }
+
+        $normalizedExpr = "REPLACE(REPLACE(REPLACE(REPLACE(IFNULL(sdt_khach_hang, ''), ' ', ''), '.', ''), '-', ''), '+', '')";
+        $last9 = strlen($digits) >= 9 ? substr($digits, -9) : $digits;
+
+        return HopDongSuDungDichVu::query()
+            ->where('trang_thai', 'hoan_thanh')
+            ->whereNotNull('sdt_khach_hang')
+            ->where('sdt_khach_hang', '!=', '')
+            ->where(function ($q) use ($normalizedExpr, $digits, $last9) {
+                $q->whereRaw("{$normalizedExpr} = ?", [$digits]);
+                if (strlen($last9) >= 9) {
+                    $q->orWhereRaw("RIGHT({$normalizedExpr}, 9) = ?", [$last9]);
+                }
+            })
+            ->exists();
+    }
+
+    private function tinhSoTienGiamGia(int $coSoTinh, int $phanTram, int $soTienToiDa): int
+    {
+        $coSoTinh = max(0, $coSoTinh);
+        $phanTram = max(0, min(100, $phanTram));
+        $theoPhanTram = (int) round($coSoTinh * $phanTram / 100);
+        $soTienGiam = $soTienToiDa > 0 ? min($theoPhanTram, $soTienToiDa) : $theoPhanTram;
+
+        return max(0, min($soTienGiam, $coSoTinh));
     }
 }

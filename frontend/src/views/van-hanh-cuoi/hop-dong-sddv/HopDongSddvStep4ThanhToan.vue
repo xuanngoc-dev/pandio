@@ -19,7 +19,22 @@
         </CustomCol>
         <CustomCol v-bind="summaryFieldColProps">
           <CustomFormItem label="Mã giảm giá">
-            <CustomInput v-model="form.ma_giam_gia" placeholder="Nhập mã giảm giá" clearable />
+            <CustomInput
+              v-model="form.ma_giam_gia"
+              class="ma-giam-gia-input"
+              placeholder="Nhập mã giảm giá"
+              clearable
+              @keyup.enter="kiemTraMaGiamGia"
+            >
+              <template #append>
+                <CustomButton
+                  :icon="Search"
+                  :loading="checkingMaGiamGia"
+                  aria-label="Kiểm tra mã giảm giá"
+                  @click="kiemTraMaGiamGia"
+                />
+              </template>
+            </CustomInput>
           </CustomFormItem>
         </CustomCol>
         <CustomCol v-bind="summaryFieldColProps">
@@ -63,8 +78,12 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { ElMessage } from 'element-plus'
+import { Search } from '@element-plus/icons-vue'
+import { kiemTraMaGiamGiaHopDongSuDungDichVu } from '@/api/hopDongSuDungDichVu'
 import {
+  CustomButton,
   CustomCol,
   CustomForm,
   CustomFormItem,
@@ -72,11 +91,15 @@ import {
   CustomRow,
   MoneyInput,
 } from '@/components/element'
+import { formatInteger } from '@/utils/number'
 
 const props = defineProps({
   form: { type: Object, required: true },
   tongTienDichVu: { type: Number, default: 0 },
 })
+
+const checkingMaGiamGia = ref(false)
+const lastCheckedMa = ref(null)
 
 /** xl/lg: 6/hàng · md: 3/hàng · sm/xs (mobile): 2/hàng */
 const summaryFieldColProps = {
@@ -104,6 +127,63 @@ const khachHangPhaiThanhToan = computed(() => {
   const chietKhau = Number(props.form.chiet_khau) || 0
   return Math.max(0, tongDichVu + phatSinh - giamGia - chietKhau)
 })
+
+const coSoTinhMaGiamGia = computed(() => {
+  const tongDichVu = tongTienDichVuHienThi.value
+  const phatSinh = Number(props.form.phat_sinh) || 0
+  return Math.max(0, tongDichVu + phatSinh)
+})
+
+watch(
+  () => props.form.ma_giam_gia,
+  (ma) => {
+    if (lastCheckedMa.value == null) return
+    if ((ma || '').trim() !== lastCheckedMa.value) {
+      props.form.khuyen_mai_theo_ma_giam_gia = 0
+      lastCheckedMa.value = null
+    }
+  },
+)
+
+async function kiemTraMaGiamGia() {
+  const ma = props.form.ma_giam_gia?.trim() || ''
+  if (!ma) {
+    ElMessage.warning('Vui lòng nhập mã giảm giá.')
+    return
+  }
+
+  checkingMaGiamGia.value = true
+  try {
+    const { data } = await kiemTraMaGiamGiaHopDongSuDungDichVu(
+      {
+        ma_giam_gia: ma,
+        co_so_tinh: coSoTinhMaGiamGia.value,
+      },
+      { skipLoading: true },
+    )
+
+    if (!data?.hop_le) {
+      props.form.khuyen_mai_theo_ma_giam_gia = 0
+      lastCheckedMa.value = null
+      ElMessage.error(data?.message || 'Mã giảm giá không khớp')
+      return
+    }
+
+    const soTienGiam = Number(data.so_tien_giam) || 0
+    props.form.khuyen_mai_theo_ma_giam_gia = soTienGiam
+    lastCheckedMa.value = ma
+    ElMessage.success(
+      soTienGiam > 0
+        ? `Đã áp dụng mã giảm giá: ${formatInteger(soTienGiam)} ₫`
+        : 'Mã giảm giá hợp lệ.',
+    )
+  } catch {
+    props.form.khuyen_mai_theo_ma_giam_gia = 0
+    lastCheckedMa.value = null
+  } finally {
+    checkingMaGiamGia.value = false
+  }
+}
 
 function getPayload() {
   return {
@@ -147,9 +227,13 @@ function formatNowPaymentDateTimeStorage(date = new Date()) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
 }
 
-function hydrate() {}
+function hydrate() {
+  lastCheckedMa.value = null
+}
 
-function reset() {}
+function reset() {
+  lastCheckedMa.value = null
+}
 
 defineExpose({
   hydrate,
@@ -180,5 +264,9 @@ defineExpose({
     font-weight: 700;
     color: var(--el-color-primary);
   }
+}
+
+.ma-giam-gia-input {
+  width: 100%;
 }
 </style>

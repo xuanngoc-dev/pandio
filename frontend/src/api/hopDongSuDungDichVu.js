@@ -124,6 +124,15 @@ export function khoiTaoHopDongSuDungDichVu() {
 }
 
 /**
+ * Kiểm tra mã giảm giá (mã mặc định hoặc SĐT khách hàng HĐ hoàn thành).
+ * @param {{ ma_giam_gia: string, co_so_tinh?: number }} payload
+ * @param {{ skipLoading?: boolean }} [config]
+ */
+export function kiemTraMaGiamGiaHopDongSuDungDichVu(payload, config = {}) {
+  return api.post('/hop-dong-su-dung-dich-vu/kiem-tra-ma-giam-gia', payload, config)
+}
+
+/**
  * Tạo hợp đồng sử dụng dịch vụ.
  * @param {object} payload
  */
