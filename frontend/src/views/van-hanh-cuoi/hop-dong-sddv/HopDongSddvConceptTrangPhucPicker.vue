@@ -1,5 +1,5 @@
 <template>
-  <div class="step-panel step-panel--dich-vu" v-loading="loading">
+  <div class="concept-trang-phuc-picker" v-loading="loading">
     <section class="dich-vu-section" :class="{ 'is-collapsed': !conceptExpanded }">
       <button type="button" class="dich-vu-section__header" @click="conceptExpanded = !conceptExpanded">
         <div class="dich-vu-section__title-wrap">
@@ -120,31 +120,7 @@
                 class="service-filter__price"
               />
             </CustomCol>
-            <CustomCol :xs="12" :sm="6" :md="4">
-              <el-date-picker
-                v-model="trangPhucFilter.ngay_bat_dau"
-                type="date"
-                format="DD/MM/YYYY"
-                value-format="YYYY-MM-DD"
-                placeholder="Từ ngày"
-                clearable
-                style="width: 100%"
-                @change="onTrangPhucDateFilterChange"
-              />
-            </CustomCol>
-            <CustomCol :xs="12" :sm="6" :md="4">
-              <el-date-picker
-                v-model="trangPhucFilter.ngay_ket_thuc"
-                type="date"
-                format="DD/MM/YYYY"
-                value-format="YYYY-MM-DD"
-                placeholder="Đến ngày"
-                clearable
-                style="width: 100%"
-                @change="onTrangPhucDateFilterChange"
-              />
-            </CustomCol>
-            <CustomCol :xs="12" :sm="12" :md="8">
+            <CustomCol :xs="24" :sm="12" :md="8">
               <div class="service-filter__switches">
                 <div class="service-filter__switch">
                   <el-switch v-model="trangPhucFilter.hien_san_pham_ban" size="small" />
@@ -223,95 +199,11 @@
             <CustomTableColumn label="Giá thuê" width="130" align="right">
               <template #default="{ row }">{{ formatMoney(row.gia_cho_thue) }}</template>
             </CustomTableColumn>
-            <CustomTableColumn label="Ngày bắt đầu" width="170" align="center">
-              <template #default="{ row }">
-                <el-date-picker
-                  v-model="row.ngay_bat_dau"
-                  type="date"
-                  format="DD/MM/YYYY"
-                  value-format="YYYY-MM-DD"
-                  placeholder="Chọn ngày"
-                  style="width: 150px"
-                />
-              </template>
-            </CustomTableColumn>
-            <CustomTableColumn label="Ngày kết thúc" width="170" align="center">
-              <template #default="{ row }">
-                <el-date-picker
-                  v-model="row.ngay_ket_thuc"
-                  type="date"
-                  format="DD/MM/YYYY"
-                  value-format="YYYY-MM-DD"
-                  placeholder="Chọn ngày"
-                  style="width: 150px"
-                />
-              </template>
-            </CustomTableColumn>
           </CustomTable>
           <div v-else class="selected-table-empty">Chưa chọn trang phục nào.</div>
         </div>
       </div>
     </section>
-
-    <CustomForm class="step2-summary" label-position="top">
-      <CustomRow :gutter="16">
-        <CustomCol v-bind="summaryFieldColProps">
-          <CustomFormItem label="Tổng tiền dịch vụ">
-            <MoneyInput :model-value="tongTienDichVuHienThi" readonly style="width: 100%" />
-          </CustomFormItem>
-        </CustomCol>
-        <CustomCol v-bind="summaryFieldColProps">
-          <CustomFormItem label="Phát sinh">
-            <MoneyInput v-model="form.phat_sinh" style="width: 100%" />
-          </CustomFormItem>
-        </CustomCol>
-        <CustomCol v-bind="summaryFieldColProps">
-          <CustomFormItem label="Chiết khấu">
-            <MoneyInput v-model="form.chiet_khau" style="width: 100%" />
-          </CustomFormItem>
-        </CustomCol>
-        <CustomCol v-bind="summaryFieldColProps">
-          <CustomFormItem label="Mã giảm giá">
-            <CustomInput v-model="form.ma_giam_gia" placeholder="Nhập mã giảm giá" clearable />
-          </CustomFormItem>
-        </CustomCol>
-        <CustomCol v-bind="summaryFieldColProps">
-          <CustomFormItem label="Số tiền giảm giá">
-            <MoneyInput v-model="form.khuyen_mai_theo_ma_giam_gia" style="width: 100%" />
-          </CustomFormItem>
-        </CustomCol>
-        <CustomCol v-bind="summaryFieldColProps">
-          <CustomFormItem label="Khách hàng phải thanh toán">
-            <MoneyInput
-              :model-value="khachHangPhaiThanhToan"
-              readonly
-              class="tong-tien-input"
-              style="width: 100%"
-            />
-          </CustomFormItem>
-        </CustomCol>
-        <CustomCol v-bind="summaryFieldColProps">
-          <CustomFormItem label="Số tiền thanh toán lần 1">
-            <MoneyInput v-model="form.so_tien_thanh_toan_lan_1" style="width: 100%" />
-          </CustomFormItem>
-        </CustomCol>
-        <CustomCol v-bind="summaryWideColProps">
-          <CustomFormItem label="Quà tặng kèm">
-            <CustomInput v-model="form.qua_tang_kem" placeholder="Nhập quà tặng kèm" clearable />
-          </CustomFormItem>
-        </CustomCol>
-        <CustomCol :span="24">
-          <CustomFormItem label="Yêu cầu đặc biệt">
-            <CustomInput
-              v-model="form.yeu_cau_dac_biet"
-              type="textarea"
-              :rows="3"
-              placeholder="Nhập yêu cầu đặc biệt"
-            />
-          </CustomFormItem>
-        </CustomCol>
-      </CustomRow>
-    </CustomForm>
 
     <CustomDialog
       v-model="lichModalVisible"
@@ -363,7 +255,7 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { ArrowDown, Calendar, Check, Picture, Search } from '@element-plus/icons-vue'
 import { fetchConcept } from '@/api/concept'
 import { fetchTrangPhuc, fetchTrangPhucLichChoThue } from '@/api/trangPhuc'
@@ -371,8 +263,6 @@ import {
   CustomButton,
   CustomCol,
   CustomDialog,
-  CustomForm,
-  CustomFormItem,
   CustomIcon,
   CustomInput,
   CustomRow,
@@ -384,26 +274,11 @@ import {
 import { mediaUrl } from '@/utils/media'
 
 const props = defineProps({
-  form: { type: Object, required: true },
-  tongTienDichVu: { type: Number, default: 0 },
+  ngayChup: { type: String, default: null },
 })
 
-/** xl/lg: 6/hàng · md: 3/hàng · sm/xs (mobile): 2/hàng */
-const summaryFieldColProps = {
-  xs: 12,
-  sm: 12,
-  md: 8,
-  lg: 4,
-  xl: 4,
-}
-
-const summaryWideColProps = {
-  xs: 24,
-  sm: 24,
-  md: 16,
-  lg: 12,
-  xl: 12,
-}
+const selectedConcepts = defineModel('concepts', { type: Array, default: () => [] })
+const selectedTrangPhucs = defineModel('trangPhucs', { type: Array, default: () => [] })
 
 const lichTrangThaiOptions = [
   { value: 'moi_tao', label: 'Mới tạo' },
@@ -420,8 +295,6 @@ const loading = ref(false)
 const optionsLoaded = ref(false)
 const conceptOptions = ref([])
 const trangPhucOptions = ref([])
-const selectedConcepts = ref([])
-const selectedTrangPhucs = ref([])
 const conceptExpanded = ref(true)
 const trangPhucExpanded = ref(true)
 
@@ -439,8 +312,6 @@ const trangPhucFilter = reactive({
   keyword: '',
   gia_tu: null,
   gia_den: null,
-  ngay_bat_dau: null,
-  ngay_ket_thuc: null,
   hien_san_pham_ban: true,
   chi_da_chon: false,
 })
@@ -492,16 +363,6 @@ const filteredTrangPhucOptions = computed(() => {
   return filtered.filter((item) => isTrangPhucSelected(item.id))
 })
 
-const tongTienDichVuHienThi = computed(() => Number(props.tongTienDichVu) || 0)
-
-const khachHangPhaiThanhToan = computed(() => {
-  const tongDichVu = tongTienDichVuHienThi.value
-  const phatSinh = Number(props.form.phat_sinh) || 0
-  const giamGia = Number(props.form.khuyen_mai_theo_ma_giam_gia) || 0
-  const chietKhau = Number(props.form.chiet_khau) || 0
-  return Math.max(0, tongDichVu + phatSinh - giamGia - chietKhau)
-})
-
 function filterServiceOptions(items, filter, getName, getPrice) {
   const keyword = String(filter.keyword || '').trim().toLowerCase()
   const giaTu = filter.gia_tu === null || filter.gia_tu === '' ? null : Number(filter.gia_tu)
@@ -533,7 +394,6 @@ function formatDate(value) {
   return date.toLocaleDateString('vi-VN')
 }
 
-/** Hiển thị: Tên trang phục - [mã] */
 function formatTrangPhucLabel(item) {
   const ten = item?.ten_san_pham || item?.ten || ''
   const ma = String(item?.ma_san_pham || '').trim()
@@ -557,18 +417,6 @@ function lichTrangThaiTagType(value) {
     da_huy: '',
   }
   return map[value] || 'info'
-}
-
-function resetFilters() {
-  conceptFilter.keyword = ''
-  conceptFilter.chi_da_chon = false
-  trangPhucFilter.keyword = ''
-  trangPhucFilter.gia_tu = null
-  trangPhucFilter.gia_den = null
-  trangPhucFilter.ngay_bat_dau = null
-  trangPhucFilter.ngay_ket_thuc = null
-  trangPhucFilter.hien_san_pham_ban = true
-  trangPhucFilter.chi_da_chon = false
 }
 
 function isConceptSelected(id) {
@@ -608,25 +456,24 @@ function toggleTrangPhuc(item) {
     selectedTrangPhucs.value.splice(index, 1)
     return
   }
+  const ngayChup = props.ngayChup || null
   selectedTrangPhucs.value.push({
     id: item.id,
     ten: item.ten_san_pham,
     ma_san_pham: item.ma_san_pham || '',
     gia_cho_thue: Number(item.gia_cho_thue) || 0,
-    ngay_bat_dau: trangPhucFilter.ngay_bat_dau || null,
-    ngay_ket_thuc: trangPhucFilter.ngay_ket_thuc || null,
+    ngay_bat_dau: ngayChup,
+    ngay_ket_thuc: ngayChup,
   })
 }
 
-function onTrangPhucDateFilterChange() {
-  const start = trangPhucFilter.ngay_bat_dau
-  const end = trangPhucFilter.ngay_ket_thuc
-  if (start && end && end < start) {
-    trangPhucFilter.ngay_ket_thuc = null
-  }
-  if (optionsLoaded.value) {
-    loadTrangPhucOptions()
-  }
+function syncSelectedTrangPhucDates(ngayChup) {
+  if (!ngayChup) return
+  selectedTrangPhucs.value = selectedTrangPhucs.value.map((row) => ({
+    ...row,
+    ngay_bat_dau: ngayChup,
+    ngay_ket_thuc: ngayChup,
+  }))
 }
 
 async function loadTrangPhucOptions() {
@@ -635,9 +482,9 @@ async function loadTrangPhucOptions() {
       per_page: 100,
       trang_thai: 1,
     }
-    if (trangPhucFilter.ngay_bat_dau && trangPhucFilter.ngay_ket_thuc) {
-      params.ngay_thue = trangPhucFilter.ngay_bat_dau
-      params.ngay_tra_du_kien = trangPhucFilter.ngay_ket_thuc
+    if (props.ngayChup) {
+      params.ngay_thue = props.ngayChup
+      params.ngay_tra_du_kien = props.ngayChup
     }
     const trangPhucRes = await fetchTrangPhuc(params)
     trangPhucOptions.value = trangPhucRes.data.data || []
@@ -648,7 +495,7 @@ async function loadTrangPhucOptions() {
 }
 
 function removeBusySelectedTrangPhuc() {
-  if (!trangPhucFilter.ngay_bat_dau || !trangPhucFilter.ngay_ket_thuc) return
+  if (!props.ngayChup) return
   const busyIds = new Set(
     trangPhucOptions.value.filter((item) => isTrangPhucBusy(item)).map((item) => item.id),
   )
@@ -685,9 +532,9 @@ async function loadOptions(force = false) {
       per_page: 100,
       trang_thai: 1,
     }
-    if (trangPhucFilter.ngay_bat_dau && trangPhucFilter.ngay_ket_thuc) {
-      trangPhucParams.ngay_thue = trangPhucFilter.ngay_bat_dau
-      trangPhucParams.ngay_tra_du_kien = trangPhucFilter.ngay_ket_thuc
+    if (props.ngayChup) {
+      trangPhucParams.ngay_thue = props.ngayChup
+      trangPhucParams.ngay_tra_du_kien = props.ngayChup
     }
 
     const [conceptRes, trangPhucRes] = await Promise.all([
@@ -714,29 +561,14 @@ async function loadOptions(force = false) {
   }
 }
 
-function hydrate(hopDong) {
-  const concepts = Array.isArray(hopDong?.concepts) ? hopDong.concepts : []
-  selectedConcepts.value = concepts.map((row) => {
-    const catalog = row.concept || {}
-    return {
-      id: row.concept_id,
-      ten: catalog.ten_concept || `Concept #${row.concept_id}`,
-      dia_diem: catalog.dia_diem || '',
-    }
-  })
-
-  const trangPhucs = Array.isArray(hopDong?.trang_phucs) ? hopDong.trang_phucs : []
-  selectedTrangPhucs.value = trangPhucs.map((row) => {
-    const catalog = row.trang_phuc || {}
-    return {
-      id: row.trang_phuc_id,
-      ten: catalog.ten_san_pham || `Trang phục #${row.trang_phuc_id}`,
-      ma_san_pham: catalog.ma_san_pham || '',
-      gia_cho_thue: Number(catalog.gia_cho_thue) || 0,
-      ngay_bat_dau: row.ngay_bat_dau || null,
-      ngay_ket_thuc: row.ngay_ket_thuc || null,
-    }
-  })
+function resetFilters() {
+  conceptFilter.keyword = ''
+  conceptFilter.chi_da_chon = false
+  trangPhucFilter.keyword = ''
+  trangPhucFilter.gia_tu = null
+  trangPhucFilter.gia_den = null
+  trangPhucFilter.hien_san_pham_ban = true
+  trangPhucFilter.chi_da_chon = false
 }
 
 function reset() {
@@ -753,70 +585,25 @@ function reset() {
   resetFilters()
 }
 
-function getPayload() {
-  return {
-    concepts: selectedConcepts.value.map((row) => ({
-      concept_id: row.id,
-    })),
-    trang_phucs: selectedTrangPhucs.value.map((row) => ({
-      trang_phuc_id: row.id,
-      ngay_bat_dau: row.ngay_bat_dau || null,
-      ngay_ket_thuc: row.ngay_ket_thuc || null,
-    })),
-    phat_sinh: Number(props.form.phat_sinh) || 0,
-    chiet_khau: Number(props.form.chiet_khau) || 0,
-    ma_giam_gia: props.form.ma_giam_gia?.trim() || null,
-    khuyen_mai_theo_ma_giam_gia: Number(props.form.khuyen_mai_theo_ma_giam_gia) || 0,
-    so_tien_thanh_toan_lan_1: Number(props.form.so_tien_thanh_toan_lan_1) || 0,
-    so_tien_thanh_toan_lan_2: Number(props.form.so_tien_thanh_toan_lan_2) || 0,
-    so_tien_thanh_toan_lan_3: Number(props.form.so_tien_thanh_toan_lan_3) || 0,
-    thoi_gian_thanh_toan_lan_1: resolveThoiGianThanhToan(
-      props.form.so_tien_thanh_toan_lan_1,
-      props.form.thoi_gian_thanh_toan_lan_1,
-    ),
-    thoi_gian_thanh_toan_lan_2: resolveThoiGianThanhToan(
-      props.form.so_tien_thanh_toan_lan_2,
-      props.form.thoi_gian_thanh_toan_lan_2,
-    ),
-    thoi_gian_thanh_toan_lan_3: resolveThoiGianThanhToan(
-      props.form.so_tien_thanh_toan_lan_3,
-      props.form.thoi_gian_thanh_toan_lan_3,
-    ),
-    qua_tang_kem: props.form.qua_tang_kem?.trim() || null,
-    yeu_cau_dac_biet: props.form.yeu_cau_dac_biet?.trim() || null,
-  }
-}
-
-/**
- * Có số tiền → giữ thời gian cũ hoặc ghi nhận thời điểm hiện tại (Y-m-d H:i:s).
- * Không có số tiền → xóa thời gian thanh toán.
- */
-function resolveThoiGianThanhToan(amount, existing) {
-  if (!(Number(amount) > 0)) return null
-  if (existing) return existing
-  return formatNowPaymentDateTimeStorage()
-}
-
-/** Lưu DB datetime: Y-m-d H:i:s — hiển thị hh:mm:ss dd/mm/yyyy */
-function formatNowPaymentDateTimeStorage(date = new Date()) {
-  const pad = (n) => String(n).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
-}
+watch(
+  () => props.ngayChup,
+  (next, prev) => {
+    if (next === prev) return
+    syncSelectedTrangPhucDates(next)
+    if (optionsLoaded.value) {
+      loadTrangPhucOptions()
+    }
+  },
+)
 
 defineExpose({
   loadOptions,
-  hydrate,
   reset,
-  getPayload,
 })
 </script>
 
 <style scoped lang="scss">
-.step-panel {
-  min-height: 220px;
-}
-
-.step-panel--dich-vu {
+.concept-trang-phuc-picker {
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -927,7 +714,6 @@ defineExpose({
   grid-template-columns: repeat(6, minmax(0, 1fr));
   grid-auto-rows: var(--service-card-row-height);
   gap: var(--service-card-gap);
-  // Hiển thị đúng 2 hàng; vượt quá thì cuộn dọc
   max-height: calc(2 * var(--service-card-row-height) + var(--service-card-gap) + 4px);
   overflow-y: auto;
   padding: 2px;
@@ -1234,25 +1020,6 @@ defineExpose({
   font-size: 13px;
   background: var(--el-fill-color-lighter);
   border-radius: 6px;
-}
-
-.step2-summary {
-  margin-top: 4px;
-  padding: 14px 16px 4px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 10px;
-  background: var(--el-fill-color-blank);
-}
-
-.step2-summary :deep(.el-form-item) {
-  margin-bottom: 12px;
-}
-
-.tong-tien-input {
-  :deep(.el-input__inner) {
-    font-weight: 700;
-    color: var(--el-color-primary);
-  }
 }
 
 @media (max-width: 1200px) {

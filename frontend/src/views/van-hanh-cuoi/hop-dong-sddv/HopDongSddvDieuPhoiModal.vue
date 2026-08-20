@@ -88,7 +88,11 @@ import {
   CustomDialog,
   CustomForm,
 } from '@/components/element'
-import { MAX_LICH_QUAY_CHUP, normalizeDieuPhoiSessions } from '@/utils/thongTinDieuPhoi'
+import {
+  MAX_LICH_QUAY_CHUP,
+  mergeDieuPhoiSessions,
+  normalizeDieuPhoiSessions,
+} from '@/utils/thongTinDieuPhoi'
 import HopDongSddvDieuPhoiSessionFields from './HopDongSddvDieuPhoiSessionFields.vue'
 
 const REQUIRED_DATE_KEYS = new Set([
@@ -355,7 +359,7 @@ async function save() {
   saving.value = true
   try {
     const { data } = await updateHopDongSuDungDichVu(props.hopDongId, {
-      thong_tin_dieu_phoi: buildPayload(),
+      thong_tin_dieu_phoi: mergeDieuPhoiSessions(hopDong.value?.thong_tin_dieu_phoi, buildPayload()),
     })
     ElMessage.success('Đã lưu thông tin điều phối.')
     emit('saved', data)

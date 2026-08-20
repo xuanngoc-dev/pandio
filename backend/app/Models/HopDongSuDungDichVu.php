@@ -145,4 +145,48 @@ class HopDongSuDungDichVu extends Model
     {
         return $this->hasMany(HopDongDongSddvTrangPhuc::class, 'ma_hop_dong_id');
     }
+
+    /**
+     * Chuẩn hóa thong_tin_dieu_phoi về danh sách buổi chụp.
+     * Dữ liệu cũ (object 1 buổi) được bọc thành [object].
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function normalizeDieuPhoiSessions(mixed $raw): array
+    {
+        if (! is_array($raw) || $raw === []) {
+            return [];
+        }
+
+        if (array_is_list($raw)) {
+            $sessions = [];
+            foreach ($raw as $item) {
+                if (is_array($item) && $item !== [] && ! array_is_list($item)) {
+                    $sessions[] = $item;
+                }
+            }
+
+            return $sessions;
+        }
+
+        return [$raw];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function dieuPhoiSessions(): array
+    {
+        return self::normalizeDieuPhoiSessions($this->thong_tin_dieu_phoi);
+    }
+
+    public static function dieuPhoiGiaTri(?array $session, string $key): mixed
+    {
+        $item = $session[$key] ?? null;
+        if (! is_array($item)) {
+            return null;
+        }
+
+        return $item['gia_tri'] ?? null;
+    }
 }

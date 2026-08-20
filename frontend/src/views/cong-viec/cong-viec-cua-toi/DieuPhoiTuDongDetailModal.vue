@@ -94,6 +94,9 @@
               <template #default="{ $index }">{{ $index + 1 }}</template>
             </CustomTableColumn>
             <CustomTableColumn prop="ten" label="Tên concept" min-width="200" />
+            <CustomTableColumn label="Ngày sử dụng" width="140" align="center">
+              <template #default="{ row }">{{ formatDate(row.ngay_su_dung) }}</template>
+            </CustomTableColumn>
             <CustomTableColumn prop="dia_diem" label="Địa điểm" min-width="180">
               <template #default="{ row }">{{ display(row.dia_diem) }}</template>
             </CustomTableColumn>
@@ -108,6 +111,9 @@
               <template #default="{ $index }">{{ $index + 1 }}</template>
             </CustomTableColumn>
             <CustomTableColumn prop="ten" label="Tên trang phục" min-width="180" />
+            <CustomTableColumn label="Ngày sử dụng" width="140" align="center">
+              <template #default="{ row }">{{ formatDate(row.ngay_su_dung) }}</template>
+            </CustomTableColumn>
             <!-- <CustomTableColumn label="Ngày bắt đầu" width="130" align="center">
               <template #default="{ row }">{{ formatDate(row.ngay_bat_dau) }}</template>
             </CustomTableColumn>
@@ -263,6 +269,7 @@ const conceptRows = computed(() => {
   return rows.map((row) => ({
     ten: row.concept?.ten_concept || `Concept #${row.concept_id}`,
     dia_diem: row.concept?.dia_diem || '',
+    ngay_su_dung: row.ngay_su_dung || null,
   }))
 })
 
@@ -270,6 +277,7 @@ const trangPhucRows = computed(() => {
   const rows = Array.isArray(hopDong.value?.trang_phucs) ? hopDong.value.trang_phucs : []
   return rows.map((row) => ({
     ten: row.trang_phuc?.ten_san_pham || `Trang phục #${row.trang_phuc_id}`,
+    ngay_su_dung: row.ngay_su_dung || null,
     ngay_bat_dau: row.ngay_bat_dau || null,
     ngay_ket_thuc: row.ngay_ket_thuc || null,
   }))

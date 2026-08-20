@@ -51,9 +51,9 @@
       :form="form"
     />
 
-    <HopDongSddvStep3ThanhToan
+    <HopDongSddvStep4ThanhToan
       v-show="activeStep === 3"
-      ref="step3Ref"
+      ref="step4Ref"
       :form="form"
       :tong-tien-dich-vu="step2TongTienDisplay"
     />
@@ -95,7 +95,7 @@ import { normalizeDieuPhoiSessions } from '@/utils/thongTinDieuPhoi'
 import HopDongSddvStep1ThongTinChung from './HopDongSddvStep1ThongTinChung.vue'
 import HopDongSddvStep2DichVu from './HopDongSddvStep2DichVu.vue'
 import HopDongSddvStep3LichQuayChup from './HopDongSddvStep3LichQuayChup.vue'
-import HopDongSddvStep3ThanhToan from './HopDongSddvStep3ThanhToan.vue'
+import HopDongSddvStep4ThanhToan from './HopDongSddvStep4ThanhToan.vue'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -112,8 +112,8 @@ const visible = computed({
 const steps = [
   { key: 'thong-tin-chung', title: 'Thông tin chung', description: 'Mã HĐ & sale' },
   { key: 'dich-vu', title: 'Dịch vụ', description: 'Combo & dịch vụ lẻ' },
-  { key: 'lich-quay-chup', title: 'Lịch quay chụp', description: 'Ngày & buổi chụp' },
-  { key: 'thanh-toan', title: 'Thanh toán', description: 'Concept & trang phục' },
+  { key: 'lich-quay-chup', title: 'Lịch quay chụp', description: 'Ngày, concept & trang phục' },
+  { key: 'thanh-toan', title: 'Thanh toán', description: 'Chi phí & thanh toán' },
 ]
 
 const kenhTiepCanOptions = ref([])
@@ -123,7 +123,7 @@ const saving = ref(false)
 const step1Ref = ref(null)
 const step2Ref = ref(null)
 const stepLichRef = ref(null)
-const step3Ref = ref(null)
+const step4Ref = ref(null)
 const loaiHopDongOptions = ref([])
 const userOptions = ref([])
 const optionsLoaded = ref(false)
@@ -297,13 +297,13 @@ function buildThongTinHopDongPayload() {
 function hydrateChildSteps(hopDong) {
   step2Ref.value?.hydrate(hopDong)
   stepLichRef.value?.hydrate(hopDong)
-  step3Ref.value?.hydrate(hopDong)
+  step4Ref.value?.hydrate(hopDong)
 }
 
 function resetChildSteps() {
   step2Ref.value?.reset()
   stepLichRef.value?.reset()
-  step3Ref.value?.reset()
+  step4Ref.value?.reset()
 }
 
 async function saveStep1(silent = false) {
@@ -375,8 +375,10 @@ async function saveStepLich(silent = false) {
   saving.value = true
   try {
     const thongTinDieuPhoi = stepLichRef.value?.getDieuPhoiPayload?.(form.thong_tin_dieu_phoi) || []
+    const nested = stepLichRef.value?.getConceptTrangPhucPayload?.() || {}
     const { data } = await updateHopDongSuDungDichVu(form.id, {
       thong_tin_dieu_phoi: thongTinDieuPhoi,
+      ...nested,
       trang_thai: 'nhap',
     })
     syncFormFromHopDong(data)
@@ -391,7 +393,7 @@ async function saveStepLich(silent = false) {
   }
 }
 
-async function saveStep3(silent = false) {
+async function saveStep4(silent = false) {
   if (!form.id) {
     ElMessage.error('Không tìm thấy hợp đồng để cập nhật.')
     return false
@@ -399,13 +401,13 @@ async function saveStep3(silent = false) {
 
   saving.value = true
   try {
-    const payload = step3Ref.value?.getPayload() || {}
+    const payload = step4Ref.value?.getPayload() || {}
     const { data } = await updateHopDongSuDungDichVu(form.id, {
       ...payload,
       trang_thai: 'dang_thuc_hien',
     })
     syncFormFromHopDong(data)
-    step3Ref.value?.hydrate(data)
+    step4Ref.value?.hydrate(data)
     emit('saved', data)
     if (!silent) ElMessage.success('Đã lưu thanh toán. Hợp đồng chuyển sang Đang thực hiện.')
     visible.value = false
@@ -421,7 +423,7 @@ async function onSaveCurrentStep() {
   if (activeStep.value === 0) return saveStep1(false)
   if (activeStep.value === 1) return saveStep2(false)
   if (activeStep.value === 2) return saveStepLich(false)
-  if (activeStep.value === 3) return saveStep3(false)
+  if (activeStep.value === 3) return saveStep4(false)
   return false
 }
 
@@ -434,10 +436,11 @@ async function onNext() {
     const ok = await saveStep2(true)
     if (!ok) return
     await stepLichRef.value?.loadDieuPhoiSchema()
+    await nextTick()
+    stepLichRef.value?.loadActivePickerOptions?.()
   } else if (activeStep.value === 2) {
     const ok = await saveStepLich(true)
     if (!ok) return
-    await step3Ref.value?.loadOptions()
   }
   if (activeStep.value < steps.length - 1) {
     activeStep.value += 1
@@ -494,8 +497,10 @@ watch(
 
 watch(activeStep, (step) => {
   if (step === 1) step2Ref.value?.loadOptions()
-  if (step === 2) stepLichRef.value?.loadDieuPhoiSchema()
-  if (step === 3) step3Ref.value?.loadOptions()
+  if (step === 2) {
+    stepLichRef.value?.loadDieuPhoiSchema()
+    nextTick(() => stepLichRef.value?.loadActivePickerOptions?.())
+  }
 })
 </script>
 

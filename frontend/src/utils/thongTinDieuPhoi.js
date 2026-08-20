@@ -18,6 +18,10 @@ export const TEN_LICH_KEY = 'ten_lich'
 export const TEN_LICH_MAX_LENGTH = 30
 export const MAX_LICH_QUAY_CHUP = 6
 
+/** Field concept / trang phục lưu kèm từng buổi trong thong_tin_dieu_phoi */
+export const CONCEPT_FIELD_KEY = 'concepts'
+export const TRANG_PHUC_FIELD_KEY = 'trang_phucs'
+
 export const BUOI_CHUP_OPTIONS = [
   { value: 'sang', label: 'Sáng' },
   { value: 'chieu', label: 'Chiều' },
@@ -133,4 +137,138 @@ export function mergeDieuPhoiSessions(existingRaw, nextSessions) {
     ...(existing[index] || {}),
     ...(isDieuPhoiSessionMap(session) ? session : {}),
   }))
+}
+
+export function isDieuPhoiExtraSessionKey(key) {
+  return (
+    key === TEN_LICH_KEY ||
+    key === CONCEPT_FIELD_KEY ||
+    key === TRANG_PHUC_FIELD_KEY ||
+    String(key).startsWith('_')
+  )
+}
+
+function normalizeDateValue(value) {
+  if (value == null || value === '') return null
+  const text = String(value).slice(0, 10)
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : null
+}
+
+export function buildConceptField(items) {
+  return {
+    su_dung: true,
+    ten_thong_tin: 'Concept',
+    loai_du_lieu: 'array',
+    gia_tri: Array.isArray(items) ? items : [],
+  }
+}
+
+export function buildTrangPhucField(items) {
+  return {
+    su_dung: true,
+    ten_thong_tin: 'Trang phục',
+    loai_du_lieu: 'array',
+    gia_tri: Array.isArray(items) ? items : [],
+  }
+}
+
+export function parseSessionConceptItems(session) {
+  const raw = getDieuPhoiGiaTriFromSession(session, CONCEPT_FIELD_KEY)
+  if (!Array.isArray(raw)) return []
+  return raw
+    .map((item) => {
+      if (item == null) return null
+      if (typeof item === 'number') {
+        return { id: item, ten: `Concept #${item}`, dia_diem: '' }
+      }
+      if (typeof item !== 'object') return null
+      const id = Number(item.id ?? item.concept_id)
+      if (!Number.isFinite(id) || id <= 0) return null
+      return {
+        id,
+        ten: item.ten || item.ten_concept || `Concept #${id}`,
+        dia_diem: item.dia_diem || '',
+      }
+    })
+    .filter(Boolean)
+}
+
+export function parseSessionTrangPhucItems(session) {
+  const raw = getDieuPhoiGiaTriFromSession(session, TRANG_PHUC_FIELD_KEY)
+  if (!Array.isArray(raw)) return []
+  return raw
+    .map((item) => {
+      if (item == null || typeof item !== 'object') return null
+      const id = Number(item.id ?? item.trang_phuc_id)
+      if (!Number.isFinite(id) || id <= 0) return null
+      return {
+        id,
+        ten: item.ten || item.ten_san_pham || `Trang phục #${id}`,
+        ma_san_pham: item.ma_san_pham || '',
+        gia_cho_thue: Number(item.gia_cho_thue) || 0,
+        ngay_bat_dau: normalizeDateValue(item.ngay_bat_dau),
+        ngay_ket_thuc: normalizeDateValue(item.ngay_ket_thuc),
+      }
+    })
+    .filter(Boolean)
+}
+
+export function mapHopDongConceptRows(rows, ngaySuDung = null) {
+  const target = normalizeDateValue(ngaySuDung)
+  const list = Array.isArray(rows) ? rows : []
+  return list
+    .filter((row) => {
+      const rowDate = normalizeDateValue(row?.ngay_su_dung)
+      if (target) return rowDate === target
+      return !rowDate
+    })
+    .map((row) => {
+      const catalog = row.concept || {}
+      const id = Number(row.concept_id)
+      return {
+        id,
+        ten: catalog.ten_concept || `Concept #${id}`,
+        dia_diem: catalog.dia_diem || '',
+      }
+    })
+    .filter((row) => Number.isFinite(row.id) && row.id > 0)
+}
+
+export function mapHopDongTrangPhucRows(rows, ngaySuDung = null) {
+  const target = normalizeDateValue(ngaySuDung)
+  const list = Array.isArray(rows) ? rows : []
+  return list
+    .filter((row) => {
+      const rowDate = normalizeDateValue(row?.ngay_su_dung)
+      if (target) return rowDate === target
+      return !rowDate
+    })
+    .map((row) => {
+      const catalog = row.trang_phuc || {}
+      const id = Number(row.trang_phuc_id)
+      return {
+        id,
+        ten: catalog.ten_san_pham || `Trang phục #${id}`,
+        ma_san_pham: catalog.ma_san_pham || '',
+        gia_cho_thue: Number(catalog.gia_cho_thue) || 0,
+        ngay_bat_dau: normalizeDateValue(row.ngay_bat_dau),
+        ngay_ket_thuc: normalizeDateValue(row.ngay_ket_thuc),
+      }
+    })
+    .filter((row) => Number.isFinite(row.id) && row.id > 0)
+}
+
+export function formatConceptDieuPhoiLabel(item) {
+  if (item == null) return ''
+  if (typeof item === 'string' || typeof item === 'number') return String(item)
+  return item.ten || item.ten_concept || ''
+}
+
+export function formatTrangPhucDieuPhoiLabel(item) {
+  if (item == null) return ''
+  if (typeof item === 'string' || typeof item === 'number') return String(item)
+  const ten = item.ten || item.ten_san_pham || ''
+  const ma = String(item.ma_san_pham || '').trim()
+  if (!ma) return ten
+  return ten ? `${ten} - [${ma}]` : `[${ma}]`
 }

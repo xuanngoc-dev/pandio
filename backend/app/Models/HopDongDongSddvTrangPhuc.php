@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable([
     'ma_hop_dong_id',
     'trang_phuc_id',
+    'ngay_su_dung',
     'ngay_bat_dau',
     'ngay_ket_thuc',
 ])]
@@ -22,8 +23,9 @@ class HopDongDongSddvTrangPhuc extends Model
     protected function casts(): array
     {
         return [
-            'ngay_bat_dau' => 'date',
-            'ngay_ket_thuc' => 'date',
+            'ngay_su_dung' => 'date:Y-m-d',
+            'ngay_bat_dau' => 'date:Y-m-d',
+            'ngay_ket_thuc' => 'date:Y-m-d',
         ];
     }
 

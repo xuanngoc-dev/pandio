@@ -104,6 +104,8 @@
       </CustomCol>
     </CustomRow>
 
+    <slot />
+
     <CustomRow v-if="textareaFields.length" :gutter="16">
       <CustomCol
         v-for="field in textareaFields"

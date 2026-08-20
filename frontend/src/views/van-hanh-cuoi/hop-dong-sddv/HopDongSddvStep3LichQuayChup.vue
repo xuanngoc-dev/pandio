@@ -19,6 +19,7 @@
           :key="session._uid"
           :name="String(session._uid)"
           :closable="formModel.sessions.length > 1"
+          lazy
         >
           <template #label>
             <span
@@ -55,7 +56,14 @@
             :fields="dieuPhoiFields"
             :prop-prefix="`sessions.${index}`"
             require-ngay-chup
-          />
+          >
+            <HopDongSddvConceptTrangPhucPicker
+              :ref="(el) => setPickerRef(session._uid, el)"
+              v-model:concepts="formModel.sessions[index].concepts"
+              v-model:trang-phucs="formModel.sessions[index].trang_phucs"
+              :ngay-chup="formModel.sessions[index].ngay_chup"
+            />
+          </HopDongSddvDieuPhoiSessionFields>
         </el-tab-pane>
       </el-tabs>
 
@@ -82,17 +90,26 @@ import { EditPen } from '@element-plus/icons-vue'
 import { getLoaiHopDong } from '@/api/loaiHopDong'
 import { CustomCard, CustomForm, CustomIcon } from '@/components/element'
 import {
+  CONCEPT_FIELD_KEY,
   LICH_QUAY_CHUP_KEYS,
   MAX_LICH_QUAY_CHUP,
   TEN_LICH_KEY,
   TEN_LICH_MAX_LENGTH,
+  TRANG_PHUC_FIELD_KEY,
+  buildConceptField,
   buildTenLichField,
+  buildTrangPhucField,
   defaultTenLichQuayChup,
   getTenLichQuayChup,
+  mapHopDongConceptRows,
+  mapHopDongTrangPhucRows,
   mergeDieuPhoiSessions,
   normalizeDieuPhoiSessions,
   normalizeTenLichQuayChup,
+  parseSessionConceptItems,
+  parseSessionTrangPhucItems,
 } from '@/utils/thongTinDieuPhoi'
+import HopDongSddvConceptTrangPhucPicker from './HopDongSddvConceptTrangPhucPicker.vue'
 import HopDongSddvDieuPhoiSessionFields from './HopDongSddvDieuPhoiSessionFields.vue'
 
 const props = defineProps({
@@ -108,6 +125,7 @@ const slideDirection = ref('right')
 const editingUid = ref(null)
 const editingTitle = ref('')
 const titleInputRef = ref(null)
+const pickerRefs = new Map()
 let schemaLoadToken = 0
 let sessionUid = 0
 
@@ -184,6 +202,8 @@ function createEmptySessionValues(index = formModel.sessions.length) {
   const values = {
     _uid: nextUid(),
     _ten_lich: defaultTenLichQuayChup(index),
+    concepts: [],
+    trang_phucs: [],
   }
   for (const field of dieuPhoiFields.value) {
     values[field.key] = defaultValue(field.loai_du_lieu)
@@ -195,6 +215,8 @@ function sessionValuesFromSaved(savedMap, index = 0) {
   const values = {
     _uid: nextUid(),
     _ten_lich: getTenLichQuayChup(savedMap, index),
+    concepts: [],
+    trang_phucs: [],
   }
   const source = savedMap && typeof savedMap === 'object' && !Array.isArray(savedMap) ? savedMap : {}
 
@@ -203,6 +225,25 @@ function sessionValuesFromSaved(savedMap, index = 0) {
     const rawValue = savedItem?.gia_tri !== undefined ? savedItem.gia_tri : defaultValue(field.loai_du_lieu)
     values[field.key] =
       field.loai_du_lieu === 'array' ? normalizeArray(rawValue) : normalizeScalar(rawValue)
+  }
+
+  const ngayChup = values.ngay_chup || null
+  const fromDieuPhoiConcepts = parseSessionConceptItems(source)
+  const fromDieuPhoiTrangPhucs = parseSessionTrangPhucItems(source)
+  values.concepts = fromDieuPhoiConcepts.length
+    ? fromDieuPhoiConcepts
+    : mapHopDongConceptRows(props.form?.concepts, ngayChup)
+  values.trang_phucs = fromDieuPhoiTrangPhucs.length
+    ? fromDieuPhoiTrangPhucs
+    : mapHopDongTrangPhucRows(props.form?.trang_phucs, ngayChup)
+
+  if (index === 0) {
+    if (!values.concepts.length) {
+      values.concepts = mapHopDongConceptRows(props.form?.concepts, null)
+    }
+    if (!values.trang_phucs.length) {
+      values.trang_phucs = mapHopDongTrangPhucRows(props.form?.trang_phucs, null)
+    }
   }
 
   return values
@@ -261,6 +302,20 @@ function displayTenLich(session, index) {
 
 function setTitleInputRef(el) {
   if (el) titleInputRef.value = el
+}
+
+function setPickerRef(uid, el) {
+  if (el) {
+    pickerRefs.set(uid, el)
+    return
+  }
+  pickerRefs.delete(uid)
+}
+
+function loadActivePickerOptions() {
+  const uid = Number(activeSessionName.value)
+  const picker = pickerRefs.get(uid)
+  picker?.loadOptions?.()
 }
 
 function startRename(session, index) {
@@ -377,6 +432,7 @@ async function loadDieuPhoiSchema() {
     if (token !== schemaLoadToken) return
     buildFieldsFromSchema(loaiHopDong?.thong_tin_dieu_phoi)
     hydrateSessionsFromForm()
+    nextTick(() => loadActivePickerOptions())
   } catch {
     if (token !== schemaLoadToken) return
     dieuPhoiFields.value = []
@@ -421,10 +477,57 @@ function getDieuPhoiPayload(existing = null) {
         gia_tri: giaTri,
       }
     }
+    result[CONCEPT_FIELD_KEY] = buildConceptField(session.concepts)
+    result[TRANG_PHUC_FIELD_KEY] = buildTrangPhucField(session.trang_phucs)
     return result
   })
 
   return mergeDieuPhoiSessions(source, built)
+}
+
+function getConceptTrangPhucPayload() {
+  const concepts = []
+  const trangPhucs = []
+
+  for (const session of formModel.sessions) {
+    const ngaySuDung = session?.ngay_chup || null
+    for (const item of session.concepts || []) {
+      if (!item?.id) continue
+      concepts.push({
+        concept_id: item.id,
+        ngay_su_dung: ngaySuDung,
+      })
+    }
+    for (const item of session.trang_phucs || []) {
+      if (!item?.id) continue
+      trangPhucs.push({
+        trang_phuc_id: item.id,
+        ngay_su_dung: ngaySuDung,
+        ngay_bat_dau: item.ngay_bat_dau || ngaySuDung,
+        ngay_ket_thuc: item.ngay_ket_thuc || ngaySuDung,
+      })
+    }
+  }
+
+  return {
+    concepts: uniqueByKey(concepts, (item) => `${item.concept_id}|${item.ngay_su_dung || ''}`),
+    trang_phucs: uniqueByKey(
+      trangPhucs,
+      (item) => `${item.trang_phuc_id}|${item.ngay_su_dung || ''}`,
+    ),
+  }
+}
+
+function uniqueByKey(items, getKey) {
+  const seen = new Set()
+  const result = []
+  for (const item of items) {
+    const key = getKey(item)
+    if (seen.has(key)) continue
+    seen.add(key)
+    result.push(item)
+  }
+  return result
 }
 
 function focusFirstInvalidSession(invalidFields) {
@@ -459,6 +562,7 @@ async function validate() {
 function hydrate() {
   if (dieuPhoiFields.value.length) {
     hydrateSessionsFromForm()
+    nextTick(() => loadActivePickerOptions())
     return
   }
   return loadDieuPhoiSchema()
@@ -470,6 +574,7 @@ function reset() {
   dieuPhoiMeta.value = {}
   formModel.sessions = []
   activeSessionName.value = ''
+  pickerRefs.clear()
   cancelRename()
   formRef.value?.clearValidate?.()
 }
@@ -480,15 +585,18 @@ watch(activeSessionName, (next, prev) => {
   const prevIndex = names.indexOf(String(prev))
   if (nextIndex === -1 || prevIndex === -1) {
     slideDirection.value = 'right'
-    return
+  } else {
+    slideDirection.value = nextIndex < prevIndex ? 'left' : 'right'
   }
-  slideDirection.value = nextIndex < prevIndex ? 'left' : 'right'
+  nextTick(() => loadActivePickerOptions())
 })
 
 defineExpose({
   validate,
   getDieuPhoiPayload,
+  getConceptTrangPhucPayload,
   loadDieuPhoiSchema,
+  loadActivePickerOptions,
   hydrate,
   reset,
 })

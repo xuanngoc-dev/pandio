@@ -424,22 +424,24 @@ class TinhLuongController extends BaseApiController
      */
     private function sanXuatByDate(int $userId, string $tuNgay, string $denNgay, mixed $nhanVien): array
     {
-        $ngayChupExpr = "LEFT(JSON_UNQUOTE(JSON_EXTRACT(thong_tin_dieu_phoi, '$.ngay_chup.gia_tri')), 10)";
-
         $contracts = HopDongSuDungDichVu::query()
             ->with(['combos.combo:id,so_diem_chup'])
             ->whereNotIn('trang_thai', ['moi_tao', 'nhap', 'da_huy'])
-            ->whereRaw("JSON_EXTRACT(thong_tin_dieu_phoi, '$.ngay_chup.gia_tri') IS NOT NULL")
-            ->whereRaw("{$ngayChupExpr} REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'")
-            ->whereRaw("{$ngayChupExpr} >= ?", [$tuNgay])
-            ->whereRaw("{$ngayChupExpr} <= ?", [$denNgay])
+            ->whereNotNull('thong_tin_dieu_phoi')
             ->where(function ($q) use ($userId) {
                 foreach (array_keys(self::STAFF_ROLE_KEYS) as $key) {
-                    $path = "thong_tin_dieu_phoi->{$key}->gia_tri";
-                    $q->orWhere(function ($inner) use ($path, $userId) {
-                        $inner->whereJsonContains($path, $userId)
-                            ->orWhereJsonContains($path, (string) $userId);
+                    $legacyPath = "thong_tin_dieu_phoi->{$key}->gia_tri";
+                    $q->orWhere(function ($inner) use ($legacyPath, $userId) {
+                        $inner->whereJsonContains($legacyPath, $userId)
+                            ->orWhereJsonContains($legacyPath, (string) $userId);
                     });
+                    for ($i = 0; $i < 20; $i++) {
+                        $path = "thong_tin_dieu_phoi->{$i}->{$key}->gia_tri";
+                        $q->orWhere(function ($inner) use ($path, $userId) {
+                            $inner->whereJsonContains($path, $userId)
+                                ->orWhereJsonContains($path, (string) $userId);
+                        });
+                    }
                 }
             })
             ->get(['id', 'thong_tin_dieu_phoi']);
@@ -459,29 +461,38 @@ class TinhLuongController extends BaseApiController
 
         $map = [];
         foreach ($contracts as $hd) {
-            $dieuPhoi = is_array($hd->thong_tin_dieu_phoi) ? $hd->thong_tin_dieu_phoi : [];
-            $dateKey = substr((string) ($dieuPhoi['ngay_chup']['gia_tri'] ?? ''), 0, 10);
-            if ($dateKey === '' || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateKey)) {
-                continue;
-            }
-
-            if (! isset($map[$dateKey])) {
-                $map[$dateKey] = $this->emptySanXuat();
-            }
-
+            $sessions = HopDongSuDungDichVu::normalizeDieuPhoiSessions($hd->thong_tin_dieu_phoi);
             $diem = $this->resolveSoDiemChup($hd->combos);
-            $roles = $this->rolesOfUserInDieuPhoi($dieuPhoi, $userId);
 
-            foreach ($roles as $role) {
-                $map[$dateKey]['so_job'][$role] = (int) ($map[$dateKey]['so_job'][$role] ?? 0) + 1;
-
-                if ($role === 'chup' || $role === 'make') {
-                    $map[$dateKey][$role] = round(
-                        $map[$dateKey][$role] + $this->tienTheoDiem($rates[$role], $diem),
-                        2
-                    );
+            foreach ($sessions as $session) {
+                $dateKey = substr((string) HopDongSuDungDichVu::dieuPhoiGiaTri($session, 'ngay_chup'), 0, 10);
+                if ($dateKey === '' || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateKey)) {
+                    continue;
                 }
-                // quay_phim / edit: chưa có đơn giá trên hồ sơ NV → giữ 0, chỉ đếm so_job
+                if ($dateKey < $tuNgay || $dateKey > $denNgay) {
+                    continue;
+                }
+
+                $roles = $this->rolesOfUserInDieuPhoi($session, $userId);
+                if ($roles === []) {
+                    continue;
+                }
+
+                if (! isset($map[$dateKey])) {
+                    $map[$dateKey] = $this->emptySanXuat();
+                }
+
+                foreach ($roles as $role) {
+                    $map[$dateKey]['so_job'][$role] = (int) ($map[$dateKey]['so_job'][$role] ?? 0) + 1;
+
+                    if ($role === 'chup' || $role === 'make') {
+                        $map[$dateKey][$role] = round(
+                            $map[$dateKey][$role] + $this->tienTheoDiem($rates[$role], $diem),
+                            2
+                        );
+                    }
+                    // quay_phim / edit: chưa có đơn giá trên hồ sơ NV → giữ 0, chỉ đếm so_job
+                }
             }
         }
 

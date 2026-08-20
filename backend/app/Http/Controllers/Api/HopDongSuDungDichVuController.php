@@ -93,7 +93,7 @@ class HopDongSuDungDichVuController extends BaseApiController
 
     /**
      * Lịch chụp-make: danh sách hợp đồng theo khoảng ngày chụp.
-     * Ngày/giờ lấy từ thong_tin_dieu_phoi.{ngay_chup|gio_chup}.gia_tri.
+     * Ngày/giờ lấy từ từng buổi trong thong_tin_dieu_phoi (mảng; dữ liệu cũ là object).
      * Loại trừ trang_thai: moi_tao, nhap, da_huy.
      * Sắp xếp theo ngay_chup, gio_chup (null xuống cuối), id.
      *
@@ -111,10 +111,6 @@ class HopDongSuDungDichVuController extends BaseApiController
             $tuNgay = Carbon::parse($validated['tu_ngay'])->toDateString();
             $denNgay = Carbon::parse($validated['den_ngay'])->toDateString();
 
-            // LEFT(...,10) thay DATE(...) — tránh 500 trên MySQL strict khi gia_tri rỗng/invalid.
-            $ngayChupExpr = $this->ngayChupJsonExpr('hop_dong_su_dung_dich_vu.thong_tin_dieu_phoi');
-            $gioChupExpr = $this->gioChupJsonExpr('hop_dong_su_dung_dich_vu.thong_tin_dieu_phoi');
-
             $loaiHopDongs = LoaiHopDong::query()
                 ->where('trang_thai', 'hoat_dong')
                 ->orderBy('ten_hop_dong')
@@ -123,10 +119,7 @@ class HopDongSuDungDichVuController extends BaseApiController
             $rows = HopDongSuDungDichVu::query()
                 ->with(['loaiHopDong:id,ten_hop_dong,ma_hop_dong'])
                 ->whereNotIn('hop_dong_su_dung_dich_vu.trang_thai', ['moi_tao', 'nhap', 'da_huy'])
-                ->whereRaw("JSON_EXTRACT(hop_dong_su_dung_dich_vu.thong_tin_dieu_phoi, '$.ngay_chup.gia_tri') IS NOT NULL")
-                ->whereRaw("{$ngayChupExpr} REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'")
-                ->whereRaw("{$ngayChupExpr} >= ?", [$tuNgay])
-                ->whereRaw("{$ngayChupExpr} <= ?", [$denNgay])
+                ->whereNotNull('hop_dong_su_dung_dich_vu.thong_tin_dieu_phoi')
                 ->select([
                     'hop_dong_su_dung_dich_vu.id',
                     'hop_dong_su_dung_dich_vu.ma_hop_dong',
@@ -136,43 +129,54 @@ class HopDongSuDungDichVuController extends BaseApiController
                     'hop_dong_su_dung_dich_vu.trang_thai',
                     'hop_dong_su_dung_dich_vu.thong_tin_dieu_phoi',
                 ])
-                ->orderByRaw("{$ngayChupExpr} asc")
-                ->orderByRaw("CASE WHEN {$gioChupExpr} IS NULL OR {$gioChupExpr} = '' OR {$gioChupExpr} = 'null' THEN 1 ELSE 0 END asc")
-                ->orderByRaw("{$gioChupExpr} asc")
-                ->orderBy('hop_dong_su_dung_dich_vu.id')
                 ->get();
 
-            $items = $rows->map(function (HopDongSuDungDichVu $hd) {
-                $dieuPhoi = is_array($hd->thong_tin_dieu_phoi) ? $hd->thong_tin_dieu_phoi : [];
-                $ngayChup = (string) ($dieuPhoi['ngay_chup']['gia_tri'] ?? '');
-                $ngayChup = substr($ngayChup, 0, 10);
-                $gioChup = $dieuPhoi['gio_chup']['gia_tri'] ?? null;
-                if (is_string($gioChup)) {
-                    $gioChup = trim($gioChup);
-                    if ($gioChup === '' || $gioChup === 'null') {
-                        $gioChup = null;
+            $items = [];
+            foreach ($rows as $hd) {
+                foreach ($hd->dieuPhoiSessions() as $session) {
+                    $ngayChup = substr((string) HopDongSuDungDichVu::dieuPhoiGiaTri($session, 'ngay_chup'), 0, 10);
+                    if ($ngayChup === '' || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $ngayChup)) {
+                        continue;
                     }
-                } else {
-                    $gioChup = null;
+                    if ($ngayChup < $tuNgay || $ngayChup > $denNgay) {
+                        continue;
+                    }
+
+                    $items[] = [
+                        'id' => $hd->id,
+                        'ngay_chup' => $ngayChup,
+                        'gio_chup' => $this->normalizeGioChup(
+                            HopDongSuDungDichVu::dieuPhoiGiaTri($session, 'gio_chup')
+                        ),
+                        'ma_hop_dong' => $hd->ma_hop_dong,
+                        'ten_khach_hang' => $hd->ten_khach_hang,
+                        'sdt_khach_hang' => $hd->sdt_khach_hang,
+                        'loai_hop_dong_id' => $hd->loai_hop_dong_id,
+                        'ten_hop_dong' => $hd->loaiHopDong?->ten_hop_dong,
+                        'ma_loai_hop_dong' => $hd->loaiHopDong?->ma_hop_dong,
+                        'trang_thai' => $hd->trang_thai,
+                    ];
+                }
+            }
+
+            usort($items, function (array $a, array $b) {
+                $dateCmp = strcmp((string) $a['ngay_chup'], (string) $b['ngay_chup']);
+                if ($dateCmp !== 0) {
+                    return $dateCmp;
+                }
+                $gioA = $a['gio_chup'] ?: '99:99';
+                $gioB = $b['gio_chup'] ?: '99:99';
+                $gioCmp = strcmp((string) $gioA, (string) $gioB);
+                if ($gioCmp !== 0) {
+                    return $gioCmp;
                 }
 
-                return [
-                    'id' => $hd->id,
-                    'ngay_chup' => $ngayChup,
-                    'gio_chup' => $gioChup,
-                    'ma_hop_dong' => $hd->ma_hop_dong,
-                    'ten_khach_hang' => $hd->ten_khach_hang,
-                    'sdt_khach_hang' => $hd->sdt_khach_hang,
-                    'loai_hop_dong_id' => $hd->loai_hop_dong_id,
-                    'ten_hop_dong' => $hd->loaiHopDong?->ten_hop_dong,
-                    'ma_loai_hop_dong' => $hd->loaiHopDong?->ma_hop_dong,
-                    'trang_thai' => $hd->trang_thai,
-                ];
-            })->values();
+                return ($a['id'] <=> $b['id']);
+            });
 
             return response()->json([
                 'loai_hop_dong' => $loaiHopDongs,
-                'items' => $items,
+                'items' => array_values($items),
             ]);
 
         }, 'lấy thống kê lịch chụp make');
@@ -180,7 +184,7 @@ class HopDongSuDungDichVuController extends BaseApiController
 
     /**
      * Danh sách hợp đồng lịch chụp-make theo ngày chụp (+ loại HĐ).
-     * Ngày lấy từ thong_tin_dieu_phoi.ngay_chup.gia_tri.
+     * Ngày lấy từ thong_tin_dieu_phoi (mảng buổi chụp).
      * Loại trừ trang_thai: moi_tao, nhap, da_huy.
      *
      * Query: ngay_chup (required), loai_hop_dong_id (optional), page, per_page
@@ -198,8 +202,6 @@ class HopDongSuDungDichVuController extends BaseApiController
             $ngayChup = Carbon::parse($validated['ngay_chup'])->toDateString();
             $loaiHopDongId = $validated['loai_hop_dong_id'] ?? null;
             $perPage = $validated['per_page'] ?? 20;
-            $ngayChupExpr = $this->ngayChupJsonExpr('thong_tin_dieu_phoi');
-            $gioChupExpr = $this->gioChupJsonExpr('thong_tin_dieu_phoi');
 
             $query = HopDongSuDungDichVu::query()
                 ->with([
@@ -207,33 +209,27 @@ class HopDongSuDungDichVuController extends BaseApiController
                     'nguoiTao:id,name,phone',
                 ])
                 ->whereNotIn('trang_thai', ['moi_tao', 'nhap', 'da_huy'])
-                ->whereRaw("JSON_EXTRACT(thong_tin_dieu_phoi, '$.ngay_chup.gia_tri') IS NOT NULL")
-                ->whereRaw("{$ngayChupExpr} = ?", [$ngayChup])
-                ->when($loaiHopDongId, fn ($q) => $q->where('loai_hop_dong_id', $loaiHopDongId))
-                ->orderByRaw("CASE WHEN {$gioChupExpr} IS NULL OR {$gioChupExpr} = '' OR {$gioChupExpr} = 'null' THEN 1 ELSE 0 END asc")
-                ->orderByRaw("{$gioChupExpr} asc")
-                ->orderBy('id');
+                ->when($loaiHopDongId, fn ($q) => $q->where('loai_hop_dong_id', $loaiHopDongId));
+
+            $this->applyDieuPhoiDateEqualsFilter($query, 'ngay_chup', $ngayChup);
+            $query->orderBy('id');
 
             return response()->json($query->paginate($perPage));
 
         }, 'lấy danh sách hợp đồng lịch chụp make');
     }
 
-    /**
-     * Biểu thức SQL lấy ngày chụp YYYY-MM-DD từ JSON điều phối.
-     * Tránh DATE() vì giá trị rỗng/invalid dễ gây 500 với sql_mode NO_ZERO_DATE.
-     */
-    private function ngayChupJsonExpr(string $column): string
+    private function normalizeGioChup(mixed $gioChup): ?string
     {
-        return "LEFT(JSON_UNQUOTE(JSON_EXTRACT({$column}, '$.ngay_chup.gia_tri')), 10)";
-    }
+        if (! is_string($gioChup)) {
+            return null;
+        }
+        $gioChup = trim($gioChup);
+        if ($gioChup === '' || $gioChup === 'null') {
+            return null;
+        }
 
-    /**
-     * Biểu thức SQL lấy giờ chụp từ JSON điều phối.
-     */
-    private function gioChupJsonExpr(string $column): string
-    {
-        return "JSON_UNQUOTE(JSON_EXTRACT({$column}, '$.gio_chup.gia_tri'))";
+        return $gioChup;
     }
 
     /**
@@ -1082,7 +1078,28 @@ class HopDongSuDungDichVuController extends BaseApiController
             'dia_chi' => ['nullable', 'string', 'max:255'],
             'kenh_tiep_can' => ['nullable', 'string', 'max:255'],
             'thong_tin_hop_dong' => ['nullable', 'array'],
-            'thong_tin_dieu_phoi' => ['nullable', 'array'],
+            'thong_tin_dieu_phoi' => [
+                'nullable',
+                'array',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (! is_array($value) || $value === [] || ! array_is_list($value)) {
+                        return;
+                    }
+                    if (count($value) > 6) {
+                        $fail('Tối đa 6 lịch quay chụp.');
+
+                        return;
+                    }
+                    foreach ($value as $session) {
+                        $ten = is_array($session) ? ($session['ten_lich']['gia_tri'] ?? null) : null;
+                        if (is_string($ten) && mb_strlen($ten) > 30) {
+                            $fail('Tên lịch quay chụp tối đa 30 ký tự.');
+
+                            return;
+                        }
+                    }
+                },
+            ],
             'ket_qua_hop_dong' => ['nullable', 'array'],
             'nguoi_tham_gia_ids' => ['nullable', 'array'],
             'nguoi_tham_gia_ids.*' => ['integer', 'exists:users,id'],
@@ -1124,9 +1141,11 @@ class HopDongSuDungDichVuController extends BaseApiController
             'dich_vu.*.thanh_tien' => ['required', 'integer', 'min:0'],
             'dich_vu.*.ghi_chu' => ['nullable', 'string', 'max:100'],
             'concepts' => [$isUpdate ? 'sometimes' : 'nullable', 'array'],
-            'concepts.*.concept_id' => ['required', 'integer', 'exists:concept,id', 'distinct'],
+            'concepts.*.concept_id' => ['required', 'integer', 'exists:concept,id'],
+            'concepts.*.ngay_su_dung' => ['nullable', 'date'],
             'trang_phucs' => [$isUpdate ? 'sometimes' : 'nullable', 'array'],
-            'trang_phucs.*.trang_phuc_id' => ['required', 'integer', 'exists:trang_phuc,id', 'distinct'],
+            'trang_phucs.*.trang_phuc_id' => ['required', 'integer', 'exists:trang_phuc,id'],
+            'trang_phucs.*.ngay_su_dung' => ['nullable', 'date'],
             'trang_phucs.*.ngay_bat_dau' => ['nullable', 'date'],
             'trang_phucs.*.ngay_ket_thuc' => ['nullable', 'date', 'after_or_equal:trang_phucs.*.ngay_bat_dau'],
         ]);
@@ -1181,6 +1200,7 @@ class HopDongSuDungDichVuController extends BaseApiController
             $validated['concepts'] = collect($validated['concepts'] ?? [])
                 ->map(fn ($item) => [
                     'concept_id' => (int) $item['concept_id'],
+                    'ngay_su_dung' => $item['ngay_su_dung'] ?? null,
                 ])
                 ->values()
                 ->all();
@@ -1189,6 +1209,7 @@ class HopDongSuDungDichVuController extends BaseApiController
             $validated['trang_phucs'] = collect($validated['trang_phucs'] ?? [])
                 ->map(fn ($item) => [
                     'trang_phuc_id' => (int) $item['trang_phuc_id'],
+                    'ngay_su_dung' => $item['ngay_su_dung'] ?? null,
                     'ngay_bat_dau' => $item['ngay_bat_dau'] ?? null,
                     'ngay_ket_thuc' => $item['ngay_ket_thuc'] ?? null,
                 ])
@@ -1278,7 +1299,7 @@ class HopDongSuDungDichVuController extends BaseApiController
     }
 
     /**
-     * @param  array<int, array{concept_id: int}>  $items
+     * @param  array<int, array{concept_id: int, ngay_su_dung: ?string}>  $items
      */
     private function syncConcepts(HopDongSuDungDichVu $hopDong, array $items): void
     {
@@ -1288,12 +1309,13 @@ class HopDongSuDungDichVuController extends BaseApiController
             HopDongDongSddvConcept::create([
                 'ma_hop_dong_id' => $hopDong->id,
                 'concept_id' => $item['concept_id'],
+                'ngay_su_dung' => $item['ngay_su_dung'] ?: null,
             ]);
         }
     }
 
     /**
-     * @param  array<int, array{trang_phuc_id: int, ngay_bat_dau: ?string, ngay_ket_thuc: ?string}>  $items
+     * @param  array<int, array{trang_phuc_id: int, ngay_su_dung: ?string, ngay_bat_dau: ?string, ngay_ket_thuc: ?string}>  $items
      */
     private function syncTrangPhucs(HopDongSuDungDichVu $hopDong, array $items): void
     {
@@ -1303,6 +1325,7 @@ class HopDongSuDungDichVuController extends BaseApiController
             HopDongDongSddvTrangPhuc::create([
                 'ma_hop_dong_id' => $hopDong->id,
                 'trang_phuc_id' => $item['trang_phuc_id'],
+                'ngay_su_dung' => $item['ngay_su_dung'] ?: null,
                 'ngay_bat_dau' => $item['ngay_bat_dau'] ?: null,
                 'ngay_ket_thuc' => $item['ngay_ket_thuc'] ?: null,
             ]);
@@ -1310,23 +1333,16 @@ class HopDongSuDungDichVuController extends BaseApiController
     }
 
     /**
-     * Query gốc: hợp đồng gán user vào các field nhân sự điều phối.
+     * Query gốc: hợp đồng gán user vào các field nhân sự điều phối (mọi buổi chụp).
      */
     private function congViecCuaToiBaseQuery(int $userId)
     {
-        $staffKeys = ['quay_phim', 'tho_make', 'tho_edit', 'tho_chup'];
+        $query = HopDongSuDungDichVu::query()
+            ->whereNotIn('trang_thai', ['moi_tao', 'nhap']);
 
-        return HopDongSuDungDichVu::query()
-            ->whereNotIn('trang_thai', ['moi_tao', 'nhap'])
-            ->where(function ($q) use ($userId, $staffKeys) {
-                foreach ($staffKeys as $key) {
-                    $path = "thong_tin_dieu_phoi->{$key}->gia_tri";
-                    $q->orWhere(function ($inner) use ($path, $userId) {
-                        $inner->whereJsonContains($path, $userId)
-                            ->orWhereJsonContains($path, (string) $userId);
-                    });
-                }
-            });
+        $this->applyDieuPhoiStaffAssignedFilter($query, $userId);
+
+        return $query;
     }
 
     /**
@@ -1362,8 +1378,59 @@ class HopDongSuDungDichVuController extends BaseApiController
                 continue;
             }
 
-            $query->where("thong_tin_dieu_phoi->{$field}->gia_tri", $value);
+            $this->applyDieuPhoiDateEqualsFilter($query, $field, (string) $value);
         }
+    }
+
+    private const DIEU_PHOI_SESSION_INDEX_MAX = 20;
+
+    /**
+     * Lọc hợp đồng có user nằm trong field nhân sự (object cũ hoặc mảng buổi chụp).
+     */
+    private function applyDieuPhoiStaffAssignedFilter($query, int $userId): void
+    {
+        $staffKeys = ['quay_phim', 'tho_make', 'tho_edit', 'tho_chup'];
+        $query->where(function ($q) use ($staffKeys, $userId) {
+            foreach ($staffKeys as $key) {
+                $legacyPath = "thong_tin_dieu_phoi->{$key}->gia_tri";
+                $q->orWhere(function ($inner) use ($legacyPath, $userId) {
+                    $inner->whereJsonContains($legacyPath, $userId)
+                        ->orWhereJsonContains($legacyPath, (string) $userId);
+                });
+
+                for ($i = 0; $i < self::DIEU_PHOI_SESSION_INDEX_MAX; $i++) {
+                    $path = "thong_tin_dieu_phoi->{$i}->{$key}->gia_tri";
+                    $q->orWhere(function ($inner) use ($path, $userId) {
+                        $inner->whereJsonContains($path, $userId)
+                            ->orWhereJsonContains($path, (string) $userId);
+                    });
+                }
+            }
+        });
+    }
+
+    /**
+     * Lọc theo ngày điều phối — hỗ trợ object cũ và mảng buổi chụp.
+     */
+    private function applyDieuPhoiDateEqualsFilter($query, string $field, string $date): void
+    {
+        $date = substr($date, 0, 10);
+        $allowed = ['ngay_chup', 'ngay_tra_demo', 'ngay_tra_chinh_thuc'];
+        if (! in_array($field, $allowed, true)) {
+            return;
+        }
+        $query->where(function ($q) use ($field, $date) {
+            $q->whereRaw(
+                "LEFT(JSON_UNQUOTE(JSON_EXTRACT(thong_tin_dieu_phoi, '$.{$field}.gia_tri')), 10) = ?",
+                [$date]
+            );
+            for ($i = 0; $i < self::DIEU_PHOI_SESSION_INDEX_MAX; $i++) {
+                $q->orWhereRaw(
+                    "LEFT(JSON_UNQUOTE(JSON_EXTRACT(thong_tin_dieu_phoi, '\$[{$i}].{$field}.gia_tri')), 10) = ?",
+                    [$date]
+                );
+            }
+        });
     }
 
     /**

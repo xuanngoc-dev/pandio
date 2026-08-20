@@ -157,6 +157,9 @@
               <template #default="{ $index }">{{ $index + 1 }}</template>
             </CustomTableColumn>
             <CustomTableColumn prop="ten" label="Tên concept" min-width="200" />
+            <CustomTableColumn label="Ngày sử dụng" width="140" align="center">
+              <template #default="{ row }">{{ formatDate(row.ngay_su_dung) }}</template>
+            </CustomTableColumn>
             <CustomTableColumn prop="dia_diem" label="Địa điểm" min-width="180">
               <template #default="{ row }">{{ display(row.dia_diem) }}</template>
             </CustomTableColumn>
@@ -171,6 +174,9 @@
               <template #default="{ $index }">{{ $index + 1 }}</template>
             </CustomTableColumn>
             <CustomTableColumn prop="ten" label="Tên trang phục" min-width="180" />
+            <CustomTableColumn label="Ngày sử dụng" width="140" align="center">
+              <template #default="{ row }">{{ formatDate(row.ngay_su_dung) }}</template>
+            </CustomTableColumn>
             <CustomTableColumn label="Giá thuê" width="130" align="right">
               <template #default="{ row }">{{ formatMoney(row.gia_cho_thue) }}</template>
             </CustomTableColumn>
@@ -383,7 +389,7 @@ import {
   CustomTable,
   CustomTableColumn,
 } from '@/components/element'
-import { getTenLichQuayChup, normalizeDieuPhoiSessions, TEN_LICH_KEY } from '@/utils/thongTinDieuPhoi'
+import { getTenLichQuayChup, isDieuPhoiExtraSessionKey, normalizeDieuPhoiSessions } from '@/utils/thongTinDieuPhoi'
 
 const STAFF_FIELD_KEYS = new Set(['tho_chup', 'tho_make', 'tho_edit', 'quay_phim'])
 
@@ -496,6 +502,7 @@ const conceptRows = computed(() => {
   return rows.map((row) => ({
     ten: row.concept?.ten_concept || `Concept #${row.concept_id}`,
     dia_diem: row.concept?.dia_diem || '',
+    ngay_su_dung: row.ngay_su_dung || null,
   }))
 })
 
@@ -504,6 +511,7 @@ const trangPhucRows = computed(() => {
   return rows.map((row) => ({
     ten: row.trang_phuc?.ten_san_pham || `Trang phục #${row.trang_phuc_id}`,
     gia_cho_thue: Number(row.trang_phuc?.gia_cho_thue) || 0,
+    ngay_su_dung: row.ngay_su_dung || null,
     ngay_bat_dau: row.ngay_bat_dau || null,
     ngay_ket_thuc: row.ngay_ket_thuc || null,
   }))
@@ -536,7 +544,7 @@ const dieuPhoiSessions = computed(() => {
   return sessions.map((saved, index) => {
     const items = []
     for (const key of keys) {
-      if (key === TEN_LICH_KEY || String(key).startsWith('_')) continue
+      if (isDieuPhoiExtraSessionKey(key) || String(key).startsWith('_')) continue
       const schemaItem = schema[key] && typeof schema[key] === 'object' ? schema[key] : null
       const savedItem = saved[key] && typeof saved[key] === 'object' ? saved[key] : null
       if (schemaItem?.su_dung === false && !savedItem) continue
