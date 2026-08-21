@@ -302,6 +302,8 @@ import {
   collectDieuPhoiGiaTri,
   getDieuPhoiGiaTriFromSession,
   normalizeDieuPhoiSessions,
+  resolveTrangThaiDieuPhoi,
+  TRANG_THAI_DIEU_PHOI_CHO_NHAN,
 } from '@/utils/thongTinDieuPhoi'
 import DieuPhoiTuDongDetailModal from './DieuPhoiTuDongDetailModal.vue'
 
@@ -361,11 +363,7 @@ const ketQua = computed(() => {
   return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
 })
 
-const ketQuaTrangThai = computed(() => {
-  const giaTri = ketQua.value?.trang_thai?.gia_tri
-  if (giaTri == null || giaTri === '') return null
-  return String(giaTri)
-})
+const ketQuaTrangThai = computed(() => resolveTrangThaiDieuPhoi(props.item) || null)
 
 const ketQuaTrangThaiTag = computed(() => {
   const map = {
@@ -376,7 +374,11 @@ const ketQuaTrangThaiTag = computed(() => {
   return map[ketQuaTrangThai.value] || null
 })
 
-const canNhan = computed(() => props.step === 'cho_nhan' && !ketQuaTrangThai.value)
+const canNhan = computed(
+  () =>
+    props.step === 'cho_nhan' &&
+    (!ketQuaTrangThai.value || ketQuaTrangThai.value === TRANG_THAI_DIEU_PHOI_CHO_NHAN),
+)
 const showGuiKhachFooter = computed(() => props.step === 'dang_xu_ly')
 const showBanGiaoFooter = computed(() => props.step === 'san_xuat_in_an')
 /** Gửi khách kiểm tra / nghiệm thu: đổi trạng thái tại HopDongSddv, không tự đổi ở đây */

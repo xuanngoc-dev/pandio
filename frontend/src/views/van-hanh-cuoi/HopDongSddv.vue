@@ -532,6 +532,7 @@ import {
   SO_DIEM_CHUP_MIN,
   firstDieuPhoiGiaTri,
   normalizeDieuPhoiSessions,
+  resolveTrangThaiDieuPhoi,
 } from '@/utils/thongTinDieuPhoi'
 
 const COLUMN_STORAGE_KEY = 'van-hanh-cuoi.hop-dong-sddv.v4'
@@ -547,7 +548,7 @@ const tableColumns = [
   { key: 'nguoi_tao', label: 'Người tạo', group: 'Thông tin hợp đồng' },
   { key: 'trang_thai', label: 'Trạng thái', group: 'Thông tin hợp đồng' },
   { key: 'created_at', label: 'Ngày tạo', group: 'Thông tin hợp đồng' },
-  // Trạng thái điều phối lưu ở ket_qua_hop_dong.trang_thai (workflow sau khi gán nhân sự trong thong_tin_dieu_phoi)
+  // Trạng thái điều phối lưu ở thong_tin_dieu_phoi.trang_thai_dieu_phoi
   { key: 'trang_thai_dieu_phoi', label: 'Trạng thái điều phối', group: 'Thông tin điều phối' },
   { key: 'ngay_tra_demo', label: 'Ngày trả demo', group: 'Thông tin điều phối' },
   { key: 'ngay_tra_chinh_thuc', label: 'Ngày trả chính thức', group: 'Thông tin điều phối' },
@@ -628,10 +629,10 @@ const trangThaiOptions = [
 ]
 
 /**
- * Trạng thái điều phối (ket_qua_hop_dong.trang_thai.gia_tri).
- * null / rỗng được coi là "Chờ nhận" (nhân viên đã được gán nhưng chưa nhận việc).
+ * Trạng thái điều phối (thong_tin_dieu_phoi.trang_thai_dieu_phoi).
+ * Fallback ket_qua_hop_dong.trang_thai.gia_tri. null / rỗng = Chờ nhận khi đã gán thợ.
  *
- * - cho_nhan: Chờ nhận — công việc đã gán nhân sự trong thong_tin_dieu_phoi, chờ nhân viên bấm nhận.
+ * - cho_nhan: Chờ nhận — đã gán nhân sự, chờ nhân viên bấm nhận.
  * - dang_xu_ly: Đang xử lý — nhân viên đã nhận; đang làm (upload file gốc / file demo…).
  * - gui_khach_kiem_tra: Gửi khách kiểm tra — đã gửi khách xem; chờ phản hồi đồng ý / không đồng ý.
  * - san_xuat_in_an: Sản xuất & in ấn — khách đồng ý; đang sản xuất / chuẩn bị bàn giao.
@@ -1024,10 +1025,8 @@ function onThanhToanSaved() {
 }
 
 function getKetQuaTrangThai(row) {
-  const raw = row?.ket_qua_hop_dong
-  const ketQua = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
-  const giaTri = ketQua?.trang_thai?.gia_tri
-  return giaTri == null || giaTri === '' ? null : String(giaTri)
+  const value = resolveTrangThaiDieuPhoi(row)
+  return value || null
 }
 
 function canDoiTrangThai(row) {

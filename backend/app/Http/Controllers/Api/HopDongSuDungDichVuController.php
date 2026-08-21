@@ -247,11 +247,11 @@ class HopDongSuDungDichVuController extends BaseApiController
     /**
      * Công việc điều phối của user đang đăng nhập.
      * Lọc hop_dong_su_dung_dich_vu có id user nằm trong
-     * thong_tin_dieu_phoi.{quay_phim|tho_make|tho_edit|tho_chup}.gia_tri
+     * thong_tin_dieu_phoi.danh_sach_buoi_chup[*].{quay_phim|tho_make|tho_edit|tho_chup}.gia_tri
      *
      * Query: page, per_page, ket_qua_trang_thai, keyword, loai_hop_dong_id,
      * ngay_chup, ngay_tra_demo, ngay_tra_chinh_thuc
-     * (cho_nhan = gia_tri null/rỗng; các tab khác = đúng giá trị)
+     * Tab lọc theo thong_tin_dieu_phoi.trang_thai_dieu_phoi (fallback ket_qua_hop_dong.trang_thai).
      */
     public function congViecCuaToi(Request $request): JsonResponse
     {
@@ -328,18 +328,12 @@ class HopDongSuDungDichVuController extends BaseApiController
                 }
             }
 
-            $current = $ketQua['trang_thai']['gia_tri'] ?? null;
-            if ($current !== null && $current !== '') {
+            $current = $this->resolveTrangThaiDieuPhoi($hop_dong_su_dung_dich_vu, $ketQua);
+            if ($current !== null && $current !== '' && $current !== HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_CHO_NHAN) {
                 abort(422, 'Công việc đã được nhận.');
             }
 
-            $ketQua['trang_thai'] = array_merge(
-                $defaults['trang_thai'],
-                is_array($ketQua['trang_thai'] ?? null) ? $ketQua['trang_thai'] : [],
-                ['gia_tri' => 'dang_xu_ly']
-            );
-
-            $hop_dong_su_dung_dich_vu->update(['ket_qua_hop_dong' => $ketQua]);
+            $this->persistDieuPhoiWorkflowStatus($hop_dong_su_dung_dich_vu, $ketQua, 'dang_xu_ly');
 
             return response()->json(
                 $hop_dong_su_dung_dich_vu->fresh()->load(['loaiHopDong:id,ten_hop_dong,ma_hop_dong'])
@@ -440,7 +434,7 @@ class HopDongSuDungDichVuController extends BaseApiController
                 }
             }
 
-            $current = $ketQua['trang_thai']['gia_tri'] ?? null;
+            $current = $this->resolveTrangThaiDieuPhoi($hop_dong_su_dung_dich_vu, $ketQua);
             if ($current !== 'dang_xu_ly') {
                 abort(422, 'Chỉ có thể gửi khách kiểm tra khi công việc đang xử lý.');
             }
@@ -451,13 +445,7 @@ class HopDongSuDungDichVuController extends BaseApiController
                 abort(422, 'Cần có đủ File gốc và File demo trước khi gửi khách kiểm tra.');
             }
 
-            $ketQua['trang_thai'] = array_merge(
-                $defaults['trang_thai'],
-                is_array($ketQua['trang_thai'] ?? null) ? $ketQua['trang_thai'] : [],
-                ['gia_tri' => 'gui_khach_kiem_tra']
-            );
-
-            $hop_dong_su_dung_dich_vu->update(['ket_qua_hop_dong' => $ketQua]);
+            $this->persistDieuPhoiWorkflowStatus($hop_dong_su_dung_dich_vu, $ketQua, 'gui_khach_kiem_tra');
 
             return response()->json(
                 $hop_dong_su_dung_dich_vu->fresh()->load(['loaiHopDong:id,ten_hop_dong,ma_hop_dong'])
@@ -507,7 +495,7 @@ class HopDongSuDungDichVuController extends BaseApiController
                 }
             }
 
-            $current = $ketQua['trang_thai']['gia_tri'] ?? null;
+            $current = $this->resolveTrangThaiDieuPhoi($hop_dong_su_dung_dich_vu, $ketQua);
             if ($current !== 'gui_khach_kiem_tra') {
                 abort(422, 'Chỉ có thể xử lý khi công việc đang ở bước Gửi khách kiểm tra.');
             }
@@ -528,13 +516,7 @@ class HopDongSuDungDichVuController extends BaseApiController
                 );
             }
 
-            $ketQua['trang_thai'] = array_merge(
-                $defaults['trang_thai'],
-                is_array($ketQua['trang_thai'] ?? null) ? $ketQua['trang_thai'] : [],
-                ['gia_tri' => $nextStatus]
-            );
-
-            $hop_dong_su_dung_dich_vu->update(['ket_qua_hop_dong' => $ketQua]);
+            $this->persistDieuPhoiWorkflowStatus($hop_dong_su_dung_dich_vu, $ketQua, $nextStatus);
 
             return response()->json(
                 $hop_dong_su_dung_dich_vu->fresh()->load(['loaiHopDong:id,ten_hop_dong,ma_hop_dong'])
@@ -574,7 +556,7 @@ class HopDongSuDungDichVuController extends BaseApiController
                 }
             }
 
-            $current = $ketQua['trang_thai']['gia_tri'] ?? null;
+            $current = $this->resolveTrangThaiDieuPhoi($hop_dong_su_dung_dich_vu, $ketQua);
             if ($current !== 'san_xuat_in_an') {
                 abort(422, 'Chỉ có thể bàn giao khi công việc đang ở bước Sản xuất & in ấn.');
             }
@@ -584,13 +566,7 @@ class HopDongSuDungDichVuController extends BaseApiController
                 abort(422, 'Cần có File chính thức trước khi bàn giao.');
             }
 
-            $ketQua['trang_thai'] = array_merge(
-                $defaults['trang_thai'],
-                is_array($ketQua['trang_thai'] ?? null) ? $ketQua['trang_thai'] : [],
-                ['gia_tri' => 'cho_nghiem_thu']
-            );
-
-            $hop_dong_su_dung_dich_vu->update(['ket_qua_hop_dong' => $ketQua]);
+            $this->persistDieuPhoiWorkflowStatus($hop_dong_su_dung_dich_vu, $ketQua, 'cho_nghiem_thu');
 
             return response()->json(
                 $hop_dong_su_dung_dich_vu->fresh()->load(['loaiHopDong:id,ten_hop_dong,ma_hop_dong'])
@@ -640,7 +616,7 @@ class HopDongSuDungDichVuController extends BaseApiController
                 }
             }
 
-            $current = $ketQua['trang_thai']['gia_tri'] ?? null;
+            $current = $this->resolveTrangThaiDieuPhoi($hop_dong_su_dung_dich_vu, $ketQua);
             if ($current !== 'cho_nghiem_thu') {
                 abort(422, 'Chỉ có thể xử lý khi công việc đang chờ nghiệm thu.');
             }
@@ -662,13 +638,7 @@ class HopDongSuDungDichVuController extends BaseApiController
                 $nextStatus = 'hoan_thanh';
             }
 
-            $ketQua['trang_thai'] = array_merge(
-                $defaults['trang_thai'],
-                is_array($ketQua['trang_thai'] ?? null) ? $ketQua['trang_thai'] : [],
-                ['gia_tri' => $nextStatus]
-            );
-
-            $hop_dong_su_dung_dich_vu->update(['ket_qua_hop_dong' => $ketQua]);
+            $this->persistDieuPhoiWorkflowStatus($hop_dong_su_dung_dich_vu, $ketQua, $nextStatus);
 
             return response()->json(
                 $hop_dong_su_dung_dich_vu->fresh()->load(['loaiHopDong:id,ten_hop_dong,ma_hop_dong'])
@@ -760,6 +730,7 @@ class HopDongSuDungDichVuController extends BaseApiController
         return $this->handleApi(function () use ($request) {
             $validated = $this->validatePayload($request);
             $validated['nguoi_tao_id'] = $request->user()->id;
+            $validated = $this->syncThongTinDieuPhoiOnSave($validated);
             [$combos, $dichVu, $concepts, $trangPhucs] = $this->extractNestedPayload($validated);
 
             $hopDong = DB::transaction(function () use ($validated, $combos, $dichVu, $concepts, $trangPhucs) {
@@ -782,6 +753,7 @@ class HopDongSuDungDichVuController extends BaseApiController
         return $this->handleApi(function () use ($request, $hop_dong_su_dung_dich_vu) {
             $validated = $this->validatePayload($request, $hop_dong_su_dung_dich_vu->id, true);
             unset($validated['nguoi_tao_id'], $validated['ma_hop_dong']);
+            $validated = $this->syncThongTinDieuPhoiOnSave($validated, $hop_dong_su_dung_dich_vu);
             [$combos, $dichVu, $concepts, $trangPhucs] = $this->extractNestedPayload($validated);
 
             DB::transaction(function () use ($hop_dong_su_dung_dich_vu, $validated, $combos, $dichVu, $concepts, $trangPhucs) {
@@ -932,7 +904,7 @@ class HopDongSuDungDichVuController extends BaseApiController
             $hanhDong = $validated['hanh_dong'];
             $trangThaiHd = $hop_dong_su_dung_dich_vu->trang_thai;
             $ketQua = $this->normalizeKetQuaHopDong($hop_dong_su_dung_dich_vu->ket_qua_hop_dong);
-            $ketQuaStatus = $ketQua['trang_thai']['gia_tri'] ?? null;
+            $ketQuaStatus = $this->resolveTrangThaiDieuPhoi($hop_dong_su_dung_dich_vu, $ketQua);
 
             if (in_array($hanhDong, ['huy', 'tat_toan'], true)) {
                 if (in_array($trangThaiHd, ['da_huy', 'hoan_thanh'], true)) {
@@ -1004,7 +976,7 @@ class HopDongSuDungDichVuController extends BaseApiController
                     $ketQua['trang_thai'],
                     ['gia_tri' => $nextStatus]
                 );
-                $hop_dong_su_dung_dich_vu->update(['ket_qua_hop_dong' => $ketQua]);
+                $this->persistDieuPhoiWorkflowStatus($hop_dong_su_dung_dich_vu, $ketQua, $nextStatus);
 
                 return response()->json($this->loadDetail($hop_dong_su_dung_dich_vu->fresh()));
             }
@@ -1034,7 +1006,7 @@ class HopDongSuDungDichVuController extends BaseApiController
                     $ketQua['trang_thai'],
                     ['gia_tri' => 'san_xuat_in_an']
                 );
-                $hop_dong_su_dung_dich_vu->update(['ket_qua_hop_dong' => $ketQua]);
+                $this->persistDieuPhoiWorkflowStatus($hop_dong_su_dung_dich_vu, $ketQua, 'san_xuat_in_an');
 
                 return response()->json($this->loadDetail($hop_dong_su_dung_dich_vu->fresh()));
             }
@@ -1043,7 +1015,7 @@ class HopDongSuDungDichVuController extends BaseApiController
                 $ketQua['trang_thai'],
                 ['gia_tri' => 'hoan_thanh']
             );
-            $hop_dong_su_dung_dich_vu->update(['ket_qua_hop_dong' => $ketQua]);
+            $this->persistDieuPhoiWorkflowStatus($hop_dong_su_dung_dich_vu, $ketQua, 'hoan_thanh');
 
             return response()->json($this->loadDetail($hop_dong_su_dung_dich_vu->fresh()));
         }, 'đổi trạng thái hợp đồng sử dụng dịch vụ');
@@ -1456,38 +1428,32 @@ class HopDongSuDungDichVuController extends BaseApiController
     }
 
     /**
-     * @return list<string>
-     */
-    private function dieuPhoiStaffJsonArrowPaths(string $key): array
-    {
-        $paths = [];
-        for ($i = 0; $i < self::DIEU_PHOI_SESSION_INDEX_MAX; $i++) {
-            $paths[] = "thong_tin_dieu_phoi->danh_sach_buoi_chup->{$i}->{$key}->gia_tri";
-        }
-
-        return $paths;
-    }
-
-    private function orJsonContainsUser($query, string $jsonArrowPath, int $userId): void
-    {
-        $query->orWhere(function ($inner) use ($jsonArrowPath, $userId) {
-            $inner->whereJsonContains($jsonArrowPath, $userId)
-                ->orWhereJsonContains($jsonArrowPath, (string) $userId);
-        });
-    }
-
-    /**
      * Lọc hợp đồng có user nằm trong field nhân sự của buổi chụp.
+     * Path dùng [i] vì danh_sach_buoi_chup là mảng; arrow ->0-> sẽ thành object key "0".
      */
     private function applyDieuPhoiStaffAssignedFilter($query, int $userId): void
     {
-        $staffKeys = ['quay_phim', 'tho_make', 'tho_edit', 'tho_chup'];
+        $staffKeys = HopDongSuDungDichVu::DIEU_PHOI_STAFF_KEYS;
         $query->where(function ($q) use ($staffKeys, $userId) {
             foreach ($staffKeys as $key) {
-                foreach ($this->dieuPhoiStaffJsonArrowPaths($key) as $path) {
-                    $this->orJsonContainsUser($q, $path, $userId);
+                foreach ($this->dieuPhoiSessionJsonPaths($key.'.gia_tri') as $jsonPath) {
+                    $this->orJsonContainsUserAtExtractPath($q, $jsonPath, $userId);
                 }
             }
+        });
+    }
+
+    private function orJsonContainsUserAtExtractPath($query, string $jsonPath, int $userId): void
+    {
+        // MariaDB không hỗ trợ CAST(? AS JSON); truyền candidate đã json_encode.
+        $query->orWhere(function ($inner) use ($jsonPath, $userId) {
+            $inner->whereRaw(
+                "JSON_CONTAINS(thong_tin_dieu_phoi, ?, '{$jsonPath}')",
+                [json_encode($userId)]
+            )->orWhereRaw(
+                "JSON_CONTAINS(thong_tin_dieu_phoi, ?, '{$jsonPath}')",
+                [json_encode((string) $userId)]
+            );
         });
     }
 
@@ -1675,26 +1641,117 @@ class HopDongSuDungDichVuController extends BaseApiController
     }
 
     /**
-     * Lọc theo ket_qua_hop_dong.trang_thai.gia_tri.
-     * cho_nhan = null / thiếu / chuỗi rỗng.
+     * Lọc tab công việc theo thong_tin_dieu_phoi.trang_thai_dieu_phoi,
+     * fallback ket_qua_hop_dong.trang_thai.gia_tri; trống = cho_nhan.
      */
     private function applyKetQuaTrangThaiFilter($query, string $ketQuaTrangThai): void
     {
-        if ($ketQuaTrangThai === 'cho_nhan') {
-            $query->where(function ($q) {
-                $q->whereNull('ket_qua_hop_dong')
-                    ->orWhereNull('ket_qua_hop_dong->trang_thai')
-                    ->orWhereNull('ket_qua_hop_dong->trang_thai->gia_tri')
-                    ->orWhere('ket_qua_hop_dong->trang_thai->gia_tri', '')
-                    ->orWhereRaw(
-                        "JSON_TYPE(JSON_EXTRACT(ket_qua_hop_dong, '$.trang_thai.gia_tri')) = 'NULL'"
-                    );
-            });
+        $dieuPhoiExpr = "NULLIF(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(thong_tin_dieu_phoi, '$.trang_thai_dieu_phoi')), 'null'), '')";
+        $ketQuaExpr = "NULLIF(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(ket_qua_hop_dong, '$.trang_thai.gia_tri')), 'null'), '')";
+        $effective = "COALESCE({$dieuPhoiExpr}, {$ketQuaExpr}, 'cho_nhan')";
 
-            return;
+        $query->whereRaw("{$effective} = ?", [$ketQuaTrangThai]);
+    }
+
+    /**
+     * Ưu tiên thong_tin_dieu_phoi.trang_thai_dieu_phoi, fallback ket_qua_hop_dong.
+     *
+     * @param  array<string, mixed>|null  $ketQua
+     */
+    private function resolveTrangThaiDieuPhoi(HopDongSuDungDichVu $hopDong, ?array $ketQua = null): ?string
+    {
+        $fromDieuPhoi = HopDongSuDungDichVu::trangThaiDieuPhoi($hopDong->thong_tin_dieu_phoi);
+        if ($fromDieuPhoi !== null) {
+            return $fromDieuPhoi;
         }
 
-        $query->where('ket_qua_hop_dong->trang_thai->gia_tri', $ketQuaTrangThai);
+        $ketQua ??= is_array($hopDong->ket_qua_hop_dong) ? $hopDong->ket_qua_hop_dong : [];
+        $fromKetQua = $ketQua['trang_thai']['gia_tri'] ?? null;
+        if ($fromKetQua === null || $fromKetQua === '') {
+            return null;
+        }
+
+        return (string) $fromKetQua;
+    }
+
+    /**
+     * Đồng bộ trạng thái workflow: thong_tin_dieu_phoi.trang_thai_dieu_phoi + ket_qua_hop_dong.trang_thai.
+     *
+     * @param  array<string, mixed>  $ketQua
+     */
+    private function persistDieuPhoiWorkflowStatus(
+        HopDongSuDungDichVu $hopDong,
+        array $ketQua,
+        string $status,
+        array $extra = [],
+    ): void {
+        $defaults = HopDongSuDungDichVu::defaultKetQuaHopDong();
+        $ketQua['trang_thai'] = array_merge(
+            $defaults['trang_thai'],
+            is_array($ketQua['trang_thai'] ?? null) ? $ketQua['trang_thai'] : [],
+            ['gia_tri' => $status]
+        );
+
+        $dieuPhoi = is_array($hopDong->thong_tin_dieu_phoi) ? $hopDong->thong_tin_dieu_phoi : [];
+        $dieuPhoi[HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_KEY] = $status;
+
+        $hopDong->update(array_merge($extra, [
+            'ket_qua_hop_dong' => $ketQua,
+            'thong_tin_dieu_phoi' => $dieuPhoi,
+        ]));
+    }
+
+    /**
+     * Khi lưu thong_tin_dieu_phoi có chọn thợ → trang_thai_dieu_phoi = cho_nhan.
+     *
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function syncThongTinDieuPhoiOnSave(array $validated, ?HopDongSuDungDichVu $existing = null): array
+    {
+        if (! array_key_exists('thong_tin_dieu_phoi', $validated) || ! is_array($validated['thong_tin_dieu_phoi'])) {
+            return $validated;
+        }
+
+        $existingStatus = HopDongSuDungDichVu::trangThaiDieuPhoi($existing?->thong_tin_dieu_phoi)
+            ?? $this->resolveTrangThaiDieuPhoiFallback($existing);
+        $payload = HopDongSuDungDichVu::withChoNhanIfStaffAssigned(
+            $validated['thong_tin_dieu_phoi'],
+            $existingStatus,
+        );
+        $validated['thong_tin_dieu_phoi'] = $payload;
+
+        if (($payload[HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_KEY] ?? null) !== HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_CHO_NHAN) {
+            return $validated;
+        }
+
+        $ketQua = $this->normalizeKetQuaHopDong(
+            $validated['ket_qua_hop_dong'] ?? $existing?->ket_qua_hop_dong
+        );
+        $currentKetQua = $ketQua['trang_thai']['gia_tri'] ?? null;
+        if ($currentKetQua !== null && $currentKetQua !== '' && $currentKetQua !== HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_CHO_NHAN) {
+            return $validated;
+        }
+
+        $ketQua['trang_thai']['gia_tri'] = HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_CHO_NHAN;
+        $validated['ket_qua_hop_dong'] = $ketQua;
+
+        return $validated;
+    }
+
+    private function resolveTrangThaiDieuPhoiFallback(?HopDongSuDungDichVu $existing): ?string
+    {
+        if (! $existing) {
+            return null;
+        }
+
+        $ketQua = is_array($existing->ket_qua_hop_dong) ? $existing->ket_qua_hop_dong : [];
+        $value = $ketQua['trang_thai']['gia_tri'] ?? null;
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return (string) $value;
     }
 
     /**

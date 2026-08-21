@@ -49,7 +49,7 @@ export function fetchLichChupMakeChiTiet(params = {}) {
 
 /**
  * Công việc điều phối của user đang đăng nhập
- * (user id nằm trong thong_tin_dieu_phoi staff fields).
+ * (user id nằm trong thong_tin_dieu_phoi.danh_sach_buoi_chup staff fields).
  * @param {{
  *   page?: number,
  *   per_page?: number,

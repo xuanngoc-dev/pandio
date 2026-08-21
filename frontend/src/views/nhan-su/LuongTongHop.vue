@@ -30,7 +30,6 @@
         </CustomCol>
         <CustomCol :xs="24" :sm="12" :md="6" :lg="4">
           <CustomButton type="primary" plain :loading="loading" @click="onSearch">
-            <CustomIcon><Search /></CustomIcon>
             Tìm kiếm
           </CustomButton>
         </CustomCol>

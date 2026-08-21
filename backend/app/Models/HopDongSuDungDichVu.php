@@ -44,6 +44,22 @@ class HopDongSuDungDichVu extends Model
 {
     protected $table = 'hop_dong_su_dung_dich_vu';
 
+    /** Field nhân sự nội bộ trong từng buổi (gia_tri = mảng user id). */
+    public const DIEU_PHOI_STAFF_KEYS = ['tho_chup', 'tho_make', 'tho_edit', 'quay_phim'];
+
+    /** Trạng thái workflow điều phối, lưu ở envelope thong_tin_dieu_phoi. */
+    public const TRANG_THAI_DIEU_PHOI_KEY = 'trang_thai_dieu_phoi';
+
+    public const TRANG_THAI_DIEU_PHOI_CHO_NHAN = 'cho_nhan';
+
+    public const TRANG_THAI_DIEU_PHOI_LATER = [
+        'dang_xu_ly',
+        'gui_khach_kiem_tra',
+        'san_xuat_in_an',
+        'cho_nghiem_thu',
+        'hoan_thanh',
+    ];
+
     /**
      * @return array<string, string>
      */
@@ -183,5 +199,70 @@ class HopDongSuDungDichVu extends Model
         }
 
         return $item['gia_tri'] ?? null;
+    }
+
+    public static function trangThaiDieuPhoi(mixed $raw): ?string
+    {
+        if (! is_array($raw)) {
+            return null;
+        }
+
+        $value = $raw[self::TRANG_THAI_DIEU_PHOI_KEY] ?? null;
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return (string) $value;
+    }
+
+    /**
+     * Hợp đồng đã gán thợ nội bộ (tho_chup / tho_make / tho_edit / quay_phim) ở bất kỳ buổi nào.
+     */
+    public static function hasAssignedDieuPhoiStaff(mixed $raw): bool
+    {
+        foreach (self::normalizeDieuPhoiSessions($raw) as $session) {
+            foreach (self::DIEU_PHOI_STAFF_KEYS as $key) {
+                $value = self::dieuPhoiGiaTri($session, $key);
+                if (! is_array($value)) {
+                    if ($value !== null && $value !== '') {
+                        return true;
+                    }
+
+                    continue;
+                }
+
+                foreach ($value as $id) {
+                    if ($id !== null && $id !== '') {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Gán thợ lần đầu → cho_nhan. Không ghi đè workflow đã đi tiếp.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    public static function withChoNhanIfStaffAssigned(array $payload, ?string $existingStatus = null): array
+    {
+        if (! self::hasAssignedDieuPhoiStaff($payload)) {
+            return $payload;
+        }
+
+        $current = self::trangThaiDieuPhoi($payload) ?? $existingStatus;
+        if (in_array($current, self::TRANG_THAI_DIEU_PHOI_LATER, true)) {
+            $payload[self::TRANG_THAI_DIEU_PHOI_KEY] = $current;
+
+            return $payload;
+        }
+
+        $payload[self::TRANG_THAI_DIEU_PHOI_KEY] = self::TRANG_THAI_DIEU_PHOI_CHO_NHAN;
+
+        return $payload;
     }
 }

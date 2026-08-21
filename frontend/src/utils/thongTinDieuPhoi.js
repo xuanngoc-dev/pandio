@@ -1,6 +1,17 @@
 /** Field nhân sự trong thông tin điều phối (gia_tri = mảng user id) */
 export const DIEU_PHOI_STAFF_KEYS = new Set(['tho_chup', 'tho_make', 'tho_edit', 'quay_phim'])
 
+/** Trạng thái workflow điều phối, lưu ở envelope thong_tin_dieu_phoi */
+export const TRANG_THAI_DIEU_PHOI_KEY = 'trang_thai_dieu_phoi'
+export const TRANG_THAI_DIEU_PHOI_CHO_NHAN = 'cho_nhan'
+export const TRANG_THAI_DIEU_PHOI_LATER = [
+  'dang_xu_ly',
+  'gui_khach_kiem_tra',
+  'san_xuat_in_an',
+  'cho_nghiem_thu',
+  'hoan_thanh',
+]
+
 export const SO_DIEM_CHUP_KEY = 'so_diem_chup'
 export const SO_DIEM_CHUP_MIN = 1
 export const SO_DIEM_CHUP_MAX = 3
@@ -55,7 +66,7 @@ export function isDieuPhoiSessionMap(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }
 
-/** Payload chuẩn: { ngay_tra_demo, ngay_tra_chinh_thuc, danh_sach_buoi_chup } */
+/** Payload chuẩn: { ngay_tra_demo, ngay_tra_chinh_thuc, trang_thai_dieu_phoi, danh_sach_buoi_chup } */
 export function isDieuPhoiEnvelope(value) {
   return isDieuPhoiSessionMap(value) && Array.isArray(value[DANH_SACH_BUOI_CHUP_KEY])
 }
@@ -64,8 +75,47 @@ export function emptyDieuPhoiEnvelope() {
   return {
     ngay_tra_demo: '',
     ngay_tra_chinh_thuc: '',
+    [TRANG_THAI_DIEU_PHOI_KEY]: '',
     [DANH_SACH_BUOI_CHUP_KEY]: [],
   }
+}
+
+export function getTrangThaiDieuPhoi(raw) {
+  if (!isDieuPhoiSessionMap(raw)) return ''
+  const value = raw[TRANG_THAI_DIEU_PHOI_KEY]
+  if (value == null || value === '') return ''
+  return String(value)
+}
+
+/** Ưu tiên thong_tin_dieu_phoi.trang_thai_dieu_phoi, fallback ket_qua_hop_dong.trang_thai. */
+export function resolveTrangThaiDieuPhoi(hopDong) {
+  const fromEnvelope = getTrangThaiDieuPhoi(hopDong?.thong_tin_dieu_phoi)
+  if (fromEnvelope) return fromEnvelope
+  const giaTri = hopDong?.ket_qua_hop_dong?.trang_thai?.gia_tri
+  if (giaTri == null || giaTri === '') return ''
+  return String(giaTri)
+}
+
+export function dieuPhoiHasAssignedStaff(raw) {
+  for (const session of normalizeDieuPhoiSessions(raw)) {
+    for (const key of DIEU_PHOI_STAFF_KEYS) {
+      const value = getDieuPhoiGiaTriFromSession(session, key)
+      if (Array.isArray(value)) {
+        if (value.some((id) => id != null && id !== '')) return true
+      } else if (value != null && value !== '') {
+        return true
+      }
+    }
+  }
+  return false
+}
+
+/** Gán thợ lần đầu → cho_nhan. Không ghi đè workflow đã đi tiếp. */
+export function withChoNhanIfStaffAssigned(envelope) {
+  if (!dieuPhoiHasAssignedStaff(envelope)) return envelope
+  const current = getTrangThaiDieuPhoi(envelope)
+  if (TRANG_THAI_DIEU_PHOI_LATER.includes(current)) return envelope
+  return { ...envelope, [TRANG_THAI_DIEU_PHOI_KEY]: TRANG_THAI_DIEU_PHOI_CHO_NHAN }
 }
 
 function readTopLevelDieuPhoiValue(raw, fieldKey) {
@@ -189,6 +239,7 @@ export function stripSharedLichQuayChupKeys(session) {
   for (const key of SHARED_LICH_QUAY_CHUP_KEYS) {
     delete next[key]
   }
+  delete next[TRANG_THAI_DIEU_PHOI_KEY]
   return next
 }
 
@@ -216,6 +267,10 @@ export function buildDieuPhoiEnvelope(existingRaw, nextSessions, sharedDates = {
   return {
     ngay_tra_demo: normalizeSharedDieuPhoiDate(ngayTraDemo),
     ngay_tra_chinh_thuc: normalizeSharedDieuPhoiDate(ngayTraChinhThuc),
+    [TRANG_THAI_DIEU_PHOI_KEY]:
+      sharedDates[TRANG_THAI_DIEU_PHOI_KEY] !== undefined
+        ? sharedDates[TRANG_THAI_DIEU_PHOI_KEY]
+        : getTrangThaiDieuPhoi(existingRaw),
     [DANH_SACH_BUOI_CHUP_KEY]: mergeDieuPhoiSessions(existingRaw, nextSessions),
   }
 }
@@ -227,6 +282,7 @@ export function isDieuPhoiExtraSessionKey(key) {
     key === TRANG_PHUC_FIELD_KEY ||
     key === LOAI_QUAY_CHUP_KEY ||
     key === DANH_SACH_BUOI_CHUP_KEY ||
+    key === TRANG_THAI_DIEU_PHOI_KEY ||
     String(key).startsWith('_')
   )
 }

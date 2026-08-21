@@ -431,10 +431,15 @@ class TinhLuongController extends BaseApiController
             ->where(function ($q) use ($userId) {
                 foreach (array_keys(self::STAFF_ROLE_KEYS) as $key) {
                     for ($i = 0; $i < 6; $i++) {
-                        $path = "thong_tin_dieu_phoi->danh_sach_buoi_chup->{$i}->{$key}->gia_tri";
+                        $path = '$.danh_sach_buoi_chup['.$i.'].'.$key.'.gia_tri';
                         $q->orWhere(function ($inner) use ($path, $userId) {
-                            $inner->whereJsonContains($path, $userId)
-                                ->orWhereJsonContains($path, (string) $userId);
+                            $inner->whereRaw(
+                                "JSON_CONTAINS(thong_tin_dieu_phoi, ?, '{$path}')",
+                                [json_encode($userId)]
+                            )->orWhereRaw(
+                                "JSON_CONTAINS(thong_tin_dieu_phoi, ?, '{$path}')",
+                                [json_encode((string) $userId)]
+                            );
                         });
                     }
                 }

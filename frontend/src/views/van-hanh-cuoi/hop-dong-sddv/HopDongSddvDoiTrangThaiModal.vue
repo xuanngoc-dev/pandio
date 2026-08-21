@@ -136,6 +136,7 @@ import {
   CustomInput,
   CustomRow,
 } from '@/components/element'
+import { resolveTrangThaiDieuPhoi } from '@/utils/thongTinDieuPhoi'
 
 const TRANG_THAI_HD = [
   { value: 'moi_tao', label: 'Mới tạo' },
@@ -264,12 +265,7 @@ const trangThaiHdLabel = computed(
   () => TRANG_THAI_HD.find((item) => item.value === trangThaiHd.value)?.label || trangThaiHd.value || '—',
 )
 
-const ketQuaTrangThai = computed(() => {
-  const raw = hopDongData.value?.ket_qua_hop_dong
-  const ketQua = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
-  const giaTri = ketQua?.trang_thai?.gia_tri
-  return giaTri == null || giaTri === '' ? null : String(giaTri)
-})
+const ketQuaTrangThai = computed(() => resolveTrangThaiDieuPhoi(hopDongData.value) || null)
 
 const ketQuaTrangThaiLabel = computed(() => {
   if (!ketQuaTrangThai.value) return '—'

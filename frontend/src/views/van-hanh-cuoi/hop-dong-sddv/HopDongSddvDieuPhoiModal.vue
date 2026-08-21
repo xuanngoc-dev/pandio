@@ -137,6 +137,7 @@ import {
   normalizeDieuPhoiSessions,
   parseSessionLoaiQuayChup,
   loaiQuayChupRequiredRule,
+  withChoNhanIfStaffAssigned,
 } from '@/utils/thongTinDieuPhoi'
 import HopDongSddvDieuPhoiSessionFields from './HopDongSddvDieuPhoiSessionFields.vue'
 
@@ -452,10 +453,12 @@ function buildPayload() {
     return result
   })
 
-  return buildDieuPhoiEnvelope(hopDong.value?.thong_tin_dieu_phoi, built, {
-    ngay_tra_demo: formModel.ngay_tra_demo,
-    ngay_tra_chinh_thuc: formModel.ngay_tra_chinh_thuc,
-  })
+  return withChoNhanIfStaffAssigned(
+    buildDieuPhoiEnvelope(hopDong.value?.thong_tin_dieu_phoi, built, {
+      ngay_tra_demo: formModel.ngay_tra_demo,
+      ngay_tra_chinh_thuc: formModel.ngay_tra_chinh_thuc,
+    }),
+  )
 }
 
 function focusFirstInvalidSession(invalidFields) {
