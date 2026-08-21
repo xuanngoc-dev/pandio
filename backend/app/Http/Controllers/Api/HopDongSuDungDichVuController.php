@@ -1592,7 +1592,31 @@ class HopDongSuDungDichVuController extends BaseApiController
     }
 
     /**
-     * Lọc hợp đồng đã gán / chưa gán nhân sự điều phối (mảng user id).
+     * Buổi đã có nhân sự khi tho_* (mảng user id) hoặc tho_*_ngoai (chuỗi) có gia_tri.
+     * Null / rỗng / [] = chưa có.
+     * IFNULL: buổi không tồn tại trả JSON NULL; NULL > 0 làm cả cụm OR thành NULL,
+     * khiến whereNot loại luôn hợp đồng chưa gán.
+     */
+    private function dieuPhoiSessionHasStaffSql(int $index, string $key): string
+    {
+        $staffPath = '$.danh_sach_buoi_chup['.$index.'].'.$key.'.gia_tri';
+        $ngoaiPath = '$.danh_sach_buoi_chup['.$index.'].'.$key.'_ngoai.gia_tri';
+        $hasInternal = "IFNULL(JSON_LENGTH(JSON_EXTRACT(thong_tin_dieu_phoi, '{$staffPath}')), 0) > 0";
+        $ngoaiText = "TRIM(IFNULL(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(thong_tin_dieu_phoi, '{$ngoaiPath}')), 'null'), ''))";
+        $hasNgoai = "CHAR_LENGTH({$ngoaiText}) > 0";
+
+        return "({$hasInternal} OR {$hasNgoai})";
+    }
+
+    /**
+     * Lọc hợp đồng đã gán / chưa gán nhân sự điều phối (tho_chup, tho_make, quay_phim, tho_edit).
+     * Duyệt từng buổi trong thong_tin_dieu_phoi.danh_sach_buoi_chup.
+     *
+     * Có thợ make: chỉ cần một buổi có tho_make hoặc tho_make_ngoai (không rỗng).
+     * Chưa có thợ make: không buổi nào có cả hai.
+     *
+     * gia_tri null hoặc rỗng = chưa có; chỉ cần 1 trong 2 thì buổi đó là đã có.
+     * Cùng quy tắc với thợ chụp / quay phim / thợ edit (tho_* hoặc tho_*_ngoai).
      */
     private function applyDieuPhoiStaffPresenceFilter($query, string $key, bool $hasStaff): void
     {
@@ -1602,19 +1626,19 @@ class HopDongSuDungDichVuController extends BaseApiController
         }
 
         $assigned = function ($q) use ($key) {
-            foreach ($this->dieuPhoiSessionJsonPaths("{$key}.gia_tri") as $jsonPath) {
-                $q->orWhereRaw(
-                    "JSON_LENGTH(JSON_EXTRACT(thong_tin_dieu_phoi, '{$jsonPath}')) > 0"
-                );
+            for ($i = 0; $i < self::DIEU_PHOI_SESSION_INDEX_MAX; $i++) {
+                $q->orWhereRaw($this->dieuPhoiSessionHasStaffSql($i, $key));
             }
         };
 
         if ($hasStaff) {
+            // Có thợ make: chỉ cần một buổi có tho_make hoặc tho_make_ngoai (không rỗng)
             $query->where($assigned);
 
             return;
         }
 
+        // Chưa có thợ make: không buổi nào có cả hai
         $query->whereNot($assigned);
     }
 

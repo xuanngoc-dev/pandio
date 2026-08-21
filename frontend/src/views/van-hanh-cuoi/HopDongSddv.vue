@@ -153,6 +153,11 @@
               <CustomOption label="Chưa có thợ chụp" value="0" />
             </CustomSelect>
           </CustomCol>
+          <!--
+            Có thợ make: chỉ cần một buổi có tho_make hoặc tho_make_ngoai (không rỗng)
+            Chưa có thợ make: không buổi nào có cả hai
+            (duyệt danh_sach_buoi_chup trong thong_tin_dieu_phoi; gia_tri null/rỗng = chưa có)
+          -->
           <CustomCol :xs="24" :sm="12" :md="6" :lg="6">
             <CustomSelect
               v-model="filterCoThoMake"
@@ -878,6 +883,8 @@ async function loadItems() {
       ngay_chup_tu: filterNgayChupRange.value?.[0] || undefined,
       ngay_chup_den: filterNgayChupRange.value?.[1] || undefined,
       so_diem_chup: isFilterFilled(filterSoDiemChup.value) ? filterSoDiemChup.value : undefined,
+      // Có thợ make: chỉ cần một buổi có tho_make hoặc tho_make_ngoai (không rỗng)
+      // Chưa có thợ make: không buổi nào có cả hai
       co_tho_chup: presenceParam(filterCoThoChup.value),
       co_tho_make: presenceParam(filterCoThoMake.value),
       co_quay_phim: presenceParam(filterCoQuayPhim.value),
