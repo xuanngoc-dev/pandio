@@ -91,7 +91,6 @@ import { updateHopDongSuDungDichVu } from '@/api/hopDongSuDungDichVu'
 import { fetchLoaiHopDong } from '@/api/loaiHopDong'
 import { fetchUsers } from '@/api/users'
 import { CustomButton, CustomDialog } from '@/components/element'
-import { normalizeDieuPhoiSessions } from '@/utils/thongTinDieuPhoi'
 import HopDongSddvStep1ThongTinChung from './HopDongSddvStep1ThongTinChung.vue'
 import HopDongSddvStep2DichVu from './HopDongSddvStep2DichVu.vue'
 import HopDongSddvStep3LichQuayChup from './HopDongSddvStep3LichQuayChup.vue'
@@ -137,7 +136,7 @@ const form = reactive({
   dia_chi: '',
   kenh_tiep_can: '',
   thong_tin_hop_dong: {},
-  thong_tin_dieu_phoi: [],
+  thong_tin_dieu_phoi: {},
   nguoi_tham_gia_ids: [],
   ghi_chu_sale: '',
   tong_tien: 0,
@@ -216,7 +215,7 @@ function syncDynamicFields(preserveExisting = true) {
 
 function onLoaiHopDongChange() {
   form.thong_tin_hop_dong = {}
-  form.thong_tin_dieu_phoi = []
+  form.thong_tin_dieu_phoi = {}
   syncDynamicFields(false)
   stepLichRef.value?.reset()
   stepLichRef.value?.loadDieuPhoiSchema?.()
@@ -253,9 +252,10 @@ function syncFormFromHopDong(hopDong) {
     hopDong.thong_tin_hop_dong && typeof hopDong.thong_tin_hop_dong === 'object'
       ? { ...hopDong.thong_tin_hop_dong }
       : {}
-  form.thong_tin_dieu_phoi = JSON.parse(
-    JSON.stringify(normalizeDieuPhoiSessions(hopDong.thong_tin_dieu_phoi)),
-  )
+  form.thong_tin_dieu_phoi =
+    hopDong.thong_tin_dieu_phoi && typeof hopDong.thong_tin_dieu_phoi === 'object'
+      ? JSON.parse(JSON.stringify(hopDong.thong_tin_dieu_phoi))
+      : {}
   syncDynamicFields(true)
 }
 
@@ -374,7 +374,7 @@ async function saveStepLich(silent = false) {
 
   saving.value = true
   try {
-    const thongTinDieuPhoi = stepLichRef.value?.getDieuPhoiPayload?.(form.thong_tin_dieu_phoi) || []
+    const thongTinDieuPhoi = stepLichRef.value?.getDieuPhoiPayload?.(form.thong_tin_dieu_phoi) || {}
     const nested = stepLichRef.value?.getConceptTrangPhucPayload?.() || {}
     const { data } = await updateHopDongSuDungDichVu(form.id, {
       thong_tin_dieu_phoi: thongTinDieuPhoi,

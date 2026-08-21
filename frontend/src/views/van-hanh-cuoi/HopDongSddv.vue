@@ -328,6 +328,26 @@
           </template>
         </CustomTableColumn>
         <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ngay_tra_demo')"
+          label="Ngày trả demo"
+          min-width="140"
+          align="center"
+        >
+          <template #default="{ row }">
+            {{ formatDieuPhoiSharedDate(row, 'ngay_tra_demo') }}
+          </template>
+        </CustomTableColumn>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ngay_tra_chinh_thuc')"
+          label="Ngày trả chính thức"
+          min-width="160"
+          align="center"
+        >
+          <template #default="{ row }">
+            {{ formatDieuPhoiSharedDate(row, 'ngay_tra_chinh_thuc') }}
+          </template>
+        </CustomTableColumn>
+        <CustomTableColumn
           v-if="columnSettings.isColumnVisible('lich_quay_chup')"
           label="Lịch quay chụp"
           min-width="150"
@@ -506,10 +526,11 @@ import HopDongSddvThanhToanModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDo
 import {
   SO_DIEM_CHUP_MAX,
   SO_DIEM_CHUP_MIN,
+  firstDieuPhoiGiaTri,
   normalizeDieuPhoiSessions,
 } from '@/utils/thongTinDieuPhoi'
 
-const COLUMN_STORAGE_KEY = 'van-hanh-cuoi.hop-dong-sddv.v3'
+const COLUMN_STORAGE_KEY = 'van-hanh-cuoi.hop-dong-sddv.v4'
 const CHI_TIET_GROUP = 'Chi tiết hợp đồng'
 
 const tableColumns = [
@@ -524,6 +545,8 @@ const tableColumns = [
   { key: 'created_at', label: 'Ngày tạo', group: 'Thông tin hợp đồng' },
   // Trạng thái điều phối lưu ở ket_qua_hop_dong.trang_thai (workflow sau khi gán nhân sự trong thong_tin_dieu_phoi)
   { key: 'trang_thai_dieu_phoi', label: 'Trạng thái điều phối', group: 'Thông tin điều phối' },
+  { key: 'ngay_tra_demo', label: 'Ngày trả demo', group: 'Thông tin điều phối' },
+  { key: 'ngay_tra_chinh_thuc', label: 'Ngày trả chính thức', group: 'Thông tin điều phối' },
   { key: 'lich_quay_chup', label: 'Lịch quay chụp', group: 'Thông tin điều phối' },
 ]
 
@@ -752,6 +775,10 @@ function getThongTin(row) {
 
 function lichQuayChupCount(row) {
   return normalizeDieuPhoiSessions(row?.thong_tin_dieu_phoi).length
+}
+
+function formatDieuPhoiSharedDate(row, key) {
+  return formatDate(firstDieuPhoiGiaTri(row?.thong_tin_dieu_phoi, key))
 }
 
 function lichQuayChupCountLabel(row) {

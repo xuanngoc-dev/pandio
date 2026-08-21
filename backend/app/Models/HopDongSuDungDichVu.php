@@ -147,29 +147,24 @@ class HopDongSuDungDichVu extends Model
     }
 
     /**
-     * Chuẩn hóa thong_tin_dieu_phoi về danh sách buổi chụp.
-     * Dữ liệu cũ (object 1 buổi) được bọc thành [object].
+     * Lấy danh sách buổi chụp từ thong_tin_dieu_phoi.danh_sach_buoi_chup.
      *
      * @return list<array<string, mixed>>
      */
     public static function normalizeDieuPhoiSessions(mixed $raw): array
     {
-        if (! is_array($raw) || $raw === []) {
+        if (! is_array($raw) || ! isset($raw['danh_sach_buoi_chup']) || ! is_array($raw['danh_sach_buoi_chup'])) {
             return [];
         }
 
-        if (array_is_list($raw)) {
-            $sessions = [];
-            foreach ($raw as $item) {
-                if (is_array($item) && $item !== [] && ! array_is_list($item)) {
-                    $sessions[] = $item;
-                }
+        $sessions = [];
+        foreach ($raw['danh_sach_buoi_chup'] as $item) {
+            if (is_array($item) && $item !== [] && ! array_is_list($item)) {
+                $sessions[] = $item;
             }
-
-            return $sessions;
         }
 
-        return [$raw];
+        return $sessions;
     }
 
     /**

@@ -105,7 +105,7 @@ class HopDongSuDungDichVuController extends BaseApiController
 
     /**
      * Lịch chụp-make: danh sách hợp đồng theo khoảng ngày chụp.
-     * Ngày/giờ lấy từ từng buổi trong thong_tin_dieu_phoi (mảng; dữ liệu cũ là object).
+     * Ngày/giờ lấy từ từng buổi trong thong_tin_dieu_phoi.danh_sach_buoi_chup.
      * Loại trừ trang_thai: moi_tao, nhap, da_huy.
      * Sắp xếp theo ngay_chup, gio_chup (null xuống cuối), id.
      *
@@ -196,7 +196,7 @@ class HopDongSuDungDichVuController extends BaseApiController
 
     /**
      * Danh sách hợp đồng lịch chụp-make theo ngày chụp (+ loại HĐ).
-     * Ngày lấy từ thong_tin_dieu_phoi (mảng buổi chụp).
+     * Ngày lấy từ thong_tin_dieu_phoi.danh_sach_buoi_chup.
      * Loại trừ trang_thai: moi_tao, nhap, da_huy.
      *
      * Query: ngay_chup (required), loai_hop_dong_id (optional), page, per_page
@@ -1140,15 +1140,13 @@ class HopDongSuDungDichVuController extends BaseApiController
                 'nullable',
                 'array',
                 function (string $attribute, mixed $value, \Closure $fail): void {
-                    if (! is_array($value) || $value === [] || ! array_is_list($value)) {
-                        return;
-                    }
-                    if (count($value) > 6) {
+                    $sessions = HopDongSuDungDichVu::normalizeDieuPhoiSessions($value);
+                    if (count($sessions) > 6) {
                         $fail('Tối đa 6 lịch quay chụp.');
 
                         return;
                     }
-                    foreach ($value as $session) {
+                    foreach ($sessions as $session) {
                         $ten = is_array($session) ? ($session['ten_lich']['gia_tri'] ?? null) : null;
                         if (is_string($ten) && mb_strlen($ten) > 30) {
                             $fail('Tên lịch quay chụp tối đa 30 ký tự.');
@@ -1440,35 +1438,61 @@ class HopDongSuDungDichVuController extends BaseApiController
         }
     }
 
-    private const DIEU_PHOI_SESSION_INDEX_MAX = 20;
+    private const DIEU_PHOI_SESSION_INDEX_MAX = 6;
 
     /**
-     * Lọc hợp đồng có user nằm trong field nhân sự (object cũ hoặc mảng buổi chụp).
+     * JSON path từng buổi: $.danh_sach_buoi_chup[i].{relativePath}
+     *
+     * @return list<string>
+     */
+    private function dieuPhoiSessionJsonPaths(string $relativePath): array
+    {
+        $paths = [];
+        for ($i = 0; $i < self::DIEU_PHOI_SESSION_INDEX_MAX; $i++) {
+            $paths[] = '$.danh_sach_buoi_chup['.$i.'].'.$relativePath;
+        }
+
+        return $paths;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function dieuPhoiStaffJsonArrowPaths(string $key): array
+    {
+        $paths = [];
+        for ($i = 0; $i < self::DIEU_PHOI_SESSION_INDEX_MAX; $i++) {
+            $paths[] = "thong_tin_dieu_phoi->danh_sach_buoi_chup->{$i}->{$key}->gia_tri";
+        }
+
+        return $paths;
+    }
+
+    private function orJsonContainsUser($query, string $jsonArrowPath, int $userId): void
+    {
+        $query->orWhere(function ($inner) use ($jsonArrowPath, $userId) {
+            $inner->whereJsonContains($jsonArrowPath, $userId)
+                ->orWhereJsonContains($jsonArrowPath, (string) $userId);
+        });
+    }
+
+    /**
+     * Lọc hợp đồng có user nằm trong field nhân sự của buổi chụp.
      */
     private function applyDieuPhoiStaffAssignedFilter($query, int $userId): void
     {
         $staffKeys = ['quay_phim', 'tho_make', 'tho_edit', 'tho_chup'];
         $query->where(function ($q) use ($staffKeys, $userId) {
             foreach ($staffKeys as $key) {
-                $legacyPath = "thong_tin_dieu_phoi->{$key}->gia_tri";
-                $q->orWhere(function ($inner) use ($legacyPath, $userId) {
-                    $inner->whereJsonContains($legacyPath, $userId)
-                        ->orWhereJsonContains($legacyPath, (string) $userId);
-                });
-
-                for ($i = 0; $i < self::DIEU_PHOI_SESSION_INDEX_MAX; $i++) {
-                    $path = "thong_tin_dieu_phoi->{$i}->{$key}->gia_tri";
-                    $q->orWhere(function ($inner) use ($path, $userId) {
-                        $inner->whereJsonContains($path, $userId)
-                            ->orWhereJsonContains($path, (string) $userId);
-                    });
+                foreach ($this->dieuPhoiStaffJsonArrowPaths($key) as $path) {
+                    $this->orJsonContainsUser($q, $path, $userId);
                 }
             }
         });
     }
 
     /**
-     * Lọc nâng cao theo thong_tin_dieu_phoi (object cũ hoặc mảng buổi chụp).
+     * Lọc nâng cao theo thong_tin_dieu_phoi.
      *
      * @param  array<string, mixed>  $filters
      */
@@ -1522,13 +1546,9 @@ class HopDongSuDungDichVuController extends BaseApiController
             return;
         }
         $query->where(function ($q) use ($relativePath, $value) {
-            $q->whereRaw(
-                "JSON_UNQUOTE(JSON_EXTRACT(thong_tin_dieu_phoi, '$.{$relativePath}')) = ?",
-                [(string) $value]
-            );
-            for ($i = 0; $i < self::DIEU_PHOI_SESSION_INDEX_MAX; $i++) {
+            foreach ($this->dieuPhoiSessionJsonPaths($relativePath) as $jsonPath) {
                 $q->orWhereRaw(
-                    "JSON_UNQUOTE(JSON_EXTRACT(thong_tin_dieu_phoi, '\$[{$i}].{$relativePath}')) = ?",
+                    "JSON_UNQUOTE(JSON_EXTRACT(thong_tin_dieu_phoi, '{$jsonPath}')) = ?",
                     [(string) $value]
                 );
             }
@@ -1536,7 +1556,7 @@ class HopDongSuDungDichVuController extends BaseApiController
     }
 
     /**
-     * Lọc khoảng ngày điều phối — hỗ trợ object cũ và mảng buổi chụp.
+     * Lọc khoảng ngày điều phối.
      */
     private function applyDieuPhoiDateRangeFilter($query, string $field, ?string $from, ?string $to): void
     {
@@ -1551,9 +1571,8 @@ class HopDongSuDungDichVuController extends BaseApiController
         }
 
         $query->where(function ($q) use ($field, $from, $to) {
-            $this->orDieuPhoiDateInRange($q, "$.{$field}.gia_tri", $from, $to);
-            for ($i = 0; $i < self::DIEU_PHOI_SESSION_INDEX_MAX; $i++) {
-                $this->orDieuPhoiDateInRange($q, '$['.$i.'].'.$field.'.gia_tri', $from, $to);
+            foreach ($this->dieuPhoiDateJsonPaths($field) as $jsonPath) {
+                $this->orDieuPhoiDateInRange($q, $jsonPath, $from, $to);
             }
         });
     }
@@ -1583,10 +1602,9 @@ class HopDongSuDungDichVuController extends BaseApiController
         }
 
         $assigned = function ($q) use ($key) {
-            $q->whereRaw("JSON_LENGTH(JSON_EXTRACT(thong_tin_dieu_phoi, '$.{$key}.gia_tri')) > 0");
-            for ($i = 0; $i < self::DIEU_PHOI_SESSION_INDEX_MAX; $i++) {
+            foreach ($this->dieuPhoiSessionJsonPaths("{$key}.gia_tri") as $jsonPath) {
                 $q->orWhereRaw(
-                    "JSON_LENGTH(JSON_EXTRACT(thong_tin_dieu_phoi, '\$[{$i}].{$key}.gia_tri')) > 0"
+                    "JSON_LENGTH(JSON_EXTRACT(thong_tin_dieu_phoi, '{$jsonPath}')) > 0"
                 );
             }
         };
@@ -1601,7 +1619,19 @@ class HopDongSuDungDichVuController extends BaseApiController
     }
 
     /**
-     * Lọc theo ngày điều phối — hỗ trợ object cũ và mảng buổi chụp.
+     * @return list<string>
+     */
+    private function dieuPhoiDateJsonPaths(string $field): array
+    {
+        if (in_array($field, ['ngay_tra_demo', 'ngay_tra_chinh_thuc'], true)) {
+            return ["$.{$field}"];
+        }
+
+        return $this->dieuPhoiSessionJsonPaths("{$field}.gia_tri");
+    }
+
+    /**
+     * Lọc theo ngày điều phối.
      */
     private function applyDieuPhoiDateEqualsFilter($query, string $field, string $date): void
     {
@@ -1611,13 +1641,9 @@ class HopDongSuDungDichVuController extends BaseApiController
             return;
         }
         $query->where(function ($q) use ($field, $date) {
-            $q->whereRaw(
-                "LEFT(JSON_UNQUOTE(JSON_EXTRACT(thong_tin_dieu_phoi, '$.{$field}.gia_tri')), 10) = ?",
-                [$date]
-            );
-            for ($i = 0; $i < self::DIEU_PHOI_SESSION_INDEX_MAX; $i++) {
+            foreach ($this->dieuPhoiDateJsonPaths($field) as $jsonPath) {
                 $q->orWhereRaw(
-                    "LEFT(JSON_UNQUOTE(JSON_EXTRACT(thong_tin_dieu_phoi, '\$[{$i}].{$field}.gia_tri')), 10) = ?",
+                    "LEFT(JSON_UNQUOTE(JSON_EXTRACT(thong_tin_dieu_phoi, '{$jsonPath}')), 10) = ?",
                     [$date]
                 );
             }

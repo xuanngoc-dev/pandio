@@ -24,6 +24,37 @@
         :rules="formRules"
         label-position="top"
       >
+        <CustomRow :gutter="16" class="shared-date-row">
+          <CustomCol v-bind="sharedDateColProps">
+            <CustomFormItem label="Ngày trả demo" prop="ngay_tra_demo" required>
+              <el-date-picker
+                v-model="formModel.ngay_tra_demo"
+                type="date"
+                format="DD/MM/YYYY"
+                value-format="YYYY-MM-DD"
+                placeholder="Chọn ngày trả demo"
+                :disabled-date="disabledPastDate"
+                style="width: 100%"
+                clearable
+              />
+            </CustomFormItem>
+          </CustomCol>
+          <CustomCol v-bind="sharedDateColProps">
+            <CustomFormItem label="Ngày trả chính thức" prop="ngay_tra_chinh_thuc" required>
+              <el-date-picker
+                v-model="formModel.ngay_tra_chinh_thuc"
+                type="date"
+                format="DD/MM/YYYY"
+                value-format="YYYY-MM-DD"
+                placeholder="Chọn ngày trả chính thức"
+                :disabled-date="disabledPastDate"
+                style="width: 100%"
+                clearable
+              />
+            </CustomFormItem>
+          </CustomCol>
+        </CustomRow>
+
         <el-tabs
           v-model="activeSessionName"
           type="border-card"
@@ -46,7 +77,7 @@
             </template>
             <HopDongSddvDieuPhoiSessionFields
               v-model="formModel.sessions[index]"
-              :fields="fields"
+              :fields="sessionFields"
               :user-options="userOptions"
               :loai-quay-chup-options="loaiQuayChupOptions"
               :prop-prefix="`sessions.${index}`"
@@ -82,8 +113,11 @@ import { getLoaiHopDong } from '@/api/loaiHopDong'
 import { fetchUsers } from '@/api/users'
 import {
   CustomButton,
+  CustomCol,
   CustomDialog,
   CustomForm,
+  CustomFormItem,
+  CustomRow,
 } from '@/components/element'
 import {
   LOAI_QUAY_CHUP_KEY,
@@ -95,9 +129,11 @@ import {
   buildTenLichField,
   clampSoDiemChup,
   defaultTenLichQuayChup,
+  buildDieuPhoiEnvelope,
+  firstDieuPhoiGiaTri,
   getTenLichQuayChup,
   isDieuPhoiExtraSessionKey,
-  mergeDieuPhoiSessions,
+  isSharedLichQuayChupKey,
   normalizeDieuPhoiSessions,
   parseSessionLoaiQuayChup,
   loaiQuayChupRequiredRule,
@@ -136,7 +172,20 @@ let sessionUid = 0
 
 const formModel = reactive({
   sessions: [],
+  ngay_tra_demo: null,
+  ngay_tra_chinh_thuc: null,
 })
+
+const sessionFields = computed(() =>
+  fields.value.filter((field) => !isSharedLichQuayChupKey(field.key)),
+)
+const sharedDateColProps = {
+  xs: 24,
+  sm: 12,
+  md: 8,
+  lg: 6,
+  xl: 6,
+}
 
 const dialogTitle = computed(() => {
   const ma = hopDong.value?.ma_hop_dong
@@ -156,9 +205,16 @@ const formRules = computed(() => {
     ],
   }
 
+  rules.ngay_tra_demo = [
+    { required: true, message: 'Vui lòng chọn ngày trả demo', trigger: 'change' },
+  ]
+  rules.ngay_tra_chinh_thuc = [
+    { required: true, message: 'Vui lòng chọn ngày trả chính thức', trigger: 'change' },
+  ]
+
   for (const [index] of formModel.sessions.entries()) {
     rules[`sessions.${index}.${LOAI_QUAY_CHUP_KEY}`] = [loaiQuayChupRequiredRule()]
-    for (const field of fields.value) {
+    for (const field of sessionFields.value) {
       if (!isDateField(field)) continue
       rules[`sessions.${index}.${field.key}`] = [
         {
@@ -182,6 +238,16 @@ function isDateField(field) {
   if (!field) return false
   if (field.loai_du_lieu === 'date') return true
   return REQUIRED_DATE_KEYS.has(field.key)
+}
+
+function startOfToday() {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return today
+}
+
+function disabledPastDate(date) {
+  return date.getTime() < startOfToday().getTime()
 }
 
 function defaultValueByLoai(loai, key) {
@@ -246,6 +312,7 @@ function sessionFromSaved(savedMap, index = 0) {
   const source = savedMap && typeof savedMap === 'object' && !Array.isArray(savedMap) ? savedMap : {}
 
   for (const field of fields.value) {
+    if (isSharedLichQuayChupKey(field.key)) continue
     const savedItem = source[field.key] && typeof source[field.key] === 'object' ? source[field.key] : null
     const meta = fieldMeta.value[field.key] || {}
     const rawValue =
@@ -304,6 +371,8 @@ async function loadData() {
   fields.value = []
   fieldMeta.value = {}
   formModel.sessions = []
+  formModel.ngay_tra_demo = null
+  formModel.ngay_tra_chinh_thuc = null
   hopDong.value = null
   activeSessionName.value = ''
 
@@ -334,12 +403,19 @@ async function loadData() {
       MAX_LICH_QUAY_CHUP,
     )
     formModel.sessions = savedSessions.map((item, index) => sessionFromSaved(item, index))
+    formModel.ngay_tra_demo = firstDieuPhoiGiaTri(hopDong.value?.thong_tin_dieu_phoi, 'ngay_tra_demo')
+    formModel.ngay_tra_chinh_thuc = firstDieuPhoiGiaTri(
+      hopDong.value?.thong_tin_dieu_phoi,
+      'ngay_tra_chinh_thuc',
+    )
     syncActiveSession()
   } catch {
     fields.value = []
     userOptions.value = []
     loaiQuayChupOptions.value = []
     formModel.sessions = []
+    formModel.ngay_tra_demo = null
+    formModel.ngay_tra_chinh_thuc = null
     activeSessionName.value = ''
   } finally {
     loading.value = false
@@ -352,6 +428,7 @@ function buildPayload() {
       [TEN_LICH_KEY]: buildTenLichField(session._ten_lich, index),
     }
     for (const field of fields.value) {
+      if (isSharedLichQuayChupKey(field.key)) continue
       const meta = fieldMeta.value[field.key] || {}
       const loai = field.loai_du_lieu || 'string'
       let giaTri = session[field.key]
@@ -375,7 +452,10 @@ function buildPayload() {
     return result
   })
 
-  return mergeDieuPhoiSessions(hopDong.value?.thong_tin_dieu_phoi, built)
+  return buildDieuPhoiEnvelope(hopDong.value?.thong_tin_dieu_phoi, built, {
+    ngay_tra_demo: formModel.ngay_tra_demo,
+    ngay_tra_chinh_thuc: formModel.ngay_tra_chinh_thuc,
+  })
 }
 
 function focusFirstInvalidSession(invalidFields) {
@@ -428,6 +508,8 @@ function onClosed() {
   fields.value = []
   fieldMeta.value = {}
   formModel.sessions = []
+  formModel.ngay_tra_demo = null
+  formModel.ngay_tra_chinh_thuc = null
   hopDong.value = null
   userOptions.value = []
   loaiQuayChupOptions.value = []
@@ -464,6 +546,12 @@ watch(
     display: flex;
     flex-direction: column;
     gap: 12px;
+  }
+}
+
+.shared-date-row {
+  :deep(.el-form-item) {
+    margin-bottom: 0;
   }
 }
 

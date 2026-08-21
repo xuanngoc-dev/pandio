@@ -185,7 +185,7 @@ import {
 
 const values = defineModel({ type: Object, required: true })
 
-const REQUIRED_DATE_KEYS = new Set(['ngay_chup', 'ngay_tra_demo', 'ngay_tra_chinh_thuc'])
+const REQUIRED_DATE_KEYS = new Set(['ngay_chup'])
 
 const props = defineProps({
   fields: { type: Array, default: () => [] },

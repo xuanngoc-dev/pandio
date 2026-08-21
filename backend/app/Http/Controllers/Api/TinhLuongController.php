@@ -430,13 +430,8 @@ class TinhLuongController extends BaseApiController
             ->whereNotNull('thong_tin_dieu_phoi')
             ->where(function ($q) use ($userId) {
                 foreach (array_keys(self::STAFF_ROLE_KEYS) as $key) {
-                    $legacyPath = "thong_tin_dieu_phoi->{$key}->gia_tri";
-                    $q->orWhere(function ($inner) use ($legacyPath, $userId) {
-                        $inner->whereJsonContains($legacyPath, $userId)
-                            ->orWhereJsonContains($legacyPath, (string) $userId);
-                    });
-                    for ($i = 0; $i < 20; $i++) {
-                        $path = "thong_tin_dieu_phoi->{$i}->{$key}->gia_tri";
+                    for ($i = 0; $i < 6; $i++) {
+                        $path = "thong_tin_dieu_phoi->danh_sach_buoi_chup->{$i}->{$key}->gia_tri";
                         $q->orWhere(function ($inner) use ($path, $userId) {
                             $inner->whereJsonContains($path, $userId)
                                 ->orWhereJsonContains($path, (string) $userId);

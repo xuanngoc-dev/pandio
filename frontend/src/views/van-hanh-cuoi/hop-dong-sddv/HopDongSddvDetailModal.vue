@@ -323,6 +323,23 @@
           </CustomForm>
         </section>
 
+        <section v-if="sharedDateItems.length" class="detail-section">
+          <div class="detail-section__title">Ngày trả file</div>
+          <CustomForm label-position="top">
+            <CustomRow :gutter="16">
+              <CustomCol
+                v-for="item in sharedDateItems"
+                :key="item.key"
+                v-bind="fieldColProps"
+              >
+                <CustomFormItem :label="item.label">
+                  <CustomInput :model-value="item.value" readonly />
+                </CustomFormItem>
+              </CustomCol>
+            </CustomRow>
+          </CustomForm>
+        </section>
+
         <section
           v-for="(session, sessionIndex) in dieuPhoiSessions"
           :key="`dieu-phoi-${sessionIndex}`"
@@ -391,9 +408,12 @@ import {
 } from '@/components/element'
 import {
   LOAI_QUAY_CHUP_KEY,
+  SHARED_LICH_QUAY_CHUP_KEYS,
+  firstDieuPhoiGiaTri,
   formatLoaiQuayChupLabel,
   getTenLichQuayChup,
   isDieuPhoiExtraSessionKey,
+  isSharedLichQuayChupKey,
   normalizeDieuPhoiSessions,
   parseSessionLoaiQuayChup,
 } from '@/utils/thongTinDieuPhoi'
@@ -561,7 +581,13 @@ const dieuPhoiSessions = computed(() => {
     }
 
     for (const key of keys) {
-      if (isDieuPhoiExtraSessionKey(key) || String(key).startsWith('_')) continue
+      if (
+        isDieuPhoiExtraSessionKey(key) ||
+        isSharedLichQuayChupKey(key) ||
+        String(key).startsWith('_')
+      ) {
+        continue
+      }
       const schemaItem = schema[key] && typeof schema[key] === 'object' ? schema[key] : null
       const savedItem = saved[key] && typeof saved[key] === 'object' ? saved[key] : null
       if (schemaItem?.su_dung === false && !savedItem) continue
@@ -589,6 +615,34 @@ const dieuPhoiSessions = computed(() => {
       textareaItems: items.filter((item) => item.wide),
     }
   }).filter((session) => session.normalItems.length || session.textareaItems.length)
+})
+
+const sharedDateItems = computed(() => {
+  const schema =
+    loaiHopDong.value?.thong_tin_dieu_phoi &&
+    typeof loaiHopDong.value.thong_tin_dieu_phoi === 'object' &&
+    !Array.isArray(loaiHopDong.value.thong_tin_dieu_phoi)
+      ? loaiHopDong.value.thong_tin_dieu_phoi
+      : {}
+  const raw = hopDong.value?.thong_tin_dieu_phoi
+  const items = []
+
+  for (const key of SHARED_LICH_QUAY_CHUP_KEYS) {
+    const schemaItem = schema[key] && typeof schema[key] === 'object' ? schema[key] : null
+    const value = firstDieuPhoiGiaTri(raw, key)
+    if (schemaItem?.su_dung === false && value == null) continue
+    if (!schemaItem && value == null) continue
+
+    items.push({
+      key,
+      label: schemaItem?.ten_thong_tin || (
+        key === 'ngay_tra_demo' ? 'Ngày trả demo' : 'Ngày trả chính thức'
+      ),
+      value: formatDieuPhoiValue(key, 'date', value),
+    })
+  }
+
+  return items
 })
 
 function display(value) {

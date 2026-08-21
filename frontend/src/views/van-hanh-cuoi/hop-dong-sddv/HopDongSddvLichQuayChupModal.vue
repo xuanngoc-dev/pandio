@@ -12,16 +12,30 @@
         description="Chưa có lịch quay chụp."
       />
 
-      <el-tabs
-        v-else-if="sessions.length"
-        v-model="activeSessionName"
-        type="border-card"
-        class="session-tabs"
-        :class="{
-          'is-slide-left': slideDirection === 'left',
-          'is-slide-right': slideDirection !== 'left',
-        }"
-      >
+      <template v-else-if="sessions.length">
+        <CustomForm v-if="sharedDateItems.length" label-position="top" class="shared-date-form">
+          <CustomRow :gutter="16">
+            <CustomCol
+              v-for="item in sharedDateItems"
+              :key="item.key"
+              v-bind="fieldColProps"
+            >
+              <CustomFormItem :label="item.label">
+                <CustomInput :model-value="item.value" readonly />
+              </CustomFormItem>
+            </CustomCol>
+          </CustomRow>
+        </CustomForm>
+
+        <el-tabs
+          v-model="activeSessionName"
+          type="border-card"
+          class="session-tabs"
+          :class="{
+            'is-slide-left': slideDirection === 'left',
+            'is-slide-right': slideDirection !== 'left',
+          }"
+        >
         <el-tab-pane
           v-for="(session, index) in sessions"
           :key="session.key"
@@ -112,6 +126,7 @@
           </CustomForm>
         </el-tab-pane>
       </el-tabs>
+      </template>
     </div>
 
     <template #footer>
@@ -143,11 +158,14 @@ import {
   DIEU_PHOI_STAFF_KEYS,
   LICH_QUAY_CHUP_KEYS,
   LOAI_QUAY_CHUP_KEY,
+  SHARED_LICH_QUAY_CHUP_KEYS,
+  firstDieuPhoiGiaTri,
   formatLoaiQuayChupLabel,
   formatTrangPhucDieuPhoiLabel,
   getDieuPhoiGiaTriFromSession,
   getTenLichQuayChup,
   isDieuPhoiExtraSessionKey,
+  isSharedLichQuayChupKey,
   mapHopDongConceptRows,
   mapHopDongTrangPhucRows,
   normalizeDieuPhoiSessions,
@@ -215,7 +233,7 @@ const sessions = computed(() => {
     })
 
     for (const key of schemaKeys) {
-      if (isDieuPhoiExtraSessionKey(key) || String(key).startsWith('_')) continue
+      if (isDieuPhoiExtraSessionKey(key) || isSharedLichQuayChupKey(key) || String(key).startsWith('_')) continue
       const schemaItem = schema[key] && typeof schema[key] === 'object' ? schema[key] : null
       const savedItem = saved[key] && typeof saved[key] === 'object' ? saved[key] : null
       if (schemaItem?.su_dung === false && !savedItem) continue
@@ -265,6 +283,34 @@ const sessions = computed(() => {
       trangPhucs,
     }
   })
+})
+
+const sharedDateItems = computed(() => {
+  const schema =
+    loaiHopDong.value?.thong_tin_dieu_phoi &&
+    typeof loaiHopDong.value.thong_tin_dieu_phoi === 'object' &&
+    !Array.isArray(loaiHopDong.value.thong_tin_dieu_phoi)
+      ? loaiHopDong.value.thong_tin_dieu_phoi
+      : {}
+  const raw = hopDong.value?.thong_tin_dieu_phoi
+  const items = []
+
+  for (const key of SHARED_LICH_QUAY_CHUP_KEYS) {
+    const schemaItem = schema[key] && typeof schema[key] === 'object' ? schema[key] : null
+    const value = firstDieuPhoiGiaTri(raw, key)
+    if (schemaItem?.su_dung === false && value == null) continue
+    if (!schemaItem && value == null) continue
+
+    items.push({
+      key,
+      label: schemaItem?.ten_thong_tin || (
+        key === 'ngay_tra_demo' ? 'Ngày trả demo' : 'Ngày trả chính thức'
+      ),
+      value: formatDate(value),
+    })
+  }
+
+  return items
 })
 
 function orderedFieldKeys(schema, savedSessions) {
@@ -399,6 +445,15 @@ watch(activeSessionName, (next, prev) => {
 <style scoped lang="scss">
 .lich-body {
   min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.shared-date-form {
+  :deep(.el-form-item) {
+    margin-bottom: 0;
+  }
 }
 
 .session-tabs {

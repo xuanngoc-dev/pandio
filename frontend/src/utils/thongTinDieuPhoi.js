@@ -25,10 +25,18 @@ export const LICH_QUAY_CHUP_KEYS = [
   'ghi_chu_dieu_phoi',
 ]
 
-/** Field metadata tên buổi chụp, lưu trong từng phần tử thong_tin_dieu_phoi */
+/** Ngày trả demo / chính thức dùng chung cho mọi buổi chụp */
+export const SHARED_LICH_QUAY_CHUP_KEYS = ['ngay_tra_demo', 'ngay_tra_chinh_thuc']
+
+export function isSharedLichQuayChupKey(key) {
+  return SHARED_LICH_QUAY_CHUP_KEYS.includes(String(key || ''))
+}
+
+/** Field metadata tên buổi chụp, lưu trong từng phần tử danh_sach_buoi_chup */
 export const TEN_LICH_KEY = 'ten_lich'
 export const TEN_LICH_MAX_LENGTH = 30
 export const MAX_LICH_QUAY_CHUP = 6
+export const DANH_SACH_BUOI_CHUP_KEY = 'danh_sach_buoi_chup'
 
 /** Field concept / trang phục lưu kèm từng buổi trong thong_tin_dieu_phoi */
 export const CONCEPT_FIELD_KEY = 'concepts'
@@ -47,18 +55,37 @@ export function isDieuPhoiSessionMap(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }
 
-/**
- * Chuẩn hóa thong_tin_dieu_phoi về mảng buổi chụp.
- * Dữ liệu cũ (object 1 buổi) được bọc thành [object].
- */
+/** Payload chuẩn: { ngay_tra_demo, ngay_tra_chinh_thuc, danh_sach_buoi_chup } */
+export function isDieuPhoiEnvelope(value) {
+  return isDieuPhoiSessionMap(value) && Array.isArray(value[DANH_SACH_BUOI_CHUP_KEY])
+}
+
+export function emptyDieuPhoiEnvelope() {
+  return {
+    ngay_tra_demo: '',
+    ngay_tra_chinh_thuc: '',
+    [DANH_SACH_BUOI_CHUP_KEY]: [],
+  }
+}
+
+function readTopLevelDieuPhoiValue(raw, fieldKey) {
+  if (!isDieuPhoiSessionMap(raw)) return null
+  const item = raw[fieldKey]
+  if (item == null || item === '') return null
+  if (typeof item === 'string' || typeof item === 'number') return item
+  return null
+}
+
+export function normalizeSharedDieuPhoiDate(value) {
+  if (value == null || value === '') return ''
+  const text = String(value).slice(0, 10)
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : ''
+}
+
+/** Lấy mảng buổi chụp từ thong_tin_dieu_phoi (chuẩn: { danh_sach_buoi_chup }). */
 export function normalizeDieuPhoiSessions(raw) {
-  if (Array.isArray(raw)) {
-    return raw.filter((item) => isDieuPhoiSessionMap(item))
-  }
-  if (isDieuPhoiSessionMap(raw) && Object.keys(raw).length) {
-    return [raw]
-  }
-  return []
+  if (!isDieuPhoiEnvelope(raw)) return []
+  return raw[DANH_SACH_BUOI_CHUP_KEY].filter((item) => isDieuPhoiSessionMap(item))
 }
 
 export function defaultTenLichQuayChup(index = 0) {
@@ -113,6 +140,11 @@ function pushUnique(result, seen, value) {
 export function collectDieuPhoiGiaTri(raw, fieldKey) {
   const result = []
   const seen = new Set()
+  if (isSharedLichQuayChupKey(fieldKey)) {
+    const top = readTopLevelDieuPhoiValue(raw, fieldKey)
+    if (top != null && top !== '') pushUnique(result, seen, top)
+    return result
+  }
   for (const session of normalizeDieuPhoiSessions(raw)) {
     const value = getDieuPhoiGiaTriFromSession(session, fieldKey)
     if (value == null || value === '') continue
@@ -126,6 +158,12 @@ export function collectDieuPhoiGiaTri(raw, fieldKey) {
     }
   }
   return result
+}
+
+/** Lấy gia_tri đầu tiên của field dùng chung (ngày trả demo / chính thức). */
+export function firstDieuPhoiGiaTri(raw, fieldKey) {
+  const values = collectDieuPhoiGiaTri(raw, fieldKey)
+  return values.length ? values[0] : null
 }
 
 export function firstDieuPhoiSession(raw) {
@@ -145,13 +183,41 @@ export function cloneDieuPhoiMap(source) {
   return JSON.parse(JSON.stringify(source))
 }
 
+export function stripSharedLichQuayChupKeys(session) {
+  if (!isDieuPhoiSessionMap(session)) return {}
+  const next = { ...session }
+  for (const key of SHARED_LICH_QUAY_CHUP_KEYS) {
+    delete next[key]
+  }
+  return next
+}
+
 export function mergeDieuPhoiSessions(existingRaw, nextSessions) {
   const existing = normalizeDieuPhoiSessions(existingRaw)
   const next = Array.isArray(nextSessions) ? nextSessions : []
-  return next.map((session, index) => ({
-    ...(existing[index] || {}),
-    ...(isDieuPhoiSessionMap(session) ? session : {}),
-  }))
+  return next.map((session, index) =>
+    stripSharedLichQuayChupKeys({
+      ...(existing[index] || {}),
+      ...(isDieuPhoiSessionMap(session) ? session : {}),
+    }),
+  )
+}
+
+export function buildDieuPhoiEnvelope(existingRaw, nextSessions, sharedDates = {}) {
+  const ngayTraDemo =
+    sharedDates.ngay_tra_demo !== undefined
+      ? sharedDates.ngay_tra_demo
+      : firstDieuPhoiGiaTri(existingRaw, 'ngay_tra_demo')
+  const ngayTraChinhThuc =
+    sharedDates.ngay_tra_chinh_thuc !== undefined
+      ? sharedDates.ngay_tra_chinh_thuc
+      : firstDieuPhoiGiaTri(existingRaw, 'ngay_tra_chinh_thuc')
+
+  return {
+    ngay_tra_demo: normalizeSharedDieuPhoiDate(ngayTraDemo),
+    ngay_tra_chinh_thuc: normalizeSharedDieuPhoiDate(ngayTraChinhThuc),
+    [DANH_SACH_BUOI_CHUP_KEY]: mergeDieuPhoiSessions(existingRaw, nextSessions),
+  }
 }
 
 export function isDieuPhoiExtraSessionKey(key) {
@@ -160,6 +226,7 @@ export function isDieuPhoiExtraSessionKey(key) {
     key === CONCEPT_FIELD_KEY ||
     key === TRANG_PHUC_FIELD_KEY ||
     key === LOAI_QUAY_CHUP_KEY ||
+    key === DANH_SACH_BUOI_CHUP_KEY ||
     String(key).startsWith('_')
   )
 }
