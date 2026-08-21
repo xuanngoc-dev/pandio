@@ -11,6 +11,14 @@ import api from '@/api/axios'
  *   chi_nhap?: boolean|number,
  *   tu_ngay?: string,
  *   den_ngay?: string,
+ *   loai_quay_chup_id?: number,
+ *   ngay_chup_tu?: string,
+ *   ngay_chup_den?: string,
+ *   so_diem_chup?: number,
+ *   co_tho_chup?: '0'|'1'|0|1,
+ *   co_tho_make?: '0'|'1'|0|1,
+ *   co_quay_phim?: '0'|'1'|0|1,
+ *   co_tho_edit?: '0'|'1'|0|1,
  * }} params
  */
 export function fetchHopDongSuDungDichVu(params = {}) {

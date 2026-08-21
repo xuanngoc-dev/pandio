@@ -21,7 +21,9 @@ class HopDongSuDungDichVuController extends BaseApiController
     /**
      * Danh sách hợp đồng sử dụng dịch vụ — phân trang + tìm kiếm.
      *
-     * Query: page, per_page, keyword, loai_hop_dong_id, trang_thai, chi_nhap, tu_ngay, den_ngay
+     * Query: page, per_page, keyword, loai_hop_dong_id, trang_thai, chi_nhap, tu_ngay, den_ngay,
+     * loai_quay_chup_id, ngay_chup_tu, ngay_chup_den, so_diem_chup,
+     * co_tho_chup, co_tho_make, co_quay_phim, co_tho_edit
      */
     public function index(Request $request): JsonResponse
     {
@@ -35,6 +37,14 @@ class HopDongSuDungDichVuController extends BaseApiController
                 'chi_nhap' => ['sometimes', 'boolean'],
                 'tu_ngay' => ['sometimes', 'nullable', 'date'],
                 'den_ngay' => ['sometimes', 'nullable', 'date', 'after_or_equal:tu_ngay'],
+                'loai_quay_chup_id' => ['sometimes', 'nullable', 'integer', 'min:1'],
+                'ngay_chup_tu' => ['sometimes', 'nullable', 'date'],
+                'ngay_chup_den' => ['sometimes', 'nullable', 'date', 'after_or_equal:ngay_chup_tu'],
+                'so_diem_chup' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:3'],
+                'co_tho_chup' => ['sometimes', 'nullable', Rule::in(['0', '1', 0, 1])],
+                'co_tho_make' => ['sometimes', 'nullable', Rule::in(['0', '1', 0, 1])],
+                'co_quay_phim' => ['sometimes', 'nullable', Rule::in(['0', '1', 0, 1])],
+                'co_tho_edit' => ['sometimes', 'nullable', Rule::in(['0', '1', 0, 1])],
             ]);
 
             $perPage = $validated['per_page'] ?? 10;
@@ -73,10 +83,11 @@ class HopDongSuDungDichVuController extends BaseApiController
                         // Mặc định ẩn hợp đồng nháp / mới tạo
                         $q->whereNotIn('trang_thai', ['moi_tao', 'nhap']);
                     }
-                })
-                ->orderByDesc('id');
+                });
 
-            return response()->json($query->paginate($perPage));
+            $this->applyDieuPhoiAdvancedFilters($query, $validated);
+
+            return response()->json($query->orderByDesc('id')->paginate($perPage));
 
         }, 'lấy danh sách hợp đồng sử dụng dịch vụ');
     }
@@ -1454,6 +1465,139 @@ class HopDongSuDungDichVuController extends BaseApiController
                 }
             }
         });
+    }
+
+    /**
+     * Lọc nâng cao theo thong_tin_dieu_phoi (object cũ hoặc mảng buổi chụp).
+     *
+     * @param  array<string, mixed>  $filters
+     */
+    private function applyDieuPhoiAdvancedFilters($query, array $filters): void
+    {
+        $loaiQuayChupId = $filters['loai_quay_chup_id'] ?? null;
+        if ($loaiQuayChupId) {
+            $this->applyDieuPhoiJsonValueEquals($query, 'loai_quay_chup.gia_tri.id', (int) $loaiQuayChupId);
+        }
+
+        $ngayChupTu = $filters['ngay_chup_tu'] ?? null;
+        $ngayChupDen = $filters['ngay_chup_den'] ?? null;
+        if ($ngayChupTu || $ngayChupDen) {
+            $this->applyDieuPhoiDateRangeFilter(
+                $query,
+                'ngay_chup',
+                $ngayChupTu ? (string) $ngayChupTu : null,
+                $ngayChupDen ? (string) $ngayChupDen : null,
+            );
+        }
+
+        $soDiemChup = $filters['so_diem_chup'] ?? null;
+        if ($soDiemChup !== null && $soDiemChup !== '') {
+            $this->applyDieuPhoiJsonValueEquals($query, 'so_diem_chup.gia_tri', (int) $soDiemChup);
+        }
+
+        $staffMap = [
+            'co_tho_chup' => 'tho_chup',
+            'co_tho_make' => 'tho_make',
+            'co_quay_phim' => 'quay_phim',
+            'co_tho_edit' => 'tho_edit',
+        ];
+        foreach ($staffMap as $param => $field) {
+            if (! array_key_exists($param, $filters) || $filters[$param] === null || $filters[$param] === '') {
+                continue;
+            }
+            $this->applyDieuPhoiStaffPresenceFilter(
+                $query,
+                $field,
+                in_array($filters[$param], [1, '1', true], true),
+            );
+        }
+    }
+
+    /**
+     * So khớp giá trị JSON trong bất kỳ buổi điều phối nào.
+     */
+    private function applyDieuPhoiJsonValueEquals($query, string $relativePath, int|string $value): void
+    {
+        if (! preg_match('/^[a-z0-9_.]+$/', $relativePath)) {
+            return;
+        }
+        $query->where(function ($q) use ($relativePath, $value) {
+            $q->whereRaw(
+                "JSON_UNQUOTE(JSON_EXTRACT(thong_tin_dieu_phoi, '$.{$relativePath}')) = ?",
+                [(string) $value]
+            );
+            for ($i = 0; $i < self::DIEU_PHOI_SESSION_INDEX_MAX; $i++) {
+                $q->orWhereRaw(
+                    "JSON_UNQUOTE(JSON_EXTRACT(thong_tin_dieu_phoi, '\$[{$i}].{$relativePath}')) = ?",
+                    [(string) $value]
+                );
+            }
+        });
+    }
+
+    /**
+     * Lọc khoảng ngày điều phối — hỗ trợ object cũ và mảng buổi chụp.
+     */
+    private function applyDieuPhoiDateRangeFilter($query, string $field, ?string $from, ?string $to): void
+    {
+        $allowed = ['ngay_chup', 'ngay_tra_demo', 'ngay_tra_chinh_thuc'];
+        if (! in_array($field, $allowed, true)) {
+            return;
+        }
+        $from = $from ? substr($from, 0, 10) : null;
+        $to = $to ? substr($to, 0, 10) : null;
+        if (! $from && ! $to) {
+            return;
+        }
+
+        $query->where(function ($q) use ($field, $from, $to) {
+            $this->orDieuPhoiDateInRange($q, "$.{$field}.gia_tri", $from, $to);
+            for ($i = 0; $i < self::DIEU_PHOI_SESSION_INDEX_MAX; $i++) {
+                $this->orDieuPhoiDateInRange($q, '$['.$i.'].'.$field.'.gia_tri', $from, $to);
+            }
+        });
+    }
+
+    private function orDieuPhoiDateInRange($query, string $jsonPath, ?string $from, ?string $to): void
+    {
+        $expr = "LEFT(JSON_UNQUOTE(JSON_EXTRACT(thong_tin_dieu_phoi, '{$jsonPath}')), 10)";
+        $query->orWhere(function ($inner) use ($expr, $from, $to) {
+            $inner->whereRaw("{$expr} REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'");
+            if ($from) {
+                $inner->whereRaw("{$expr} >= ?", [$from]);
+            }
+            if ($to) {
+                $inner->whereRaw("{$expr} <= ?", [$to]);
+            }
+        });
+    }
+
+    /**
+     * Lọc hợp đồng đã gán / chưa gán nhân sự điều phối (mảng user id).
+     */
+    private function applyDieuPhoiStaffPresenceFilter($query, string $key, bool $hasStaff): void
+    {
+        $allowed = ['tho_chup', 'tho_make', 'tho_edit', 'quay_phim'];
+        if (! in_array($key, $allowed, true)) {
+            return;
+        }
+
+        $assigned = function ($q) use ($key) {
+            $q->whereRaw("JSON_LENGTH(JSON_EXTRACT(thong_tin_dieu_phoi, '$.{$key}.gia_tri')) > 0");
+            for ($i = 0; $i < self::DIEU_PHOI_SESSION_INDEX_MAX; $i++) {
+                $q->orWhereRaw(
+                    "JSON_LENGTH(JSON_EXTRACT(thong_tin_dieu_phoi, '\$[{$i}].{$key}.gia_tri')) > 0"
+                );
+            }
+        };
+
+        if ($hasStaff) {
+            $query->where($assigned);
+
+            return;
+        }
+
+        $query->whereNot($assigned);
     }
 
     /**

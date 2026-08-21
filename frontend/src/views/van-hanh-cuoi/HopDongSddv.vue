@@ -2,7 +2,7 @@
   <div class="hop-dong-sddv page-list">
     <CustomCard shadow="hover" class="filter-card">
       <CustomRow :gutter="12" class="toolbar">
-        <CustomCol :xs="12" :sm="12" :md="6" :lg="7">
+        <CustomCol :xs="24" :sm="12" :md="8" :lg="6">
           <CustomInput
             v-model="keyword"
             placeholder="Tìm theo mã HĐ, thông tin khách hàng..."
@@ -16,7 +16,7 @@
             </template>
           </CustomInput>
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="6" :lg="5">
+        <CustomCol :xs="12" :sm="12" :md="8" :lg="5">
           <CustomSelect
             v-model="filterLoaiHopDongId"
             placeholder="Loại hợp đồng"
@@ -33,7 +33,7 @@
             />
           </CustomSelect>
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="6" :lg="5">
+        <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
           <CustomSelect
             v-model="filterTrangThai"
             placeholder="Trạng thái"
@@ -49,13 +49,148 @@
             />
           </CustomSelect>
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="6" :lg="4">
-          <CustomButton type="primary" plain @click="onSearch">
-            <CustomIcon><Search /></CustomIcon>
-            Tìm kiếm
-          </CustomButton>
+        <CustomCol :xs="24" :sm="24" :md="24" :lg="7">
+          <div class="toolbar-actions">
+            <CustomButton type="primary" plain @click="onSearch">
+              <CustomIcon><Search /></CustomIcon>
+              Tìm kiếm
+            </CustomButton>
+            <CustomButton
+              plain
+              :type="advancedFilterVisible || advancedFilterCount ? 'primary' : 'default'"
+              @click="advancedFilterVisible = !advancedFilterVisible"
+            >
+              Lọc nâng cao
+              <span
+                v-if="advancedFilterCount"
+                class="advanced-toggle__badge"
+                :class="{ 'is-on-primary': advancedFilterVisible || advancedFilterCount }"
+              >
+                {{ advancedFilterCount }}
+              </span>
+              <CustomIcon
+                class="advanced-toggle__arrow"
+                :class="{ 'is-expanded': advancedFilterVisible }"
+              >
+                <ArrowDown />
+              </CustomIcon>
+            </CustomButton>
+          </div>
         </CustomCol>
       </CustomRow>
+
+      <div v-show="advancedFilterVisible" class="advanced-filter">
+        <div class="advanced-filter__head">
+          <span class="advanced-filter__title">Lọc theo điều phối</span>
+          <CustomButton
+            v-if="advancedFilterCount"
+            link
+            type="primary"
+            @click="clearAdvancedFilters"
+          >
+            Xóa lọc
+          </CustomButton>
+        </div>
+        <CustomRow :gutter="12" class="toolbar">
+          <CustomCol :xs="24" :sm="12" :md="8" :lg="6">
+            <CustomSelect
+              v-model="filterLoaiQuayChupId"
+              placeholder="Loại quay chụp"
+              clearable
+              filterable
+              style="width: 100%"
+              @change="onSearch"
+            >
+              <CustomOption
+                v-for="item in loaiQuayChupOptions"
+                :key="item.id"
+                :label="item.ten_dich_vu"
+                :value="item.id"
+              />
+            </CustomSelect>
+          </CustomCol>
+          <CustomCol :xs="24" :sm="12" :md="8" :lg="6">
+            <CustomDatePicker
+              v-model="filterNgayChupRange"
+              type="daterange"
+              range-separator="—"
+              start-placeholder="Ngày chụp từ"
+              end-placeholder="Ngày chụp đến"
+              format="DD/MM/YYYY"
+              value-format="YYYY-MM-DD"
+              unlink-panels
+              clearable
+              class="advanced-filter__datepicker"
+              style="width: 100%"
+              @change="onSearch"
+            />
+          </CustomCol>
+          <CustomCol :xs="24" :sm="12" :md="8" :lg="6">
+            <CustomSelect
+              v-model="filterSoDiemChup"
+              placeholder="Số điểm chụp"
+              clearable
+              style="width: 100%"
+              @change="onSearch"
+            >
+              <CustomOption
+                v-for="n in soDiemChupOptions"
+                :key="n"
+                :label="`${n} điểm`"
+                :value="n"
+              />
+            </CustomSelect>
+          </CustomCol>
+          <CustomCol :xs="24" :sm="12" :md="6" :lg="6">
+            <CustomSelect
+              v-model="filterCoThoChup"
+              placeholder="Thợ chụp"
+              clearable
+              style="width: 100%"
+              @change="onSearch"
+            >
+              <CustomOption label="Có thợ chụp" value="1" />
+              <CustomOption label="Chưa có thợ chụp" value="0" />
+            </CustomSelect>
+          </CustomCol>
+          <CustomCol :xs="24" :sm="12" :md="6" :lg="6">
+            <CustomSelect
+              v-model="filterCoThoMake"
+              placeholder="Thợ make"
+              clearable
+              style="width: 100%"
+              @change="onSearch"
+            >
+              <CustomOption label="Có thợ make" value="1" />
+              <CustomOption label="Chưa có thợ make" value="0" />
+            </CustomSelect>
+          </CustomCol>
+          <CustomCol :xs="24" :sm="12" :md="6" :lg="6">
+            <CustomSelect
+              v-model="filterCoQuayPhim"
+              placeholder="Quay phim"
+              clearable
+              style="width: 100%"
+              @change="onSearch"
+            >
+              <CustomOption label="Có quay phim" value="1" />
+              <CustomOption label="Chưa có quay phim" value="0" />
+            </CustomSelect>
+          </CustomCol>
+          <CustomCol :xs="24" :sm="12" :md="6" :lg="6">
+            <CustomSelect
+              v-model="filterCoThoEdit"
+              placeholder="Thợ edit"
+              clearable
+              style="width: 100%"
+              @change="onSearch"
+            >
+              <CustomOption label="Có thợ edit" value="1" />
+              <CustomOption label="Chưa có thợ edit" value="0" />
+            </CustomSelect>
+          </CustomCol>
+        </CustomRow>
+      </div>
     </CustomCard>
 
     <CustomCard shadow="hover" class="table-card">
@@ -192,44 +327,26 @@
             </CustomTag>
           </template>
         </CustomTableColumn>
-        <template v-for="col in dieuPhoiTableColumns" :key="col.key">
-          <CustomTableColumn
-            v-if="columnSettings.isColumnVisible(col.key)"
-            :config-key="col.key"
-            :label="col.label"
-            :min-width="col.minWidth || 160"
-            :align="col.align || 'left'"
-            :show-overflow-tooltip="!col.isStaff"
-          >
-            <template #default="{ row }">
-              <template v-if="col.isStaff">
-                <div
-                  v-for="cell in [getStaffCell(row, col.fieldKey)]"
-                  :key="`${col.key}-${row.id}`"
-                  class="staff-cell"
-                >
-                  <template v-if="cell.first">
-                    <span class="staff-cell__name">{{ cell.first }}</span>
-                    <CustomTooltip v-if="cell.restCount" placement="top">
-                      <template #content>
-                        <div class="staff-tooltip-list">
-                          <div v-for="(name, idx) in cell.rest" :key="`${col.key}-rest-${idx}`">
-                            {{ name }}
-                          </div>
-                        </div>
-                      </template>
-                      <span class="staff-cell__more">+{{ cell.restCount }}</span>
-                    </CustomTooltip>
-                  </template>
-                  <span v-else>—</span>
-                </div>
-              </template>
-              <template v-else>
-                {{ formatDieuPhoiColumn(row, col.key) }}
-              </template>
-            </template>
-          </CustomTableColumn>
-        </template>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('lich_quay_chup')"
+          label="Lịch quay chụp"
+          min-width="150"
+          align="center"
+        >
+          <template #default="{ row }">
+            <div class="lich-quay-chup-cell">
+              <span>{{ lichQuayChupCountLabel(row) }}</span>
+              <CustomTooltip content="Xem lịch quay chụp" placement="top">
+                <CustomButton
+                  type="primary"
+                  link
+                  :icon="Calendar"
+                  @click="openLichQuayChup(row)"
+                />
+              </CustomTooltip>
+            </div>
+          </template>
+        </CustomTableColumn>
         <template v-for="col in chiTietTableColumns" :key="col.key">
           <CustomTableColumn
             v-if="columnSettings.isColumnVisible(col.key)"
@@ -327,6 +444,11 @@
       :hop-dong-id="detailHopDongId"
     />
 
+    <HopDongSddvLichQuayChupModal
+      v-model="lichQuayChupModalVisible"
+      :hop-dong-id="lichQuayChupHopDongId"
+    />
+
     <HopDongSddvThanhToanModal
       v-model="thanhToanModalVisible"
       :hop-dong="thanhToanHopDong"
@@ -345,7 +467,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Delete, Document, Edit, Plus, Position, Search, Switch, View, Wallet } from '@element-plus/icons-vue'
+import { ArrowDown, Calendar, Delete, Document, Edit, Plus, Position, Search, Switch, View, Wallet } from '@element-plus/icons-vue'
+import { fetchDanhMucLoaiQuayChup } from '@/api/danhMucLoaiQuayChup'
 import {
   deleteHopDongSuDungDichVu,
   fetchHopDongSuDungDichVu,
@@ -353,7 +476,6 @@ import {
   khoiTaoHopDongSuDungDichVu,
 } from '@/api/hopDongSuDungDichVu'
 import { fetchLoaiHopDong, getLoaiHopDong } from '@/api/loaiHopDong'
-import { fetchUsers } from '@/api/users'
 import BulkActionBar from '@/components/BulkActionBar.vue'
 import TableColumnConfig from '@/components/TableColumnConfig.vue'
 import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
@@ -362,6 +484,7 @@ import {
   CustomButton,
   CustomCard,
   CustomCol,
+  CustomDatePicker,
   CustomIcon,
   CustomInput,
   CustomOption,
@@ -378,58 +501,15 @@ import HopDongSddvDieuPhoiModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDon
 import HopDongSddvDoiTrangThaiModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvDoiTrangThaiModal.vue'
 import HopDongSddvDraftModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvDraftModal.vue'
 import HopDongSddvFormModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvFormModal.vue'
+import HopDongSddvLichQuayChupModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvLichQuayChupModal.vue'
 import HopDongSddvThanhToanModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvThanhToanModal.vue'
 import {
-  DIEU_PHOI_STAFF_KEYS,
-  collectDieuPhoiGiaTri,
-  getDieuPhoiFieldMeta,
+  SO_DIEM_CHUP_MAX,
+  SO_DIEM_CHUP_MIN,
+  normalizeDieuPhoiSessions,
 } from '@/utils/thongTinDieuPhoi'
 
-/** Các field nhân viên trong thong_tin_dieu_phoi (gia_tri = mảng user id) */
-const STAFF_FIELD_KEYS = DIEU_PHOI_STAFF_KEYS
-
-/**
- * Cột thông tin điều phối (từ hop_dong.thong_tin_dieu_phoi).
- * Mặc định ẩn — bật trong Cấu hình cột hiển thị.
- */
-const dieuPhoiTableColumns = [
-  { key: 'dp_buoi_chup', fieldKey: 'buoi_chup', label: 'Buổi chụp', minWidth: 120 },
-  { key: 'dp_gio_chup', fieldKey: 'gio_chup', label: 'Giờ chụp', minWidth: 100, align: 'center' },
-  { key: 'dp_ngay_chup', fieldKey: 'ngay_chup', label: 'Ngày chụp', minWidth: 120, align: 'center' },
-  { key: 'dp_so_diem_chup', fieldKey: 'so_diem_chup', label: 'Số điểm chụp', minWidth: 120, align: 'center' },
-  {
-    key: 'dp_ngay_tra_demo',
-    fieldKey: 'ngay_tra_demo',
-    label: 'Ngày trả demo',
-    minWidth: 130,
-    align: 'center',
-  },
-  {
-    key: 'dp_ngay_tra_chinh_thuc',
-    fieldKey: 'ngay_tra_chinh_thuc',
-    label: 'Ngày trả chính thức',
-    minWidth: 150,
-    align: 'center',
-  },
-  { key: 'dp_dia_diem_chup', fieldKey: 'dia_diem_chup', label: 'Địa điểm chụp', minWidth: 180 },
-  { key: 'dp_tho_chup', fieldKey: 'tho_chup', label: 'Thợ chụp', minWidth: 180, isStaff: true },
-  { key: 'dp_tho_chup_ngoai', fieldKey: 'tho_chup_ngoai', label: 'Thợ chụp ngoài', minWidth: 160 },
-  { key: 'dp_tho_make', fieldKey: 'tho_make', label: 'Thợ make', minWidth: 180, isStaff: true },
-  { key: 'dp_tho_make_ngoai', fieldKey: 'tho_make_ngoai', label: 'Thợ make ngoài', minWidth: 160 },
-  { key: 'dp_tho_edit', fieldKey: 'tho_edit', label: 'Thợ edit', minWidth: 180, isStaff: true },
-  { key: 'dp_tho_edit_ngoai', fieldKey: 'tho_edit_ngoai', label: 'Thợ edit ngoài', minWidth: 160 },
-  { key: 'dp_quay_phim', fieldKey: 'quay_phim', label: 'Quay phim', minWidth: 180, isStaff: true },
-  { key: 'dp_quay_phim_ngoai', fieldKey: 'quay_phim_ngoai', label: 'Quay phim ngoài', minWidth: 160 },
-  { key: 'dp_ghi_chu_dieu_phoi', fieldKey: 'ghi_chu_dieu_phoi', label: 'Ghi chú điều phối', minWidth: 200 },
-  {
-    key: 'dp_ghi_chu_trang_phuc_phu_kien',
-    fieldKey: 'ghi_chu_trang_phuc_phu_kien',
-    label: 'Yêu cầu khách hàng',
-    minWidth: 200,
-  },
-]
-
-const COLUMN_STORAGE_KEY = 'van-hanh-cuoi.hop-dong-sddv.v2'
+const COLUMN_STORAGE_KEY = 'van-hanh-cuoi.hop-dong-sddv.v3'
 const CHI_TIET_GROUP = 'Chi tiết hợp đồng'
 
 const tableColumns = [
@@ -444,12 +524,7 @@ const tableColumns = [
   { key: 'created_at', label: 'Ngày tạo', group: 'Thông tin hợp đồng' },
   // Trạng thái điều phối lưu ở ket_qua_hop_dong.trang_thai (workflow sau khi gán nhân sự trong thong_tin_dieu_phoi)
   { key: 'trang_thai_dieu_phoi', label: 'Trạng thái điều phối', group: 'Thông tin điều phối' },
-  ...dieuPhoiTableColumns.map((col) => ({
-    key: col.key,
-    label: col.label,
-    defaultVisible: false,
-    group: 'Thông tin điều phối',
-  })),
+  { key: 'lich_quay_chup', label: 'Lịch quay chụp', group: 'Thông tin điều phối' },
 ]
 
 /** Cache noi_dung.truong theo loai_hop_dong_id */
@@ -554,8 +629,20 @@ const route = useRoute()
 const keyword = ref(String(route.query.keyword || ''))
 const filterLoaiHopDongId = ref(null)
 const filterTrangThai = ref('')
+const advancedFilterVisible = ref(false)
+const filterLoaiQuayChupId = ref(null)
+const filterNgayChupRange = ref(null)
+const filterSoDiemChup = ref(null)
+const filterCoThoChup = ref(null)
+const filterCoThoMake = ref(null)
+const filterCoQuayPhim = ref(null)
+const filterCoThoEdit = ref(null)
 const loaiHopDongOptions = ref([])
-const userOptions = ref([])
+const loaiQuayChupOptions = ref([])
+const soDiemChupOptions = Array.from(
+  { length: SO_DIEM_CHUP_MAX - SO_DIEM_CHUP_MIN + 1 },
+  (_, i) => SO_DIEM_CHUP_MIN + i,
+)
 const bulkDeleting = ref(false)
 const creating = ref(false)
 const formModalVisible = ref(false)
@@ -566,6 +653,8 @@ const dieuPhoiModalVisible = ref(false)
 const dieuPhoiHopDongId = ref(null)
 const detailModalVisible = ref(false)
 const detailHopDongId = ref(null)
+const lichQuayChupModalVisible = ref(false)
+const lichQuayChupHopDongId = ref(null)
 const thanhToanModalVisible = ref(false)
 const thanhToanHopDong = ref(null)
 const doiTrangThaiModalVisible = ref(false)
@@ -573,17 +662,26 @@ const doiTrangThaiHopDong = ref(null)
 
 const { selectedCount, onSelectionChange, clearSelection, selectedIds } = useBulkSelection()
 
-const userNameMap = computed(() => {
-  const map = new Map()
-  for (const user of userOptions.value) {
-    map.set(Number(user.id), user.name)
-  }
-  return map
-})
+function isFilterFilled(value) {
+  if (Array.isArray(value)) return value.some((item) => item != null && item !== '')
+  return value != null && value !== ''
+}
 
-const dieuPhoiColumnByKey = Object.fromEntries(
-  dieuPhoiTableColumns.map((col) => [col.key, col]),
-)
+function presenceParam(value) {
+  return value === '0' || value === '1' ? value : undefined
+}
+
+const advancedFilterCount = computed(() => {
+  return [
+    filterLoaiQuayChupId.value,
+    filterNgayChupRange.value,
+    filterSoDiemChup.value,
+    filterCoThoChup.value,
+    filterCoThoMake.value,
+    filterCoQuayPhim.value,
+    filterCoThoEdit.value,
+  ].filter(isFilterFilled).length
+})
 
 const bulkActions = computed(() => [
   {
@@ -652,65 +750,14 @@ function getThongTin(row) {
     : {}
 }
 
-function getDieuPhoiGiaTri(row, fieldKey) {
-  const values = collectDieuPhoiGiaTri(row?.thong_tin_dieu_phoi, fieldKey)
-  if (!values.length) return null
-  if (STAFF_FIELD_KEYS.has(fieldKey)) return values
-  if (values.length === 1) return values[0]
-  return values
+function lichQuayChupCount(row) {
+  return normalizeDieuPhoiSessions(row?.thong_tin_dieu_phoi).length
 }
 
-function resolveStaffNames(value) {
-  const list = Array.isArray(value) ? value : value == null || value === '' ? [] : [value]
-  const seen = new Set()
-  const names = []
-  for (const id of list) {
-    const key = Number(id)
-    if (seen.has(key)) continue
-    seen.add(key)
-    names.push(userNameMap.value.get(key) || `#${id}`)
-  }
-  return names
-}
-
-/** Ô nhân sự: tên người đầu + vòng tròn +N (tooltip danh sách còn lại) */
-function getStaffCell(row, fieldKey) {
-  const names = resolveStaffNames(getDieuPhoiGiaTri(row, fieldKey))
-  if (!names.length) {
-    return { first: '', rest: [], restCount: 0 }
-  }
-  const rest = names.slice(1)
-  return {
-    first: names[0],
-    rest,
-    restCount: rest.length,
-  }
-}
-
-function formatDieuPhoiColumn(row, columnKey) {
-  const col = dieuPhoiColumnByKey[columnKey]
-  if (!col) return '—'
-  const value = getDieuPhoiGiaTri(row, col.fieldKey)
-  if (value == null || value === '') return '—'
-
-  if (STAFF_FIELD_KEYS.has(col.fieldKey)) {
-    const names = resolveStaffNames(value)
-    return names.length ? names.join(', ') : '—'
-  }
-
-  const loai = getDieuPhoiFieldMeta(row?.thong_tin_dieu_phoi, col.fieldKey)?.loai_du_lieu
-  const values = Array.isArray(value) ? value : [value]
-  if (loai === 'date' || col.fieldKey.startsWith('ngay_')) {
-    const dates = values.map((item) => formatDate(item)).filter((item) => item && item !== '—')
-    return dates.length ? dates.join(', ') : '—'
-  }
-  if (col.fieldKey === 'buoi_chup') {
-    const map = { sang: 'Sáng', chieu: 'Chiều', toi: 'Tối' }
-    return values
-      .map((item) => map[String(item).toLowerCase()] || String(item))
-      .join(', ')
-  }
-  return values.map((item) => String(item)).join(', ')
+function lichQuayChupCountLabel(row) {
+  const count = lichQuayChupCount(row)
+  if (!count) return '—'
+  return `${count} lịch`
 }
 
 function formatDynamicValue(value, kieu = '') {
@@ -764,13 +811,30 @@ async function loadLoaiHopDongOptions() {
   }
 }
 
-async function loadUserOptions() {
+async function loadLoaiQuayChupOptions() {
   try {
-    const { data } = await fetchUsers({ per_page: 100, status: 'active' })
-    userOptions.value = data.data || []
+    const { data } = await fetchDanhMucLoaiQuayChup({ per_page: 100, trang_thai: 'active' })
+    loaiQuayChupOptions.value = (data.data || []).slice().sort((a, b) =>
+      String(a.ten_dich_vu || '').localeCompare(String(b.ten_dich_vu || ''), 'vi'),
+    )
   } catch {
-    userOptions.value = []
+    loaiQuayChupOptions.value = []
   }
+}
+
+function resetAdvancedFilters() {
+  filterLoaiQuayChupId.value = null
+  filterNgayChupRange.value = null
+  filterSoDiemChup.value = null
+  filterCoThoChup.value = null
+  filterCoThoMake.value = null
+  filterCoQuayPhim.value = null
+  filterCoThoEdit.value = null
+}
+
+function clearAdvancedFilters() {
+  resetAdvancedFilters()
+  onSearch()
 }
 
 async function loadItems() {
@@ -783,6 +847,14 @@ async function loadItems() {
       keyword: keyword.value.trim() || undefined,
       loai_hop_dong_id: filterLoaiHopDongId.value || undefined,
       trang_thai: filterTrangThai.value || undefined,
+      loai_quay_chup_id: filterLoaiQuayChupId.value || undefined,
+      ngay_chup_tu: filterNgayChupRange.value?.[0] || undefined,
+      ngay_chup_den: filterNgayChupRange.value?.[1] || undefined,
+      so_diem_chup: isFilterFilled(filterSoDiemChup.value) ? filterSoDiemChup.value : undefined,
+      co_tho_chup: presenceParam(filterCoThoChup.value),
+      co_tho_make: presenceParam(filterCoThoMake.value),
+      co_quay_phim: presenceParam(filterCoQuayPhim.value),
+      co_tho_edit: presenceParam(filterCoThoEdit.value),
     })
     items.value = data.data || []
     total.value = data.total || 0
@@ -821,6 +893,11 @@ function openDrafts() {
 function openDetail(row) {
   detailHopDongId.value = row.id
   detailModalVisible.value = true
+}
+
+function openLichQuayChup(row) {
+  lichQuayChupHopDongId.value = row.id
+  lichQuayChupModalVisible.value = true
 }
 
 function openDieuPhoi(row) {
@@ -993,6 +1070,7 @@ async function onFormSaved(hopDong) {
     keyword.value = hopDong.ma_hop_dong
     filterLoaiHopDongId.value = null
     filterTrangThai.value = 'dang_thuc_hien'
+    resetAdvancedFilters()
     page.value = 1
   }
   await syncChiTietColumns()
@@ -1052,12 +1130,81 @@ async function remove(row) {
 
 onMounted(() => {
   loadLoaiHopDongOptions()
-  loadUserOptions()
+  loadLoaiQuayChupOptions()
   loadItems()
 })
 </script>
 
 <style scoped lang="scss">
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.advanced-toggle__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--el-color-primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+
+  &.is-on-primary {
+    background: #fff;
+    color: var(--el-color-primary);
+  }
+}
+
+.advanced-toggle__arrow {
+  margin-left: 2px;
+  transition: transform 0.2s ease;
+
+  &.is-expanded {
+    transform: rotate(180deg);
+  }
+}
+
+.advanced-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--el-border-color-lighter);
+
+  :deep(.el-col) {
+    min-width: 0;
+  }
+
+  :deep(.el-select),
+  :deep(.el-date-editor) {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+.advanced-filter__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.advanced-filter__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--el-text-color-regular);
+}
+
 .sub-text {
   font-size: 12px;
   color: var(--el-text-color-secondary);
@@ -1073,47 +1220,10 @@ onMounted(() => {
   white-space: nowrap;
 }
 
-.staff-cell {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  max-width: 100%;
-}
-
-.staff-cell__name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-}
-
-.staff-cell__more {
-  flex-shrink: 0;
+.lich-quay-chup-cell {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: var(--el-color-primary-light-9);
-  color: var(--el-color-primary);
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1;
-  cursor: default;
-  user-select: none;
-}
-</style>
-
-<style lang="scss">
-/* Tooltip teleport ra body — không dùng scoped */
-.staff-tooltip-list {
-  display: flex;
-  flex-direction: column;
   gap: 4px;
-  line-height: 1.35;
-  max-width: 240px;
 }
 </style>

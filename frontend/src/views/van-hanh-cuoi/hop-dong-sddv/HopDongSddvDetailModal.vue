@@ -2,7 +2,7 @@
   <CustomDialog
     v-model="visible"
     :title="dialogTitle"
-    :width="1280"
+    :width="1480"
     class="hop-dong-sddv-detail-modal"
     @closed="onClosed"
   >
