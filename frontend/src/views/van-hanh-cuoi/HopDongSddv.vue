@@ -205,13 +205,11 @@
             <TableColumnConfig :settings="columnSettings" />
             <CustomTooltip content="Danh sách hợp đồng nháp" placement="top">
               <CustomButton @click="openDrafts">
-                <CustomIcon><Document /></CustomIcon>
                 Nháp
               </CustomButton>
             </CustomTooltip>
             <CustomTooltip content="Thêm mới" placement="top">
               <CustomButton type="primary" :loading="creating" @click="openCreate">
-                <CustomIcon><Plus /></CustomIcon>
                 Thêm
               </CustomButton>
             </CustomTooltip>

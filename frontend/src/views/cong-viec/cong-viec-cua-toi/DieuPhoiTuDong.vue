@@ -1,8 +1,8 @@
 <template>
   <div class="dieu-phoi-tu-dong">
     <div class="filter-bar">
-      <CustomRow :gutter="12">
-        <CustomCol :xs="24" :sm="12" :md="8" :lg="5">
+      <CustomRow :gutter="12" class="toolbar">
+        <CustomCol :xs="12" :sm="12" :md="8" :lg="5">
           <CustomInput
             v-model="filters.keyword"
             placeholder="Tìm theo mã HĐ, tên, SĐT khách hàng..."
@@ -16,7 +16,7 @@
             </template>
           </CustomInput>
         </CustomCol>
-        <CustomCol :xs="24" :sm="12" :md="8" :lg="4">
+        <CustomCol :xs="12" :sm="12" :md="8" :lg="4">
           <CustomSelect
             v-model="filters.loai_hop_dong_id"
             placeholder="Loại hợp đồng"
@@ -33,7 +33,7 @@
             />
           </CustomSelect>
         </CustomCol>
-        <CustomCol :xs="24" :sm="12" :md="8" :lg="4">
+        <CustomCol :xs="12" :sm="12" :md="8" :lg="4">
           <el-date-picker
             v-model="filters.ngay_chup"
             type="date"
@@ -44,7 +44,7 @@
             clearable
           />
         </CustomCol>
-        <CustomCol :xs="24" :sm="12" :md="8" :lg="4">
+        <CustomCol :xs="12" :sm="12" :md="8" :lg="4">
           <el-date-picker
             v-model="filters.ngay_tra_demo"
             type="date"
@@ -55,7 +55,7 @@
             clearable
           />
         </CustomCol>
-        <CustomCol :xs="24" :sm="12" :md="8" :lg="4">
+        <CustomCol :xs="12" :sm="12" :md="8" :lg="4">
           <el-date-picker
             v-model="filters.ngay_tra_chinh_thuc"
             type="date"
@@ -66,7 +66,7 @@
             clearable
           />
         </CustomCol>
-        <CustomCol :xs="24" :sm="12" :md="8" :lg="3">
+        <CustomCol :xs="12" :sm="12" :md="8" :lg="3">
           <CustomButton type="primary" plain :loading="loading" @click="onSearch">
             Tìm kiếm
           </CustomButton>
@@ -105,7 +105,7 @@
           <CustomCol
             v-for="item in items"
             :key="item.id"
-            :xs="24"
+            :xs="12"
             :sm="12"
             :md="8"
             :lg="6"
@@ -271,6 +271,10 @@ onMounted(() => {
 .dieu-phoi-tu-dong {
   .filter-bar {
     margin-bottom: 12px;
+
+    :deep(.el-row) {
+      row-gap: 12px;
+    }
   }
 
   .status-tabs {

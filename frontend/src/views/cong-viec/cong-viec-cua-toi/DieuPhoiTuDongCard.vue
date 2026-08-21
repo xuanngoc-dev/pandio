@@ -4,47 +4,6 @@
       <h3 class="cong-viec-card__title" :title="loaiHopDong">
         {{ loaiHopDong }}
       </h3>
-      <div class="cong-viec-card__header-actions">
-        <CustomTooltip content="Xem chi tiết hợp đồng" placement="top">
-          <CustomButton
-            type="info"
-            link
-            :icon="View"
-            @click.stop="openDetail"
-          />
-        </CustomTooltip>
-        <CustomTooltip
-          v-if="showYKienIcon"
-          content="Xem ý kiến khách hàng"
-          placement="top"
-        >
-          <CustomButton
-            type="warning"
-            link
-            :icon="ChatDotRound"
-            @click.stop="openYKienView"
-          />
-        </CustomTooltip>
-        <!-- <CustomTag
-          v-if="ketQuaTrangThaiTag"
-          :type="ketQuaTrangThaiTag.type"
-          size="small"
-        >
-          {{ ketQuaTrangThaiTag.label }}
-        </CustomTag>
-        <CustomTag v-else :type="trangThaiTagType(item.trang_thai)" size="small">
-          {{ trangThaiLabel(item.trang_thai) }}
-        </CustomTag> -->
-        <CustomTooltip v-if="canNhan" content="Nhận việc" placement="top">
-          <CustomButton
-            type="primary"
-            link
-            :icon="Select"
-            :loading="accepting"
-            @click.stop="onNhan"
-          />
-        </CustomTooltip>
-      </div>
     </div>
 
     <div class="cong-viec-card__body">
@@ -53,7 +12,7 @@
         <span class="code">- [{{ maHopDong }}]</span>
       </div>
 
-      <div v-if="thoiGianChup" class="cong-viec-card__row">
+      <div v-if="thoiGianChupItems.length" class="cong-viec-card__row">
         <span class="label">
           Thời gian chụp
           <CustomTooltip
@@ -70,7 +29,19 @@
             </CustomIcon>
           </CustomTooltip>
         </span>
-        <span class="value">{{ thoiGianChup }}</span>
+        <span class="value cong-viec-card__times">
+          <template v-for="(item, index) in thoiGianChupItems" :key="index">
+            <span v-if="index">; </span>
+            <CustomTooltip
+              v-if="item.loaiLabel"
+              :content="item.loaiLabel"
+              placement="top"
+            >
+              <span class="cong-viec-card__time">{{ item.text }}</span>
+            </CustomTooltip>
+            <span v-else class="cong-viec-card__time">{{ item.text }}</span>
+          </template>
+        </span>
       </div>
       <div v-if="ngayTraDemo" class="cong-viec-card__row">
         <span class="label">
@@ -111,7 +82,7 @@
         <span class="value">{{ ngayTraChinhThuc }}</span>
       </div>
 
-      <div class="cong-viec-card__files">
+      <div v-if="step !== 'cho_nhan'" class="cong-viec-card__files">
         <div
           v-for="field in fileLinkFields"
           :key="field.key"
@@ -137,7 +108,8 @@
               >
                 <CustomButton
                   type="primary"
-                  link
+                  circle
+                  size="small"
                   :icon="Edit"
                   @click.stop="openLinkModal(field)"
                 />
@@ -147,7 +119,8 @@
               <CustomTooltip content="Thêm link" placement="top">
                 <CustomButton
                   type="primary"
-                  link
+                  circle
+                  size="small"
                   :icon="Plus"
                   @click.stop="openLinkModal(field)"
                 />
@@ -173,8 +146,52 @@
         </div>
       </div>
 
-      <div v-if="showGuiKhachFooter" class="cong-viec-card__footer">
+    </div>
+
+    <div class="cong-viec-card__footer">
+      <div
+        v-if="showStatusManagedElsewhere"
+        class="cong-viec-card__footer-hint"
+      >
+        <span class="status-hint">
+          Trạng thái bước này được cập nhật tại Hợp đồng SDĐV → Thay đổi trạng thái.
+        </span>
+      </div>
+      <div class="cong-viec-card__footer-actions">
+        <CustomTooltip content="Xem chi tiết hợp đồng" placement="top">
+          <CustomButton
+            type="info"
+            circle
+            size="small"
+            :icon="View"
+            @click.stop="openDetail"
+          />
+        </CustomTooltip>
         <CustomTooltip
+          v-if="showYKienIcon"
+          content="Xem ý kiến khách hàng"
+          placement="top"
+        >
+          <CustomButton
+            type="warning"
+            circle
+            size="small"
+            :icon="ChatDotRound"
+            @click.stop="openYKienView"
+          />
+        </CustomTooltip>
+        <CustomTooltip v-if="canNhan" content="Nhận việc" placement="top">
+          <CustomButton
+            type="primary"
+            circle
+            size="small"
+            :icon="Select"
+            :loading="accepting"
+            @click.stop="onNhan"
+          />
+        </CustomTooltip>
+        <CustomTooltip
+          v-if="showGuiKhachFooter"
           :content="
             canGuiKhachKiemTra
               ? 'Gửi khách kiểm tra'
@@ -185,19 +202,17 @@
           <span class="cong-viec-card__footer-btn-wrap">
             <CustomButton
               type="primary"
+              circle
               size="small"
+              :icon="Promotion"
               :disabled="!canGuiKhachKiemTra"
               :loading="sendingKhach"
               @click.stop="onGuiKhachKiemTra"
-            >
-              Gửi khách kiểm tra
-            </CustomButton>
+            />
           </span>
         </CustomTooltip>
-      </div>
-
-      <div v-else-if="showBanGiaoFooter" class="cong-viec-card__footer">
         <CustomTooltip
+          v-if="showBanGiaoFooter"
           :content="
             canBanGiao
               ? 'Bàn giao sản phẩm'
@@ -207,25 +222,16 @@
         >
           <span class="cong-viec-card__footer-btn-wrap">
             <CustomButton
-              type="primary"
+              type="success"
+              circle
               size="small"
+              :icon="Finished"
               :disabled="!canBanGiao"
               :loading="banningGiao"
               @click.stop="onBanGiao"
-            >
-              Bàn giao
-            </CustomButton>
+            />
           </span>
         </CustomTooltip>
-      </div>
-
-      <div
-        v-else-if="showStatusManagedElsewhere"
-        class="cong-viec-card__footer cong-viec-card__footer--hint"
-      >
-        <span class="status-hint">
-          Trạng thái bước này được cập nhật tại Hợp đồng SDĐV → Thay đổi trạng thái.
-        </span>
       </div>
     </div>
 
@@ -281,7 +287,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { ChatDotRound, CircleCheckFilled, Edit, Plus, Select, View, WarningFilled } from '@element-plus/icons-vue'
+import { ChatDotRound, CircleCheckFilled, Edit, Finished, Plus, Promotion, Select, View, WarningFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   banGiaoCongViec,
@@ -300,8 +306,10 @@ import {
 import { useAuthStore } from '@/stores/auth'
 import {
   collectDieuPhoiGiaTri,
+  formatLoaiQuayChupLabel,
   getDieuPhoiGiaTriFromSession,
   normalizeDieuPhoiSessions,
+  parseSessionLoaiQuayChup,
   resolveTrangThaiDieuPhoi,
   TRANG_THAI_DIEU_PHOI_CHO_NHAN,
 } from '@/utils/thongTinDieuPhoi'
@@ -457,17 +465,21 @@ const dieuPhoiSessions = computed(() =>
   normalizeDieuPhoiSessions(props.item?.thong_tin_dieu_phoi),
 )
 
-const thoiGianChup = computed(() => {
-  return dieuPhoiSessions.value
+const thoiGianChupItems = computed(() =>
+  dieuPhoiSessions.value
     .map((session) => {
       const gio = formatTime(getDieuPhoiGiaTriFromSession(session, 'gio_chup'))
       const buoi = formatBuoi(getDieuPhoiGiaTriFromSession(session, 'buoi_chup'))
       const ngay = formatDate(getDieuPhoiGiaTriFromSession(session, 'ngay_chup'))
-      return [gio, buoi, ngay].filter(Boolean).join(' ')
+      const text = [gio, buoi, ngay].filter(Boolean).join(' ')
+      if (!text) return null
+      return {
+        text,
+        loaiLabel: formatLoaiQuayChupLabel(parseSessionLoaiQuayChup(session)),
+      }
     })
-    .filter(Boolean)
-    .join('; ')
-})
+    .filter(Boolean),
+)
 
 const ngayTraDemo = computed(() =>
   collectDieuPhoiGiaTri(props.item?.thong_tin_dieu_phoi, 'ngay_tra_demo')
@@ -824,13 +836,6 @@ async function onBanGiao() {
     min-width: 0;
   }
 
-  &__header-actions {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    flex-shrink: 0;
-  }
-
   &__body {
     display: flex;
     flex-direction: column;
@@ -889,6 +894,17 @@ async function onBanGiao() {
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+  }
+
+  &__times {
+    display: block;
+  }
+
+  &__time {
+    display: inline-block;
+    max-width: 100%;
+    cursor: help;
+    vertical-align: bottom;
   }
 
   .deadline-status-icon {
@@ -965,22 +981,23 @@ async function onBanGiao() {
   }
 
   &__footer {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
     margin-top: auto;
     padding-top: 10px;
     border-top: 1px solid var(--el-border-color-lighter);
+  }
 
-    &--hint {
-      padding-top: 8px;
-      padding-bottom: 2px;
-    }
+  &__footer-hint {
+    padding-bottom: 2px;
+  }
 
-    &--split {
-      display: flex;
-      align-items: stretch;
-      gap: 12px;
-      width: 100%;
-      box-sizing: border-box;
-    }
+  &__footer-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
   }
 
   .status-hint {
@@ -992,18 +1009,8 @@ async function onBanGiao() {
     text-align: center;
   }
 
-  &__footer-col {
-    flex: 1 1 0;
-    min-width: 0;
-  }
-
   &__footer-btn-wrap {
-    display: block;
-    width: 100%;
-
-    :deep(.el-button) {
-      width: 100%;
-    }
+    display: inline-flex;
   }
 
   .file-empty {
