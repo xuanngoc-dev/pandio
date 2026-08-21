@@ -52,7 +52,6 @@
         <CustomCol :xs="24" :sm="24" :md="24" :lg="7">
           <div class="toolbar-actions">
             <CustomButton type="primary" plain @click="onSearch">
-              <CustomIcon><Search /></CustomIcon>
               Tìm kiếm
             </CustomButton>
             <CustomButton

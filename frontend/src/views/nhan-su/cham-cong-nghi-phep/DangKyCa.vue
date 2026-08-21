@@ -17,7 +17,6 @@
               </template>
             </CustomInput>
             <CustomButton type="primary" plain @click="onSearch">
-              <CustomIcon><Search /></CustomIcon>
               Tìm kiếm
             </CustomButton>
           </div>

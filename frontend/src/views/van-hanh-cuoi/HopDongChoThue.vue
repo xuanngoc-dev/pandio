@@ -34,7 +34,6 @@
         </CustomCol>
         <CustomCol :xs="12" :sm="12" :md="8" :lg="4">
           <CustomButton type="primary" plain @click="onSearch">
-            <CustomIcon><Search /></CustomIcon>
             Tìm kiếm
           </CustomButton>
         </CustomCol>
