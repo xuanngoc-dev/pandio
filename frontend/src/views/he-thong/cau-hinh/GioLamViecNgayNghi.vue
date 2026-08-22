@@ -227,20 +227,21 @@
               v-loading="ngayNghi.loading"
               :data="ngayNghi.items"
               stripe
+              row-key="id"
               style="width: 100%"
             >
               <CustomTableColumn
                 v-if="ngayNghiColumnSettings.isColumnVisible('ten_ngay_nghi')"
                 prop="ten_ngay_nghi"
                 label="Tên kỳ nghỉ & ngày lễ"
-                min-width="180"
+                min-width="220"
                 show-overflow-tooltip
               />
               <CustomTableColumn
                 v-if="ngayNghiColumnSettings.isColumnVisible('ngay_bat_dau')"
                 prop="ngay_bat_dau"
                 label="Ngày bắt đầu"
-                min-width="140"
+                width="140"
                 align="center"
               >
                 <template #default="{ row }">
@@ -251,7 +252,7 @@
                 v-if="ngayNghiColumnSettings.isColumnVisible('ngay_ket_thuc')"
                 prop="ngay_ket_thuc"
                 label="Ngày kết thúc"
-                min-width="140"
+                width="140"
                 align="center"
               >
                 <template #default="{ row }">
@@ -260,8 +261,9 @@
               </CustomTableColumn>
               <CustomTableColumn
                 v-if="ngayNghiColumnSettings.isColumnVisible('so_ngay_nghi')"
+                config-key="so_ngay_nghi"
                 label="Số ngày"
-                width="130"
+                width="110"
                 align="center"
               >
                 <template #default="{ row }">
@@ -272,7 +274,7 @@
                 v-if="ngayNghiColumnSettings.isColumnVisible('trang_thai')"
                 prop="trang_thai"
                 label="Trạng thái"
-                min-width="200"
+                width="200"
                 align="center"
               >
                 <template #default="{ row }">
@@ -283,7 +285,7 @@
                       inactive-value="inactive"
                       :loading="ngayNghi.togglingId === row.id"
                       :disabled="ngayNghi.togglingId === row.id"
-                      @change="(val) => toggleTrangThai(row, val)"
+                      :before-change="() => toggleTrangThai(row)"
                     />
                     <span
                       class="status-label"
@@ -501,7 +503,7 @@ import {
 } from '@/components/element'
 import Pagination from '@/components/Pagination.vue'
 import TableColumnConfig from '@/components/TableColumnConfig.vue'
-import { useTableColumns } from '@/composables/useTableColumns'
+import { FIXED_COL, useTableColumns } from '@/composables/useTableColumns'
 import ConfigSettingPage from './ConfigSettingPage.vue'
 
 const gioLamTableColumns = [
@@ -523,8 +525,8 @@ const ngayNghiTableColumns = [
   { key: 'so_ngay_nghi', label: 'Số ngày' },
   { key: 'trang_thai', label: 'Trạng thái' },
 ]
-const ngayNghiColumnSettings = useTableColumns('he-thong.ngay-nghi', ngayNghiTableColumns, {
-  pin: { selection: false, stt: false },
+const ngayNghiColumnSettings = useTableColumns('he-thong.ky-nghi-ngay-le', ngayNghiTableColumns, {
+  pin: { selection: false, stt: false, defaultRight: [FIXED_COL.actions] },
 })
 
 const activeTab = ref('ngay-nghi')
@@ -849,16 +851,11 @@ async function saveNgayNghi() {
   }
 }
 
-async function toggleTrangThai(row, value) {
-  if (!row?.id) {
-    ElMessage.error('Không xác định được bản ghi kỳ nghỉ & ngày lễ.')
-    return
-  }
+async function toggleTrangThai(row) {
+  if (!row?.id) return false
 
-  const previous = value === 'active' ? 'inactive' : 'active'
-  const nextValue = value
+  const nextValue = row.trang_thai === 'active' ? 'inactive' : 'active'
   ngayNghi.togglingId = row.id
-  row.trang_thai = nextValue
 
   try {
     await updateNgayNghi(row.id, {
@@ -867,14 +864,16 @@ async function toggleTrangThai(row, value) {
       ngay_ket_thuc: row.ngay_ket_thuc,
       trang_thai: nextValue,
     })
+    row.trang_thai = nextValue
     ElMessage.success(
       nextValue === 'active' ? 'Đã bật kỳ nghỉ & ngày lễ.' : 'Đã tắt kỳ nghỉ & ngày lễ.',
     )
+    return true
   } catch (error) {
-    row.trang_thai = previous
     if (error?.message === 'ID ngày nghỉ không hợp lệ.') {
       ElMessage.error(error.message)
     }
+    return false
   } finally {
     ngayNghi.togglingId = null
   }
