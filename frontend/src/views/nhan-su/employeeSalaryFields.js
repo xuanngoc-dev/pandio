@@ -16,6 +16,8 @@ export const SALARY_FIELD_DEFINITIONS = [
   { key: 'phu_cap', name: 'Phụ cấp' },
   { key: 'luong_1_gio', name: 'Lương 1 giờ', note: 'Dành cho part time' },
   { key: 'luong_tang_ca_1_gio', name: 'Lương tăng ca 1 giờ', note: 'Dành cho cả part_time và full_time' },
+  { key: 'luong_chinh_sua_anh', name: 'Lương chỉnh sửa ảnh' },
+  { key: 'luong_dung_video', name: 'Lương dựng video' },
   { key: 'phu_cap_xang', name: 'Phụ cấp xăng' },
   { key: 'phu_cap_an_trua', name: 'Phụ cấp ăn trưa' },
   { key: 'phu_cap_dien_thoai', name: 'Phụ cấp điện thoại' },
@@ -31,7 +33,7 @@ export const SALARY_FIELD_GROUPS = [
   {
     key: 'luong',
     title: 'Lương',
-    keys: ['luong_cung', 'luong_mem', 'luong_1_gio', 'luong_tang_ca_1_gio'],
+    keys: ['luong_cung', 'luong_mem', 'luong_1_gio', 'luong_tang_ca_1_gio', 'luong_chinh_sua_anh', 'luong_dung_video'],
   },
   {
     key: 'phu_cap',

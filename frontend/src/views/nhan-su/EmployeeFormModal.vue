@@ -589,6 +589,8 @@ function fillSampleData() {
       phu_cap: { value: phuCap },
       luong_1_gio: { value: randomInt(3, 8) * 10_000 },
       luong_tang_ca_1_gio: { value: randomInt(3, 8) * 10_000 },
+      luong_chinh_sua_anh: { value: randomInt(3, 8) * 10_000 },
+      luong_dung_video: { value: randomInt(3, 8) * 10_000 },
       phu_cap_xang: { value: randomInt(3, 8) * 100_000 },
       phu_cap_an_trua: { value: randomInt(5, 10) * 100_000 },
       phu_cap_dien_thoai: { value: randomInt(1, 4) * 100_000 },

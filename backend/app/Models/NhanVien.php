@@ -62,6 +62,8 @@ class NhanVien extends Model
             'phu_cap' => 'Phụ cấp',
             'luong_1_gio' => 'Lương 1 giờ',
             'luong_tang_ca_1_gio' => 'Lương tăng ca 1 giờ',
+            'luong_chinh_sua_anh' => 'Lương chỉnh sửa ảnh',
+            'luong_dung_video' => 'Lương dựng video',
             'phu_cap_xang' => 'Phụ cấp xăng',
             'phu_cap_an_trua' => 'Phụ cấp ăn trưa',
             'phu_cap_dien_thoai' => 'Phụ cấp điện thoại',
