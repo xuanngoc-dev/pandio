@@ -304,7 +304,7 @@ const sharedDateItems = computed(() => {
     items.push({
       key,
       label: schemaItem?.ten_thong_tin || (
-        key === 'ngay_tra_demo' ? 'Ngày trả demo' : 'Ngày trả chính thức'
+        key === 'ngay_tra_file_in' ? 'Ngày trả file in' : 'Ngày trả chính thức'
       ),
       value: formatDate(value),
     })

@@ -250,7 +250,7 @@ class HopDongSuDungDichVuController extends BaseApiController
      * danh_sach_buoi_chup[*].{tho_chup|tho_make|quay_phim}.gia_tri
      *
      * Query: page, per_page, ket_qua_trang_thai, keyword, loai_hop_dong_id,
-     * ngay_chup, ngay_tra_demo, ngay_tra_chinh_thuc
+     * ngay_chup, ngay_tra_file_in, ngay_tra_chinh_thuc
      * Tab lọc theo thong_tin_dieu_phoi.trang_thai_dieu_phoi (fallback ket_qua_hop_dong.trang_thai).
      */
     public function congViecCuaToi(Request $request): JsonResponse
@@ -274,7 +274,7 @@ class HopDongSuDungDichVuController extends BaseApiController
                 'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
                 'loai_hop_dong_id' => ['sometimes', 'nullable', 'integer', 'exists:danh_muc_loai_hop_dong,id'],
                 'ngay_chup' => ['sometimes', 'nullable', 'date'],
-                'ngay_tra_demo' => ['sometimes', 'nullable', 'date'],
+                'ngay_tra_file_in' => ['sometimes', 'nullable', 'date'],
                 'ngay_tra_chinh_thuc' => ['sometimes', 'nullable', 'date'],
             ]);
             $perPage = $validated['per_page'] ?? 24;
@@ -342,7 +342,7 @@ class HopDongSuDungDichVuController extends BaseApiController
     }
 
     /**
-     * Cập nhật một field trong ket_qua_hop_dong (vd. link_file_demo, link_file_goc).
+     * Cập nhật một field trong ket_qua_hop_dong (vd. link_file_in, link_file_goc).
      */
     public function capNhatKetQuaHopDong(Request $request, HopDongSuDungDichVu $hop_dong_su_dung_dich_vu): JsonResponse
     {
@@ -368,6 +368,9 @@ class HopDongSuDungDichVuController extends BaseApiController
                 abort(422, 'Không thể cập nhật trạng thái qua endpoint này.');
             }
 
+            $hauKyFileKeys = ['link_file_le', 'link_file_in'];
+            $timestampKeys = ['link_file_goc', 'link_file_le', 'link_file_in'];
+
             if ($key === 'link_file_goc') {
                 $canEditGoc = $this->userIsAdminOrCoordinator($user)
                     || HopDongSuDungDichVu::userIsDieuPhoiStaff(
@@ -377,6 +380,16 @@ class HopDongSuDungDichVuController extends BaseApiController
                     );
                 if (! $canEditGoc) {
                     abort(403, 'Bạn không có quyền cập nhật file gốc.');
+                }
+            } elseif (in_array($key, $hauKyFileKeys, true)) {
+                $status = HopDongSuDungDichVu::trangThaiDieuPhoi(
+                    $hop_dong_su_dung_dich_vu->thong_tin_dieu_phoi,
+                );
+                if ($status !== HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_HAU_KY) {
+                    abort(422, 'Chỉ được cập nhật file lẻ / file in ở bước hậu kỳ.');
+                }
+                if (! $this->userCanCapNhatFileHauKy($user, $hop_dong_su_dung_dich_vu->thong_tin_dieu_phoi)) {
+                    abort(403, 'Bạn không có quyền cập nhật file hậu kỳ.');
                 }
             } elseif (! $assigned) {
                 abort(403, 'Bạn không được gán vào công việc điều phối này.');
@@ -399,7 +412,7 @@ class HopDongSuDungDichVuController extends BaseApiController
             }
 
             $fieldUpdate = ['gia_tri' => $giaTri];
-            if ($key === 'link_file_goc') {
+            if (in_array($key, $timestampKeys, true)) {
                 $fieldUpdate['thoi_gian_up_file'] = now()->toDateTimeString();
             }
 
@@ -468,8 +481,112 @@ class HopDongSuDungDichVuController extends BaseApiController
     }
 
     /**
+     * Chuyển công việc từ hậu kỳ sang gửi in.
+     * Yêu cầu thong_tin_dieu_phoi.trang_thai_dieu_phoi = hau_ky và đã có file lẻ + file in.
+     */
+    public function chuyenGuiIn(Request $request, HopDongSuDungDichVu $hop_dong_su_dung_dich_vu): JsonResponse
+    {
+        return $this->handleApi(function () use ($request, $hop_dong_su_dung_dich_vu) {
+            $user = $request->user();
+            if (! $user) {
+                abort(401, 'Unauthenticated.');
+            }
+
+            $userId = (int) $user->id;
+            $assigned = $this->congViecCuaToiBaseQuery($userId)
+                ->where('hop_dong_su_dung_dich_vu.id', $hop_dong_su_dung_dich_vu->id)
+                ->exists();
+
+            if (! $assigned && ! $this->userIsAdminOrCoordinator($user)) {
+                abort(403, 'Bạn không được gán vào công việc điều phối này.');
+            }
+
+            $defaults = HopDongSuDungDichVu::defaultKetQuaHopDong();
+            $ketQua = is_array($hop_dong_su_dung_dich_vu->ket_qua_hop_dong)
+                ? $hop_dong_su_dung_dich_vu->ket_qua_hop_dong
+                : $defaults;
+
+            foreach ($defaults as $fieldKey => $defaultField) {
+                if (! isset($ketQua[$fieldKey]) || ! is_array($ketQua[$fieldKey])) {
+                    $ketQua[$fieldKey] = $defaultField;
+                }
+            }
+
+            $current = $this->resolveTrangThaiDieuPhoi($hop_dong_su_dung_dich_vu, $ketQua);
+            if ($current !== HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_HAU_KY) {
+                abort(422, 'Chỉ có thể chuyển gửi in khi công việc đang ở bước Hậu kỳ.');
+            }
+
+            $linkLe = trim((string) ($ketQua['link_file_le']['gia_tri'] ?? ''));
+            $linkIn = trim((string) ($ketQua['link_file_in']['gia_tri'] ?? ''));
+            if ($linkLe === '' || $linkIn === '') {
+                abort(422, 'Cần có đủ File lẻ và File in trước khi chuyển sang gửi in.');
+            }
+
+            $this->persistDieuPhoiWorkflowStatus(
+                $hop_dong_su_dung_dich_vu,
+                $ketQua,
+                HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_GUI_IN,
+            );
+
+            return response()->json(
+                $hop_dong_su_dung_dich_vu->fresh()->load(['loaiHopDong:id,ten_hop_dong,ma_hop_dong'])
+            );
+        }, 'chuyển công việc sang gửi in');
+    }
+
+    /**
+     * Chuyển công việc từ gửi in sang hoàn tất sản xuất.
+     * Yêu cầu thong_tin_dieu_phoi.trang_thai_dieu_phoi = gui_in.
+     */
+    public function chuyenHoanTatSanXuat(Request $request, HopDongSuDungDichVu $hop_dong_su_dung_dich_vu): JsonResponse
+    {
+        return $this->handleApi(function () use ($request, $hop_dong_su_dung_dich_vu) {
+            $user = $request->user();
+            if (! $user) {
+                abort(401, 'Unauthenticated.');
+            }
+
+            $userId = (int) $user->id;
+            $assigned = $this->congViecCuaToiBaseQuery($userId)
+                ->where('hop_dong_su_dung_dich_vu.id', $hop_dong_su_dung_dich_vu->id)
+                ->exists();
+
+            if (! $assigned && ! $this->userIsAdminOrCoordinator($user)) {
+                abort(403, 'Bạn không được gán vào công việc điều phối này.');
+            }
+
+            $defaults = HopDongSuDungDichVu::defaultKetQuaHopDong();
+            $ketQua = is_array($hop_dong_su_dung_dich_vu->ket_qua_hop_dong)
+                ? $hop_dong_su_dung_dich_vu->ket_qua_hop_dong
+                : $defaults;
+
+            foreach ($defaults as $fieldKey => $defaultField) {
+                if (! isset($ketQua[$fieldKey]) || ! is_array($ketQua[$fieldKey])) {
+                    $ketQua[$fieldKey] = $defaultField;
+                }
+            }
+
+            $current = $this->resolveTrangThaiDieuPhoi($hop_dong_su_dung_dich_vu, $ketQua);
+            if ($current !== HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_GUI_IN) {
+                abort(422, 'Chỉ có thể hoàn tất sản xuất khi công việc đang ở bước Gửi in.');
+            }
+
+            $this->persistDieuPhoiWorkflowStatus(
+                $hop_dong_su_dung_dich_vu,
+                $ketQua,
+                HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_HOAN_TAT_SAN_XUAT,
+            );
+
+            return response()->json(
+                $hop_dong_su_dung_dich_vu->fresh()->load(['loaiHopDong:id,ten_hop_dong,ma_hop_dong'])
+            );
+        }, 'hoàn tất sản xuất công việc');
+    }
+
+    /**
      * Gửi khách kiểm tra → ket_qua_hop_dong.trang_thai = gui_khach_kiem_tra.
-     * Yêu cầu đã có link_file_goc và link_file_demo.
+     * Yêu cầu đã có link_file_goc và link_file_in.
      */
     public function guiKhachKiemTra(Request $request, HopDongSuDungDichVu $hop_dong_su_dung_dich_vu): JsonResponse
     {
@@ -505,9 +622,9 @@ class HopDongSuDungDichVuController extends BaseApiController
             }
 
             $linkGoc = trim((string) ($ketQua['link_file_goc']['gia_tri'] ?? ''));
-            $linkDemo = trim((string) ($ketQua['link_file_demo']['gia_tri'] ?? ''));
-            if ($linkGoc === '' || $linkDemo === '') {
-                abort(422, 'Cần có đủ File gốc và File demo trước khi gửi khách kiểm tra.');
+            $linkIn = trim((string) ($ketQua['link_file_in']['gia_tri'] ?? ''));
+            if ($linkGoc === '' || $linkIn === '') {
+                abort(422, 'Cần có đủ File gốc và File in trước khi gửi khách kiểm tra.');
             }
 
             $this->persistDieuPhoiWorkflowStatus($hop_dong_su_dung_dich_vu, $ketQua, 'gui_khach_kiem_tra');
@@ -591,7 +708,6 @@ class HopDongSuDungDichVuController extends BaseApiController
 
     /**
      * Bàn giao sản phẩm → ket_qua_hop_dong.trang_thai = cho_nghiem_thu.
-     * Yêu cầu đã có link_giao_san_pham (file chính thức).
      */
     public function banGiao(Request $request, HopDongSuDungDichVu $hop_dong_su_dung_dich_vu): JsonResponse
     {
@@ -624,11 +740,6 @@ class HopDongSuDungDichVuController extends BaseApiController
             $current = $this->resolveTrangThaiDieuPhoi($hop_dong_su_dung_dich_vu, $ketQua);
             if ($current !== 'san_xuat_in_an') {
                 abort(422, 'Chỉ có thể bàn giao khi công việc đang ở bước Sản xuất & in ấn.');
-            }
-
-            $linkChinhThuc = trim((string) ($ketQua['link_giao_san_pham']['gia_tri'] ?? ''));
-            if ($linkChinhThuc === '') {
-                abort(422, 'Cần có File chính thức trước khi bàn giao.');
             }
 
             $this->persistDieuPhoiWorkflowStatus($hop_dong_su_dung_dich_vu, $ketQua, 'cho_nghiem_thu');
@@ -1456,6 +1567,10 @@ class HopDongSuDungDichVuController extends BaseApiController
             return HopDongSuDungDichVu::DIEU_PHOI_TIEN_KY_STAFF_KEYS;
         }
 
+        if ($tab === 'hau_ky') {
+            return HopDongSuDungDichVu::DIEU_PHOI_HAU_KY_STAFF_KEYS;
+        }
+
         return HopDongSuDungDichVu::DIEU_PHOI_STAFF_KEYS;
     }
 
@@ -1470,8 +1585,7 @@ class HopDongSuDungDichVuController extends BaseApiController
             return true;
         }
 
-        $user->loadMissing('nhanVien.vaiTro');
-        $ten = mb_strtolower(trim((string) ($user->nhanVien?->vaiTro?->ten_vai_tro ?? '')), 'UTF-8');
+        $ten = $this->userVaiTroTen($user);
         if ($ten === '') {
             return false;
         }
@@ -1481,12 +1595,59 @@ class HopDongSuDungDichVuController extends BaseApiController
             || str_contains($ten, 'dieu phoi');
     }
 
+    private function userVaiTroTen($user): string
+    {
+        if (! $user) {
+            return '';
+        }
+
+        $user->loadMissing('nhanVien.vaiTro');
+
+        return mb_strtolower(trim((string) ($user->nhanVien?->vaiTro?->ten_vai_tro ?? '')), 'UTF-8');
+    }
+
+    /** Tài khoản thợ edit / thợ dựng video / thợ hậu kỳ. */
+    private function userHasHauKyJobRole($user): bool
+    {
+        $ten = $this->userVaiTroTen($user);
+        if ($ten === '') {
+            return false;
+        }
+
+        return str_contains($ten, 'thợ edit')
+            || str_contains($ten, 'tho edit')
+            || str_contains($ten, 'dựng video')
+            || str_contains($ten, 'dung video')
+            || str_contains($ten, 'thợ dựng')
+            || str_contains($ten, 'hậu kỳ')
+            || str_contains($ten, 'hau ky')
+            || (bool) preg_match('/\beditor\b/u', $ten);
+    }
+
+    private function userCanCapNhatFileHauKy($user, mixed $thongTinDieuPhoi): bool
+    {
+        if ($this->userIsAdminOrCoordinator($user) || $this->userHasHauKyJobRole($user)) {
+            return true;
+        }
+
+        $userId = (int) ($user->id ?? 0);
+        if ($userId <= 0) {
+            return false;
+        }
+
+        return HopDongSuDungDichVu::userIsDieuPhoiStaff(
+            $thongTinDieuPhoi,
+            $userId,
+            HopDongSuDungDichVu::DIEU_PHOI_HAU_KY_STAFF_KEYS,
+        );
+    }
+
     /**
-     * Tiền kỳ: admin/coordinator xem mọi HĐ ở bước này; nhân sự khác lọc theo thợ.
+     * Tiền kỳ / hậu kỳ: admin/coordinator xem mọi HĐ ở bước này; nhân sự khác lọc theo thợ.
      */
     private function applyStaffFilterForTab($query, int $userId, string $tab, $user): void
     {
-        if ($tab === 'tien_ky' && $this->userIsAdminOrCoordinator($user)) {
+        if (in_array($tab, ['tien_ky', 'hau_ky', 'gui_in'], true) && $this->userIsAdminOrCoordinator($user)) {
             return;
         }
 
@@ -1523,7 +1684,7 @@ class HopDongSuDungDichVuController extends BaseApiController
             $query->where('loai_hop_dong_id', $loaiHopDongId);
         }
 
-        $dateFields = ['ngay_chup', 'ngay_tra_demo', 'ngay_tra_chinh_thuc'];
+        $dateFields = ['ngay_chup', 'ngay_tra_file_in', 'ngay_tra_chinh_thuc'];
         foreach ($dateFields as $field) {
             $value = $filters[$field] ?? null;
             if ($value === null || $value === '') {
@@ -1652,7 +1813,7 @@ class HopDongSuDungDichVuController extends BaseApiController
      */
     private function applyDieuPhoiDateRangeFilter($query, string $field, ?string $from, ?string $to): void
     {
-        $allowed = ['ngay_chup', 'ngay_tra_demo', 'ngay_tra_chinh_thuc'];
+        $allowed = ['ngay_chup', 'ngay_tra_file_in', 'ngay_tra_chinh_thuc'];
         if (! in_array($field, $allowed, true)) {
             return;
         }
@@ -1739,7 +1900,7 @@ class HopDongSuDungDichVuController extends BaseApiController
      */
     private function dieuPhoiDateJsonPaths(string $field): array
     {
-        if (in_array($field, ['ngay_tra_demo', 'ngay_tra_chinh_thuc'], true)) {
+        if (in_array($field, ['ngay_tra_file_in', 'ngay_tra_chinh_thuc'], true)) {
             return ["$.{$field}"];
         }
 
@@ -1752,7 +1913,7 @@ class HopDongSuDungDichVuController extends BaseApiController
     private function applyDieuPhoiDateEqualsFilter($query, string $field, string $date): void
     {
         $date = substr($date, 0, 10);
-        $allowed = ['ngay_chup', 'ngay_tra_demo', 'ngay_tra_chinh_thuc'];
+        $allowed = ['ngay_chup', 'ngay_tra_file_in', 'ngay_tra_chinh_thuc'];
         if (! in_array($field, $allowed, true)) {
             return;
         }

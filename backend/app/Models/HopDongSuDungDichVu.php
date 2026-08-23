@@ -50,12 +50,21 @@ class HopDongSuDungDichVu extends Model
     /** Nhân sự tiền kỳ: thợ chụp / thợ make / quay phim. */
     public const DIEU_PHOI_TIEN_KY_STAFF_KEYS = ['tho_chup', 'tho_make', 'quay_phim'];
 
+    /** Nhân sự hậu kỳ: thợ edit / thợ dựng video. */
+    public const DIEU_PHOI_HAU_KY_STAFF_KEYS = ['tho_edit', 'tho_dung_video'];
+
     /** Trạng thái workflow điều phối, lưu ở envelope thong_tin_dieu_phoi. */
     public const TRANG_THAI_DIEU_PHOI_KEY = 'trang_thai_dieu_phoi';
 
     public const TRANG_THAI_DIEU_PHOI_CHO_NHAN = 'cho_nhan';
 
     public const TRANG_THAI_DIEU_PHOI_TIEN_KY = 'tien_ky';
+
+    public const TRANG_THAI_DIEU_PHOI_HAU_KY = 'hau_ky';
+
+    public const TRANG_THAI_DIEU_PHOI_GUI_IN = 'gui_in';
+
+    public const TRANG_THAI_DIEU_PHOI_HOAN_TAT_SAN_XUAT = 'hoan_tat_san_xuat';
 
     public const TRANG_THAI_DIEU_PHOI_LATER = [
         'hau_ky',
@@ -107,10 +116,17 @@ class HopDongSuDungDichVu extends Model
                 'mo_ta' => null,
                 'gia_tri' => null,
             ],
-            'link_file_demo' => [
-                'ten' => 'Link file demo',
+            'link_file_le' => [
+                'ten' => 'Link file lẻ',
                 'mo_ta' => null,
                 'gia_tri' => null,
+                'thoi_gian_up_file' => null,
+            ],
+            'link_file_in' => [
+                'ten' => 'Link file in',
+                'mo_ta' => null,
+                'gia_tri' => null,
+                'thoi_gian_up_file' => null,
             ],
             'link_file_goc' => [
                 'ten' => 'Link file gốc',

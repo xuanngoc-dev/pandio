@@ -4,13 +4,13 @@
       <template v-if="dieuPhoiFields.length">
         <CustomRow :gutter="16" class="shared-date-row">
           <CustomCol v-bind="sharedDateColProps">
-            <CustomFormItem label="Ngày trả demo" prop="ngay_tra_demo">
+            <CustomFormItem label="Ngày trả file in" prop="ngay_tra_file_in">
               <el-date-picker
-                v-model="formModel.ngay_tra_demo"
+                v-model="formModel.ngay_tra_file_in"
                 type="date"
                 format="DD/MM/YYYY"
                 value-format="YYYY-MM-DD"
-                placeholder="Chọn ngày trả demo"
+                placeholder="Chọn ngày trả file in"
                 :disabled-date="disabledPastDate"
                 style="width: 100%"
                 clearable
@@ -175,7 +175,7 @@ let sessionUid = 0
 
 const formModel = reactive({
   sessions: [],
-  ngay_tra_demo: null,
+  ngay_tra_file_in: null,
   ngay_tra_chinh_thuc: null,
 })
 
@@ -427,12 +427,12 @@ function cancelRename() {
 
 function hydrateSharedDatesFromForm() {
   const raw = props.form?.thong_tin_dieu_phoi
-  formModel.ngay_tra_demo = firstDieuPhoiGiaTri(raw, 'ngay_tra_demo')
+  formModel.ngay_tra_file_in = firstDieuPhoiGiaTri(raw, 'ngay_tra_file_in')
   formModel.ngay_tra_chinh_thuc = firstDieuPhoiGiaTri(raw, 'ngay_tra_chinh_thuc')
 }
 
 function resetSharedDates() {
-  formModel.ngay_tra_demo = null
+  formModel.ngay_tra_file_in = null
   formModel.ngay_tra_chinh_thuc = null
 }
 
@@ -555,7 +555,7 @@ function getDieuPhoiPayload(existing = null) {
       : props.form?.thong_tin_dieu_phoi
 
   const sharedDates = {
-    ngay_tra_demo: formModel.ngay_tra_demo,
+    ngay_tra_file_in: formModel.ngay_tra_file_in,
     ngay_tra_chinh_thuc: formModel.ngay_tra_chinh_thuc,
   }
 

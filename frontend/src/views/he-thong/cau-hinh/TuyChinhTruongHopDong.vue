@@ -613,7 +613,7 @@ const DEFAULT_DIEU_PHOI_FIELDS = [
     gia_tri_toi_thieu: SO_DIEM_CHUP_MIN,
     gia_tri_toi_da: SO_DIEM_CHUP_MAX,
   },
-  { key: 'ngay_tra_demo', ten_thong_tin: 'Ngày trả demo', loai_du_lieu: 'date' },
+  { key: 'ngay_tra_file_in', ten_thong_tin: 'Ngày trả file in', loai_du_lieu: 'date' },
   { key: 'ngay_tra_chinh_thuc', ten_thong_tin: 'Ngày trả chính thức', loai_du_lieu: 'date' },
   { key: 'dia_diem_chup', ten_thong_tin: 'Địa điểm chụp', loai_du_lieu: 'string' },
   { key: 'tho_chup', ten_thong_tin: 'Thợ chụp', loai_du_lieu: 'array' },

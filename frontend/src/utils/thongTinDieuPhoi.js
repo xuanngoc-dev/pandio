@@ -92,15 +92,15 @@ export const LICH_QUAY_CHUP_KEYS = [
   'gio_chup',
   'ngay_chup',
   'so_diem_chup',
-  'ngay_tra_demo',
+  'ngay_tra_file_in',
   'ngay_tra_chinh_thuc',
   'dia_diem_chup',
   'ghi_chu_trang_phuc_phu_kien',
   'ghi_chu_dieu_phoi',
 ]
 
-/** Ngày trả demo / chính thức dùng chung cho mọi buổi chụp */
-export const SHARED_LICH_QUAY_CHUP_KEYS = ['ngay_tra_demo', 'ngay_tra_chinh_thuc']
+/** Ngày trả file in / chính thức dùng chung cho mọi buổi chụp */
+export const SHARED_LICH_QUAY_CHUP_KEYS = ['ngay_tra_file_in', 'ngay_tra_chinh_thuc']
 
 export function isSharedLichQuayChupKey(key) {
   return SHARED_LICH_QUAY_CHUP_KEYS.includes(String(key || ''))
@@ -129,14 +129,14 @@ export function isDieuPhoiSessionMap(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }
 
-/** Payload chuẩn: { ngay_tra_demo, ngay_tra_chinh_thuc, trang_thai_dieu_phoi, danh_sach_buoi_chup } */
+/** Payload chuẩn: { ngay_tra_file_in, ngay_tra_chinh_thuc, trang_thai_dieu_phoi, danh_sach_buoi_chup } */
 export function isDieuPhoiEnvelope(value) {
   return isDieuPhoiSessionMap(value) && Array.isArray(value[DANH_SACH_BUOI_CHUP_KEY])
 }
 
 export function emptyDieuPhoiEnvelope() {
   return {
-    ngay_tra_demo: '',
+    ngay_tra_file_in: '',
     ngay_tra_chinh_thuc: '',
     [TRANG_THAI_DIEU_PHOI_KEY]: '',
     [DANH_SACH_BUOI_CHUP_KEY]: [],
@@ -275,7 +275,7 @@ export function collectDieuPhoiGiaTri(raw, fieldKey) {
   return result
 }
 
-/** Lấy gia_tri đầu tiên của field dùng chung (ngày trả demo / chính thức). */
+/** Lấy gia_tri đầu tiên của field dùng chung (ngày trả file in / chính thức). */
 export function firstDieuPhoiGiaTri(raw, fieldKey) {
   const values = collectDieuPhoiGiaTri(raw, fieldKey)
   return values.length ? values[0] : null
@@ -320,17 +320,17 @@ export function mergeDieuPhoiSessions(existingRaw, nextSessions) {
 }
 
 export function buildDieuPhoiEnvelope(existingRaw, nextSessions, sharedDates = {}) {
-  const ngayTraDemo =
-    sharedDates.ngay_tra_demo !== undefined
-      ? sharedDates.ngay_tra_demo
-      : firstDieuPhoiGiaTri(existingRaw, 'ngay_tra_demo')
+  const ngayTraFileIn =
+    sharedDates.ngay_tra_file_in !== undefined
+      ? sharedDates.ngay_tra_file_in
+      : firstDieuPhoiGiaTri(existingRaw, 'ngay_tra_file_in')
   const ngayTraChinhThuc =
     sharedDates.ngay_tra_chinh_thuc !== undefined
       ? sharedDates.ngay_tra_chinh_thuc
       : firstDieuPhoiGiaTri(existingRaw, 'ngay_tra_chinh_thuc')
 
   return {
-    ngay_tra_demo: normalizeSharedDieuPhoiDate(ngayTraDemo),
+    ngay_tra_file_in: normalizeSharedDieuPhoiDate(ngayTraFileIn),
     ngay_tra_chinh_thuc: normalizeSharedDieuPhoiDate(ngayTraChinhThuc),
     [TRANG_THAI_DIEU_PHOI_KEY]:
       sharedDates[TRANG_THAI_DIEU_PHOI_KEY] !== undefined

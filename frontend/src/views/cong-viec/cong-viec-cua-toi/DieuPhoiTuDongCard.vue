@@ -45,7 +45,7 @@
       </div>
       <div v-if="ngayTraDemo" class="cong-viec-card__row">
         <span class="label">
-          Ngày trả demo
+          Ngày trả file in
           <CustomTooltip
             v-if="trangThaiGiaoDemo"
             :content="trangThaiGiaoDemo.tooltip"
@@ -189,6 +189,41 @@
           </span>
         </CustomTooltip>
         <CustomTooltip
+          v-if="showChuyenGuiIn"
+          :content="
+            canChuyenGuiIn
+              ? 'Chuyển sang gửi in'
+              : 'Cần có đủ File lẻ và File in trước khi chuyển sang gửi in'
+          "
+          placement="top"
+        >
+          <span class="cong-viec-card__footer-btn-wrap">
+            <CustomButton
+              type="primary"
+              circle
+              size="small"
+              :icon="Printer"
+              :disabled="!canChuyenGuiIn"
+              :loading="movingGuiIn"
+              @click.stop="onChuyenGuiIn"
+            />
+          </span>
+        </CustomTooltip>
+        <CustomTooltip
+          v-if="showHoanTatSanXuat"
+          content="Hoàn tất sản xuất"
+          placement="top"
+        >
+          <CustomButton
+            type="success"
+            circle
+            size="small"
+            :icon="CircleCheckFilled"
+            :loading="movingHoanTatSanXuat"
+            @click.stop="onHoanTatSanXuat"
+          />
+        </CustomTooltip>
+        <CustomTooltip
           v-if="showYKienIcon"
           content="Xem ý kiến khách hàng"
           placement="top"
@@ -216,7 +251,7 @@
           :content="
             canGuiKhachKiemTra
               ? 'Gửi khách kiểm tra'
-              : 'Cần có đủ File gốc và File lẻ'
+              : 'Cần có đủ File gốc và File in'
           "
           placement="top"
         >
@@ -234,24 +269,17 @@
         </CustomTooltip>
         <CustomTooltip
           v-if="showBanGiaoFooter"
-          :content="
-            canBanGiao
-              ? 'Bàn giao sản phẩm'
-              : 'Cần có File in trước khi bàn giao'
-          "
+          content="Bàn giao sản phẩm"
           placement="top"
         >
-          <span class="cong-viec-card__footer-btn-wrap">
-            <CustomButton
-              type="success"
-              circle
-              size="small"
-              :icon="Finished"
-              :disabled="!canBanGiao"
-              :loading="banningGiao"
-              @click.stop="onBanGiao"
-            />
-          </span>
+          <CustomButton
+            type="success"
+            circle
+            size="small"
+            :icon="Finished"
+            :loading="banningGiao"
+            @click.stop="onBanGiao"
+          />
         </CustomTooltip>
       </div>
     </div>
@@ -308,12 +336,14 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { ChatDotRound, CircleCheckFilled, Edit, Finished, Plus, Promotion, Right, Select, View, WarningFilled } from '@element-plus/icons-vue'
+import { ChatDotRound, CircleCheckFilled, Edit, Finished, Plus, Printer, Promotion, Right, Select, View, WarningFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   banGiaoCongViec,
   capNhatKetQuaHopDong,
+  chuyenGuiInCongViec,
   chuyenHauKyCongViec,
+  chuyenHoanTatSanXuatCongViec,
   guiKhachKiemTra,
   nhanCongViecDieuPhoi,
 } from '@/api/hopDongSuDungDichVu'
@@ -355,8 +385,8 @@ const TRANG_THAI_OPTIONS = [
 
 const FILE_LINK_DEFS = [
   { key: 'link_file_goc', label: 'File gốc' },
-  { key: 'link_file_demo', label: 'File lẻ' },
-  { key: 'link_giao_san_pham', label: 'File in' },
+  { key: 'link_file_le', label: 'File lẻ' },
+  { key: 'link_file_in', label: 'File in' },
 ]
 
 const props = defineProps({
@@ -377,6 +407,8 @@ const accepting = ref(false)
 const sendingKhach = ref(false)
 const banningGiao = ref(false)
 const movingHauKy = ref(false)
+const movingGuiIn = ref(false)
+const movingHoanTatSanXuat = ref(false)
 const linkModalVisible = ref(false)
 const linkModalField = ref(null)
 const linkInput = ref('')
@@ -422,26 +454,31 @@ const hasLinkFileGoc = computed(() => {
   return giaTri != null && String(giaTri).trim() !== ''
 })
 
-const hasLinkFileDemo = computed(() => {
-  const giaTri = ketQua.value?.link_file_demo?.gia_tri
+const hasLinkFileLe = computed(() => {
+  const giaTri = ketQua.value?.link_file_le?.gia_tri
   return giaTri != null && String(giaTri).trim() !== ''
 })
 
-const hasLinkFileChinhThuc = computed(() => {
-  const giaTri = ketQua.value?.link_giao_san_pham?.gia_tri
+const hasLinkFileIn = computed(() => {
+  const giaTri = ketQua.value?.link_file_in?.gia_tri
   return giaTri != null && String(giaTri).trim() !== ''
 })
 
 const canGuiKhachKiemTra = computed(
-  () => showGuiKhachFooter.value && hasLinkFileGoc.value && hasLinkFileDemo.value,
+  () => showGuiKhachFooter.value && hasLinkFileGoc.value && hasLinkFileIn.value,
 )
 
-const canBanGiao = computed(
-  () => showBanGiaoFooter.value && hasLinkFileChinhThuc.value,
-)
+const canBanGiao = computed(() => showBanGiaoFooter.value)
 
 const showChuyenHauKy = computed(() => props.step === 'tien_ky')
 const canChuyenHauKy = computed(() => showChuyenHauKy.value && hasLinkFileGoc.value)
+
+const showChuyenGuiIn = computed(() => props.step === 'hau_ky')
+const canChuyenGuiIn = computed(
+  () => showChuyenGuiIn.value && hasLinkFileLe.value && hasLinkFileIn.value,
+)
+
+const showHoanTatSanXuat = computed(() => props.step === 'gui_in')
 
 const yKienKhachHang = computed(() => {
   const giaTri = ketQua.value?.y_kien_khach_hang?.gia_tri
@@ -459,18 +496,27 @@ function canEditFile(field) {
   if (props.step === 'tien_ky') {
     return field?.key === 'link_file_goc' && canManageFileGocTienKy.value
   }
-  if (props.step === 'dang_xu_ly') return true
-  if (props.step === 'san_xuat_in_an') {
-    return field?.key === 'link_giao_san_pham'
+  if (props.step === 'hau_ky') {
+    return (
+      (field?.key === 'link_file_le' || field?.key === 'link_file_in') &&
+      canManageFileHauKy.value
+    )
   }
   return false
 }
 
 const fileLinkFields = computed(() => {
-  const defs =
-    props.step === 'tien_ky'
-      ? FILE_LINK_DEFS.filter((def) => def.key === 'link_file_goc')
-      : FILE_LINK_DEFS
+  let defs = FILE_LINK_DEFS
+  if (props.step === 'tien_ky') {
+    defs = FILE_LINK_DEFS.filter((def) => def.key === 'link_file_goc')
+  } else if (props.step === 'hau_ky') {
+    defs = FILE_LINK_DEFS.filter(
+      (def) =>
+        def.key === 'link_file_goc' ||
+        def.key === 'link_file_le' ||
+        def.key === 'link_file_in',
+    )
+  }
   return defs.map((def) => {
     const giaTri = ketQua.value?.[def.key]?.gia_tri
     const url =
@@ -515,7 +561,7 @@ const thoiGianChupItems = computed(() =>
 )
 
 const ngayTraDemo = computed(() =>
-  collectDieuPhoiGiaTri(props.item?.thong_tin_dieu_phoi, 'ngay_tra_demo')
+  collectDieuPhoiGiaTri(props.item?.thong_tin_dieu_phoi, 'ngay_tra_file_in')
     .map((item) => formatDate(item))
     .filter(Boolean)
     .join(', '),
@@ -541,11 +587,11 @@ const trangThaiChup = computed(() =>
 const trangThaiGiaoDemo = computed(() =>
   buildDeadlineStatus({
     dateValue: earliestDate(
-      collectDieuPhoiGiaTri(props.item?.thong_tin_dieu_phoi, 'ngay_tra_demo'),
+      collectDieuPhoiGiaTri(props.item?.thong_tin_dieu_phoi, 'ngay_tra_file_in'),
     ),
-    hasFile: hasLinkFileDemo.value,
-    lateLabel: 'Trễ giao demo',
-    okLabel: 'Đúng hạn giao demo',
+    hasFile: hasLinkFileIn.value,
+    lateLabel: 'Trễ giao file in',
+    okLabel: 'Đúng hạn giao file in',
   }),
 )
 
@@ -554,7 +600,7 @@ const trangThaiBanGiao = computed(() =>
     dateValue: earliestDate(
       collectDieuPhoiGiaTri(props.item?.thong_tin_dieu_phoi, 'ngay_tra_chinh_thuc'),
     ),
-    hasFile: hasLinkFileChinhThuc.value,
+    hasFile: hasLinkFileIn.value,
     lateLabel: 'Trễ bàn giao',
     okLabel: 'Đúng hạn bàn giao',
   }),
@@ -573,12 +619,39 @@ const vaiTroLabels = computed(() => {
   return roles
 })
 
+function toAscii(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
+function getVaiTroTen(user) {
+  return String(
+    user?.nhan_vien?.vai_tro?.ten_vai_tro ||
+      user?.nhanVien?.vaiTro?.ten_vai_tro ||
+      user?.nhan_vien?.vaiTro?.ten_vai_tro ||
+      user?.nhanVien?.vai_tro?.ten_vai_tro ||
+      '',
+  )
+}
+
+function toStaffId(value) {
+  if (value == null || value === '') return null
+  if (typeof value === 'object') {
+    const id = value.id ?? value.user_id ?? value.userId
+    return id == null || id === '' ? null : Number(id)
+  }
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
+}
+
 function isAdminOrCoordinator(user) {
   const role = String(user?.role || '').toLowerCase()
   if (role === 'admin' || role === 'coordinator') return true
-  const ten = String(user?.nhan_vien?.vai_tro?.ten_vai_tro || '').toLowerCase()
+  const ten = getVaiTroTen(user).toLowerCase()
   if (!ten) return false
-  const ascii = ten.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  const ascii = toAscii(ten)
   return (
     ten.includes('coordinator') ||
     ascii.includes('coordinator') ||
@@ -587,12 +660,25 @@ function isAdminOrCoordinator(user) {
   )
 }
 
+function userHasHauKyJobRole(user) {
+  const ten = getVaiTroTen(user).toLowerCase()
+  if (!ten) return false
+  const ascii = toAscii(ten)
+  return (
+    ascii.includes('tho edit') ||
+    /\beditor\b/.test(ascii) ||
+    ascii.includes('dung video') ||
+    ascii.includes('tho dung') ||
+    ascii.includes('hau ky')
+  )
+}
+
 function userHasStaffRole(...keys) {
-  const userId = authStore.user?.id
-  if (userId == null) return false
+  const userId = Number(authStore.user?.id)
+  if (!Number.isFinite(userId)) return false
   return keys.some((key) =>
     collectDieuPhoiGiaTri(props.item?.thong_tin_dieu_phoi, key).some(
-      (id) => Number(id) === Number(userId),
+      (id) => toStaffId(id) === userId,
     ),
   )
 }
@@ -602,6 +688,12 @@ const canManageFileGocTienKy = computed(
     isAdminOrCoordinator(authStore.user) ||
     userHasStaffRole('tho_chup', 'quay_phim'),
 )
+
+const canManageFileHauKy = computed(() => {
+  const user = authStore.user
+  if (isAdminOrCoordinator(user) || userHasHauKyJobRole(user)) return true
+  return userHasStaffRole('tho_edit', 'tho_dung_video')
+})
 
 function getThongTin(row) {
   const info = row?.thong_tin_hop_dong
@@ -729,6 +821,7 @@ function normalizeUrl(url) {
 }
 
 function openLinkModal(field) {
+  if (!canEditFile(field)) return
   linkModalField.value = field
   linkInput.value = field.url || ''
   linkModalVisible.value = true
@@ -737,6 +830,10 @@ function openLinkModal(field) {
 async function saveLink() {
   const field = linkModalField.value
   if (!field) return
+  if (!canEditFile(field)) {
+    ElMessage.error('Bạn không có quyền cập nhật file này.')
+    return
+  }
 
   const value = String(linkInput.value || '').trim()
   if (!value) {
@@ -825,6 +922,70 @@ async function onChuyenHauKy() {
     ElMessage.error(msg)
   } finally {
     movingHauKy.value = false
+  }
+}
+
+async function onChuyenGuiIn() {
+  if (!canChuyenGuiIn.value) return
+
+  try {
+    await ElMessageBox.confirm(
+      `Chuyển hợp đồng ${props.item.ma_hop_dong || ''} sang gửi in?`,
+      'Chuyển sang gửi in',
+      {
+        type: 'info',
+        confirmButtonText: 'Chuyển',
+        cancelButtonText: 'Hủy',
+      },
+    )
+  } catch {
+    return
+  }
+
+  movingGuiIn.value = true
+  try {
+    await chuyenGuiInCongViec(props.item.id)
+    ElMessage.success('Đã chuyển sang gửi in')
+    emit('status-changed')
+  } catch (error) {
+    const msg =
+      error?.response?.data?.message ||
+      error?.message ||
+      'Không thể chuyển sang gửi in'
+    ElMessage.error(msg)
+  } finally {
+    movingGuiIn.value = false
+  }
+}
+
+async function onHoanTatSanXuat() {
+  try {
+    await ElMessageBox.confirm(
+      `Hoàn tất sản xuất hợp đồng ${props.item.ma_hop_dong || ''}?`,
+      'Hoàn tất sản xuất',
+      {
+        type: 'info',
+        confirmButtonText: 'Đồng ý',
+        cancelButtonText: 'Hủy',
+      },
+    )
+  } catch {
+    return
+  }
+
+  movingHoanTatSanXuat.value = true
+  try {
+    await chuyenHoanTatSanXuatCongViec(props.item.id)
+    ElMessage.success('Đã chuyển sang hoàn tất sản xuất')
+    emit('status-changed')
+  } catch (error) {
+    const msg =
+      error?.response?.data?.message ||
+      error?.message ||
+      'Không thể hoàn tất sản xuất'
+    ElMessage.error(msg)
+  } finally {
+    movingHoanTatSanXuat.value = false
   }
 }
 

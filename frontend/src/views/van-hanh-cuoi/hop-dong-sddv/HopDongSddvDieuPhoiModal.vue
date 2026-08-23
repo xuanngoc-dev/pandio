@@ -26,13 +26,13 @@
       >
         <CustomRow :gutter="16" class="shared-date-row">
           <CustomCol v-bind="sharedDateColProps">
-            <CustomFormItem label="Ngày trả demo" prop="ngay_tra_demo">
+            <CustomFormItem label="Ngày trả file in" prop="ngay_tra_file_in">
               <el-date-picker
-                v-model="formModel.ngay_tra_demo"
+                v-model="formModel.ngay_tra_file_in"
                 type="date"
                 format="DD/MM/YYYY"
                 value-format="YYYY-MM-DD"
-                placeholder="Chọn ngày trả demo"
+                placeholder="Chọn ngày trả file in"
                 :disabled-date="disabledPastDate"
                 style="width: 100%"
                 clearable
@@ -147,7 +147,7 @@ import HopDongSddvDieuPhoiSessionFields from './HopDongSddvDieuPhoiSessionFields
 
 const REQUIRED_DATE_KEYS = new Set([
   'ngay_chup',
-  'ngay_tra_demo',
+  'ngay_tra_file_in',
   'ngay_tra_chinh_thuc',
 ])
 
@@ -177,7 +177,7 @@ let sessionUid = 0
 
 const formModel = reactive({
   sessions: [],
-  ngay_tra_demo: null,
+  ngay_tra_file_in: null,
   ngay_tra_chinh_thuc: null,
 })
 
@@ -377,7 +377,7 @@ async function loadData() {
   fields.value = []
   fieldMeta.value = {}
   formModel.sessions = []
-  formModel.ngay_tra_demo = null
+  formModel.ngay_tra_file_in = null
   formModel.ngay_tra_chinh_thuc = null
   hopDong.value = null
   activeSessionName.value = ''
@@ -409,7 +409,7 @@ async function loadData() {
       MAX_LICH_QUAY_CHUP,
     )
     formModel.sessions = savedSessions.map((item, index) => sessionFromSaved(item, index))
-    formModel.ngay_tra_demo = firstDieuPhoiGiaTri(hopDong.value?.thong_tin_dieu_phoi, 'ngay_tra_demo')
+    formModel.ngay_tra_file_in = firstDieuPhoiGiaTri(hopDong.value?.thong_tin_dieu_phoi, 'ngay_tra_file_in')
     formModel.ngay_tra_chinh_thuc = firstDieuPhoiGiaTri(
       hopDong.value?.thong_tin_dieu_phoi,
       'ngay_tra_chinh_thuc',
@@ -420,7 +420,7 @@ async function loadData() {
     userOptions.value = []
     loaiQuayChupOptions.value = []
     formModel.sessions = []
-    formModel.ngay_tra_demo = null
+    formModel.ngay_tra_file_in = null
     formModel.ngay_tra_chinh_thuc = null
     activeSessionName.value = ''
   } finally {
@@ -460,7 +460,7 @@ function buildPayload() {
 
   return withTienKyIfStaffAssigned(
     buildDieuPhoiEnvelope(hopDong.value?.thong_tin_dieu_phoi, built, {
-      ngay_tra_demo: formModel.ngay_tra_demo,
+      ngay_tra_file_in: formModel.ngay_tra_file_in,
       ngay_tra_chinh_thuc: formModel.ngay_tra_chinh_thuc,
     }),
   )
@@ -516,7 +516,7 @@ function onClosed() {
   fields.value = []
   fieldMeta.value = {}
   formModel.sessions = []
-  formModel.ngay_tra_demo = null
+  formModel.ngay_tra_file_in = null
   formModel.ngay_tra_chinh_thuc = null
   hopDong.value = null
   userOptions.value = []

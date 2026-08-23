@@ -58,7 +58,7 @@ export function fetchLichChupMakeChiTiet(params = {}) {
  *   keyword?: string,
  *   loai_hop_dong_id?: number,
  *   ngay_chup?: string,
- *   ngay_tra_demo?: string,
+ *   ngay_tra_file_in?: string,
  *   ngay_tra_chinh_thuc?: string,
  * }} params
  */
@@ -75,8 +75,8 @@ export function nhanCongViecDieuPhoi(id) {
 }
 
 /**
- * Cập nhật một field trong ket_qua_hop_dong (link_file_demo, link_file_goc, ...).
- * File gốc: đồng thời ghi thoi_gian_up_file.
+ * Cập nhật một field trong ket_qua_hop_dong (link_file_in, link_file_goc, ...).
+ * File gốc / file lẻ / file in: đồng thời ghi thoi_gian_up_file.
  * @param {number|string} id
  * @param {{ key: string, gia_tri: string }} payload
  */
@@ -90,6 +90,22 @@ export function capNhatKetQuaHopDong(id, payload) {
  */
 export function chuyenHauKyCongViec(id) {
   return api.post(`/hop-dong-su-dung-dich-vu/${id}/chuyen-hau-ky`)
+}
+
+/**
+ * Chuyển công việc từ hậu kỳ sang gửi in.
+ * @param {number|string} id
+ */
+export function chuyenGuiInCongViec(id) {
+  return api.post(`/hop-dong-su-dung-dich-vu/${id}/chuyen-gui-in`)
+}
+
+/**
+ * Chuyển công việc từ gửi in sang hoàn tất sản xuất.
+ * @param {number|string} id
+ */
+export function chuyenHoanTatSanXuatCongViec(id) {
+  return api.post(`/hop-dong-su-dung-dich-vu/${id}/chuyen-hoan-tat-san-xuat`)
 }
 
 /**

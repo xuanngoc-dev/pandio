@@ -46,9 +46,9 @@
         </CustomCol>
         <CustomCol :xs="12" :sm="12" :md="8" :lg="4">
           <el-date-picker
-            v-model="filters.ngay_tra_demo"
+            v-model="filters.ngay_tra_file_in"
             type="date"
-            placeholder="Ngày trả demo"
+            placeholder="Ngày trả file in"
             format="DD/MM/YYYY"
             value-format="YYYY-MM-DD"
             style="width: 100%"
@@ -172,7 +172,7 @@ const filters = reactive({
   keyword: '',
   loai_hop_dong_id: null,
   ngay_chup: '',
-  ngay_tra_demo: '',
+  ngay_tra_file_in: '',
   ngay_tra_chinh_thuc: '',
 })
 
@@ -216,7 +216,7 @@ async function loadItems() {
       keyword: filters.keyword.trim() || undefined,
       loai_hop_dong_id: filters.loai_hop_dong_id || undefined,
       ngay_chup: filters.ngay_chup || undefined,
-      ngay_tra_demo: filters.ngay_tra_demo || undefined,
+      ngay_tra_file_in: filters.ngay_tra_file_in || undefined,
       ngay_tra_chinh_thuc: filters.ngay_tra_chinh_thuc || undefined,
     })
     items.value = data.data || []
