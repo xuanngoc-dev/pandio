@@ -47,12 +47,20 @@ class HopDongSuDungDichVu extends Model
     /** Field nhân sự nội bộ trong từng buổi (gia_tri = mảng user id). */
     public const DIEU_PHOI_STAFF_KEYS = ['tho_chup', 'tho_make', 'tho_edit', 'quay_phim', 'tho_dung_video'];
 
+    /** Nhân sự tiền kỳ: thợ chụp / thợ make / quay phim. */
+    public const DIEU_PHOI_TIEN_KY_STAFF_KEYS = ['tho_chup', 'tho_make', 'quay_phim'];
+
     /** Trạng thái workflow điều phối, lưu ở envelope thong_tin_dieu_phoi. */
     public const TRANG_THAI_DIEU_PHOI_KEY = 'trang_thai_dieu_phoi';
 
     public const TRANG_THAI_DIEU_PHOI_CHO_NHAN = 'cho_nhan';
 
+    public const TRANG_THAI_DIEU_PHOI_TIEN_KY = 'tien_ky';
+
     public const TRANG_THAI_DIEU_PHOI_LATER = [
+        'hau_ky',
+        'gui_in',
+        'hoan_tat_san_xuat',
         'dang_xu_ly',
         'gui_khach_kiem_tra',
         'san_xuat_in_an',
@@ -108,6 +116,7 @@ class HopDongSuDungDichVu extends Model
                 'ten' => 'Link file gốc',
                 'mo_ta' => null,
                 'gia_tri' => null,
+                'thoi_gian_up_file' => null,
             ],
             'link_giao_san_pham' => [
                 'ten' => 'Link giao sản phẩm',
@@ -216,7 +225,7 @@ class HopDongSuDungDichVu extends Model
     }
 
     /**
-     * Hợp đồng đã gán thợ nội bộ (tho_chup / tho_make / tho_edit / quay_phim / tho_dung_video) ở bất kỳ buổi nào.
+     * Hợp đồng đã gán thợ nội bộ hoặc thợ ngoài ở bất kỳ buổi nào.
      */
     public static function hasAssignedDieuPhoiStaff(mixed $raw): bool
     {
@@ -227,12 +236,37 @@ class HopDongSuDungDichVu extends Model
                     if ($value !== null && $value !== '') {
                         return true;
                     }
-
-                    continue;
+                } else {
+                    foreach ($value as $id) {
+                        if ($id !== null && $id !== '') {
+                            return true;
+                        }
+                    }
                 }
 
-                foreach ($value as $id) {
-                    if ($id !== null && $id !== '') {
+                $ngoai = self::dieuPhoiGiaTri($session, $key.'_ngoai');
+                if (is_string($ngoai) && trim($ngoai) !== '') {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * User có id nằm trong field nhân sự nội bộ của ít nhất một buổi.
+     *
+     * @param  list<string>  $keys
+     */
+    public static function userIsDieuPhoiStaff(mixed $raw, int $userId, array $keys): bool
+    {
+        foreach (self::normalizeDieuPhoiSessions($raw) as $session) {
+            foreach ($keys as $key) {
+                $value = self::dieuPhoiGiaTri($session, $key);
+                $ids = is_array($value) ? $value : (($value !== null && $value !== '') ? [$value] : []);
+                foreach ($ids as $id) {
+                    if ($id !== null && $id !== '' && (int) $id === $userId) {
                         return true;
                     }
                 }
@@ -243,12 +277,12 @@ class HopDongSuDungDichVu extends Model
     }
 
     /**
-     * Gán thợ lần đầu → cho_nhan. Không ghi đè workflow đã đi tiếp.
+     * Gán thợ lần đầu → tien_ky. Không ghi đè workflow đã đi tiếp.
      *
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
-    public static function withChoNhanIfStaffAssigned(array $payload, ?string $existingStatus = null): array
+    public static function withTienKyIfStaffAssigned(array $payload, ?string $existingStatus = null): array
     {
         if (! self::hasAssignedDieuPhoiStaff($payload)) {
             return $payload;
@@ -261,7 +295,7 @@ class HopDongSuDungDichVu extends Model
             return $payload;
         }
 
-        $payload[self::TRANG_THAI_DIEU_PHOI_KEY] = self::TRANG_THAI_DIEU_PHOI_CHO_NHAN;
+        $payload[self::TRANG_THAI_DIEU_PHOI_KEY] = self::TRANG_THAI_DIEU_PHOI_TIEN_KY;
 
         return $payload;
     }

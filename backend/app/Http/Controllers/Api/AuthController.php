@@ -82,6 +82,8 @@ class AuthController extends BaseApiController
                 ]);
             }
 
+            $user->load(['nhanVien.vaiTro']);
+
             $token = $user->createToken('spa-token')->plainTextToken;
 
             return response()->json([
@@ -115,7 +117,7 @@ class AuthController extends BaseApiController
     {
         return $this->handleApi(function () use ($request) {
             return response()->json([
-                'user' => $request->user(),
+                'user' => $request->user()->load(['nhanVien.vaiTro']),
             ]);
 
         }, 'lấy thông tin tài khoản');

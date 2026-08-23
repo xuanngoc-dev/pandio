@@ -63,7 +63,11 @@ export function insertDieuPhoiSchemaFields(schema, inserts, afterKey) {
 /** Trạng thái workflow điều phối, lưu ở envelope thong_tin_dieu_phoi */
 export const TRANG_THAI_DIEU_PHOI_KEY = 'trang_thai_dieu_phoi'
 export const TRANG_THAI_DIEU_PHOI_CHO_NHAN = 'cho_nhan'
+export const TRANG_THAI_DIEU_PHOI_TIEN_KY = 'tien_ky'
 export const TRANG_THAI_DIEU_PHOI_LATER = [
+  'hau_ky',
+  'gui_in',
+  'hoan_tat_san_xuat',
   'dang_xu_ly',
   'gui_khach_kiem_tra',
   'san_xuat_in_an',
@@ -164,17 +168,19 @@ export function dieuPhoiHasAssignedStaff(raw) {
       } else if (value != null && value !== '') {
         return true
       }
+      const ngoai = getDieuPhoiGiaTriFromSession(session, `${key}_ngoai`)
+      if (ngoai != null && String(ngoai).trim() !== '') return true
     }
   }
   return false
 }
 
-/** Gán thợ lần đầu → cho_nhan. Không ghi đè workflow đã đi tiếp. */
-export function withChoNhanIfStaffAssigned(envelope) {
+/** Gán thợ lần đầu → tien_ky. Không ghi đè workflow đã đi tiếp. */
+export function withTienKyIfStaffAssigned(envelope) {
   if (!dieuPhoiHasAssignedStaff(envelope)) return envelope
   const current = getTrangThaiDieuPhoi(envelope)
   if (TRANG_THAI_DIEU_PHOI_LATER.includes(current)) return envelope
-  return { ...envelope, [TRANG_THAI_DIEU_PHOI_KEY]: TRANG_THAI_DIEU_PHOI_CHO_NHAN }
+  return { ...envelope, [TRANG_THAI_DIEU_PHOI_KEY]: TRANG_THAI_DIEU_PHOI_TIEN_KY }
 }
 
 function readTopLevelDieuPhoiValue(raw, fieldKey) {

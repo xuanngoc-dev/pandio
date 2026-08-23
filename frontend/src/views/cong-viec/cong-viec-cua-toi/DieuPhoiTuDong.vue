@@ -153,23 +153,19 @@ import {
 import DieuPhoiTuDongCard from './DieuPhoiTuDongCard.vue'
 
 const tabs = [
-  { name: 'cho_nhan', label: 'Chờ nhận' },
-  { name: 'dang_xu_ly', label: 'Đang xử lý' },
-  { name: 'gui_khach_kiem_tra', label: 'Gửi khách kiểm tra' },
-  { name: 'san_xuat_in_an', label: 'Sản xuất & in ấn' },
-  { name: 'cho_nghiem_thu', label: 'Nghiệm thu' },
-  { name: 'hoan_thanh', label: 'Hoàn thành' },
+  { name: 'tien_ky', label: 'Tiền kỳ' },
+  { name: 'hau_ky', label: 'Hậu kỳ' },
+  { name: 'gui_in', label: 'Gửi in' },
+  { name: 'hoan_tat_san_xuat', label: 'Hoàn tất sản xuất' },
 ]
 
-const activeTab = ref('cho_nhan')
+const activeTab = ref('tien_ky')
 
 const tabCounts = reactive({
-  cho_nhan: 0,
-  dang_xu_ly: 0,
-  gui_khach_kiem_tra: 0,
-  san_xuat_in_an: 0,
-  cho_nghiem_thu: 0,
-  hoan_thanh: 0,
+  tien_ky: 0,
+  hau_ky: 0,
+  gui_in: 0,
+  hoan_tat_san_xuat: 0,
 })
 
 const filters = reactive({

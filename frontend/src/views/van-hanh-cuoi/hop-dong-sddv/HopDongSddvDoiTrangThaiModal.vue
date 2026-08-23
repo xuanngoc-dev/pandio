@@ -148,6 +148,10 @@ const TRANG_THAI_HD = [
 ]
 
 const KET_QUA_TRANG_THAI = [
+  { value: 'tien_ky', label: 'Tiền kỳ' },
+  { value: 'hau_ky', label: 'Hậu kỳ' },
+  { value: 'gui_in', label: 'Gửi in' },
+  { value: 'hoan_tat_san_xuat', label: 'Hoàn tất sản xuất' },
   { value: 'cho_nhan', label: 'Chờ nhận' },
   { value: 'dang_xu_ly', label: 'Đang xử lý' },
   { value: 'gui_khach_kiem_tra', label: 'Gửi khách kiểm tra' },

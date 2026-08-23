@@ -26,7 +26,7 @@
       >
         <CustomRow :gutter="16" class="shared-date-row">
           <CustomCol v-bind="sharedDateColProps">
-            <CustomFormItem label="Ngày trả demo" prop="ngay_tra_demo" required>
+            <CustomFormItem label="Ngày trả demo" prop="ngay_tra_demo">
               <el-date-picker
                 v-model="formModel.ngay_tra_demo"
                 type="date"
@@ -40,7 +40,7 @@
             </CustomFormItem>
           </CustomCol>
           <CustomCol v-bind="sharedDateColProps">
-            <CustomFormItem label="Ngày trả chính thức" prop="ngay_tra_chinh_thuc" required>
+            <CustomFormItem label="Ngày trả chính thức" prop="ngay_tra_chinh_thuc">
               <el-date-picker
                 v-model="formModel.ngay_tra_chinh_thuc"
                 type="date"
@@ -141,7 +141,7 @@ import {
   normalizeDieuPhoiSessions,
   parseSessionLoaiQuayChup,
   loaiQuayChupRequiredRule,
-  withChoNhanIfStaffAssigned,
+  withTienKyIfStaffAssigned,
 } from '@/utils/thongTinDieuPhoi'
 import HopDongSddvDieuPhoiSessionFields from './HopDongSddvDieuPhoiSessionFields.vue'
 
@@ -209,13 +209,6 @@ const formRules = computed(() => {
       },
     ],
   }
-
-  rules.ngay_tra_demo = [
-    { required: true, message: 'Vui lòng chọn ngày trả demo', trigger: 'change' },
-  ]
-  rules.ngay_tra_chinh_thuc = [
-    { required: true, message: 'Vui lòng chọn ngày trả chính thức', trigger: 'change' },
-  ]
 
   for (const [index] of formModel.sessions.entries()) {
     rules[`sessions.${index}.${LOAI_QUAY_CHUP_KEY}`] = [loaiQuayChupRequiredRule()]
@@ -465,7 +458,7 @@ function buildPayload() {
     return result
   })
 
-  return withChoNhanIfStaffAssigned(
+  return withTienKyIfStaffAssigned(
     buildDieuPhoiEnvelope(hopDong.value?.thong_tin_dieu_phoi, built, {
       ngay_tra_demo: formModel.ngay_tra_demo,
       ngay_tra_chinh_thuc: formModel.ngay_tra_chinh_thuc,

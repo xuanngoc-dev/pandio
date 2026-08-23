@@ -628,16 +628,18 @@ const trangThaiOptions = [
 
 /**
  * Trạng thái điều phối (thong_tin_dieu_phoi.trang_thai_dieu_phoi).
- * Fallback ket_qua_hop_dong.trang_thai.gia_tri. null / rỗng = Chờ nhận khi đã gán thợ.
+ * Fallback ket_qua_hop_dong.trang_thai.gia_tri.
  *
- * - cho_nhan: Chờ nhận — đã gán nhân sự, chờ nhân viên bấm nhận.
- * - dang_xu_ly: Đang xử lý — nhân viên đã nhận; đang làm (upload file gốc / file demo…).
- * - gui_khach_kiem_tra: Gửi khách kiểm tra — đã gửi khách xem; chờ phản hồi đồng ý / không đồng ý.
- * - san_xuat_in_an: Sản xuất & in ấn — khách đồng ý; đang sản xuất / chuẩn bị bàn giao.
- * - cho_nghiem_thu: Chờ nghiệm thu — đã bàn giao; chờ nghiệm thu hoàn thành hoặc làm lại.
- * - hoan_thanh: Hoàn thành — nghiệm thu xong, kết thúc quy trình điều phối.
+ * - tien_ky: Tiền kỳ — đã gán thợ chụp / make / quay phim.
+ * - hau_ky: Hậu kỳ
+ * - gui_in: Gửi in
+ * - hoan_tat_san_xuat: Hoàn tất sản xuất
  */
 const trangThaiDieuPhoiOptions = [
+  { value: 'tien_ky', label: 'Tiền kỳ' },
+  { value: 'hau_ky', label: 'Hậu kỳ' },
+  { value: 'gui_in', label: 'Gửi in' },
+  { value: 'hoan_tat_san_xuat', label: 'Hoàn tất sản xuất' },
   { value: 'cho_nhan', label: 'Chờ nhận' },
   { value: 'dang_xu_ly', label: 'Đang xử lý' },
   { value: 'gui_khach_kiem_tra', label: 'Gửi khách kiểm tra' },
@@ -740,12 +742,16 @@ function trangThaiTagType(value) {
 }
 
 function trangThaiDieuPhoiLabel(value) {
-  const key = value || 'cho_nhan'
+  const key = value || ''
   return trangThaiDieuPhoiOptions.find((opt) => opt.value === key)?.label || value || '—'
 }
 
 function trangThaiDieuPhoiTagType(value) {
   const map = {
+    tien_ky: 'info',
+    hau_ky: 'primary',
+    gui_in: 'warning',
+    hoan_tat_san_xuat: 'success',
     cho_nhan: 'info',
     dang_xu_ly: 'primary',
     gui_khach_kiem_tra: 'warning',
@@ -753,7 +759,7 @@ function trangThaiDieuPhoiTagType(value) {
     cho_nghiem_thu: 'warning',
     hoan_thanh: 'success',
   }
-  return map[value || 'cho_nhan'] || 'info'
+  return map[value] || 'info'
 }
 
 function formatMoney(value) {

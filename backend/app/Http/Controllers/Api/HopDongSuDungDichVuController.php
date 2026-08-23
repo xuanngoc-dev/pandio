@@ -246,8 +246,8 @@ class HopDongSuDungDichVuController extends BaseApiController
 
     /**
      * Công việc điều phối của user đang đăng nhập.
-     * Lọc hop_dong_su_dung_dich_vu có id user nằm trong
-     * thong_tin_dieu_phoi.danh_sach_buoi_chup[*].{quay_phim|tho_make|tho_edit|tho_chup}.gia_tri
+     * Tab tiền kỳ: trang_thai_dieu_phoi = tien_ky và id user nằm trong
+     * danh_sach_buoi_chup[*].{tho_chup|tho_make|quay_phim}.gia_tri
      *
      * Query: page, per_page, ket_qua_trang_thai, keyword, loai_hop_dong_id,
      * ngay_chup, ngay_tra_demo, ngay_tra_chinh_thuc
@@ -266,12 +266,10 @@ class HopDongSuDungDichVuController extends BaseApiController
                 'page' => ['sometimes', 'integer', 'min:1'],
                 'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
                 'ket_qua_trang_thai' => ['sometimes', 'nullable', 'string', Rule::in([
-                    'cho_nhan',
-                    'dang_xu_ly',
-                    'gui_khach_kiem_tra',
-                    'san_xuat_in_an',
-                    'cho_nghiem_thu',
-                    'hoan_thanh',
+                    'tien_ky',
+                    'hau_ky',
+                    'gui_in',
+                    'hoan_tat_san_xuat',
                 ])],
                 'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
                 'loai_hop_dong_id' => ['sometimes', 'nullable', 'integer', 'exists:danh_muc_loai_hop_dong,id'],
@@ -280,18 +278,20 @@ class HopDongSuDungDichVuController extends BaseApiController
                 'ngay_tra_chinh_thuc' => ['sometimes', 'nullable', 'date'],
             ]);
             $perPage = $validated['per_page'] ?? 24;
-            $ketQuaTrangThai = $validated['ket_qua_trang_thai'] ?? 'cho_nhan';
+            $ketQuaTrangThai = $validated['ket_qua_trang_thai'] ?? 'tien_ky';
 
-            $baseQuery = $this->congViecCuaToiBaseQuery($userId);
-            $this->applyCongViecDieuPhoiListFilters($baseQuery, $validated);
-            $query = (clone $baseQuery)
+            $filteredQuery = $this->congViecCuaToiContractQuery();
+            $this->applyCongViecDieuPhoiListFilters($filteredQuery, $validated);
+
+            $query = (clone $filteredQuery)
                 ->with(['loaiHopDong:id,ten_hop_dong,ma_hop_dong']);
+            $this->applyStaffFilterForTab($query, $userId, $ketQuaTrangThai, $user);
             $this->applyKetQuaTrangThaiFilter($query, $ketQuaTrangThai);
             $query->orderByDesc('id');
 
             $paginator = $query->paginate($perPage);
             $payload = $paginator->toArray();
-            $payload['tab_counts'] = $this->congViecTabCounts($baseQuery);
+            $payload['tab_counts'] = $this->congViecTabCounts($filteredQuery, $userId, $user);
 
             return response()->json($payload);
         }, 'lấy danh sách công việc điều phối của tôi');
@@ -357,10 +357,6 @@ class HopDongSuDungDichVuController extends BaseApiController
                 ->where('hop_dong_su_dung_dich_vu.id', $hop_dong_su_dung_dich_vu->id)
                 ->exists();
 
-            if (! $assigned) {
-                abort(403, 'Bạn không được gán vào công việc điều phối này.');
-            }
-
             $allowedKeys = array_keys(HopDongSuDungDichVu::defaultKetQuaHopDong());
             $validated = $request->validate([
                 'key' => ['required', 'string', Rule::in($allowedKeys)],
@@ -370,6 +366,20 @@ class HopDongSuDungDichVuController extends BaseApiController
             $key = $validated['key'];
             if ($key === 'trang_thai') {
                 abort(422, 'Không thể cập nhật trạng thái qua endpoint này.');
+            }
+
+            if ($key === 'link_file_goc') {
+                $canEditGoc = $this->userIsAdminOrCoordinator($user)
+                    || HopDongSuDungDichVu::userIsDieuPhoiStaff(
+                        $hop_dong_su_dung_dich_vu->thong_tin_dieu_phoi,
+                        $userId,
+                        ['tho_chup', 'quay_phim'],
+                    );
+                if (! $canEditGoc) {
+                    abort(403, 'Bạn không có quyền cập nhật file gốc.');
+                }
+            } elseif (! $assigned) {
+                abort(403, 'Bạn không được gán vào công việc điều phối này.');
             }
 
             $giaTri = trim($validated['gia_tri']);
@@ -388,10 +398,15 @@ class HopDongSuDungDichVuController extends BaseApiController
                 }
             }
 
+            $fieldUpdate = ['gia_tri' => $giaTri];
+            if ($key === 'link_file_goc') {
+                $fieldUpdate['thoi_gian_up_file'] = now()->toDateTimeString();
+            }
+
             $ketQua[$key] = array_merge(
                 $defaults[$key],
                 is_array($ketQua[$key] ?? null) ? $ketQua[$key] : [],
-                ['gia_tri' => $giaTri]
+                $fieldUpdate,
             );
 
             $hop_dong_su_dung_dich_vu->update(['ket_qua_hop_dong' => $ketQua]);
@@ -1361,16 +1376,75 @@ class HopDongSuDungDichVuController extends BaseApiController
     }
 
     /**
+     * Hợp đồng đủ điều kiện vào công việc của tôi (loại nháp).
+     */
+    private function congViecCuaToiContractQuery()
+    {
+        return HopDongSuDungDichVu::query()
+            ->whereNotIn('trang_thai', ['moi_tao', 'nhap']);
+    }
+
+    /**
      * Query gốc: hợp đồng gán user vào các field nhân sự điều phối (mọi buổi chụp).
      */
-    private function congViecCuaToiBaseQuery(int $userId)
+    private function congViecCuaToiBaseQuery(int $userId, ?array $staffKeys = null)
     {
-        $query = HopDongSuDungDichVu::query()
-            ->whereNotIn('trang_thai', ['moi_tao', 'nhap']);
-
-        $this->applyDieuPhoiStaffAssignedFilter($query, $userId);
+        $query = $this->congViecCuaToiContractQuery();
+        $this->applyDieuPhoiStaffAssignedFilter($query, $userId, $staffKeys);
 
         return $query;
+    }
+
+    /**
+     * Tiền kỳ: chỉ thợ chụp / thợ make / quay phim.
+     *
+     * @return list<string>
+     */
+    private function staffKeysForCongViecTab(string $tab): array
+    {
+        if ($tab === 'tien_ky') {
+            return HopDongSuDungDichVu::DIEU_PHOI_TIEN_KY_STAFF_KEYS;
+        }
+
+        return HopDongSuDungDichVu::DIEU_PHOI_STAFF_KEYS;
+    }
+
+    private function userIsAdminOrCoordinator($user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        $role = strtolower(trim((string) ($user->role ?? '')));
+        if (in_array($role, ['admin', 'coordinator'], true)) {
+            return true;
+        }
+
+        $user->loadMissing('nhanVien.vaiTro');
+        $ten = mb_strtolower(trim((string) ($user->nhanVien?->vaiTro?->ten_vai_tro ?? '')), 'UTF-8');
+        if ($ten === '') {
+            return false;
+        }
+
+        return str_contains($ten, 'coordinator')
+            || str_contains($ten, 'điều phối')
+            || str_contains($ten, 'dieu phoi');
+    }
+
+    /**
+     * Tiền kỳ: admin/coordinator xem mọi HĐ ở bước này; nhân sự khác lọc theo thợ.
+     */
+    private function applyStaffFilterForTab($query, int $userId, string $tab, $user): void
+    {
+        if ($tab === 'tien_ky' && $this->userIsAdminOrCoordinator($user)) {
+            return;
+        }
+
+        $this->applyDieuPhoiStaffAssignedFilter(
+            $query,
+            $userId,
+            $this->staffKeysForCongViecTab($tab),
+        );
     }
 
     /**
@@ -1430,10 +1504,12 @@ class HopDongSuDungDichVuController extends BaseApiController
     /**
      * Lọc hợp đồng có user nằm trong field nhân sự của buổi chụp.
      * Path dùng [i] vì danh_sach_buoi_chup là mảng; arrow ->0-> sẽ thành object key "0".
+     *
+     * @param  list<string>|null  $staffKeys
      */
-    private function applyDieuPhoiStaffAssignedFilter($query, int $userId): void
+    private function applyDieuPhoiStaffAssignedFilter($query, int $userId, ?array $staffKeys = null): void
     {
-        $staffKeys = HopDongSuDungDichVu::DIEU_PHOI_STAFF_KEYS;
+        $staffKeys = $staffKeys ?: HopDongSuDungDichVu::DIEU_PHOI_STAFF_KEYS;
         $query->where(function ($q) use ($staffKeys, $userId) {
             foreach ($staffKeys as $key) {
                 foreach ($this->dieuPhoiSessionJsonPaths($key.'.gia_tri') as $jsonPath) {
@@ -1642,13 +1718,13 @@ class HopDongSuDungDichVuController extends BaseApiController
 
     /**
      * Lọc tab công việc theo thong_tin_dieu_phoi.trang_thai_dieu_phoi,
-     * fallback ket_qua_hop_dong.trang_thai.gia_tri; trống = cho_nhan.
+     * fallback ket_qua_hop_dong.trang_thai.gia_tri.
      */
     private function applyKetQuaTrangThaiFilter($query, string $ketQuaTrangThai): void
     {
         $dieuPhoiExpr = "NULLIF(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(thong_tin_dieu_phoi, '$.trang_thai_dieu_phoi')), 'null'), '')";
         $ketQuaExpr = "NULLIF(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(ket_qua_hop_dong, '$.trang_thai.gia_tri')), 'null'), '')";
-        $effective = "COALESCE({$dieuPhoiExpr}, {$ketQuaExpr}, 'cho_nhan')";
+        $effective = "COALESCE({$dieuPhoiExpr}, {$ketQuaExpr})";
 
         $query->whereRaw("{$effective} = ?", [$ketQuaTrangThai]);
     }
@@ -1702,7 +1778,7 @@ class HopDongSuDungDichVuController extends BaseApiController
     }
 
     /**
-     * Khi lưu thong_tin_dieu_phoi có chọn thợ → trang_thai_dieu_phoi = cho_nhan.
+     * Khi lưu thong_tin_dieu_phoi có chọn/nhập thợ → trang_thai_dieu_phoi = tien_ky.
      *
      * @param  array<string, mixed>  $validated
      * @return array<string, mixed>
@@ -1715,13 +1791,13 @@ class HopDongSuDungDichVuController extends BaseApiController
 
         $existingStatus = HopDongSuDungDichVu::trangThaiDieuPhoi($existing?->thong_tin_dieu_phoi)
             ?? $this->resolveTrangThaiDieuPhoiFallback($existing);
-        $payload = HopDongSuDungDichVu::withChoNhanIfStaffAssigned(
+        $payload = HopDongSuDungDichVu::withTienKyIfStaffAssigned(
             $validated['thong_tin_dieu_phoi'],
             $existingStatus,
         );
         $validated['thong_tin_dieu_phoi'] = $payload;
 
-        if (($payload[HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_KEY] ?? null) !== HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_CHO_NHAN) {
+        if (($payload[HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_KEY] ?? null) !== HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_TIEN_KY) {
             return $validated;
         }
 
@@ -1729,11 +1805,15 @@ class HopDongSuDungDichVuController extends BaseApiController
             $validated['ket_qua_hop_dong'] ?? $existing?->ket_qua_hop_dong
         );
         $currentKetQua = $ketQua['trang_thai']['gia_tri'] ?? null;
-        if ($currentKetQua !== null && $currentKetQua !== '' && $currentKetQua !== HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_CHO_NHAN) {
+        $lockedKetQua = [
+            HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_CHO_NHAN,
+            HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_TIEN_KY,
+        ];
+        if ($currentKetQua !== null && $currentKetQua !== '' && ! in_array($currentKetQua, $lockedKetQua, true)) {
             return $validated;
         }
 
-        $ketQua['trang_thai']['gia_tri'] = HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_CHO_NHAN;
+        $ketQua['trang_thai']['gia_tri'] = HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_TIEN_KY;
         $validated['ket_qua_hop_dong'] = $ketQua;
 
         return $validated;
@@ -1757,20 +1837,19 @@ class HopDongSuDungDichVuController extends BaseApiController
     /**
      * @return array<string, int>
      */
-    private function congViecTabCounts($baseQuery): array
+    private function congViecTabCounts($filteredQuery, int $userId, $user): array
     {
         $statuses = [
-            'cho_nhan',
-            'dang_xu_ly',
-            'gui_khach_kiem_tra',
-            'san_xuat_in_an',
-            'cho_nghiem_thu',
-            'hoan_thanh',
+            'tien_ky',
+            'hau_ky',
+            'gui_in',
+            'hoan_tat_san_xuat',
         ];
 
         $counts = [];
         foreach ($statuses as $status) {
-            $q = clone $baseQuery;
+            $q = clone $filteredQuery;
+            $this->applyStaffFilterForTab($q, $userId, $status, $user);
             $this->applyKetQuaTrangThaiFilter($q, $status);
             $counts[$status] = (int) $q->count();
         }

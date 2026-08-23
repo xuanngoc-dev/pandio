@@ -431,6 +431,9 @@ const showYKienIcon = computed(
 )
 
 function canEditFile(field) {
+  if (props.step === 'tien_ky') {
+    return field?.key === 'link_file_goc' && canManageFileGocTienKy.value
+  }
   if (props.step === 'dang_xu_ly') return true
   if (props.step === 'san_xuat_in_an') {
     return field?.key === 'link_giao_san_pham'
@@ -438,14 +441,18 @@ function canEditFile(field) {
   return false
 }
 
-const fileLinkFields = computed(() =>
-  FILE_LINK_DEFS.map((def) => {
+const fileLinkFields = computed(() => {
+  const defs =
+    props.step === 'tien_ky'
+      ? FILE_LINK_DEFS.filter((def) => def.key === 'link_file_goc')
+      : FILE_LINK_DEFS
+  return defs.map((def) => {
     const giaTri = ketQua.value?.[def.key]?.gia_tri
     const url =
       giaTri != null && String(giaTri).trim() !== '' ? String(giaTri).trim() : null
     return { ...def, url }
-  }),
-)
+  })
+})
 
 const linkModalTitle = computed(() => {
   if (!linkModalField.value) return 'Thêm link'
@@ -540,6 +547,36 @@ const vaiTroLabels = computed(() => {
   }
   return roles
 })
+
+function isAdminOrCoordinator(user) {
+  const role = String(user?.role || '').toLowerCase()
+  if (role === 'admin' || role === 'coordinator') return true
+  const ten = String(user?.nhan_vien?.vai_tro?.ten_vai_tro || '').toLowerCase()
+  if (!ten) return false
+  const ascii = ten.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  return (
+    ten.includes('coordinator') ||
+    ascii.includes('coordinator') ||
+    ascii.includes('dieu phoi') ||
+    ten.includes('điều phối')
+  )
+}
+
+function userHasStaffRole(...keys) {
+  const userId = authStore.user?.id
+  if (userId == null) return false
+  return keys.some((key) =>
+    collectDieuPhoiGiaTri(props.item?.thong_tin_dieu_phoi, key).some(
+      (id) => Number(id) === Number(userId),
+    ),
+  )
+}
+
+const canManageFileGocTienKy = computed(
+  () =>
+    isAdminOrCoordinator(authStore.user) ||
+    userHasStaffRole('tho_chup', 'quay_phim'),
+)
 
 function getThongTin(row) {
   const info = row?.thong_tin_hop_dong

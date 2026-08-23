@@ -48,12 +48,13 @@ export function fetchLichChupMakeChiTiet(params = {}) {
 }
 
 /**
- * Công việc điều phối của user đang đăng nhập
- * (user id nằm trong thong_tin_dieu_phoi.danh_sach_buoi_chup staff fields).
+ * Công việc điều phối của user đang đăng nhập.
+ * Tab tiền kỳ: trang_thai_dieu_phoi = tien_ky và user id nằm trong
+ * tho_chup / tho_make / quay_phim của một buổi trong danh_sach_buoi_chup.
  * @param {{
  *   page?: number,
  *   per_page?: number,
- *   ket_qua_trang_thai?: 'cho_nhan'|'dang_xu_ly'|'gui_khach_kiem_tra'|'san_xuat_in_an'|'cho_nghiem_thu'|'hoan_thanh',
+ *   ket_qua_trang_thai?: 'tien_ky'|'hau_ky'|'gui_in'|'hoan_tat_san_xuat',
  *   keyword?: string,
  *   loai_hop_dong_id?: number,
  *   ngay_chup?: string,
@@ -75,6 +76,7 @@ export function nhanCongViecDieuPhoi(id) {
 
 /**
  * Cập nhật một field trong ket_qua_hop_dong (link_file_demo, link_file_goc, ...).
+ * File gốc: đồng thời ghi thoi_gian_up_file.
  * @param {number|string} id
  * @param {{ key: string, gia_tri: string }} payload
  */
