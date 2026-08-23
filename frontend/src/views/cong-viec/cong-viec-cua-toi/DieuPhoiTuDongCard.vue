@@ -134,7 +134,7 @@
       <div v-if="vaiTroLabels.length" class="cong-viec-card__roles">
         <span class="label">Vai trò:</span>
         <div class="cong-viec-card__roles-tags">
-          <CustomTag
+          <el-tag
             v-for="role in vaiTroLabels"
             :key="role"
             type="info"
@@ -142,7 +142,7 @@
             effect="plain"
           >
             {{ role }}
-          </CustomTag>
+          </el-tag>
         </div>
       </div>
 
@@ -166,6 +166,27 @@
             :icon="View"
             @click.stop="openDetail"
           />
+        </CustomTooltip>
+        <CustomTooltip
+          v-if="showChuyenHauKy"
+          :content="
+            canChuyenHauKy
+              ? 'Chuyển sang hậu kỳ'
+              : 'Cần có File gốc trước khi chuyển sang hậu kỳ'
+          "
+          placement="top"
+        >
+          <span class="cong-viec-card__footer-btn-wrap">
+            <CustomButton
+              type="primary"
+              circle
+              size="small"
+              :icon="Right"
+              :disabled="!canChuyenHauKy"
+              :loading="movingHauKy"
+              @click.stop="onChuyenHauKy"
+            />
+          </span>
         </CustomTooltip>
         <CustomTooltip
           v-if="showYKienIcon"
@@ -287,11 +308,12 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { ChatDotRound, CircleCheckFilled, Edit, Finished, Plus, Promotion, Select, View, WarningFilled } from '@element-plus/icons-vue'
+import { ChatDotRound, CircleCheckFilled, Edit, Finished, Plus, Promotion, Right, Select, View, WarningFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   banGiaoCongViec,
   capNhatKetQuaHopDong,
+  chuyenHauKyCongViec,
   guiKhachKiemTra,
   nhanCongViecDieuPhoi,
 } from '@/api/hopDongSuDungDichVu'
@@ -300,7 +322,6 @@ import {
   CustomCard,
   CustomDialog,
   CustomIcon,
-  CustomTag,
   CustomTooltip,
 } from '@/components/element'
 import { useAuthStore } from '@/stores/auth'
@@ -355,6 +376,7 @@ const authStore = useAuthStore()
 const accepting = ref(false)
 const sendingKhach = ref(false)
 const banningGiao = ref(false)
+const movingHauKy = ref(false)
 const linkModalVisible = ref(false)
 const linkModalField = ref(null)
 const linkInput = ref('')
@@ -417,6 +439,9 @@ const canGuiKhachKiemTra = computed(
 const canBanGiao = computed(
   () => showBanGiaoFooter.value && hasLinkFileChinhThuc.value,
 )
+
+const showChuyenHauKy = computed(() => props.step === 'tien_ky')
+const canChuyenHauKy = computed(() => showChuyenHauKy.value && hasLinkFileGoc.value)
 
 const yKienKhachHang = computed(() => {
   const giaTri = ketQua.value?.y_kien_khach_hang?.gia_tri
@@ -767,6 +792,39 @@ async function onNhan() {
     ElMessage.error(msg)
   } finally {
     accepting.value = false
+  }
+}
+
+async function onChuyenHauKy() {
+  if (!canChuyenHauKy.value) return
+
+  try {
+    await ElMessageBox.confirm(
+      `Chuyển hợp đồng ${props.item.ma_hop_dong || ''} sang hậu kỳ?`,
+      'Chuyển sang hậu kỳ',
+      {
+        type: 'info',
+        confirmButtonText: 'Chuyển',
+        cancelButtonText: 'Hủy',
+      },
+    )
+  } catch {
+    return
+  }
+
+  movingHauKy.value = true
+  try {
+    await chuyenHauKyCongViec(props.item.id)
+    ElMessage.success('Đã chuyển sang hậu kỳ')
+    emit('status-changed')
+  } catch (error) {
+    const msg =
+      error?.response?.data?.message ||
+      error?.message ||
+      'Không thể chuyển sang hậu kỳ'
+    ElMessage.error(msg)
+  } finally {
+    movingHauKy.value = false
   }
 }
 

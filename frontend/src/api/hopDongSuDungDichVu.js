@@ -85,6 +85,14 @@ export function capNhatKetQuaHopDong(id, payload) {
 }
 
 /**
+ * Chuyển công việc từ tiền kỳ sang hậu kỳ.
+ * @param {number|string} id
+ */
+export function chuyenHauKyCongViec(id) {
+  return api.post(`/hop-dong-su-dung-dich-vu/${id}/chuyen-hau-ky`)
+}
+
+/**
  * Gửi khách kiểm tra → ket_qua_hop_dong.trang_thai = gui_khach_kiem_tra.
  * @param {number|string} id
  */

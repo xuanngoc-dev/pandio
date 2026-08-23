@@ -418,6 +418,56 @@ class HopDongSuDungDichVuController extends BaseApiController
     }
 
     /**
+     * Chuyển công việc từ tiền kỳ sang hậu kỳ.
+     * Yêu cầu thong_tin_dieu_phoi.trang_thai_dieu_phoi = tien_ky và đã có link_file_goc.
+     */
+    public function chuyenHauKy(Request $request, HopDongSuDungDichVu $hop_dong_su_dung_dich_vu): JsonResponse
+    {
+        return $this->handleApi(function () use ($request, $hop_dong_su_dung_dich_vu) {
+            $user = $request->user();
+            if (! $user) {
+                abort(401, 'Unauthenticated.');
+            }
+
+            $userId = (int) $user->id;
+            $assigned = $this->congViecCuaToiBaseQuery($userId)
+                ->where('hop_dong_su_dung_dich_vu.id', $hop_dong_su_dung_dich_vu->id)
+                ->exists();
+
+            if (! $assigned && ! $this->userIsAdminOrCoordinator($user)) {
+                abort(403, 'Bạn không được gán vào công việc điều phối này.');
+            }
+
+            $defaults = HopDongSuDungDichVu::defaultKetQuaHopDong();
+            $ketQua = is_array($hop_dong_su_dung_dich_vu->ket_qua_hop_dong)
+                ? $hop_dong_su_dung_dich_vu->ket_qua_hop_dong
+                : $defaults;
+
+            foreach ($defaults as $fieldKey => $defaultField) {
+                if (! isset($ketQua[$fieldKey]) || ! is_array($ketQua[$fieldKey])) {
+                    $ketQua[$fieldKey] = $defaultField;
+                }
+            }
+
+            $current = $this->resolveTrangThaiDieuPhoi($hop_dong_su_dung_dich_vu, $ketQua);
+            if ($current !== HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_TIEN_KY) {
+                abort(422, 'Chỉ có thể chuyển hậu kỳ khi công việc đang ở bước Tiền kỳ.');
+            }
+
+            $linkGoc = trim((string) ($ketQua['link_file_goc']['gia_tri'] ?? ''));
+            if ($linkGoc === '') {
+                abort(422, 'Cần có File gốc trước khi chuyển sang hậu kỳ.');
+            }
+
+            $this->persistDieuPhoiWorkflowStatus($hop_dong_su_dung_dich_vu, $ketQua, 'hau_ky');
+
+            return response()->json(
+                $hop_dong_su_dung_dich_vu->fresh()->load(['loaiHopDong:id,ten_hop_dong,ma_hop_dong'])
+            );
+        }, 'chuyển công việc sang hậu kỳ');
+    }
+
+    /**
      * Gửi khách kiểm tra → ket_qua_hop_dong.trang_thai = gui_khach_kiem_tra.
      * Yêu cầu đã có link_file_goc và link_file_demo.
      */
