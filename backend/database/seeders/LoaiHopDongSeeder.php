@@ -238,6 +238,11 @@ class LoaiHopDongSeeder extends Seeder
             'tho_edit_ngoai' => $this->dieuPhoiField('Thợ edit ngoài', 'string', true, null),
             'quay_phim' => $this->dieuPhoiField('Quay phim', 'array', true, []),
             'quay_phim_ngoai' => $this->dieuPhoiField('Quay phim ngoài', 'string', true, null),
+            'tho_dung_video' => array_merge(
+                $this->dieuPhoiField('Thợ dựng video', 'array', true, []),
+                ['gia_tri_toi_da' => 1]
+            ),
+            'tho_dung_video_ngoai' => $this->dieuPhoiField('Thợ dựng video ngoài', 'string', true, null),
             'ghi_chu_dieu_phoi' => $this->dieuPhoiField('Ghi chú điều phối', 'textarea', true, null),
             'ghi_chu_trang_phuc_phu_kien' => $this->dieuPhoiField(
                 'Yêu cầu khách hàng',

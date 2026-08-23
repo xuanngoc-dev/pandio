@@ -154,6 +154,8 @@ class LoaiHopDongController extends BaseApiController
                 Rule::in(['string', 'textarea', 'number', 'date', 'time', 'datetime', 'array']),
             ],
             'thong_tin_dieu_phoi.*.gia_tri' => ['nullable'],
+            'thong_tin_dieu_phoi.*.gia_tri_toi_thieu' => ['nullable', 'numeric'],
+            'thong_tin_dieu_phoi.*.gia_tri_toi_da' => ['nullable', 'numeric'],
             'trang_thai' => ['required', Rule::in(['hoat_dong', 'ngung_hoat_dong'])],
         ]);
     }

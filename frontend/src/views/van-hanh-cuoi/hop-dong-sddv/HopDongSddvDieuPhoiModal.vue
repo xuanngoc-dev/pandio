@@ -125,10 +125,14 @@ import {
   SO_DIEM_CHUP_DEFAULT,
   SO_DIEM_CHUP_KEY,
   TEN_LICH_KEY,
+  THO_DUNG_VIDEO_KEY,
+  THO_DUNG_VIDEO_NGOAI_KEY,
   buildLoaiQuayChupField,
   buildTenLichField,
   clampSoDiemChup,
+  clampStaffArrayValue,
   defaultTenLichQuayChup,
+  insertDieuPhoiSchemaFields,
   buildDieuPhoiEnvelope,
   firstDieuPhoiGiaTri,
   getTenLichQuayChup,
@@ -256,12 +260,6 @@ function defaultValueByLoai(loai, key) {
   return loai === 'array' ? [] : null
 }
 
-function normalizeArrayValue(value) {
-  if (Array.isArray(value)) return [...value]
-  if (value == null || value === '') return []
-  return [value]
-}
-
 function normalizeScalarValue(value) {
   if (Array.isArray(value)) {
     const text = value
@@ -323,11 +321,10 @@ function sessionFromSaved(savedMap, index = 0) {
 
     if (field.key === SO_DIEM_CHUP_KEY) {
       values[field.key] = clampSoDiemChup(rawValue)
+    } else if (field.loai_du_lieu === 'array') {
+      values[field.key] = clampStaffArrayValue(field, rawValue)
     } else {
-      values[field.key] =
-        field.loai_du_lieu === 'array'
-          ? normalizeArrayValue(rawValue)
-          : normalizeScalarValue(rawValue)
+      values[field.key] = normalizeScalarValue(rawValue)
     }
   }
 
@@ -335,8 +332,23 @@ function sessionFromSaved(savedMap, index = 0) {
 }
 
 function buildFieldsFromSchema(schema) {
-  const source =
-    schema && typeof schema === 'object' && !Array.isArray(schema) ? schema : {}
+  const source = insertDieuPhoiSchemaFields(
+    schema && typeof schema === 'object' && !Array.isArray(schema) ? schema : {},
+    [
+      {
+        key: THO_DUNG_VIDEO_KEY,
+        ten_thong_tin: 'Thợ dựng video',
+        loai_du_lieu: 'array',
+        gia_tri_toi_da: 1,
+      },
+      {
+        key: THO_DUNG_VIDEO_NGOAI_KEY,
+        ten_thong_tin: 'Thợ dựng video ngoài',
+        loai_du_lieu: 'string',
+      },
+    ],
+    'quay_phim_ngoai',
+  )
 
   const nextFields = []
   const nextMeta = {}
@@ -437,7 +449,7 @@ function buildPayload() {
       if (field.key === SO_DIEM_CHUP_KEY) {
         giaTri = clampSoDiemChup(giaTri)
       } else if (loai === 'array') {
-        giaTri = normalizeArrayValue(giaTri)
+        giaTri = clampStaffArrayValue(field, giaTri)
       } else if (giaTri === '' || giaTri === undefined) {
         giaTri = null
       }

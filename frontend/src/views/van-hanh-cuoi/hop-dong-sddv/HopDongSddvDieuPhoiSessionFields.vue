@@ -87,14 +87,16 @@
 
           <template v-else-if="field.loai_du_lieu === 'array' && isStaffField(field.key)">
             <CustomSelect
-              v-model="values[field.key]"
+              :model-value="staffSelectValue(field)"
               :placeholder="`Chọn ${field.ten_thong_tin.toLowerCase()}`"
-              multiple
+              :multiple="!isSingleStaffSelect(field)"
+              :show-select-all="!isSingleStaffSelect(field)"
               filterable
-              collapse-tags
-              collapse-tags-tooltip
+              :collapse-tags="!isSingleStaffSelect(field)"
+              :collapse-tags-tooltip="!isSingleStaffSelect(field)"
               clearable
               style="width: 100%"
+              @update:model-value="onStaffSelect(field, $event)"
             >
               <CustomOption
                 v-for="user in userOptions"
@@ -165,7 +167,9 @@ import { fetchDanhMucLoaiQuayChup } from '@/api/danhMucLoaiQuayChup'
 import {
   BUOI_CHUP_OPTIONS,
   DIEU_PHOI_STAFF_KEYS,
+  clampStaffArrayValue,
   LOAI_QUAY_CHUP_KEY,
+  staffSelectMax,
   SO_DIEM_CHUP_DEFAULT,
   SO_DIEM_CHUP_KEY,
   SO_DIEM_CHUP_MAX,
@@ -257,6 +261,23 @@ const textareaFields = computed(() =>
 
 function isStaffField(key) {
   return DIEU_PHOI_STAFF_KEYS.has(key)
+}
+
+function isSingleStaffSelect(field) {
+  return staffSelectMax(field) === 1
+}
+
+function staffSelectValue(field) {
+  const raw = values.value?.[field.key]
+  if (isSingleStaffSelect(field)) {
+    if (Array.isArray(raw)) return raw[0] ?? null
+    return raw ?? null
+  }
+  return Array.isArray(raw) ? raw : []
+}
+
+function onStaffSelect(field, next) {
+  values.value[field.key] = clampStaffArrayValue(field, next)
 }
 
 function isRequired(field) {

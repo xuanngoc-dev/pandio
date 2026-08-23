@@ -407,6 +407,7 @@ import {
   CustomTableColumn,
 } from '@/components/element'
 import {
+  DIEU_PHOI_STAFF_KEYS,
   LOAI_QUAY_CHUP_KEY,
   SHARED_LICH_QUAY_CHUP_KEYS,
   firstDieuPhoiGiaTri,
@@ -418,7 +419,7 @@ import {
   parseSessionLoaiQuayChup,
 } from '@/utils/thongTinDieuPhoi'
 
-const STAFF_FIELD_KEYS = new Set(['tho_chup', 'tho_make', 'tho_edit', 'quay_phim'])
+const STAFF_FIELD_KEYS = DIEU_PHOI_STAFF_KEYS
 
 const TRANG_THAI_OPTIONS = [
   { value: 'moi_tao', label: 'Mới tạo' },

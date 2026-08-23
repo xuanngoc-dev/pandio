@@ -1586,7 +1586,7 @@ class HopDongSuDungDichVuController extends BaseApiController
      */
     private function applyDieuPhoiStaffPresenceFilter($query, string $key, bool $hasStaff): void
     {
-        $allowed = ['tho_chup', 'tho_make', 'tho_edit', 'quay_phim'];
+        $allowed = ['tho_chup', 'tho_make', 'tho_edit', 'quay_phim', 'tho_dung_video'];
         if (! in_array($key, $allowed, true)) {
             return;
         }

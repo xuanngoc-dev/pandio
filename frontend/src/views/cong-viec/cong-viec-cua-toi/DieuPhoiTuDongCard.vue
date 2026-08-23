@@ -320,6 +320,7 @@ const STAFF_ROLE_LABELS = {
   tho_make: 'Thợ make',
   tho_edit: 'Thợ edit',
   quay_phim: 'Quay phim',
+  tho_dung_video: 'Thợ dựng video',
 }
 
 const TRANG_THAI_OPTIONS = [

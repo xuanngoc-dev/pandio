@@ -45,7 +45,7 @@ class HopDongSuDungDichVu extends Model
     protected $table = 'hop_dong_su_dung_dich_vu';
 
     /** Field nhân sự nội bộ trong từng buổi (gia_tri = mảng user id). */
-    public const DIEU_PHOI_STAFF_KEYS = ['tho_chup', 'tho_make', 'tho_edit', 'quay_phim'];
+    public const DIEU_PHOI_STAFF_KEYS = ['tho_chup', 'tho_make', 'tho_edit', 'quay_phim', 'tho_dung_video'];
 
     /** Trạng thái workflow điều phối, lưu ở envelope thong_tin_dieu_phoi. */
     public const TRANG_THAI_DIEU_PHOI_KEY = 'trang_thai_dieu_phoi';
@@ -216,7 +216,7 @@ class HopDongSuDungDichVu extends Model
     }
 
     /**
-     * Hợp đồng đã gán thợ nội bộ (tho_chup / tho_make / tho_edit / quay_phim) ở bất kỳ buổi nào.
+     * Hợp đồng đã gán thợ nội bộ (tho_chup / tho_make / tho_edit / quay_phim / tho_dung_video) ở bất kỳ buổi nào.
      */
     public static function hasAssignedDieuPhoiStaff(mixed $raw): bool
     {

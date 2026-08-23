@@ -172,12 +172,13 @@ import {
   CustomTableColumn,
 } from '@/components/element'
 import {
+  DIEU_PHOI_STAFF_KEYS,
   collectDieuPhoiGiaTri,
   getDieuPhoiGiaTriFromSession,
   normalizeDieuPhoiSessions,
 } from '@/utils/thongTinDieuPhoi'
 
-const STAFF_FIELD_KEYS = new Set(['tho_chup', 'tho_make', 'tho_edit', 'quay_phim'])
+const STAFF_FIELD_KEYS = DIEU_PHOI_STAFF_KEYS
 
 const DIEU_PHOI_ROLE_ROWS = [
   {
@@ -206,6 +207,13 @@ const DIEU_PHOI_ROLE_ROWS = [
     ten: 'Quay phim',
     staffKey: 'quay_phim',
     staffNgoaiKey: 'quay_phim_ngoai',
+    hasSchedule: false,
+  },
+  {
+    key: 'dung_video',
+    ten: 'Thợ dựng video',
+    staffKey: 'tho_dung_video',
+    staffNgoaiKey: 'tho_dung_video_ngoai',
     hasSchedule: false,
   },
 ]

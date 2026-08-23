@@ -1,5 +1,64 @@
+export const THO_DUNG_VIDEO_KEY = 'tho_dung_video'
+export const THO_DUNG_VIDEO_NGOAI_KEY = 'tho_dung_video_ngoai'
+
 /** Field nhân sự trong thông tin điều phối (gia_tri = mảng user id) */
-export const DIEU_PHOI_STAFF_KEYS = new Set(['tho_chup', 'tho_make', 'tho_edit', 'quay_phim'])
+export const DIEU_PHOI_STAFF_KEYS = new Set([
+  'tho_chup',
+  'tho_make',
+  'tho_edit',
+  'quay_phim',
+  THO_DUNG_VIDEO_KEY,
+])
+
+export function staffSelectMax(field) {
+  if (!field) return null
+  if (field.key === THO_DUNG_VIDEO_KEY) return 1
+  const max = Number(field.gia_tri_toi_da)
+  return Number.isFinite(max) && max > 0 ? max : null
+}
+
+export function clampStaffArrayValue(field, value) {
+  const list = Array.isArray(value)
+    ? value.filter((item) => item != null && item !== '')
+    : value == null || value === ''
+      ? []
+      : [value]
+  const max = staffSelectMax(field)
+  if (max != null) return list.slice(0, max)
+  return list
+}
+
+export function insertDieuPhoiSchemaFields(schema, inserts, afterKey) {
+  const source = schema && typeof schema === 'object' && !Array.isArray(schema) ? { ...schema } : {}
+  const pending = (inserts || []).filter((field) => field?.key && !source[field.key])
+  if (!pending.length) return source
+
+  const writePending = (target) => {
+    for (const field of pending) {
+      target[field.key] = {
+        su_dung: true,
+        ten_thong_tin: field.ten_thong_tin || field.key,
+        loai_du_lieu: field.loai_du_lieu || 'string',
+        gia_tri: field.loai_du_lieu === 'array' ? [] : null,
+      }
+      if (field.gia_tri_toi_da != null) {
+        target[field.key].gia_tri_toi_da = field.gia_tri_toi_da
+      }
+    }
+  }
+
+  const result = {}
+  let inserted = false
+  for (const [key, value] of Object.entries(source)) {
+    result[key] = value
+    if (key === afterKey) {
+      writePending(result)
+      inserted = true
+    }
+  }
+  if (!inserted) writePending(result)
+  return result
+}
 
 /** Trạng thái workflow điều phối, lưu ở envelope thong_tin_dieu_phoi */
 export const TRANG_THAI_DIEU_PHOI_KEY = 'trang_thai_dieu_phoi'

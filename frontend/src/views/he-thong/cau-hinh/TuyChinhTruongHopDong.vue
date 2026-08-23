@@ -624,6 +624,13 @@ const DEFAULT_DIEU_PHOI_FIELDS = [
   { key: 'tho_edit_ngoai', ten_thong_tin: 'Thợ edit ngoài', loai_du_lieu: 'string' },
   { key: 'quay_phim', ten_thong_tin: 'Quay phim', loai_du_lieu: 'array' },
   { key: 'quay_phim_ngoai', ten_thong_tin: 'Quay phim ngoài', loai_du_lieu: 'string' },
+  {
+    key: 'tho_dung_video',
+    ten_thong_tin: 'Thợ dựng video',
+    loai_du_lieu: 'array',
+    gia_tri_toi_da: 1,
+  },
+  { key: 'tho_dung_video_ngoai', ten_thong_tin: 'Thợ dựng video ngoài', loai_du_lieu: 'string' },
   { key: 'ghi_chu_dieu_phoi', ten_thong_tin: 'Ghi chú điều phối', loai_du_lieu: 'textarea' },
   {
     key: 'ghi_chu_trang_phuc_phu_kien',
