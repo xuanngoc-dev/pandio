@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\DatMuaTrangPhucController;
 use App\Http\Controllers\Api\HopDongChoThueTrangPhucController;
 use App\Http\Controllers\Api\HopDongSuDungDichVuController;
 use App\Http\Controllers\Api\HangMucLoaiThuChiController;
+use App\Http\Controllers\Api\KhachHangController;
 use App\Http\Controllers\Api\KhachHangNoteKhachMoiController;
 use App\Http\Controllers\Api\NhaCungCapTrangPhucController;
 use App\Http\Controllers\Api\PhieuThuChiController;
@@ -207,6 +208,9 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
 
     // --- Report quảng cáo ---
     Route::apiResource('report-quang-cao', ReportQuangCaoController::class); // CRUD báo cáo chi phí / hiệu quả quảng cáo
+
+    // --- Khách hàng (gom từ note / HĐ dịch vụ / HĐ thuê trang phục) ---
+    Route::get('khach-hang', [KhachHangController::class, 'index']); // Danh sách khách hàng gom theo SĐT
 
     // --- Note khách mới (lịch khách hàng) ---
     Route::apiResource('khach-hang-note-khach-moi', KhachHangNoteKhachMoiController::class); // CRUD ghi chú / lịch khách tiềm năng
