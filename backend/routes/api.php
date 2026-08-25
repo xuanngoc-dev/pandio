@@ -213,6 +213,8 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
     Route::get('khach-hang', [KhachHangController::class, 'index']); // Danh sách khách hàng gom theo SĐT
 
     // --- Note khách mới (lịch khách hàng) ---
+    Route::get('khach-hang-note-khach-moi/lich', [KhachHangNoteKhachMoiController::class, 'lich']); // Lịch theo khoảng ngày (hẹn lịch / đến)
+    Route::get('khach-hang-note-khach-moi/lich/chi-tiet', [KhachHangNoteKhachMoiController::class, 'lichChiTiet']); // Chi tiết lịch theo ngày
     Route::apiResource('khach-hang-note-khach-moi', KhachHangNoteKhachMoiController::class); // CRUD ghi chú / lịch khách tiềm năng
 
     // --- Tài chính — kế toán thuế ---

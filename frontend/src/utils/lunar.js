@@ -55,11 +55,23 @@ export function isLunarMonthStart(date) {
  * @returns {string}
  */
 export function formatLunarTooltip(date) {
+  const label = formatLunarDate(date)
+  return label ? `Âm lịch: ${label}` : ''
+}
+
+/**
+ * Ngày âm lịch dạng dd/mm/yyyy (tháng nhuận ghi rõ).
+ * @param {Date|string} date
+ * @returns {string}
+ */
+export function formatLunarDate(date) {
   const lunar = getLunarParts(date)
   if (!lunar) return ''
 
-  const monthLabel = lunar.leap ? `${lunar.month} nhuận` : String(lunar.month)
-  return `Âm lịch: ${lunar.day}/${monthLabel}/${lunar.year}`
+  const day = String(lunar.day).padStart(2, '0')
+  const month = String(lunar.month).padStart(2, '0')
+  const monthLabel = lunar.leap ? `${month} nhuận` : month
+  return `${day}/${monthLabel}/${lunar.year}`
 }
 
 /**

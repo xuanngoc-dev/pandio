@@ -1,6 +1,22 @@
 import api from '@/api/axios'
 
 /**
+ * Lịch khách hàng theo khoảng ngày (Hẹn lịch / Đến).
+ * @param {{ tu_ngay: string, den_ngay: string }} params
+ */
+export function fetchLichKhachHang(params = {}) {
+  return api.get('/khach-hang-note-khach-moi/lich', { params })
+}
+
+/**
+ * Chi tiết lịch khách hàng theo ngày.
+ * @param {{ ngay: string, loai?: string }} params
+ */
+export function fetchLichKhachHangChiTiet(params = {}) {
+  return api.get('/khach-hang-note-khach-moi/lich/chi-tiet', { params })
+}
+
+/**
  * Danh sách note khách mới — phân trang.
  * @param {{ page?: number, per_page?: number, keyword?: string, trang_thai?: string, ngay_hen_tu?: string, ngay_hen_den?: string }} params
  */
