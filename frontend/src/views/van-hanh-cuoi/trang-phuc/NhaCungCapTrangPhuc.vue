@@ -58,7 +58,7 @@
           v-if="columnSettings.isColumnVisible('ma_nha_cung_cap')"
           prop="ma_nha_cung_cap"
           label="Mã"
-          width="120"
+          min-width="200"
         />
         <CustomTableColumn
           v-if="columnSettings.isColumnVisible('ten_nha_cung_cap')"

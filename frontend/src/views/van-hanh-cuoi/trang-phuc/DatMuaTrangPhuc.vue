@@ -234,7 +234,7 @@
           </div>
 
           <div v-for="(item, index) in form.mat_hang" :key="index" class="mat-hang-row">
-            <CustomRow :gutter="12" align="middle">
+            <CustomRow :gutter="12" class="mat-hang-row-inner">
               <CustomCol :xs="24" :sm="12" :md="8">
                 <CustomFormItem
                   :label="index === 0 ? 'Tên mặt hàng' : ''"
@@ -279,13 +279,16 @@
                 </CustomFormItem>
               </CustomCol>
               <CustomCol :xs="6" :sm="2" :md="2" class="remove-col">
-                <CustomButton
-                  v-if="form.mat_hang.length > 1"
-                  type="danger"
-                  link
-                  :icon="Delete"
-                  @click="removeMatHangRow(index)"
-                />
+                <div v-if="index === 0" class="remove-label-spacer" aria-hidden="true" />
+                <div class="remove-btn-cell">
+                  <CustomButton
+                    v-if="form.mat_hang.length > 1"
+                    type="danger"
+                    link
+                    :icon="Delete"
+                    @click="removeMatHangRow(index)"
+                  />
+                </div>
               </CustomCol>
             </CustomRow>
           </div>
@@ -681,11 +684,27 @@ onMounted(() => {
   }
 }
 
+.mat-hang-row-inner {
+  align-items: flex-end;
+}
+
 .remove-col {
   display: flex;
-  align-items: flex-end;
-  justify-content: center;
+  flex-direction: column;
+  justify-content: flex-end;
   padding-bottom: 18px;
+}
+
+.remove-label-spacer {
+  height: 30px;
+  flex-shrink: 0;
+}
+
+.remove-btn-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
 }
 
 .summary-row {

@@ -58,7 +58,7 @@
           v-if="columnSettings.isColumnVisible('ma_danh_muc')"
           prop="ma_danh_muc"
           label="Mã"
-          width="120"
+          min-width="200"
         />
         <CustomTableColumn
           v-if="columnSettings.isColumnVisible('ten_danh_muc')"
