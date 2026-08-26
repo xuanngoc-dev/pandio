@@ -330,6 +330,16 @@
           </template>
         </CustomTableColumn>
         <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ngay_tra_file_le')"
+          label="Ngày trả file lẻ"
+          min-width="140"
+          align="center"
+        >
+          <template #default="{ row }">
+            {{ formatDieuPhoiSharedDate(row, 'ngay_tra_file_le') }}
+          </template>
+        </CustomTableColumn>
+        <CustomTableColumn
           v-if="columnSettings.isColumnVisible('ngay_tra_file_in')"
           label="Ngày trả file in"
           min-width="140"
@@ -340,13 +350,13 @@
           </template>
         </CustomTableColumn>
         <CustomTableColumn
-          v-if="columnSettings.isColumnVisible('ngay_tra_chinh_thuc')"
-          label="Ngày trả chính thức"
+          v-if="columnSettings.isColumnVisible('ngay_khach_hen_qua')"
+          label="Ngày khách hẹn qua"
           min-width="160"
           align="center"
         >
           <template #default="{ row }">
-            {{ formatDieuPhoiSharedDate(row, 'ngay_tra_chinh_thuc') }}
+            {{ formatDieuPhoiSharedDate(row, 'ngay_khach_hen_qua') }}
           </template>
         </CustomTableColumn>
         <CustomTableColumn
@@ -548,8 +558,9 @@ const tableColumns = [
   { key: 'created_at', label: 'Ngày tạo', group: 'Thông tin hợp đồng' },
   // Trạng thái điều phối lưu ở thong_tin_dieu_phoi.trang_thai_dieu_phoi
   { key: 'trang_thai_dieu_phoi', label: 'Trạng thái điều phối', group: 'Thông tin điều phối' },
+  { key: 'ngay_tra_file_le', label: 'Ngày trả file lẻ', group: 'Thông tin điều phối' },
   { key: 'ngay_tra_file_in', label: 'Ngày trả file in', group: 'Thông tin điều phối' },
-  { key: 'ngay_tra_chinh_thuc', label: 'Ngày trả chính thức', group: 'Thông tin điều phối' },
+  { key: 'ngay_khach_hen_qua', label: 'Ngày khách hẹn qua', group: 'Thông tin điều phối' },
   { key: 'lich_quay_chup', label: 'Lịch quay chụp', group: 'Thông tin điều phối' },
 ]
 

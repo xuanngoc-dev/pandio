@@ -3,28 +3,18 @@
     <CustomForm ref="formRef" :model="formModel" :rules="formRules" label-position="top">
       <template v-if="dieuPhoiFields.length">
         <CustomRow :gutter="16" class="shared-date-row">
-          <CustomCol v-bind="sharedDateColProps">
-            <CustomFormItem label="Ngày trả file in" prop="ngay_tra_file_in">
+          <CustomCol
+            v-for="key in SHARED_LICH_QUAY_CHUP_KEYS"
+            :key="key"
+            v-bind="sharedDateColProps"
+          >
+            <CustomFormItem :label="sharedLichQuayChupLabel(key)" :prop="key">
               <el-date-picker
-                v-model="formModel.ngay_tra_file_in"
+                v-model="formModel[key]"
                 type="date"
                 format="DD/MM/YYYY"
                 value-format="YYYY-MM-DD"
-                placeholder="Chọn ngày trả file in"
-                :disabled-date="disabledPastDate"
-                style="width: 100%"
-                clearable
-              />
-            </CustomFormItem>
-          </CustomCol>
-          <CustomCol v-bind="sharedDateColProps">
-            <CustomFormItem label="Ngày trả chính thức" prop="ngay_tra_chinh_thuc">
-              <el-date-picker
-                v-model="formModel.ngay_tra_chinh_thuc"
-                type="date"
-                format="DD/MM/YYYY"
-                value-format="YYYY-MM-DD"
-                placeholder="Chọn ngày trả chính thức"
+                :placeholder="`Chọn ${sharedLichQuayChupLabel(key).toLowerCase()}`"
                 :disabled-date="disabledPastDate"
                 style="width: 100%"
                 clearable
@@ -151,6 +141,9 @@ import {
   parseSessionLoaiQuayChup,
   parseSessionTrangPhucItems,
   loaiQuayChupRequiredRule,
+  SHARED_LICH_QUAY_CHUP_KEYS,
+  emptySharedLichQuayChupDates,
+  sharedLichQuayChupLabel,
 } from '@/utils/thongTinDieuPhoi'
 import HopDongSddvConceptTrangPhucPicker from './HopDongSddvConceptTrangPhucPicker.vue'
 import HopDongSddvDieuPhoiSessionFields from './HopDongSddvDieuPhoiSessionFields.vue'
@@ -175,8 +168,7 @@ let sessionUid = 0
 
 const formModel = reactive({
   sessions: [],
-  ngay_tra_file_in: null,
-  ngay_tra_chinh_thuc: null,
+  ...emptySharedLichQuayChupDates(),
 })
 
 const loaiHopDongId = computed(() => props.form?.loai_hop_dong_id)
@@ -188,8 +180,8 @@ const sharedDateColProps = {
   xs: 24,
   sm: 12,
   md: 8,
-  lg: 6,
-  xl: 6,
+  lg: 8,
+  xl: 8,
 }
 
 const formRules = computed(() => {
@@ -427,13 +419,13 @@ function cancelRename() {
 
 function hydrateSharedDatesFromForm() {
   const raw = props.form?.thong_tin_dieu_phoi
-  formModel.ngay_tra_file_in = firstDieuPhoiGiaTri(raw, 'ngay_tra_file_in')
-  formModel.ngay_tra_chinh_thuc = firstDieuPhoiGiaTri(raw, 'ngay_tra_chinh_thuc')
+  for (const key of SHARED_LICH_QUAY_CHUP_KEYS) {
+    formModel[key] = firstDieuPhoiGiaTri(raw, key)
+  }
 }
 
 function resetSharedDates() {
-  formModel.ngay_tra_file_in = null
-  formModel.ngay_tra_chinh_thuc = null
+  Object.assign(formModel, emptySharedLichQuayChupDates())
 }
 
 function startOfToday() {
@@ -554,10 +546,9 @@ function getDieuPhoiPayload(existing = null) {
       ? existing
       : props.form?.thong_tin_dieu_phoi
 
-  const sharedDates = {
-    ngay_tra_file_in: formModel.ngay_tra_file_in,
-    ngay_tra_chinh_thuc: formModel.ngay_tra_chinh_thuc,
-  }
+  const sharedDates = Object.fromEntries(
+    SHARED_LICH_QUAY_CHUP_KEYS.map((key) => [key, formModel[key]]),
+  )
 
   if (!dieuPhoiFields.value.length) {
     return buildDieuPhoiEnvelope(source, normalizeDieuPhoiSessions(source), sharedDates)

@@ -227,8 +227,9 @@ class LoaiHopDongSeeder extends Seeder
                     'gia_tri_toi_da' => 3,
                 ]
             ),
+            'ngay_tra_file_le' => $this->dieuPhoiField('Ngày trả file lẻ', 'date', true, null),
             'ngay_tra_file_in' => $this->dieuPhoiField('Ngày trả file in', 'date', true, null),
-            'ngay_tra_chinh_thuc' => $this->dieuPhoiField('Ngày trả chính thức', 'date', true, null),
+            'ngay_khach_hen_qua' => $this->dieuPhoiField('Ngày khách hẹn qua', 'date', true, null),
             'dia_diem_chup' => $this->dieuPhoiField('Địa điểm chụp', 'string', true, null),
             'tho_chup' => $this->dieuPhoiField('Thợ chụp', 'array', true, []),
             'tho_chup_ngoai' => $this->dieuPhoiField('Thợ chụp ngoài', 'string', true, null),

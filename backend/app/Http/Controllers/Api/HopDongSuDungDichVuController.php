@@ -250,7 +250,7 @@ class HopDongSuDungDichVuController extends BaseApiController
      * danh_sach_buoi_chup[*].{tho_chup|tho_make|quay_phim}.gia_tri
      *
      * Query: page, per_page, ket_qua_trang_thai, keyword, loai_hop_dong_id,
-     * ngay_chup, ngay_tra_file_in, ngay_tra_chinh_thuc,
+     * ngay_chup, ngay_tra_file_le, ngay_tra_file_in, ngay_khach_hen_qua,
      * co_file_goc (tiền kỳ / hậu kỳ), co_file_le, co_file_in (hậu kỳ): 1 = đã có link, 0 = chưa có
      * Tab lọc theo thong_tin_dieu_phoi.trang_thai_dieu_phoi (fallback ket_qua_hop_dong.trang_thai).
      */
@@ -275,8 +275,9 @@ class HopDongSuDungDichVuController extends BaseApiController
                 'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
                 'loai_hop_dong_id' => ['sometimes', 'nullable', 'integer', 'exists:danh_muc_loai_hop_dong,id'],
                 'ngay_chup' => ['sometimes', 'nullable', 'date'],
+                'ngay_tra_file_le' => ['sometimes', 'nullable', 'date'],
                 'ngay_tra_file_in' => ['sometimes', 'nullable', 'date'],
-                'ngay_tra_chinh_thuc' => ['sometimes', 'nullable', 'date'],
+                'ngay_khach_hen_qua' => ['sometimes', 'nullable', 'date'],
                 'co_file_goc' => ['sometimes', 'nullable', 'boolean'],
                 'co_file_le' => ['sometimes', 'nullable', 'boolean'],
                 'co_file_in' => ['sometimes', 'nullable', 'boolean'],
@@ -1691,7 +1692,7 @@ class HopDongSuDungDichVuController extends BaseApiController
             $query->where('loai_hop_dong_id', $loaiHopDongId);
         }
 
-        $dateFields = ['ngay_chup', 'ngay_tra_file_in', 'ngay_tra_chinh_thuc'];
+        $dateFields = ['ngay_chup', 'ngay_tra_file_le', 'ngay_tra_file_in', 'ngay_khach_hen_qua'];
         foreach ($dateFields as $field) {
             $value = $filters[$field] ?? null;
             if ($value === null || $value === '') {
@@ -1820,7 +1821,7 @@ class HopDongSuDungDichVuController extends BaseApiController
      */
     private function applyDieuPhoiDateRangeFilter($query, string $field, ?string $from, ?string $to): void
     {
-        $allowed = ['ngay_chup', 'ngay_tra_file_in', 'ngay_tra_chinh_thuc'];
+        $allowed = ['ngay_chup', 'ngay_tra_file_le', 'ngay_tra_file_in', 'ngay_khach_hen_qua'];
         if (! in_array($field, $allowed, true)) {
             return;
         }
@@ -1907,7 +1908,7 @@ class HopDongSuDungDichVuController extends BaseApiController
      */
     private function dieuPhoiDateJsonPaths(string $field): array
     {
-        if (in_array($field, ['ngay_tra_file_in', 'ngay_tra_chinh_thuc'], true)) {
+        if (in_array($field, ['ngay_tra_file_le', 'ngay_tra_file_in', 'ngay_khach_hen_qua'], true)) {
             return ["$.{$field}"];
         }
 
@@ -1920,7 +1921,7 @@ class HopDongSuDungDichVuController extends BaseApiController
     private function applyDieuPhoiDateEqualsFilter($query, string $field, string $date): void
     {
         $date = substr($date, 0, 10);
-        $allowed = ['ngay_chup', 'ngay_tra_file_in', 'ngay_tra_chinh_thuc'];
+        $allowed = ['ngay_chup', 'ngay_tra_file_le', 'ngay_tra_file_in', 'ngay_khach_hen_qua'];
         if (! in_array($field, $allowed, true)) {
             return;
         }

@@ -46,6 +46,17 @@
         </CustomCol>
         <CustomCol :xs="12" :sm="12" :md="8" :lg="4">
           <el-date-picker
+            v-model="filters.ngay_tra_file_le"
+            type="date"
+            placeholder="Ngày trả file lẻ"
+            format="DD/MM/YYYY"
+            value-format="YYYY-MM-DD"
+            style="width: 100%"
+            clearable
+          />
+        </CustomCol>
+        <CustomCol :xs="12" :sm="12" :md="8" :lg="4">
+          <el-date-picker
             v-model="filters.ngay_tra_file_in"
             type="date"
             placeholder="Ngày trả file in"
@@ -57,9 +68,9 @@
         </CustomCol>
         <CustomCol :xs="12" :sm="12" :md="8" :lg="4">
           <el-date-picker
-            v-model="filters.ngay_tra_chinh_thuc"
+            v-model="filters.ngay_khach_hen_qua"
             type="date"
-            placeholder="Ngày trả chính thức"
+            placeholder="Ngày khách hẹn qua"
             format="DD/MM/YYYY"
             value-format="YYYY-MM-DD"
             style="width: 100%"
@@ -213,8 +224,9 @@ const filters = reactive({
   keyword: '',
   loai_hop_dong_id: null,
   ngay_chup: '',
+  ngay_tra_file_le: '',
   ngay_tra_file_in: '',
-  ngay_tra_chinh_thuc: '',
+  ngay_khach_hen_qua: '',
 })
 
 const loaiHopDongOptions = ref([])
@@ -308,8 +320,9 @@ async function loadItems() {
       keyword: filters.keyword.trim() || undefined,
       loai_hop_dong_id: filters.loai_hop_dong_id || undefined,
       ngay_chup: filters.ngay_chup || undefined,
+      ngay_tra_file_le: filters.ngay_tra_file_le || undefined,
       ngay_tra_file_in: filters.ngay_tra_file_in || undefined,
-      ngay_tra_chinh_thuc: filters.ngay_tra_chinh_thuc || undefined,
+      ngay_khach_hen_qua: filters.ngay_khach_hen_qua || undefined,
       ...stepFileQueryParams(),
     })
     items.value = data.data || []

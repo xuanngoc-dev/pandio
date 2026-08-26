@@ -172,6 +172,7 @@ import {
   parseSessionConceptItems,
   parseSessionLoaiQuayChup,
   parseSessionTrangPhucItems,
+  sharedLichQuayChupLabel,
 } from '@/utils/thongTinDieuPhoi'
 
 const props = defineProps({
@@ -303,9 +304,7 @@ const sharedDateItems = computed(() => {
 
     items.push({
       key,
-      label: schemaItem?.ten_thong_tin || (
-        key === 'ngay_tra_file_in' ? 'Ngày trả file in' : 'Ngày trả chính thức'
-      ),
+      label: schemaItem?.ten_thong_tin || sharedLichQuayChupLabel(key),
       value: formatDate(value),
     })
   }

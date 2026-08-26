@@ -417,6 +417,7 @@ import {
   isSharedLichQuayChupKey,
   normalizeDieuPhoiSessions,
   parseSessionLoaiQuayChup,
+  sharedLichQuayChupLabel,
 } from '@/utils/thongTinDieuPhoi'
 
 const STAFF_FIELD_KEYS = DIEU_PHOI_STAFF_KEYS
@@ -636,9 +637,7 @@ const sharedDateItems = computed(() => {
 
     items.push({
       key,
-      label: schemaItem?.ten_thong_tin || (
-        key === 'ngay_tra_file_in' ? 'Ngày trả file in' : 'Ngày trả chính thức'
-      ),
+      label: schemaItem?.ten_thong_tin || sharedLichQuayChupLabel(key),
       value: formatDieuPhoiValue(key, 'date', value),
     })
   }

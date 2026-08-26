@@ -25,28 +25,18 @@
         label-position="top"
       >
         <CustomRow :gutter="16" class="shared-date-row">
-          <CustomCol v-bind="sharedDateColProps">
-            <CustomFormItem label="Ngày trả file in" prop="ngay_tra_file_in">
+          <CustomCol
+            v-for="key in SHARED_LICH_QUAY_CHUP_KEYS"
+            :key="key"
+            v-bind="sharedDateColProps"
+          >
+            <CustomFormItem :label="sharedLichQuayChupLabel(key)" :prop="key">
               <el-date-picker
-                v-model="formModel.ngay_tra_file_in"
+                v-model="formModel[key]"
                 type="date"
                 format="DD/MM/YYYY"
                 value-format="YYYY-MM-DD"
-                placeholder="Chọn ngày trả file in"
-                :disabled-date="disabledPastDate"
-                style="width: 100%"
-                clearable
-              />
-            </CustomFormItem>
-          </CustomCol>
-          <CustomCol v-bind="sharedDateColProps">
-            <CustomFormItem label="Ngày trả chính thức" prop="ngay_tra_chinh_thuc">
-              <el-date-picker
-                v-model="formModel.ngay_tra_chinh_thuc"
-                type="date"
-                format="DD/MM/YYYY"
-                value-format="YYYY-MM-DD"
-                placeholder="Chọn ngày trả chính thức"
+                :placeholder="`Chọn ${sharedLichQuayChupLabel(key).toLowerCase()}`"
                 :disabled-date="disabledPastDate"
                 style="width: 100%"
                 clearable
@@ -142,14 +132,13 @@ import {
   parseSessionLoaiQuayChup,
   loaiQuayChupRequiredRule,
   withTienKyIfStaffAssigned,
+  SHARED_LICH_QUAY_CHUP_KEYS,
+  emptySharedLichQuayChupDates,
+  sharedLichQuayChupLabel,
 } from '@/utils/thongTinDieuPhoi'
 import HopDongSddvDieuPhoiSessionFields from './HopDongSddvDieuPhoiSessionFields.vue'
 
-const REQUIRED_DATE_KEYS = new Set([
-  'ngay_chup',
-  'ngay_tra_file_in',
-  'ngay_tra_chinh_thuc',
-])
+const REQUIRED_DATE_KEYS = new Set(['ngay_chup', ...SHARED_LICH_QUAY_CHUP_KEYS])
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -177,8 +166,7 @@ let sessionUid = 0
 
 const formModel = reactive({
   sessions: [],
-  ngay_tra_file_in: null,
-  ngay_tra_chinh_thuc: null,
+  ...emptySharedLichQuayChupDates(),
 })
 
 const sessionFields = computed(() =>
@@ -188,8 +176,8 @@ const sharedDateColProps = {
   xs: 24,
   sm: 12,
   md: 8,
-  lg: 6,
-  xl: 6,
+  lg: 8,
+  xl: 8,
 }
 
 const dialogTitle = computed(() => {
@@ -350,6 +338,7 @@ function buildFieldsFromSchema(schema) {
     if (!item || typeof item !== 'object') continue
     if (item.su_dung === false) continue
     if (isDieuPhoiExtraSessionKey(key)) continue
+    if (key === 'ngay_tra_chinh_thuc') continue
 
     const loai = resolveLoaiDuLieu(key, item)
     nextFields.push({
@@ -377,8 +366,7 @@ async function loadData() {
   fields.value = []
   fieldMeta.value = {}
   formModel.sessions = []
-  formModel.ngay_tra_file_in = null
-  formModel.ngay_tra_chinh_thuc = null
+  Object.assign(formModel, emptySharedLichQuayChupDates())
   hopDong.value = null
   activeSessionName.value = ''
 
@@ -409,19 +397,16 @@ async function loadData() {
       MAX_LICH_QUAY_CHUP,
     )
     formModel.sessions = savedSessions.map((item, index) => sessionFromSaved(item, index))
-    formModel.ngay_tra_file_in = firstDieuPhoiGiaTri(hopDong.value?.thong_tin_dieu_phoi, 'ngay_tra_file_in')
-    formModel.ngay_tra_chinh_thuc = firstDieuPhoiGiaTri(
-      hopDong.value?.thong_tin_dieu_phoi,
-      'ngay_tra_chinh_thuc',
-    )
+    for (const key of SHARED_LICH_QUAY_CHUP_KEYS) {
+      formModel[key] = firstDieuPhoiGiaTri(hopDong.value?.thong_tin_dieu_phoi, key)
+    }
     syncActiveSession()
   } catch {
     fields.value = []
     userOptions.value = []
     loaiQuayChupOptions.value = []
     formModel.sessions = []
-    formModel.ngay_tra_file_in = null
-    formModel.ngay_tra_chinh_thuc = null
+    Object.assign(formModel, emptySharedLichQuayChupDates())
     activeSessionName.value = ''
   } finally {
     loading.value = false
@@ -460,8 +445,7 @@ function buildPayload() {
 
   return withTienKyIfStaffAssigned(
     buildDieuPhoiEnvelope(hopDong.value?.thong_tin_dieu_phoi, built, {
-      ngay_tra_file_in: formModel.ngay_tra_file_in,
-      ngay_tra_chinh_thuc: formModel.ngay_tra_chinh_thuc,
+      ...Object.fromEntries(SHARED_LICH_QUAY_CHUP_KEYS.map((key) => [key, formModel[key]])),
     }),
   )
 }
@@ -516,8 +500,7 @@ function onClosed() {
   fields.value = []
   fieldMeta.value = {}
   formModel.sessions = []
-  formModel.ngay_tra_file_in = null
-  formModel.ngay_tra_chinh_thuc = null
+  Object.assign(formModel, emptySharedLichQuayChupDates())
   hopDong.value = null
   userOptions.value = []
   loaiQuayChupOptions.value = []

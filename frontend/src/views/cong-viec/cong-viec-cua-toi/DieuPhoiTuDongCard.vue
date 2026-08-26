@@ -43,43 +43,47 @@
           </template>
         </span>
       </div>
-      <div v-if="ngayTraDemo" class="cong-viec-card__row">
+      <div v-if="ngayTraFileLe" class="cong-viec-card__row">
+        <span class="label">
+          Ngày trả file lẻ
+          <CustomTooltip
+            v-if="trangThaiGiaoFileLe"
+            :content="trangThaiGiaoFileLe.tooltip"
+            placement="top"
+          >
+            <CustomIcon
+              class="deadline-status-icon"
+              :class="trangThaiGiaoFileLe.late ? 'is-late' : 'is-ok'"
+            >
+              <WarningFilled v-if="trangThaiGiaoFileLe.late" />
+              <CircleCheckFilled v-else />
+            </CustomIcon>
+          </CustomTooltip>
+        </span>
+        <span class="value">{{ ngayTraFileLe }}</span>
+      </div>
+      <div v-if="ngayTraFileIn" class="cong-viec-card__row">
         <span class="label">
           Ngày trả file in
           <CustomTooltip
-            v-if="trangThaiGiaoDemo"
-            :content="trangThaiGiaoDemo.tooltip"
+            v-if="trangThaiGiaoFileIn"
+            :content="trangThaiGiaoFileIn.tooltip"
             placement="top"
           >
             <CustomIcon
               class="deadline-status-icon"
-              :class="trangThaiGiaoDemo.late ? 'is-late' : 'is-ok'"
+              :class="trangThaiGiaoFileIn.late ? 'is-late' : 'is-ok'"
             >
-              <WarningFilled v-if="trangThaiGiaoDemo.late" />
+              <WarningFilled v-if="trangThaiGiaoFileIn.late" />
               <CircleCheckFilled v-else />
             </CustomIcon>
           </CustomTooltip>
         </span>
-        <span class="value">{{ ngayTraDemo }}</span>
+        <span class="value">{{ ngayTraFileIn }}</span>
       </div>
-      <div v-if="ngayTraChinhThuc" class="cong-viec-card__row">
-        <span class="label">
-          Ngày trả chính thức
-          <CustomTooltip
-            v-if="trangThaiBanGiao"
-            :content="trangThaiBanGiao.tooltip"
-            placement="top"
-          >
-            <CustomIcon
-              class="deadline-status-icon"
-              :class="trangThaiBanGiao.late ? 'is-late' : 'is-ok'"
-            >
-              <WarningFilled v-if="trangThaiBanGiao.late" />
-              <CircleCheckFilled v-else />
-            </CustomIcon>
-          </CustomTooltip>
-        </span>
-        <span class="value">{{ ngayTraChinhThuc }}</span>
+      <div v-if="ngayKhachHenQua" class="cong-viec-card__row">
+        <span class="label">Ngày khách hẹn qua</span>
+        <span class="value">{{ ngayKhachHenQua }}</span>
       </div>
 
       <div v-if="step !== 'cho_nhan'" class="cong-viec-card__files">
@@ -560,14 +564,20 @@ const thoiGianChupItems = computed(() =>
     .filter(Boolean),
 )
 
-const ngayTraDemo = computed(() =>
+const ngayTraFileLe = computed(() =>
+  collectDieuPhoiGiaTri(props.item?.thong_tin_dieu_phoi, 'ngay_tra_file_le')
+    .map((item) => formatDate(item))
+    .filter(Boolean)
+    .join(', '),
+)
+const ngayTraFileIn = computed(() =>
   collectDieuPhoiGiaTri(props.item?.thong_tin_dieu_phoi, 'ngay_tra_file_in')
     .map((item) => formatDate(item))
     .filter(Boolean)
     .join(', '),
 )
-const ngayTraChinhThuc = computed(() =>
-  collectDieuPhoiGiaTri(props.item?.thong_tin_dieu_phoi, 'ngay_tra_chinh_thuc')
+const ngayKhachHenQua = computed(() =>
+  collectDieuPhoiGiaTri(props.item?.thong_tin_dieu_phoi, 'ngay_khach_hen_qua')
     .map((item) => formatDate(item))
     .filter(Boolean)
     .join(', '),
@@ -584,7 +594,18 @@ const trangThaiChup = computed(() =>
   }),
 )
 
-const trangThaiGiaoDemo = computed(() =>
+const trangThaiGiaoFileLe = computed(() =>
+  buildDeadlineStatus({
+    dateValue: earliestDate(
+      collectDieuPhoiGiaTri(props.item?.thong_tin_dieu_phoi, 'ngay_tra_file_le'),
+    ),
+    hasFile: hasLinkFileLe.value,
+    lateLabel: 'Trễ giao file lẻ',
+    okLabel: 'Đúng hạn giao file lẻ',
+  }),
+)
+
+const trangThaiGiaoFileIn = computed(() =>
   buildDeadlineStatus({
     dateValue: earliestDate(
       collectDieuPhoiGiaTri(props.item?.thong_tin_dieu_phoi, 'ngay_tra_file_in'),
@@ -592,17 +613,6 @@ const trangThaiGiaoDemo = computed(() =>
     hasFile: hasLinkFileIn.value,
     lateLabel: 'Trễ giao file in',
     okLabel: 'Đúng hạn giao file in',
-  }),
-)
-
-const trangThaiBanGiao = computed(() =>
-  buildDeadlineStatus({
-    dateValue: earliestDate(
-      collectDieuPhoiGiaTri(props.item?.thong_tin_dieu_phoi, 'ngay_tra_chinh_thuc'),
-    ),
-    hasFile: hasLinkFileIn.value,
-    lateLabel: 'Trễ bàn giao',
-    okLabel: 'Đúng hạn bàn giao',
   }),
 )
 
