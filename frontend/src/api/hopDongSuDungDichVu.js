@@ -48,6 +48,28 @@ export function fetchLichChupMakeChiTiet(params = {}) {
 }
 
 /**
+ * Lịch hậu kỳ: số lượng HĐ theo ngày trả file lẻ / file in / khách hẹn qua.
+ * @param {{ tu_ngay: string, den_ngay: string }} params
+ * @returns {Promise<{ data: { items: Array<{ ngay: string, tra_file_le: number, tra_file_in: number, khach_qua: number }> } }>}
+ */
+export function fetchLichHauKy(params = {}) {
+  return api.get('/hop-dong-su-dung-dich-vu/lich-hau-ky', { params, skipLoading: true })
+}
+
+/**
+ * Danh sách HĐ lịch hậu kỳ theo ngày + loại mốc.
+ * @param {{
+ *   ngay: string,
+ *   loai: 'ngay_tra_file_le'|'ngay_tra_file_in'|'ngay_khach_hen_qua',
+ *   page?: number,
+ *   per_page?: number,
+ * }} params
+ */
+export function fetchLichHauKyChiTiet(params = {}) {
+  return api.get('/hop-dong-su-dung-dich-vu/lich-hau-ky/chi-tiet', { params, skipLoading: true })
+}
+
+/**
  * Công việc điều phối của user đang đăng nhập.
  * Tab tiền kỳ: trang_thai_dieu_phoi = tien_ky và user id nằm trong
  * tho_chup / tho_make / quay_phim của một buổi trong danh_sach_buoi_chup.

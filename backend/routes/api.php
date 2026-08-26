@@ -188,6 +188,8 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
     Route::get('/hop-dong-su-dung-dich-vu/cong-viec-cua-toi', [HopDongSuDungDichVuController::class, 'congViecCuaToi']);     // Công việc điều phối được gán cho tôi
     Route::get('/hop-dong-su-dung-dich-vu/lich-chup-make', [HopDongSuDungDichVuController::class, 'lichChupMake']);         // Lịch chụp/make theo khoảng ngày
     Route::get('/hop-dong-su-dung-dich-vu/lich-chup-make/chi-tiet', [HopDongSuDungDichVuController::class, 'lichChupMakeChiTiet']); // Chi tiết 1 slot lịch chụp/make
+    Route::get('/hop-dong-su-dung-dich-vu/lich-hau-ky', [HopDongSuDungDichVuController::class, 'lichHauKy']);               // Lịch hậu kỳ: đếm trả file lẻ / file in / khách hẹn qua theo ngày
+    Route::get('/hop-dong-su-dung-dich-vu/lich-hau-ky/chi-tiet', [HopDongSuDungDichVuController::class, 'lichHauKyChiTiet']); // Chi tiết HĐ lịch hậu kỳ theo ngày + loại mốc
     Route::post('/hop-dong-su-dung-dich-vu/khoi-tao', [HopDongSuDungDichVuController::class, 'khoiTao']);                   // Tạo HĐ nháp + sinh mã
     Route::post('/hop-dong-su-dung-dich-vu/kiem-tra-ma-giam-gia', [HopDongSuDungDichVuController::class, 'kiemTraMaGiamGia']); // Kiểm tra mã giảm giá, trả số tiền giảm
     Route::post('/hop-dong-su-dung-dich-vu/{hop_dong_su_dung_dich_vu}/nhan-cong-viec', [HopDongSuDungDichVuController::class, 'nhanCongViec']); // Nhân viên nhận việc điều phối

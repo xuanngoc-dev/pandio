@@ -231,6 +231,123 @@ class HopDongSuDungDichVuController extends BaseApiController
         }, 'lấy danh sách hợp đồng lịch chụp make');
     }
 
+    /**
+     * Lịch hậu kỳ: số lượng HĐ theo ngày trả file lẻ / file in / khách hẹn qua.
+     * Ngày lấy từ thong_tin_dieu_phoi (cấp envelope, dùng chung mọi buổi).
+     * Loại trừ trang_thai: moi_tao, nhap, da_huy.
+     *
+     * Query: tu_ngay, den_ngay
+     * Response: { items: [{ ngay, tra_file_le, tra_file_in, khach_qua }] }
+     */
+    public function lichHauKy(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'tu_ngay' => ['required', 'date'],
+                'den_ngay' => ['required', 'date', 'after_or_equal:tu_ngay'],
+            ]);
+
+            $tuNgay = Carbon::parse($validated['tu_ngay'])->toDateString();
+            $denNgay = Carbon::parse($validated['den_ngay'])->toDateString();
+
+            $rows = HopDongSuDungDichVu::query()
+                ->whereNotIn('trang_thai', ['moi_tao', 'nhap', 'da_huy'])
+                ->whereNotNull('thong_tin_dieu_phoi')
+                ->get(['id', 'thong_tin_dieu_phoi']);
+
+            $fieldMap = [
+                'ngay_tra_file_le' => 'tra_file_le',
+                'ngay_tra_file_in' => 'tra_file_in',
+                'ngay_khach_hen_qua' => 'khach_qua',
+            ];
+
+            $days = [];
+            foreach ($rows as $hd) {
+                $raw = is_array($hd->thong_tin_dieu_phoi) ? $hd->thong_tin_dieu_phoi : [];
+                foreach ($fieldMap as $jsonKey => $countKey) {
+                    $ngay = $this->dieuPhoiSharedDate($raw, $jsonKey);
+                    if ($ngay === null || $ngay < $tuNgay || $ngay > $denNgay) {
+                        continue;
+                    }
+                    if (! isset($days[$ngay])) {
+                        $days[$ngay] = [
+                            'ngay' => $ngay,
+                            'tra_file_le' => 0,
+                            'tra_file_in' => 0,
+                            'khach_qua' => 0,
+                        ];
+                    }
+                    $days[$ngay][$countKey]++;
+                }
+            }
+
+            ksort($days);
+
+            return response()->json([
+                'items' => array_values($days),
+            ]);
+        }, 'lấy thống kê lịch hậu kỳ');
+    }
+
+    /**
+     * Danh sách HĐ lịch hậu kỳ theo ngày + loại mốc
+     * (ngay_tra_file_le | ngay_tra_file_in | ngay_khach_hen_qua).
+     * Loại trừ trang_thai: moi_tao, nhap, da_huy.
+     *
+     * Query: ngay (required), loai (required), page, per_page
+     */
+    public function lichHauKyChiTiet(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'ngay' => ['required', 'date'],
+                'loai' => ['required', 'string', Rule::in([
+                    'ngay_tra_file_le',
+                    'ngay_tra_file_in',
+                    'ngay_khach_hen_qua',
+                ])],
+                'page' => ['sometimes', 'integer', 'min:1'],
+                'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            ]);
+
+            $ngay = Carbon::parse($validated['ngay'])->toDateString();
+            $loai = $validated['loai'];
+            $perPage = $validated['per_page'] ?? 20;
+
+            $query = HopDongSuDungDichVu::query()
+                ->with([
+                    'loaiHopDong:id,ten_hop_dong,ma_hop_dong',
+                    'nguoiTao:id,name,phone',
+                ])
+                ->whereNotIn('trang_thai', ['moi_tao', 'nhap', 'da_huy']);
+
+            $this->applyDieuPhoiDateEqualsFilter($query, $loai, $ngay);
+            $query->orderBy('id');
+
+            return response()->json($query->paginate($perPage));
+        }, 'lấy danh sách hợp đồng lịch hậu kỳ');
+    }
+
+    /**
+     * Ngày dùng chung ở envelope thong_tin_dieu_phoi (string hoặc { gia_tri }).
+     */
+    private function dieuPhoiSharedDate(array $raw, string $key): ?string
+    {
+        $value = $raw[$key] ?? null;
+        if (is_array($value)) {
+            $value = $value['gia_tri'] ?? null;
+        }
+        if ($value === null || $value === '') {
+            return null;
+        }
+        $ngay = substr((string) $value, 0, 10);
+        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $ngay)) {
+            return null;
+        }
+
+        return $ngay;
+    }
+
     private function normalizeGioChup(mixed $gioChup): ?string
     {
         if (! is_string($gioChup)) {

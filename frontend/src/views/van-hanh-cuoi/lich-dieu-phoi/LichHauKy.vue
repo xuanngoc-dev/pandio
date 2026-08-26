@@ -1,7 +1,7 @@
 <template>
-  <LichDieuPhoiCalendar title="Lịch hậu kỳ" />
+  <LichHauKyCalendar />
 </template>
 
 <script setup>
-import LichDieuPhoiCalendar from './LichDieuPhoiCalendar.vue'
+import LichHauKyCalendar from './LichHauKyCalendar.vue'
 </script>
