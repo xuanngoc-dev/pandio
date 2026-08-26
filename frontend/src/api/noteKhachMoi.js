@@ -10,10 +10,10 @@ export function fetchLichKhachHang(params = {}) {
 
 /**
  * Chi tiết lịch khách hàng theo ngày.
- * @param {{ ngay: string, loai?: string }} params
+ * @param {{ ngay: string, loai?: string, trang_thai?: string }} params
  */
 export function fetchLichKhachHangChiTiet(params = {}) {
-  return api.get('/khach-hang-note-khach-moi/lich/chi-tiet', { params })
+  return api.get('/khach-hang-note-khach-moi/lich/chi-tiet', { params, skipLoading: true })
 }
 
 /**

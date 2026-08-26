@@ -115,7 +115,7 @@ class KhachHangNoteKhachMoiController extends BaseApiController
     /**
      * Chi tiết lịch khách hàng theo ngày (+ loại sự kiện).
      *
-     * Query: ngay (required), loai (optional: hen_lich|den)
+     * Query: ngay (required), loai (optional: hen_lich|den), trang_thai (optional)
      */
     public function lichChiTiet(Request $request): JsonResponse
     {
@@ -123,10 +123,18 @@ class KhachHangNoteKhachMoiController extends BaseApiController
             $validated = $request->validate([
                 'ngay' => ['required', 'date'],
                 'loai' => ['sometimes', 'nullable', Rule::in(['hen_lich', 'den'])],
+                'trang_thai' => ['sometimes', 'nullable', Rule::in([
+                    'cho_hen',
+                    'da_den',
+                    'khong_den',
+                    'da_ky_hd',
+                    'da_huy',
+                ])],
             ]);
 
             $ngay = Carbon::parse($validated['ngay'])->toDateString();
             $loai = $validated['loai'] ?? null;
+            $trangThai = $validated['trang_thai'] ?? null;
 
             $rows = KhachHangNoteKhachMoi::query()
                 ->with(['nguoiTaoUser:id,name,phone'])
@@ -156,6 +164,13 @@ class KhachHangNoteKhachMoiController extends BaseApiController
                     $items,
                     fn (array $item) => $item['loai'] === $loai,
                 ));
+            }
+            if ($trangThai) {
+                $items = array_values(array_filter(
+                    $items,
+                    fn (array $item) => ($item['trang_thai'] ?? '') === $trangThai,
+                ));
+                $items = $this->uniqueLichItemsById($items);
             }
 
             return response()->json([
@@ -310,6 +325,26 @@ class KhachHangNoteKhachMoiController extends BaseApiController
         });
 
         return array_values($items);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $items
+     * @return list<array<string, mixed>>
+     */
+    private function uniqueLichItemsById(array $items): array
+    {
+        $seen = [];
+        $unique = [];
+        foreach ($items as $item) {
+            $id = $item['id'] ?? null;
+            if ($id === null || isset($seen[$id])) {
+                continue;
+            }
+            $seen[$id] = true;
+            $unique[] = $item;
+        }
+
+        return $unique;
     }
 
     /**

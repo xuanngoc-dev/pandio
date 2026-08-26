@@ -9,6 +9,16 @@
           <div class="legend legend-meta">
             <span class="legend-swatch is-ngay-nghi" />
             <span class="legend-text">Ngày nghỉ</span>
+            <template v-for="item in loaiSuKienLegend" :key="item.id">
+              <span
+                class="legend-swatch"
+                :style="{
+                  background: `${loaiColorMap[item.id] || '#909399'}29`,
+                  borderColor: `${loaiColorMap[item.id] || '#909399'}66`,
+                }"
+              />
+              <span class="legend-text">{{ item.ten }}</span>
+            </template>
           </div>
         </div>
       </template>
@@ -53,8 +63,10 @@
               'is-ngay-nghi': isNgayNghi(data.day),
               'is-lunar-month-start': isLunarMonthStart(data.day),
               'is-out-of-range': isOutOfRange(data.day),
+              'is-clickable': hasCounts(data.day),
             }"
             :title="dayCellTitle(data.day)"
+            @click="openDayChiTiet(data.day)"
           >
             <div class="day-head">
               <span class="day-solar" :class="{ 'is-today': isToday(data.day) }">
@@ -114,56 +126,36 @@
               :title="ngayNghiLabel(data.day)"
               aria-label="Ngày nghỉ"
             />
-            <div v-if="suKienVisibleByDate(data.day).length" class="day-items day-items--list">
-              <CustomTooltip
-                v-for="item in suKienPreviewByDate(data.day)"
-                :key="item.event_key"
-                :content="itemTooltip(item)"
-                placement="top"
-              >
-                <button
-                  type="button"
-                  class="day-item"
-                  :style="{
-                    '--loai-color': loaiColorMap[item.loai] || '#909399',
-                    background: `${loaiColorMap[item.loai] || '#909399'}26`,
-                  }"
-                  @click.stop="openChiTiet(data.day)"
-                >
-                  <span class="day-item-color" aria-hidden="true" />
-                  <span class="day-item-time">{{ loaiShortLabel(item.loai) }}</span>
-                  <span class="day-item-name">{{ itemLabel(item) }}</span>
-                </button>
-              </CustomTooltip>
+            <div v-if="hasCounts(data.day)" class="day-counts day-counts--list">
               <button
-                v-if="suKienMoreCount(data.day) > 0"
+                v-for="row in countRows(data.day)"
+                :key="row.key"
                 type="button"
-                class="day-more"
-                @click.stop="openChiTiet(data.day)"
+                class="day-count"
+                :style="{
+                  '--status-color': loaiColorMap[row.key] || '#909399',
+                  background: `${loaiColorMap[row.key] || '#909399'}26`,
+                }"
+                :title="`${row.label}: ${row.count}`"
+                @click.stop="openChiTiet(data.day, row.key)"
               >
-                + Xem thêm ({{ suKienMoreCount(data.day) }})
+                {{ row.label }}: {{ row.count }}
               </button>
             </div>
             <button
-              v-if="suKienVisibleByDate(data.day).length"
+              v-if="hasCounts(data.day)"
               type="button"
-              class="day-items day-items--dots"
+              class="day-counts day-counts--dots"
               :title="dayCellTitle(data.day)"
-              @click.stop="openChiTiet(data.day)"
+              @click.stop="openDayChiTiet(data.day)"
             >
               <span
-                v-for="item in suKienDotPreviewByDate(data.day)"
-                :key="item.event_key"
+                v-for="row in countRows(data.day)"
+                :key="row.key"
                 class="day-dot"
-                :style="{ background: loaiColorMap[item.loai] || '#909399' }"
-                :title="itemTooltip(item)"
+                :style="{ background: loaiColorMap[row.key] || '#909399' }"
+                :title="`${row.label}: ${row.count}`"
               />
-              <span
-                v-if="suKienDotMoreCount(data.day) > 0"
-                class="day-dot-more"
-              >
-                +{{ suKienDotMoreCount(data.day) }}
-              </span>
             </button>
           </div>
         </template>
@@ -220,6 +212,8 @@
     <LichKhachHangChiTietModal
       v-model="chiTietVisible"
       :ngay="chiTietNgay"
+      :trang-thai="chiTietTrangThai"
+      :counts="countsByDate(chiTietNgay)"
     />
   </div>
 </template>
@@ -241,34 +235,21 @@ import {
   toYmd,
 } from './lichKhachHangDate'
 
-const PREFS_STORAGE_KEY = 'pandio.lichKhachHang.loaiPrefs'
-/** Số sự kiện tối đa hiện trên mỗi ô ngày (desktop) */
-const MAX_DAY_ITEMS = 4
-/** Số chấm sự kiện tối đa trên mỗi ô ngày (mobile) */
-const MAX_DAY_DOTS = 6
+const PREFS_STORAGE_KEY = 'pandio.lichKhachHang.trangThaiPrefs'
 
-const LOAI_COLOR_BY_ID = {
-  hen_lich: '#1e88e5',
-  den: '#43a047',
-}
+const TRANG_THAI_OPTIONS = [
+  { value: 'cho_hen', label: 'Chờ hẹn', color: '#5c6bc0' },
+  { value: 'da_den', label: 'Đã đến', color: '#43a047' },
+  { value: 'khong_den', label: 'Không đến', color: '#fb8c00' },
+  { value: 'da_ky_hd', label: 'Đã ký HĐ', color: '#1e88e5' },
+  { value: 'da_huy', label: 'Đã hủy', color: '#e53935' },
+]
 
-const LOAI_SHORT_LABEL = {
-  hen_lich: 'Hẹn',
-  den: 'Đến',
-}
+const EMPTY_COUNTS = Object.fromEntries(TRANG_THAI_OPTIONS.map((opt) => [opt.value, 0]))
 
-const LOAI_LABEL = {
-  hen_lich: 'Hẹn lịch',
-  den: 'Đến',
-}
-
-const TRANG_THAI_LABEL = {
-  cho_hen: 'Chờ hẹn',
-  da_den: 'Đã đến',
-  khong_den: 'Không đến',
-  da_ky_hd: 'Đã ký HĐ',
-  da_huy: 'Đã hủy',
-}
+const TRANG_THAI_COLOR_BY_ID = Object.fromEntries(
+  TRANG_THAI_OPTIONS.map((opt) => [opt.value, opt.color]),
+)
 
 const FALLBACK_COLORS = [
   '#1e88e5',
@@ -345,6 +326,7 @@ const loaiSuKienLegend = ref([])
 /** Modal chi tiết theo ngày */
 const chiTietVisible = ref(false)
 const chiTietNgay = ref('')
+const chiTietTrangThai = ref('cho_hen')
 
 /**
  * Tuỳ chọn người dùng theo loai:
@@ -482,19 +464,19 @@ function buildNgayNghiMap(items) {
 }
 
 function colorForLoai(loaiId, index) {
-  if (LOAI_COLOR_BY_ID[loaiId]) return LOAI_COLOR_BY_ID[loaiId]
+  if (TRANG_THAI_COLOR_BY_ID[loaiId]) return TRANG_THAI_COLOR_BY_ID[loaiId]
   return FALLBACK_COLORS[index % FALLBACK_COLORS.length]
 }
 
 /**
- * @param {Array<{ id: string, ten: string }>} loaiList
+ * Gom note theo ngày (unique theo id). Ngày = hẹn lịch hoặc ngày đến.
  * @param {Array<object>} items
  */
-function buildCalendarData(loaiList, items) {
-  const legend = (Array.isArray(loaiList) ? loaiList : []).map((item, index) => ({
-    id: item.id,
-    ten: item.ten || item.id,
-    defaultColor: colorForLoai(item.id, index),
+function buildCalendarData(items) {
+  const legend = TRANG_THAI_OPTIONS.map((opt, index) => ({
+    id: opt.value,
+    ten: opt.label,
+    defaultColor: colorForLoai(opt.value, index),
   }))
 
   const map = {}
@@ -502,6 +484,7 @@ function buildCalendarData(loaiList, items) {
     const key = dayKey(row.ngay)
     if (!key) continue
     if (!map[key]) map[key] = []
+    if (map[key].some((item) => item.id === row.id)) continue
     map[key].push(row)
   }
 
@@ -559,10 +542,7 @@ async function loadLichKhachHang() {
   try {
     const { tu_ngay, den_ngay } = currentRange()
     const { data } = await fetchLichKhachHang({ tu_ngay, den_ngay })
-    const { map, legend } = buildCalendarData(
-      data?.loai_su_kien || [],
-      data?.items || [],
-    )
+    const { map, legend } = buildCalendarData(data?.items || [])
     suKienByDateMap.value = map
     loaiSuKienLegend.value = legend
   } catch {
@@ -646,56 +626,47 @@ function suKienByDate(day) {
 function suKienVisibleByDate(day) {
   const visibleMap = loaiVisibleMap.value
   return suKienByDate(day).filter((item) => {
-    if (!item.loai) return true
-    return visibleMap[item.loai] !== false
+    const status = item.trang_thai || 'cho_hen'
+    return visibleMap[status] !== false
   })
 }
 
-function suKienPreviewByDate(day) {
-  return suKienVisibleByDate(day).slice(0, MAX_DAY_ITEMS)
+function countsByDate(day) {
+  const counts = { ...EMPTY_COUNTS }
+  for (const item of suKienVisibleByDate(day)) {
+    const status = item.trang_thai
+    if (Object.prototype.hasOwnProperty.call(counts, status)) {
+      counts[status] += 1
+    }
+  }
+  return counts
 }
 
-function suKienMoreCount(day) {
-  return Math.max(0, suKienVisibleByDate(day).length - MAX_DAY_ITEMS)
+function countRows(day) {
+  const counts = countsByDate(day)
+  return TRANG_THAI_OPTIONS
+    .filter((opt) => counts[opt.value] > 0)
+    .map((opt) => ({
+      key: opt.value,
+      label: opt.label,
+      count: counts[opt.value],
+    }))
 }
 
-function suKienDotPreviewByDate(day) {
-  return suKienVisibleByDate(day).slice(0, MAX_DAY_DOTS)
+function hasCounts(day) {
+  return countRows(day).length > 0
 }
 
-function suKienDotMoreCount(day) {
-  return Math.max(0, suKienVisibleByDate(day).length - MAX_DAY_DOTS)
-}
-
-function loaiShortLabel(loai) {
-  return LOAI_SHORT_LABEL[loai] || loai || '—'
-}
-
-function loaiLabel(loai) {
-  return LOAI_LABEL[loai] || loai || '—'
-}
-
-function trangThaiLabel(value) {
-  return TRANG_THAI_LABEL[value] || value || ''
-}
-
-function itemLabel(item) {
-  return item?.ten_khach || 'Khách hàng'
-}
-
-function itemTooltip(item) {
-  const parts = [
-    loaiLabel(item?.loai),
-    item?.ten_khach,
-    item?.sdt,
-    trangThaiLabel(item?.trang_thai),
-  ].filter(Boolean)
-  return parts.join(' · ')
-}
-
-function openChiTiet(day) {
+function openChiTiet(day, trangThai) {
   chiTietNgay.value = dayKey(day)
+  chiTietTrangThai.value = trangThai
   chiTietVisible.value = true
+}
+
+function openDayChiTiet(day) {
+  const first = countRows(day)[0]
+  if (!first) return
+  openChiTiet(day, first.key)
 }
 
 function isNgayNghi(day) {
@@ -721,9 +692,11 @@ function dayCellTitle(day) {
   const nghi = ngayNghiByDate.value[dayKey(day)]
   if (nghi) parts.push(`Ngày nghỉ: ${nghi.ten_ngay_nghi}`)
 
-  const items = suKienVisibleByDate(day)
-  if (items.length) {
-    parts.push(`${items.length} sự kiện`)
+  const counts = countsByDate(day)
+  for (const opt of TRANG_THAI_OPTIONS) {
+    if (counts[opt.value] > 0) {
+      parts.push(`${opt.label}: ${counts[opt.value]}`)
+    }
   }
 
   return parts.join(' | ')
@@ -770,6 +743,7 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
   font-size: 13px;
   color: var(--el-text-color-secondary);
 }
@@ -866,6 +840,10 @@ onMounted(() => {
   border-radius: 6px;
   line-height: 1.2;
   overflow: hidden;
+
+  &.is-clickable {
+    cursor: pointer;
+  }
 
   &.is-ngay-nghi {
     background: color-mix(in srgb, var(--el-color-danger) 14%, transparent);
@@ -968,6 +946,60 @@ onMounted(() => {
   border-radius: 50%;
   background: var(--el-color-danger);
   flex-shrink: 0;
+}
+
+.day-counts {
+  min-height: 0;
+  margin-top: 2px;
+  overflow: hidden;
+  flex: 1;
+}
+
+.day-counts--list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.day-counts--dots {
+  display: none;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.day-count {
+  --status-color: #909399;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid color-mix(in srgb, var(--status-color) 35%, transparent);
+  border-radius: 4px;
+  color: var(--status-color);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  box-sizing: border-box;
+
+  &:hover {
+    filter: brightness(0.96);
+    border-color: color-mix(in srgb, var(--status-color) 55%, transparent);
+  }
 }
 
 .day-items {
@@ -1264,6 +1296,16 @@ onMounted(() => {
     top: 3px;
     left: 3px;
     z-index: 1;
+  }
+
+  .day-counts--list {
+    display: none;
+  }
+
+  .day-counts--dots {
+    display: flex;
+    justify-content: center;
+    margin-top: 0;
   }
 
   .day-items--list {

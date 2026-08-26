@@ -6,11 +6,25 @@
     class="lich-khach-hang-chi-tiet-modal"
     @closed="onClosed"
   >
+    <el-tabs
+      v-if="visibleTabs.length"
+      v-model="activeTrangThai"
+      class="status-tabs"
+      @tab-change="onTabChange"
+    >
+      <el-tab-pane
+        v-for="tab in visibleTabs"
+        :key="tab.value"
+        :name="tab.value"
+        :label="`${tab.label} (${tab.count})`"
+      />
+    </el-tabs>
+
     <CustomTable
       v-loading="loading"
       :data="items"
       stripe
-      row-key="event_key"
+      row-key="id"
       style="width: 100%"
       empty-text="Không có khách hàng"
     >
@@ -19,17 +33,20 @@
           {{ $index + 1 }}
         </template>
       </CustomTableColumn>
-      <CustomTableColumn label="Trạng thái ngày" width="130" align="center">
-        <template #default="{ row }">
-          <CustomTag :type="loaiTagType(row.loai)" size="small">
-            {{ loaiLabel(row.loai) }}
-          </CustomTag>
-        </template>
-      </CustomTableColumn>
       <CustomTableColumn label="Khách hàng" min-width="180">
         <template #default="{ row }">
           <div>{{ row.ten_khach || '—' }}</div>
           <div v-if="row.sdt" class="sub-text">{{ row.sdt }}</div>
+        </template>
+      </CustomTableColumn>
+      <CustomTableColumn label="Ngày hẹn" width="120" align="center">
+        <template #default="{ row }">
+          {{ formatDateVi(row.ngay_hen_lich) }}
+        </template>
+      </CustomTableColumn>
+      <CustomTableColumn label="Ngày đến TT" width="120" align="center">
+        <template #default="{ row }">
+          {{ formatDateVi(row.ngay_den_thuc_te) }}
         </template>
       </CustomTableColumn>
       <CustomTableColumn label="Phụ trách sale" min-width="160" show-overflow-tooltip>
@@ -37,7 +54,7 @@
           {{ formatSaleNames(row) }}
         </template>
       </CustomTableColumn>
-      <CustomTableColumn label="Trạng thái note" width="130" align="center">
+      <CustomTableColumn label="Trạng thái" width="130" align="center">
         <template #default="{ row }">
           <CustomTag :type="trangThaiTagType(row.trang_thai)" size="small">
             {{ trangThaiLabel(row.trang_thai) }}
@@ -62,37 +79,54 @@
 import { computed, ref, watch } from 'vue'
 import { fetchLichKhachHangChiTiet } from '@/api/noteKhachMoi'
 
+const TRANG_THAI_OPTIONS = [
+  { value: 'cho_hen', label: 'Chờ hẹn' },
+  { value: 'da_den', label: 'Đã đến' },
+  { value: 'khong_den', label: 'Không đến' },
+  { value: 'da_ky_hd', label: 'Đã ký HĐ' },
+  { value: 'da_huy', label: 'Đã hủy' },
+]
+
 const visible = defineModel({ type: Boolean, default: false })
 
 const props = defineProps({
   ngay: { type: String, default: '' },
+  trangThai: { type: String, default: 'cho_hen' },
+  counts: {
+    type: Object,
+    default: () => ({
+      cho_hen: 0,
+      da_den: 0,
+      khong_den: 0,
+      da_ky_hd: 0,
+      da_huy: 0,
+    }),
+  },
 })
 
 const loading = ref(false)
 const items = ref([])
+const activeTrangThai = ref(props.trangThai)
 
-const dialogTitle = computed(() => `Lịch khách hàng ngày ${formatDateVi(props.ngay)}`)
+const visibleTabs = computed(() =>
+  TRANG_THAI_OPTIONS.map((tab) => ({
+    ...tab,
+    count: Number(props.counts?.[tab.value]) || 0,
+  })).filter((tab) => tab.count > 0),
+)
 
-const LOAI_LABEL = {
-  hen_lich: 'Hẹn lịch',
-  den: 'Đến',
-}
+const activeTabMeta = computed(
+  () => TRANG_THAI_OPTIONS.find((tab) => tab.value === activeTrangThai.value) || TRANG_THAI_OPTIONS[0],
+)
 
-const TRANG_THAI_LABEL = {
-  cho_hen: 'Chờ hẹn',
-  da_den: 'Đã đến',
-  khong_den: 'Không đến',
-  da_ky_hd: 'Đã ký HĐ',
-  da_huy: 'Đã hủy',
-}
+const dialogTitle = computed(() => {
+  const ngay = formatDateVi(props.ngay)
+  return `${activeTabMeta.value.label} ngày ${ngay}`
+})
 
-function loaiLabel(value) {
-  return LOAI_LABEL[value] || value || '—'
-}
-
-function loaiTagType(value) {
-  return value === 'den' ? 'success' : 'primary'
-}
+const TRANG_THAI_LABEL = Object.fromEntries(
+  TRANG_THAI_OPTIONS.map((opt) => [opt.value, opt.label]),
+)
 
 function trangThaiLabel(value) {
   return TRANG_THAI_LABEL[value] || value || '—'
@@ -123,15 +157,22 @@ function formatSaleNames(row) {
   return users.map((u) => u.name).filter(Boolean).join(', ') || '—'
 }
 
+function onTabChange() {
+  loadItems()
+}
+
 async function loadItems() {
-  if (!props.ngay) {
+  if (!props.ngay || !activeTrangThai.value) {
     items.value = []
     return
   }
 
   loading.value = true
   try {
-    const { data } = await fetchLichKhachHangChiTiet({ ngay: props.ngay })
+    const { data } = await fetchLichKhachHangChiTiet({
+      ngay: props.ngay,
+      trang_thai: activeTrangThai.value,
+    })
     items.value = data.items || []
   } catch {
     items.value = []
@@ -145,15 +186,20 @@ function onClosed() {
 }
 
 watch(
-  () => [visible.value, props.ngay],
-  ([isOpen]) => {
+  () => [visible.value, props.ngay, props.trangThai],
+  ([isOpen, , trangThai]) => {
     if (!isOpen) return
+    activeTrangThai.value = trangThai || visibleTabs.value[0]?.value || TRANG_THAI_OPTIONS[0].value
     loadItems()
   },
 )
 </script>
 
 <style scoped lang="scss">
+.status-tabs {
+  margin-bottom: 12px;
+}
+
 .sub-text {
   font-size: 12px;
   color: var(--el-text-color-secondary);
