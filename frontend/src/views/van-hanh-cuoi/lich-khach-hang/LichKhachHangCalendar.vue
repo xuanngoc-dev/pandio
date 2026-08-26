@@ -1155,9 +1155,13 @@ onMounted(() => {
 }
 
 .loai-config-list {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px 12px;
+
+  @media (max-width: 1199px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 .loai-config-item {
@@ -1165,7 +1169,6 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   min-width: 0;
-  width: 260px;
   padding: 8px 10px;
   border: 1px solid var(--el-border-color-lighter);
   border-radius: 8px;
@@ -1325,10 +1328,6 @@ onMounted(() => {
   .loai-config {
     margin-top: 8px;
     padding: 10px 6px 0;
-  }
-
-  .loai-config-item {
-    width: 100%;
   }
 }
 </style>
