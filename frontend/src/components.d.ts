@@ -12,6 +12,15 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     BulkActionBar: typeof import('./components/BulkActionBar.vue')['default']
+    ChartArea: typeof import('./components/charts/ChartArea.vue')['default']
+    ChartBar: typeof import('./components/charts/ChartBar.vue')['default']
+    ChartColumn: typeof import('./components/charts/ChartColumn.vue')['default']
+    ChartDonut: typeof import('./components/charts/ChartDonut.vue')['default']
+    ChartHScroll: typeof import('./components/charts/ChartHScroll.vue')['default']
+    ChartLine: typeof import('./components/charts/ChartLine.vue')['default']
+    ChartPie: typeof import('./components/charts/ChartPie.vue')['default']
+    ChartRadialBar: typeof import('./components/charts/ChartRadialBar.vue')['default']
+    ChartSparkline: typeof import('./components/charts/ChartSparkline.vue')['default']
     CustomButton: typeof import('./components/element/CustomButton.vue')['default']
     CustomCard: typeof import('./components/element/CustomCard.vue')['default']
     CustomCol: typeof import('./components/element/CustomCol.vue')['default']
@@ -91,9 +100,11 @@ declare module 'vue' {
     PagePlaceholder: typeof import('./components/PagePlaceholder.vue')['default']
     Pagination: typeof import('./components/Pagination.vue')['default']
     QuickSearchModal: typeof import('./components/QuickSearchModal.vue')['default']
+    RankList: typeof import('./components/dashboard/RankList.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SideMenu: typeof import('./components/SideMenu.vue')['default']
+    StatCard: typeof import('./components/dashboard/StatCard.vue')['default']
     TableColumnConfig: typeof import('./components/TableColumnConfig.vue')['default']
     TermsPrivacyModal: typeof import('./components/TermsPrivacyModal.vue')['default']
   }

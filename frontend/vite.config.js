@@ -27,6 +27,9 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  optimizeDeps: {
+    include: ['apexcharts', 'vue3-apexcharts'],
+  },
   server: {
     port: 5173,
     host: true,
