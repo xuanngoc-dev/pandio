@@ -95,6 +95,21 @@
     </el-tabs>
 
     <div v-loading="loading" class="tab-content tab-content--list">
+      <div v-if="fileFilterOptions.length" class="step-file-filters">
+        <el-checkbox-group
+          :model-value="stepFileFilters"
+          @change="onStepFileFilterChange"
+        >
+          <el-checkbox
+            v-for="opt in fileFilterOptions"
+            :key="opt.value"
+            :value="opt.value"
+          >
+            {{ opt.label }}
+          </el-checkbox>
+        </el-checkbox-group>
+      </div>
+
       <el-empty
         v-if="!loading && !items.length"
         :description="emptyDescription"
@@ -159,6 +174,32 @@ const tabs = [
   { name: 'hoan_tat_san_xuat', label: 'Hoàn tất sản xuất' },
 ]
 
+const STEP_FILE_FILTER_OPTIONS = {
+  tien_ky: [
+    { value: 'all', label: 'Tất cả' },
+    { value: 'da_co_file_goc', label: 'Đã có file gốc' },
+    { value: 'chua_co_file_goc', label: 'Chưa có file gốc' },
+  ],
+  hau_ky: [
+    { value: 'all', label: 'Tất cả' },
+    { value: 'da_co_file_goc', label: 'Đã có file gốc' },
+    { value: 'chua_co_file_goc', label: 'Chưa có file gốc' },
+    { value: 'da_co_file_le', label: 'Đã có file lẻ' },
+    { value: 'chua_co_file_le', label: 'Chưa có file lẻ' },
+    { value: 'da_co_file_in', label: 'Đã có file in' },
+    { value: 'chua_co_file_in', label: 'Chưa có file in' },
+  ],
+}
+
+const FILE_FILTER_PAIRS = {
+  da_co_file_goc: 'chua_co_file_goc',
+  chua_co_file_goc: 'da_co_file_goc',
+  da_co_file_le: 'chua_co_file_le',
+  chua_co_file_le: 'da_co_file_le',
+  da_co_file_in: 'chua_co_file_in',
+  chua_co_file_in: 'da_co_file_in',
+}
+
 const activeTab = ref('tien_ky')
 
 const tabCounts = reactive({
@@ -182,13 +223,64 @@ const loading = ref(false)
 const page = ref(1)
 const perPage = ref(24)
 const total = ref(0)
+const stepFileFilters = ref(['all'])
+
+const fileFilterOptions = computed(
+  () => STEP_FILE_FILTER_OPTIONS[activeTab.value] || [],
+)
+
+const stepFileFilterActive = computed(
+  () =>
+    fileFilterOptions.value.length > 0 &&
+    stepFileFilters.value.length > 0 &&
+    !stepFileFilters.value.includes('all'),
+)
 
 const emptyDescription = computed(() => {
+  if (stepFileFilterActive.value) {
+    return 'Không có hợp đồng khớp bộ lọc'
+  }
   const label = tabs.find((t) => t.name === activeTab.value)?.label || ''
   return label
     ? `Chưa có công việc — ${label}`
     : 'Chưa có công việc điều phối nào được gán cho bạn'
 })
+
+function stepFileQueryParams() {
+  if (!stepFileFilterActive.value) return {}
+
+  const selected = new Set(stepFileFilters.value)
+  const params = {}
+  if (selected.has('da_co_file_goc')) params.co_file_goc = 1
+  else if (selected.has('chua_co_file_goc')) params.co_file_goc = 0
+  if (activeTab.value === 'hau_ky') {
+    if (selected.has('da_co_file_le')) params.co_file_le = 1
+    else if (selected.has('chua_co_file_le')) params.co_file_le = 0
+    if (selected.has('da_co_file_in')) params.co_file_in = 1
+    else if (selected.has('chua_co_file_in')) params.co_file_in = 0
+  }
+  return params
+}
+
+function onStepFileFilterChange(values) {
+  const prev = stepFileFilters.value
+  let next = Array.isArray(values) ? [...values] : []
+  const added = next.find((value) => !prev.includes(value))
+
+  if (added === 'all' || next.length === 0) {
+    next = ['all']
+  } else {
+    next = next.filter((value) => value !== 'all')
+    if (added && FILE_FILTER_PAIRS[added]) {
+      next = next.filter((value) => value !== FILE_FILTER_PAIRS[added])
+    }
+    if (!next.length) next = ['all']
+  }
+
+  stepFileFilters.value = next
+  page.value = 1
+  loadItems()
+}
 
 function applyTabCounts(counts) {
   if (!counts || typeof counts !== 'object') return
@@ -218,6 +310,7 @@ async function loadItems() {
       ngay_chup: filters.ngay_chup || undefined,
       ngay_tra_file_in: filters.ngay_tra_file_in || undefined,
       ngay_tra_chinh_thuc: filters.ngay_tra_chinh_thuc || undefined,
+      ...stepFileQueryParams(),
     })
     items.value = data.data || []
     total.value = data.total || 0
@@ -232,6 +325,7 @@ async function loadItems() {
 
 function onTabChange() {
   page.value = 1
+  stepFileFilters.value = ['all']
   loadItems()
 }
 
@@ -245,6 +339,10 @@ function onAccepted() {
 }
 
 function onItemUpdated(updated) {
+  if (stepFileFilterActive.value) {
+    loadItems()
+    return
+  }
   if (!updated?.id) {
     loadItems()
     return
@@ -321,6 +419,30 @@ onMounted(() => {
       display: block;
       align-items: stretch;
       justify-content: flex-start;
+    }
+  }
+
+  .step-file-filters {
+    margin-bottom: 16px;
+    padding: 10px 12px;
+    border: 1px solid var(--el-border-color-lighter);
+    border-radius: 6px;
+    background: var(--el-fill-color-blank);
+
+    :deep(.el-checkbox-group) {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 16px;
+    }
+
+    :deep(.el-checkbox) {
+      margin-right: 0;
+      height: auto;
+    }
+
+    :deep(.el-checkbox__label) {
+      font-size: 13px;
+      line-height: 1.4;
     }
   }
 

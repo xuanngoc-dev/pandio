@@ -60,6 +60,9 @@ export function fetchLichChupMakeChiTiet(params = {}) {
  *   ngay_chup?: string,
  *   ngay_tra_file_in?: string,
  *   ngay_tra_chinh_thuc?: string,
+ *   co_file_goc?: 0|1,
+ *   co_file_le?: 0|1,
+ *   co_file_in?: 0|1,
  * }} params
  */
 export function fetchCongViecDieuPhoiCuaToi(params = {}) {

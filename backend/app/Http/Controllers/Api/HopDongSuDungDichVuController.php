@@ -250,7 +250,8 @@ class HopDongSuDungDichVuController extends BaseApiController
      * danh_sach_buoi_chup[*].{tho_chup|tho_make|quay_phim}.gia_tri
      *
      * Query: page, per_page, ket_qua_trang_thai, keyword, loai_hop_dong_id,
-     * ngay_chup, ngay_tra_file_in, ngay_tra_chinh_thuc
+     * ngay_chup, ngay_tra_file_in, ngay_tra_chinh_thuc,
+     * co_file_goc (tiền kỳ / hậu kỳ), co_file_le, co_file_in (hậu kỳ): 1 = đã có link, 0 = chưa có
      * Tab lọc theo thong_tin_dieu_phoi.trang_thai_dieu_phoi (fallback ket_qua_hop_dong.trang_thai).
      */
     public function congViecCuaToi(Request $request): JsonResponse
@@ -276,6 +277,9 @@ class HopDongSuDungDichVuController extends BaseApiController
                 'ngay_chup' => ['sometimes', 'nullable', 'date'],
                 'ngay_tra_file_in' => ['sometimes', 'nullable', 'date'],
                 'ngay_tra_chinh_thuc' => ['sometimes', 'nullable', 'date'],
+                'co_file_goc' => ['sometimes', 'nullable', 'boolean'],
+                'co_file_le' => ['sometimes', 'nullable', 'boolean'],
+                'co_file_in' => ['sometimes', 'nullable', 'boolean'],
             ]);
             $perPage = $validated['per_page'] ?? 24;
             $ketQuaTrangThai = $validated['ket_qua_trang_thai'] ?? 'tien_ky';
@@ -287,6 +291,9 @@ class HopDongSuDungDichVuController extends BaseApiController
                 ->with(['loaiHopDong:id,ten_hop_dong,ma_hop_dong']);
             $this->applyStaffFilterForTab($query, $userId, $ketQuaTrangThai, $user);
             $this->applyKetQuaTrangThaiFilter($query, $ketQuaTrangThai);
+            if (in_array($ketQuaTrangThai, ['tien_ky', 'hau_ky'], true)) {
+                $this->applyKetQuaFilePresenceFilters($query, $validated, $ketQuaTrangThai);
+            }
             $query->orderByDesc('id');
 
             $paginator = $query->paginate($perPage);
@@ -1925,6 +1932,71 @@ class HopDongSuDungDichVuController extends BaseApiController
                 );
             }
         });
+    }
+
+    /**
+     * Lọc theo đã có / chưa có link file trong ket_qua_hop_dong.
+     * Tiền kỳ: file gốc. Hậu kỳ: file gốc, file lẻ, file in.
+     *
+     * @param  array<string, mixed>  $filters
+     */
+    private function applyKetQuaFilePresenceFilters($query, array $filters, string $tab): void
+    {
+        $map = match ($tab) {
+            'tien_ky' => [
+                'co_file_goc' => 'link_file_goc',
+            ],
+            'hau_ky' => [
+                'co_file_goc' => 'link_file_goc',
+                'co_file_le' => 'link_file_le',
+                'co_file_in' => 'link_file_in',
+            ],
+            default => [],
+        };
+
+        foreach ($map as $param => $jsonKey) {
+            if (! array_key_exists($param, $filters) || $filters[$param] === null || $filters[$param] === '') {
+                continue;
+            }
+            $hasLink = $this->parseOptionalBool($filters[$param]);
+            if ($hasLink === null) {
+                continue;
+            }
+            $this->applyKetQuaLinkPresenceFilter($query, $jsonKey, $hasLink);
+        }
+    }
+
+    /**
+     * Link ket_qua_hop_dong.{key}.gia_tri: null / "null" / chuỗi trắng = chưa có.
+     */
+    private function applyKetQuaLinkPresenceFilter($query, string $key, bool $hasLink): void
+    {
+        $allowed = ['link_file_goc', 'link_file_le', 'link_file_in'];
+        if (! in_array($key, $allowed, true)) {
+            return;
+        }
+
+        $expr = "TRIM(IFNULL(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(ket_qua_hop_dong, '$.{$key}.gia_tri')), 'null'), ''))";
+        if ($hasLink) {
+            $query->whereRaw("CHAR_LENGTH({$expr}) > 0");
+        } else {
+            $query->whereRaw("CHAR_LENGTH({$expr}) = 0");
+        }
+    }
+
+    private function parseOptionalBool(mixed $value): ?bool
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        if (in_array($value, [1, '1', true, 'true'], true)) {
+            return true;
+        }
+        if (in_array($value, [0, '0', false, 'false'], true)) {
+            return false;
+        }
+
+        return null;
     }
 
     /**
