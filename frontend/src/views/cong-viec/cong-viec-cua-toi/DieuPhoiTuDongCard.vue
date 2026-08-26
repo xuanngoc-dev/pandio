@@ -43,47 +43,44 @@
           </template>
         </span>
       </div>
-      <div v-if="ngayTraFileLe" class="cong-viec-card__row">
+      <div
+        v-for="field in sharedDateFields"
+        :key="field.key"
+        class="cong-viec-card__row cong-viec-card__row--inline"
+      >
         <span class="label">
-          Ngày trả file lẻ
+          {{ field.label }}
           <CustomTooltip
-            v-if="trangThaiGiaoFileLe"
-            :content="trangThaiGiaoFileLe.tooltip"
+            v-if="field.status"
+            :content="field.status.tooltip"
             placement="top"
           >
             <CustomIcon
               class="deadline-status-icon"
-              :class="trangThaiGiaoFileLe.late ? 'is-late' : 'is-ok'"
+              :class="field.status.late ? 'is-late' : 'is-ok'"
             >
-              <WarningFilled v-if="trangThaiGiaoFileLe.late" />
+              <WarningFilled v-if="field.status.late" />
               <CircleCheckFilled v-else />
             </CustomIcon>
           </CustomTooltip>
         </span>
-        <span class="value">{{ ngayTraFileLe }}</span>
-      </div>
-      <div v-if="ngayTraFileIn" class="cong-viec-card__row">
-        <span class="label">
-          Ngày trả file in
+        <div class="cong-viec-card__date-value">
+          <span class="value">{{ field.display || '—' }}</span>
           <CustomTooltip
-            v-if="trangThaiGiaoFileIn"
-            :content="trangThaiGiaoFileIn.tooltip"
+            v-if="canEditSharedDates"
+            :content="field.iso ? `Sửa ${field.label.toLowerCase()}` : `Thêm ${field.label.toLowerCase()}`"
             placement="top"
           >
-            <CustomIcon
-              class="deadline-status-icon"
-              :class="trangThaiGiaoFileIn.late ? 'is-late' : 'is-ok'"
-            >
-              <WarningFilled v-if="trangThaiGiaoFileIn.late" />
-              <CircleCheckFilled v-else />
-            </CustomIcon>
+            <CustomButton
+              :type="field.iso ? 'warning' : 'primary'"
+              circle
+              size="small"
+              :icon="field.iso ? Edit : Plus"
+              :loading="savingSharedDate && sharedDateField?.key === field.key"
+              @click.stop="openSharedDateModal(field)"
+            />
           </CustomTooltip>
-        </span>
-        <span class="value">{{ ngayTraFileIn }}</span>
-      </div>
-      <div v-if="ngayKhachHenQua" class="cong-viec-card__row">
-        <span class="label">Ngày khách hẹn qua</span>
-        <span class="value">{{ ngayKhachHenQua }}</span>
+        </div>
       </div>
 
       <div v-if="step !== 'cho_nhan'" class="cong-viec-card__files">
@@ -111,7 +108,7 @@
                 placement="top"
               >
                 <CustomButton
-                  type="primary"
+                  type="warning"
                   circle
                   size="small"
                   :icon="Edit"
@@ -312,6 +309,36 @@
     </CustomDialog>
 
     <CustomDialog
+      v-model="sharedDateModalVisible"
+      :title="sharedDateModalTitle"
+      :width="420"
+    >
+      <el-form label-position="top" @submit.prevent="saveSharedDate">
+        <el-form-item :label="sharedDateField?.label || 'Ngày'">
+          <el-date-picker
+            v-model="sharedDateInput"
+            type="date"
+            format="DD/MM/YYYY"
+            value-format="YYYY-MM-DD"
+            :placeholder="`Chọn ${(sharedDateField?.label || 'ngày').toLowerCase()}`"
+            clearable
+            style="width: 100%"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <CustomButton @click="sharedDateModalVisible = false">Hủy</CustomButton>
+        <CustomButton
+          type="primary"
+          :loading="savingSharedDate"
+          @click="saveSharedDate"
+        >
+          Lưu
+        </CustomButton>
+      </template>
+    </CustomDialog>
+
+    <CustomDialog
       v-model="yKienViewVisible"
       title="Ý kiến khách hàng"
       :width="520"
@@ -345,6 +372,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   banGiaoCongViec,
   capNhatKetQuaHopDong,
+  capNhatNgayDieuPhoi,
   chuyenGuiInCongViec,
   chuyenHauKyCongViec,
   chuyenHoanTatSanXuatCongViec,
@@ -361,11 +389,13 @@ import {
 import { useAuthStore } from '@/stores/auth'
 import {
   collectDieuPhoiGiaTri,
+  firstDieuPhoiGiaTri,
   formatLoaiQuayChupLabel,
   getDieuPhoiGiaTriFromSession,
   normalizeDieuPhoiSessions,
   parseSessionLoaiQuayChup,
   resolveTrangThaiDieuPhoi,
+  sharedLichQuayChupLabel,
   TRANG_THAI_DIEU_PHOI_CHO_NHAN,
 } from '@/utils/thongTinDieuPhoi'
 import DieuPhoiTuDongDetailModal from './DieuPhoiTuDongDetailModal.vue'
@@ -419,6 +449,10 @@ const linkInput = ref('')
 const savingLink = ref(false)
 const yKienViewVisible = ref(false)
 const detailModalVisible = ref(false)
+const savingSharedDate = ref(false)
+const sharedDateModalVisible = ref(false)
+const sharedDateField = ref(null)
+const sharedDateInput = ref('')
 
 function openDetail() {
   if (!props.item?.id) return
@@ -583,6 +617,43 @@ const ngayKhachHenQua = computed(() =>
     .join(', '),
 )
 
+function sharedDateIso(key) {
+  const raw = firstDieuPhoiGiaTri(props.item?.thong_tin_dieu_phoi, key)
+  const text = String(raw || '').slice(0, 10)
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : ''
+}
+
+const sharedDateFields = computed(() => [
+  {
+    key: 'ngay_tra_file_le',
+    label: sharedLichQuayChupLabel('ngay_tra_file_le'),
+    display: ngayTraFileLe.value,
+    iso: sharedDateIso('ngay_tra_file_le'),
+    status: trangThaiGiaoFileLe.value,
+  },
+  {
+    key: 'ngay_tra_file_in',
+    label: sharedLichQuayChupLabel('ngay_tra_file_in'),
+    display: ngayTraFileIn.value,
+    iso: sharedDateIso('ngay_tra_file_in'),
+    status: trangThaiGiaoFileIn.value,
+  },
+  {
+    key: 'ngay_khach_hen_qua',
+    label: sharedLichQuayChupLabel('ngay_khach_hen_qua'),
+    display: ngayKhachHenQua.value,
+    iso: sharedDateIso('ngay_khach_hen_qua'),
+    status: null,
+  },
+])
+
+const sharedDateModalTitle = computed(() => {
+  const field = sharedDateField.value
+  if (!field) return 'Cập nhật ngày'
+  const label = (field.label || 'ngày').toLowerCase()
+  return field.iso ? `Sửa ${label}` : `Thêm ${label}`
+})
+
 const trangThaiChup = computed(() =>
   buildDeadlineStatus({
     dateValue: earliestDate(
@@ -658,13 +729,14 @@ function toStaffId(value) {
 
 function isAdminOrCoordinator(user) {
   const role = String(user?.role || '').toLowerCase()
-  if (role === 'admin' || role === 'coordinator') return true
+  if (['admin', 'coordinator', 'coordination'].includes(role)) return true
   const ten = getVaiTroTen(user).toLowerCase()
   if (!ten) return false
   const ascii = toAscii(ten)
   return (
     ten.includes('coordinator') ||
     ascii.includes('coordinator') ||
+    ascii.includes('coordination') ||
     ascii.includes('dieu phoi') ||
     ten.includes('điều phối')
   )
@@ -704,6 +776,12 @@ const canManageFileHauKy = computed(() => {
   if (isAdminOrCoordinator(user) || userHasHauKyJobRole(user)) return true
   return userHasStaffRole('tho_edit', 'tho_dung_video')
 })
+
+const canEditSharedDates = computed(
+  () =>
+    ['tien_ky', 'hau_ky'].includes(props.step) &&
+    isAdminOrCoordinator(authStore.user),
+)
 
 function getThongTin(row) {
   const info = row?.thong_tin_hop_dong
@@ -835,6 +913,47 @@ function openLinkModal(field) {
   linkModalField.value = field
   linkInput.value = field.url || ''
   linkModalVisible.value = true
+}
+
+function openSharedDateModal(field) {
+  if (!canEditSharedDates.value || !field) return
+  sharedDateField.value = field
+  sharedDateInput.value = field.iso || ''
+  sharedDateModalVisible.value = true
+}
+
+async function saveSharedDate() {
+  const field = sharedDateField.value
+  if (!canEditSharedDates.value || !field) {
+    ElMessage.error('Bạn không có quyền cập nhật ngày này.')
+    return
+  }
+
+  const next = String(sharedDateInput.value || '').slice(0, 10)
+  const current = field.iso || ''
+  if (next === current) {
+    sharedDateModalVisible.value = false
+    return
+  }
+
+  savingSharedDate.value = true
+  try {
+    const { data } = await capNhatNgayDieuPhoi(props.item.id, {
+      key: field.key,
+      gia_tri: next || null,
+    })
+    ElMessage.success(`Đã lưu ${field.label.toLowerCase()}`)
+    sharedDateModalVisible.value = false
+    emit('updated', data)
+  } catch (error) {
+    const msg =
+      error?.response?.data?.message ||
+      error?.message ||
+      `Không thể lưu ${field.label.toLowerCase()}`
+    ElMessage.error(msg)
+  } finally {
+    savingSharedDate.value = false
+  }
 }
 
 async function saveLink() {
@@ -1160,6 +1279,34 @@ async function onBanGiao() {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    &--inline {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+
+      .label {
+        flex-shrink: 0;
+      }
+
+      .value {
+        text-align: right;
+        min-width: 0;
+      }
+    }
+  }
+
+  &__date-value {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    min-width: 0;
+
+    .value {
+      text-align: right;
     }
   }
 

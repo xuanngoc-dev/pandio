@@ -439,6 +439,65 @@ class HopDongSuDungDichVuController extends BaseApiController
     }
 
     /**
+     * Cập nhật ngày dùng chung trong thong_tin_dieu_phoi.
+     * Bước tiền kỳ và hậu kỳ: admin/coordinator được sửa ngày trả file lẻ,
+     * ngày trả file in và ngày khách hẹn qua.
+     */
+    public function capNhatNgayDieuPhoi(Request $request, HopDongSuDungDichVu $hop_dong_su_dung_dich_vu): JsonResponse
+    {
+        return $this->handleApi(function () use ($request, $hop_dong_su_dung_dich_vu) {
+            $user = $request->user();
+            if (! $user) {
+                abort(401, 'Unauthenticated.');
+            }
+
+            $validated = $request->validate([
+                'key' => ['required', 'string', Rule::in([
+                    'ngay_tra_file_le',
+                    'ngay_tra_file_in',
+                    'ngay_khach_hen_qua',
+                ])],
+                'gia_tri' => ['nullable', 'date'],
+            ]);
+
+            $key = $validated['key'];
+            $status = HopDongSuDungDichVu::trangThaiDieuPhoi(
+                $hop_dong_su_dung_dich_vu->thong_tin_dieu_phoi,
+            );
+
+            $allowedStatuses = [
+                HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_TIEN_KY,
+                HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_HAU_KY,
+            ];
+            if (! in_array($status, $allowedStatuses, true)) {
+                abort(422, 'Chỉ được cập nhật ngày điều phối ở bước tiền kỳ hoặc hậu kỳ.');
+            }
+            if (! $this->userIsAdminOrCoordinator($user)) {
+                abort(403, 'Chỉ admin hoặc coordinator được cập nhật ngày điều phối.');
+            }
+
+            $raw = $validated['gia_tri'] ?? null;
+            $normalized = '';
+            if ($raw !== null && $raw !== '') {
+                $normalized = substr((string) $raw, 0, 10);
+                if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $normalized)) {
+                    abort(422, 'Ngày không hợp lệ.');
+                }
+            }
+
+            $dieuPhoi = is_array($hop_dong_su_dung_dich_vu->thong_tin_dieu_phoi)
+                ? $hop_dong_su_dung_dich_vu->thong_tin_dieu_phoi
+                : [];
+            $dieuPhoi[$key] = $normalized;
+            $hop_dong_su_dung_dich_vu->update(['thong_tin_dieu_phoi' => $dieuPhoi]);
+
+            return response()->json(
+                $hop_dong_su_dung_dich_vu->fresh()->load(['loaiHopDong:id,ten_hop_dong,ma_hop_dong'])
+            );
+        }, 'cập nhật ngày điều phối');
+    }
+
+    /**
      * Chuyển công việc từ tiền kỳ sang hậu kỳ.
      * Yêu cầu thong_tin_dieu_phoi.trang_thai_dieu_phoi = tien_ky và đã có link_file_goc.
      */
@@ -1589,7 +1648,7 @@ class HopDongSuDungDichVuController extends BaseApiController
         }
 
         $role = strtolower(trim((string) ($user->role ?? '')));
-        if (in_array($role, ['admin', 'coordinator'], true)) {
+        if (in_array($role, ['admin', 'coordinator', 'coordination'], true)) {
             return true;
         }
 
@@ -1599,6 +1658,7 @@ class HopDongSuDungDichVuController extends BaseApiController
         }
 
         return str_contains($ten, 'coordinator')
+            || str_contains($ten, 'coordination')
             || str_contains($ten, 'điều phối')
             || str_contains($ten, 'dieu phoi');
     }

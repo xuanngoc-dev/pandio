@@ -89,6 +89,16 @@ export function capNhatKetQuaHopDong(id, payload) {
 }
 
 /**
+ * Cập nhật ngày dùng chung trong thong_tin_dieu_phoi (file lẻ, file in, khách hẹn qua).
+ * Admin/coordinator được sửa ở bước tiền kỳ và hậu kỳ.
+ * @param {number|string} id
+ * @param {{ key: 'ngay_tra_file_le'|'ngay_tra_file_in'|'ngay_khach_hen_qua', gia_tri?: string|null }} payload
+ */
+export function capNhatNgayDieuPhoi(id, payload) {
+  return api.post(`/hop-dong-su-dung-dich-vu/${id}/ngay-dieu-phoi`, payload)
+}
+
+/**
  * Chuyển công việc từ tiền kỳ sang hậu kỳ.
  * @param {number|string} id
  */
