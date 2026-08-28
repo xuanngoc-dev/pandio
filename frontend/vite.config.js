@@ -30,6 +30,10 @@ export default defineConfig({
   optimizeDeps: {
     include: ['apexcharts', 'vue3-apexcharts'],
   },
+  build: {
+    // TongQuan + apexcharts > 500 kB — tăng ngưỡng cảnh báo
+    chunkSizeWarningLimit: 1000,
+  },
   server: {
     port: 5173,
     host: true,

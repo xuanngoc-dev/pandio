@@ -9,6 +9,30 @@ import {
   allMenuGroups,
 } from '@/utils/menuAccess'
 
+function getVaiTro(user) {
+  return (
+    user?.nhan_vien?.vai_tro ||
+    user?.nhanVien?.vaiTro ||
+    user?.nhan_vien?.vaiTro ||
+    user?.nhanVien?.vai_tro ||
+    null
+  )
+}
+
+/**
+ * null = full tabs (admin); [] = không có tab nào
+ * @param {object|null|undefined} user
+ * @returns {string[]|null}
+ */
+function getAllowedCauHinhPaths(user) {
+  if (!user) return []
+  if (user.role === 'admin') return null
+
+  const list = getVaiTro(user)?.cau_hinh
+  if (!Array.isArray(list)) return []
+  return list.map((p) => String(p).trim()).filter(Boolean)
+}
+
 const TOKEN_KEY = 'token'
 const USER_KEY = 'user'
 
@@ -34,6 +58,9 @@ export const useAuthStore = defineStore('auth', () => {
 
   /** null = full menu (admin); [] = không có menu */
   const allowedMenuPaths = computed(() => getAllowedMenuPaths(user.value))
+
+  /** null = full tabs (admin); [] = không có tab — key dạng /menu#tab */
+  const allowedCauHinhPaths = computed(() => getAllowedCauHinhPaths(user.value))
 
   /** Menu sidebar đã lọc theo vai trò */
   const menuGroups = computed(() =>
@@ -155,6 +182,7 @@ export const useAuthStore = defineStore('auth', () => {
     loading,
     isAuthenticated,
     allowedMenuPaths,
+    allowedCauHinhPaths,
     menuGroups,
     defaultHomePath,
     setToken,

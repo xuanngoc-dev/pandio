@@ -2,14 +2,16 @@
   <div class="dich-vu-page">
     <h2 class="page-title">Dịch vụ</h2>
 
-    <el-tabs v-model="activeTab" class="page-tabs">
-      <el-tab-pane label="Dịch vụ" name="dich-vu">
+    <el-empty v-if="!visibleTabs.length" description="Bạn chưa được phân quyền tab nào trên màn này." />
+
+    <el-tabs v-else v-model="activeTab" class="page-tabs">
+      <el-tab-pane v-if="hasTab('dich-vu')" label="Dịch vụ" name="dich-vu">
         <DanhSachDichVuLe />
       </el-tab-pane>
-      <el-tab-pane label="Nhóm dịch vụ (combo)" name="nhom-dich-vu">
+      <el-tab-pane v-if="hasTab('nhom-dich-vu')" label="Nhóm dịch vụ (combo)" name="nhom-dich-vu">
         <NhomDichVu />
       </el-tab-pane>
-      <el-tab-pane label="Loại dịch vụ" name="loai-dich-vu">
+      <el-tab-pane v-if="hasTab('loai-dich-vu')" label="Loại dịch vụ" name="loai-dich-vu">
         <LoaiDichVu />
       </el-tab-pane>
     </el-tabs>
@@ -17,16 +19,14 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRoute } from 'vue-router'
 import DanhSachDichVuLe from './dich-vu/DanhSachDichVuLe.vue'
 import NhomDichVu from './dich-vu/NhomDichVu.vue'
 import LoaiDichVu from './dich-vu/LoaiDichVu.vue'
+import { usePageTabs } from '@/composables/usePageTabs'
 
-const route = useRoute()
-const allowedTabs = ['dich-vu', 'nhom-dich-vu', 'loai-dich-vu']
-const initialTab = String(route.query.tab || 'dich-vu')
-const activeTab = ref(allowedTabs.includes(initialTab) ? initialTab : 'dich-vu')
+const { activeTab, visibleTabs, hasTab } = usePageTabs('/van-hanh-cuoi/dich-vu', {
+  useQuery: true,
+})
 </script>
 
 <style scoped lang="scss">

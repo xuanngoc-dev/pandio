@@ -1,6 +1,9 @@
 /**
  * Danh mục cấu hình quản trị — dùng cho lưới card và đăng ký route.
+ * Tabs phân quyền được lấy tự động từ menu.json (field `tabs`).
  */
+import menuGroups from '@/data/menu.json'
+
 export const cauHinhSections = [
   {
     key: 'studio',
@@ -180,3 +183,74 @@ export const cauHinhItems = cauHinhSections.flatMap((section) =>
     sectionTitle: section.title,
   })),
 )
+
+/**
+ * Tabs theo menu.json — chỉ item có `tabs` mới đưa vào phân quyền.
+ * Key lưu trong vai_tro.cau_hinh: `${menuIndex}#${tab.key}`
+ *
+ * Thêm tab mới: khai báo trong menu.json → VaiTro tự cập nhật cây "Tabs được phép".
+ */
+function collectMenuItems(groups) {
+  const items = []
+  for (const group of groups) {
+    for (const item of group.items || []) {
+      items.push(item)
+      for (const child of item.children || []) {
+        items.push(child)
+      }
+    }
+  }
+  return items
+}
+
+/** @returns {{ menuIndex: string, title: string, tabs: Array<{ key: string, label: string }> }[]} */
+export function buildMenuTabConfigs(groups = menuGroups) {
+  return collectMenuItems(groups)
+    .filter((item) => Array.isArray(item.tabs) && item.tabs.length > 0)
+    .map((item) => ({
+      menuIndex: item.index,
+      title: item.title,
+      tabs: item.tabs.map((tab) => ({
+        key: tab.key,
+        label: tab.label,
+      })),
+    }))
+}
+
+export const menuTabConfigs = buildMenuTabConfigs()
+
+/** Key lưu trong vai_tro.cau_hinh */
+export function tabPermissionKey(menuIndex, tabKey) {
+  return `${menuIndex}#${tabKey}`
+}
+
+/** Tabs của 1 menu (dạng { name, label } cho usePageTabs). */
+export function getMenuPageTabs(menuIndex, groups = menuGroups) {
+  const item = collectMenuItems(groups).find((m) => m.index === menuIndex)
+  if (!item?.tabs?.length) return []
+  return item.tabs.map((tab) => ({
+    name: tab.key,
+    label: tab.label,
+  }))
+}
+
+/** Toàn bộ leaf id tabs (phục vụ form Vai trò). */
+export function getAllMenuTabLeafIds(groups = menuGroups) {
+  return buildMenuTabConfigs(groups).flatMap((menu) =>
+    (menu.tabs || []).map((tab) => tabPermissionKey(menu.menuIndex, tab.key)),
+  )
+}
+
+export const allMenuTabLeafIds = getAllMenuTabLeafIds()
+
+/** Tree data cho checkbox phân quyền tabs trong Vai trò. */
+export function buildMenuTabTreeData(groups = menuGroups) {
+  return buildMenuTabConfigs(groups).map((menu) => ({
+    id: `menu:${menu.menuIndex}`,
+    label: menu.title,
+    children: (menu.tabs || []).map((tab) => ({
+      id: tabPermissionKey(menu.menuIndex, tab.key),
+      label: tab.label,
+    })),
+  }))
+}

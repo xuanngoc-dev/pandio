@@ -32,7 +32,7 @@ class UserController extends BaseApiController
             $status = $validated['status'] ?? null;
 
             $query = User::query()
-                ->with(['nhanVien'])
+                ->with(['nhanVien.vaiTro'])
                 ->select(['id', 'name', 'email', 'phone', 'role', 'status', 'created_at', 'updated_at'])
                 ->when($keyword !== '', function ($q) use ($keyword) {
                     $q->where(function ($inner) use ($keyword) {
@@ -57,7 +57,7 @@ class UserController extends BaseApiController
     public function show(User $user): JsonResponse
     {
         return $this->handleApi(function () use ($user) {
-            $user->load(['nhanVien']);
+            $user->load(['nhanVien.vaiTro']);
 
             return response()->json($user);
 
@@ -109,7 +109,7 @@ class UserController extends BaseApiController
 
                 $user->nhanVien()->create($this->nhanVienAttributes($validated));
 
-                return $user->load(['nhanVien']);
+                return $user->load(['nhanVien.vaiTro']);
             });
 
             return response()->json($user, 201);
@@ -149,7 +149,7 @@ class UserController extends BaseApiController
                     $user->nhanVien()->create($nhanVienData);
                 }
 
-                return $user->fresh()->load(['nhanVien']);
+                return $user->fresh()->load(['nhanVien.vaiTro']);
             });
 
             $newHinhAnh = $user->nhanVien?->getRawOriginal('hinh_anh');

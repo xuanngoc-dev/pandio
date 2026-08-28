@@ -2,11 +2,13 @@
   <div class="concept-page">
     <h2 class="page-title">Concept</h2>
 
-    <el-tabs v-model="activeTab" class="page-tabs">
-      <el-tab-pane label="Concept" name="concept">
+    <el-empty v-if="!visibleTabs.length" description="Bạn chưa được phân quyền tab nào trên màn này." />
+
+    <el-tabs v-else v-model="activeTab" class="page-tabs">
+      <el-tab-pane v-if="hasTab('concept')" label="Concept" name="concept">
         <ConceptList :active="activeTab === 'concept'" />
       </el-tab-pane>
-      <el-tab-pane label="Danh mục concept" name="danh-muc">
+      <el-tab-pane v-if="hasTab('danh-muc')" label="Danh mục concept" name="danh-muc">
         <DanhMucConcept :active="activeTab === 'danh-muc'" />
       </el-tab-pane>
     </el-tabs>
@@ -14,15 +16,13 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRoute } from 'vue-router'
 import ConceptList from './concept/ConceptList.vue'
 import DanhMucConcept from './concept/DanhMucConcept.vue'
+import { usePageTabs } from '@/composables/usePageTabs'
 
-const route = useRoute()
-const allowedTabs = ['concept', 'danh-muc']
-const initialTab = String(route.query.tab || 'concept')
-const activeTab = ref(allowedTabs.includes(initialTab) ? initialTab : 'concept')
+const { activeTab, visibleTabs, hasTab } = usePageTabs('/van-hanh-cuoi/concept', {
+  useQuery: true,
+})
 </script>
 
 <style scoped lang="scss">

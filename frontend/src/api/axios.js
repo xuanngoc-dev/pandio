@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { ElLoading, ElMessage } from 'element-plus'
 import router from '@/router'
+import { useAuthStore } from '@/stores/auth'
 
 /**
  * Axios instance dùng chung cho toàn bộ API.
@@ -78,7 +79,7 @@ api.interceptors.response.use(
     }
     return response
   },
-  async (error) => {
+  (error) => {
     if (error.config?._showLoading) {
       stopLoading()
     }
@@ -91,8 +92,6 @@ api.interceptors.response.use(
     if (status === 401 && originalRequest && !originalRequest._retry) {
       originalRequest._retry = true
 
-      // Dynamic import tránh circular dependency với Pinia store
-      const { useAuthStore } = await import('@/stores/auth')
       const authStore = useAuthStore()
       authStore.clearAuth()
 

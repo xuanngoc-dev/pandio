@@ -190,7 +190,7 @@
           <template #default="{ row }">
             <div class="cell-stack">
               <span class="cell-primary">{{ deptName(row) }}</span>
-              <span class="cell-secondary">{{ nv(row).vi_tri_lam_viec || 'Chưa có vị trí' }}</span>
+              <span class="cell-secondary">{{ roleTitle(row) }}</span>
               <div class="cell-tags">
                 <CustomTag v-if="nv(row).loai_nhan_vien" size="small" effect="plain">
                   {{ employeeTypeLabel(nv(row).loai_nhan_vien) }}
@@ -527,6 +527,16 @@ function deptName(row) {
     return list.map((pb) => pb.ten_phong_ban).filter(Boolean).join(', ')
   }
   return 'Chưa có phòng ban'
+}
+
+/** Tên vai trò (chức danh) từ bảng vai_tro — trống nếu chưa gán. */
+function roleTitle(row) {
+  const nvData = nv(row)
+  return (
+    nvData?.vai_tro?.ten_vai_tro ||
+    nvData?.vaiTro?.ten_vai_tro ||
+    ''
+  )
 }
 
 function avatarInitial(name) {

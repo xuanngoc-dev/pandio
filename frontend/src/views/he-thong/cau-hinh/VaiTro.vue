@@ -85,7 +85,7 @@
           </CustomTableColumn>
           <CustomTableColumn
             v-if="columnSettings.isColumnVisible('cau_hinh')"
-            label="Cấu hình"
+            label="Tabs"
             width="110"
             align="center"
           >
@@ -161,7 +161,7 @@
               </CustomFormItem>
             </CustomCol>
             <CustomCol :xs="24" :sm="12">
-              <CustomFormItem label="Cấu hình được phép" prop="cau_hinh">
+              <CustomFormItem label="Tabs được phép" prop="cau_hinh">
                 <div class="tree-panel">
                   <div class="tree-panel__actions">
                     <CustomButton link type="primary" @click="checkAllCauHinh">Chọn tất cả</CustomButton>
@@ -200,7 +200,7 @@ import {
   fetchVaiTro,
   updateVaiTro,
 } from '@/api/vaiTro'
-import { cauHinhSections } from '@/data/cauHinhQuanTri'
+import { buildMenuTabTreeData, getAllMenuTabLeafIds } from '@/data/cauHinhQuanTri'
 import menuGroups from '@/data/menu.json'
 import BulkActionBar from '@/components/BulkActionBar.vue'
 import TableColumnConfig from '@/components/TableColumnConfig.vue'
@@ -227,7 +227,7 @@ const tableColumns = [
   { key: 'ten_vai_tro', label: 'Tên vai trò' },
   { key: 'ghi_chu', label: 'Ghi chú' },
   { key: 'danh_sach_menu', label: 'Menu' },
-  { key: 'cau_hinh', label: 'Cấu hình' },
+  { key: 'cau_hinh', label: 'Tabs' },
 ]
 const columnSettings = useTableColumns('he-thong.vai-tro', tableColumns)
 
@@ -283,14 +283,8 @@ const menuTreeData = menuGroups.map((group, groupIndex) => ({
   }),
 }))
 
-const cauHinhTreeData = cauHinhSections.map((section) => ({
-  id: `section:${section.key}`,
-  label: section.title,
-  children: (section.items || []).map((item) => ({
-    id: item.routeName,
-    label: item.label,
-  })),
-}))
+const cauHinhTreeData = computed(() => buildMenuTabTreeData())
+const allCauHinhLeafIds = computed(() => getAllMenuTabLeafIds())
 
 const allMenuLeafIds = menuTreeData.flatMap((g) =>
   (g.children || []).flatMap((node) =>
@@ -299,7 +293,6 @@ const allMenuLeafIds = menuTreeData.flatMap((g) =>
       : [node.id],
   ),
 )
-const allCauHinhLeafIds = cauHinhTreeData.flatMap((s) => (s.children || []).map((c) => c.id))
 
 const emptyForm = () => ({
   ten_vai_tro: '',
@@ -330,7 +323,7 @@ function syncMenuChecked() {
 
 function syncCauHinhChecked() {
   const checked = cauHinhTreeRef.value?.getCheckedKeys(false) || []
-  form.cau_hinh = onlyLeafKeys(checked, allCauHinhLeafIds)
+  form.cau_hinh = onlyLeafKeys(checked, allCauHinhLeafIds.value)
 }
 
 function setTreeChecked(treeRef, keys) {
@@ -348,8 +341,8 @@ function clearAllMenu() {
 }
 
 function checkAllCauHinh() {
-  setTreeChecked(cauHinhTreeRef.value, allCauHinhLeafIds)
-  form.cau_hinh = [...allCauHinhLeafIds]
+  setTreeChecked(cauHinhTreeRef.value, allCauHinhLeafIds.value)
+  form.cau_hinh = [...allCauHinhLeafIds.value]
 }
 
 function clearAllCauHinh() {
@@ -400,7 +393,7 @@ async function openCreate() {
 async function openEdit(row) {
   editingId.value = row.id
   const menuKeys = onlyLeafKeys(row.danh_sach_menu || [], allMenuLeafIds)
-  const cauHinhKeys = onlyLeafKeys(row.cau_hinh || [], allCauHinhLeafIds)
+  const cauHinhKeys = onlyLeafKeys(row.cau_hinh || [], allCauHinhLeafIds.value)
   Object.assign(form, {
     ten_vai_tro: row.ten_vai_tro,
     ghi_chu: row.ghi_chu || '',

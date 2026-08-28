@@ -11,7 +11,11 @@
         "index": "/cong-viec-cua-toi",
         "title": "Công việc của tôi",
         "icon": "Finished",
-        "component": "cong-viec/CongViecCuaToi"
+        "component": "cong-viec/CongViecCuaToi",
+        "tabs": [
+          { "key": "dieu-phoi-tu-dong", "label": "Điều phối tự động" },
+          { "key": "cong-viec-ca-nhan", "label": "Công việc cá nhân" }
+        ]
       }
     ]
   },
@@ -29,19 +33,34 @@
         "index": "/van-hanh-cuoi/lich-dieu-phoi",
         "title": "Lịch điều phối",
         "icon": "Calendar",
-        "component": "van-hanh-cuoi/LichDieuPhoi"
+        "component": "van-hanh-cuoi/LichDieuPhoi",
+        "tabs": [
+          { "key": "chup-make", "label": "Lịch chụp - make" },
+          { "key": "hau-ky", "label": "Lịch hậu kỳ" },
+          { "key": "cuoi", "label": "Lịch cưới" }
+        ]
       },
       {
         "index": "/van-hanh-cuoi/lich-khach-hang",
         "title": "Lịch khách hàng",
         "icon": "Calendar",
-        "component": "van-hanh-cuoi/LichKhachHang"
+        "component": "van-hanh-cuoi/LichKhachHang",
+        "tabs": [
+          { "key": "lich", "label": "Lịch" },
+          { "key": "danh-sach", "label": "Danh sách" }
+        ]
       },
       {
         "index": "/van-hanh-cuoi/trang-phuc",
         "title": "Trang phục",
         "icon": "Box",
-        "component": "van-hanh-cuoi/TrangPhuc"
+        "component": "van-hanh-cuoi/TrangPhuc",
+        "tabs": [
+          { "key": "trang-phuc", "label": "Trang phục" },
+          { "key": "danh-muc", "label": "Danh mục trang phục" },
+          { "key": "nha-cung-cap", "label": "Nhà cung cấp trang phục" },
+          { "key": "dat-mua", "label": "Đặt mua trang phục" }
+        ]
       },
       {
         "index": "/van-hanh-cuoi/hop-dong-cho-thue",
@@ -53,13 +72,22 @@
         "index": "/van-hanh-cuoi/concept",
         "title": "Concept",
         "icon": "Picture",
-        "component": "van-hanh-cuoi/Concept"
+        "component": "van-hanh-cuoi/Concept",
+        "tabs": [
+          { "key": "concept", "label": "Concept" },
+          { "key": "danh-muc", "label": "Danh mục concept" }
+        ]
       },
       {
         "index": "/van-hanh-cuoi/dich-vu",
         "title": "Dịch vụ",
         "icon": "Ticket",
-        "component": "van-hanh-cuoi/DichVu"
+        "component": "van-hanh-cuoi/DichVu",
+        "tabs": [
+          { "key": "dich-vu", "label": "Dịch vụ" },
+          { "key": "nhom-dich-vu", "label": "Nhóm dịch vụ (combo)" },
+          { "key": "loai-dich-vu", "label": "Loại dịch vụ" }
+        ]
       }
     ]
   },
@@ -101,7 +129,13 @@
         "index": "/nhan-su/cham-cong-nghi-phep",
         "title": "Chấm công · Nghỉ phép",
         "icon": "Clock",
-        "component": "nhan-su/ChamCongNghiPhep"
+        "component": "nhan-su/ChamCongNghiPhep",
+        "tabs": [
+          { "key": "diem-danh", "label": "Điểm danh" },
+          { "key": "cham-cong-thang", "label": "Chấm công tháng" },
+          { "key": "dang-ky-ca", "label": "Đăng ký ca" },
+          { "key": "nghi-phep", "label": "Nghỉ phép" }
+        ]
       },
       {
         "index": "/nhan-su/luong-tong-hop",
@@ -131,7 +165,11 @@
         "index": "/tai-chinh/ke-toan-thue",
         "title": "Kế toán & Thuế",
         "icon": "Briefcase",
-        "component": "tai-chinh/KeToanThue"
+        "component": "tai-chinh/KeToanThue",
+        "tabs": [
+          { "key": "phieu-thu-chi", "label": "Phiếu thu chi" },
+          { "key": "hang-muc", "label": "Hạng mục thu chi" }
+        ]
       }
     ]
   },
@@ -192,7 +230,11 @@
         "index": "/he-thong/thong-bao",
         "title": "Thông báo",
         "icon": "Bell",
-        "component": "he-thong/ThongBao"
+        "component": "he-thong/ThongBao",
+        "tabs": [
+          { "key": "thong-bao", "label": "Thông báo" },
+          { "key": "loai-thong-bao", "label": "Loại thông báo" }
+        ]
       },
       {
         "index": "/he-thong/thoi-tiet",

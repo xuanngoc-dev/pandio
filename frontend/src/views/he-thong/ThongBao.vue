@@ -2,11 +2,13 @@
   <div class="thong-bao-page">
     <h2 class="page-title">Thông báo</h2>
 
-    <el-tabs v-model="activeTab" class="page-tabs">
-      <el-tab-pane label="Thông báo" name="thong-bao">
+    <el-empty v-if="!visibleTabs.length" description="Bạn chưa được phân quyền tab nào trên màn này." />
+
+    <el-tabs v-else v-model="activeTab" class="page-tabs">
+      <el-tab-pane v-if="hasTab('thong-bao')" label="Thông báo" name="thong-bao">
         <ThongBaoList />
       </el-tab-pane>
-      <el-tab-pane label="Loại thông báo" name="loai-thong-bao">
+      <el-tab-pane v-if="hasTab('loai-thong-bao')" label="Loại thông báo" name="loai-thong-bao">
         <LoaiThongBao />
       </el-tab-pane>
     </el-tabs>
@@ -14,15 +16,13 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRoute } from 'vue-router'
 import ThongBaoList from './thong-bao/ThongBaoList.vue'
 import LoaiThongBao from './thong-bao/LoaiThongBao.vue'
+import { usePageTabs } from '@/composables/usePageTabs'
 
-const route = useRoute()
-const allowedTabs = ['thong-bao', 'loai-thong-bao']
-const initialTab = String(route.query.tab || 'thong-bao')
-const activeTab = ref(allowedTabs.includes(initialTab) ? initialTab : 'thong-bao')
+const { activeTab, visibleTabs, hasTab } = usePageTabs('/he-thong/thong-bao', {
+  useQuery: true,
+})
 </script>
 
 <style scoped lang="scss">

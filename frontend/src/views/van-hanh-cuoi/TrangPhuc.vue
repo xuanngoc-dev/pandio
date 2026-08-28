@@ -1,18 +1,18 @@
 <template>
   <div class="trang-phuc-page">
-    <!-- <h2 class="page-title">Trang phục</h2> -->
+    <el-empty v-if="!visibleTabs.length" description="Bạn chưa được phân quyền tab nào trên màn này." />
 
-    <el-tabs v-model="activeTab" class="page-tabs">
-      <el-tab-pane label="Trang phục" name="trang-phuc">
+    <el-tabs v-else v-model="activeTab" class="page-tabs">
+      <el-tab-pane v-if="hasTab('trang-phuc')" label="Trang phục" name="trang-phuc">
         <TrangPhucList />
       </el-tab-pane>
-      <el-tab-pane label="Danh mục trang phục" name="danh-muc">
+      <el-tab-pane v-if="hasTab('danh-muc')" label="Danh mục trang phục" name="danh-muc">
         <DanhMucTrangPhuc />
       </el-tab-pane>
-      <el-tab-pane label="Nhà cung cấp trang phục" name="nha-cung-cap">
+      <el-tab-pane v-if="hasTab('nha-cung-cap')" label="Nhà cung cấp trang phục" name="nha-cung-cap">
         <NhaCungCapTrangPhuc />
       </el-tab-pane>
-      <el-tab-pane label="Đặt mua trang phục" name="dat-mua">
+      <el-tab-pane v-if="hasTab('dat-mua')" label="Đặt mua trang phục" name="dat-mua">
         <DatMuaTrangPhuc />
       </el-tab-pane>
     </el-tabs>
@@ -20,17 +20,15 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRoute } from 'vue-router'
 import DanhMucTrangPhuc from './trang-phuc/DanhMucTrangPhuc.vue'
 import DatMuaTrangPhuc from './trang-phuc/DatMuaTrangPhuc.vue'
 import NhaCungCapTrangPhuc from './trang-phuc/NhaCungCapTrangPhuc.vue'
 import TrangPhucList from './trang-phuc/TrangPhucList.vue'
+import { usePageTabs } from '@/composables/usePageTabs'
 
-const route = useRoute()
-const allowedTabs = ['trang-phuc', 'danh-muc', 'nha-cung-cap', 'dat-mua']
-const initialTab = String(route.query.tab || 'trang-phuc')
-const activeTab = ref(allowedTabs.includes(initialTab) ? initialTab : 'trang-phuc')
+const { activeTab, visibleTabs, hasTab } = usePageTabs('/van-hanh-cuoi/trang-phuc', {
+  useQuery: true,
+})
 </script>
 
 <style scoped lang="scss">
