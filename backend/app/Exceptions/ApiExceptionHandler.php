@@ -2,6 +2,7 @@
 
 namespace App\Exceptions;
 
+use App\Support\QueryExceptionMapper;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -74,7 +75,7 @@ class ApiExceptionHandler
                 request: $request
             ),
             $e instanceof HttpExceptionInterface => self::httpException($e, $request),
-            $e instanceof QueryException => self::serverError($e, $request, 'Lỗi truy vấn dữ liệu. Vui lòng thử lại sau.'),
+            $e instanceof QueryException => self::queryException($e, $request),
             default => self::serverError($e, $request, 'Lỗi máy chủ. Vui lòng thử lại sau.'),
         };
 
@@ -169,7 +170,39 @@ class ApiExceptionHandler
             $e instanceof TooManyRequestsHttpException => 429,
             $e instanceof BadRequestException => 400,
             $e instanceof HttpExceptionInterface => $e->getStatusCode(),
+            $e instanceof QueryException => QueryExceptionMapper::status($e),
             default => 500,
+        };
+    }
+
+    private static function queryException(QueryException $e, Request $request): JsonResponse
+    {
+        $status = QueryExceptionMapper::status($e);
+        $message = QueryExceptionMapper::message($e, self::guessAction($request));
+
+        $payload = ['message' => $message];
+
+        if ($requestId = $request->attributes->get('api_log_request_id')) {
+            $payload['request_id'] = $requestId;
+        }
+
+        // Debug: meta only — không đưa SQLSTATE vào message
+        if (config('app.debug') && $status >= 500) {
+            $payload['exception'] = class_basename($e);
+            $payload['file'] = $e->getFile();
+            $payload['line'] = $e->getLine();
+        }
+
+        return response()->json($payload, $status);
+    }
+
+    private static function guessAction(Request $request): string
+    {
+        return match (strtoupper($request->method())) {
+            'POST' => 'tạo dữ liệu',
+            'PUT', 'PATCH' => 'cập nhật dữ liệu',
+            'DELETE' => 'xóa dữ liệu',
+            default => 'thao tác',
         };
     }
 
@@ -206,9 +239,20 @@ class ApiExceptionHandler
 
     private static function serverError(Throwable $e, Request $request, string $fallbackMessage): JsonResponse
     {
-        $payload = [
-            'message' => config('app.debug') ? ($e->getMessage() ?: $fallbackMessage) : $fallbackMessage,
-        ];
+        // Không bao giờ trả SQLSTATE / SQL thô trong message (kể cả APP_DEBUG)
+        $message = $fallbackMessage;
+        if ($e instanceof QueryException) {
+            $message = QueryExceptionMapper::message($e, self::guessAction($request));
+        } elseif (
+            config('app.debug')
+            && $e->getMessage() !== ''
+            && ! str_contains($e->getMessage(), 'SQLSTATE')
+            && ! str_contains($e->getMessage(), 'Integrity constraint')
+        ) {
+            $message = $e->getMessage();
+        }
+
+        $payload = ['message' => $message];
 
         if ($requestId = $request->attributes->get('api_log_request_id')) {
             $payload['request_id'] = $requestId;
@@ -231,7 +275,9 @@ class ApiExceptionHandler
                 ->all();
         }
 
-        return response()->json($payload, 500);
+        $status = $e instanceof QueryException ? QueryExceptionMapper::status($e) : 500;
+
+        return response()->json($payload, $status);
     }
 
     /**

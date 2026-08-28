@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Concerns;
 
 use App\Exceptions\ApiExceptionHandler;
+use App\Support\QueryExceptionMapper;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -42,11 +43,11 @@ trait HandlesApiExceptions
                 404
             );
         } catch (QueryException $e) {
-            $status = $this->mapQueryExceptionStatus($e);
+            $status = QueryExceptionMapper::status($e);
             $this->logHandledException($e, $action, $status);
 
             return $this->errorJson(
-                $this->mapQueryExceptionMessage($e, $action),
+                QueryExceptionMapper::message($e, $action),
                 $status,
                 $e
             );
@@ -54,9 +55,7 @@ trait HandlesApiExceptions
             $this->logHandledException($e, $action, 500);
 
             return $this->errorJson(
-                config('app.debug')
-                    ? ($e->getMessage() !== '' ? $e->getMessage() : "Đã xảy ra lỗi khi {$action}.")
-                    : "Đã xảy ra lỗi khi {$action}. Vui lòng thử lại sau.",
+                "Đã xảy ra lỗi khi {$action}. Vui lòng thử lại sau.",
                 500,
                 $e
             );
@@ -93,6 +92,7 @@ trait HandlesApiExceptions
             $payload['request_id'] = $requestId;
         }
 
+        // Debug details only in meta fields — never put raw SQL into `message`
         if ($e !== null && config('app.debug') && $status >= 500) {
             $payload['exception'] = class_basename($e);
             $payload['file'] = $e->getFile();
@@ -111,47 +111,5 @@ trait HandlesApiExceptions
         }
 
         return response()->json($payload, $status);
-    }
-
-    protected function mapQueryExceptionStatus(QueryException $e): int
-    {
-        $sqlState = (string) ($e->errorInfo[0] ?? '');
-        $driverCode = (int) ($e->errorInfo[1] ?? 0);
-
-        // Duplicate / conflict
-        if ($sqlState === '23000' || in_array($driverCode, [1062, 1451, 1452], true)) {
-            return $driverCode === 1452 ? 422 : 409;
-        }
-
-        return 500;
-    }
-
-    protected function mapQueryExceptionMessage(QueryException $e, string $action): string
-    {
-        $sqlState = (string) ($e->errorInfo[0] ?? '');
-        $driverCode = (int) ($e->errorInfo[1] ?? 0);
-
-        // Integrity / FK: luôn trả message thân thiện (không lộ SQLSTATE ra FE)
-        if ($driverCode === 1062) {
-            return "Dữ liệu bị trùng khi {$action}.";
-        }
-
-        if ($driverCode === 1451) {
-            return "Không thể {$action} vì dữ liệu đang được tham chiếu bởi bản ghi khác.";
-        }
-
-        if ($driverCode === 1452) {
-            return "Dữ liệu liên kết không hợp lệ khi {$action}.";
-        }
-
-        if ($sqlState === '23000') {
-            return "Không thể {$action} vì ràng buộc dữ liệu.";
-        }
-
-        if (config('app.debug')) {
-            return $e->getMessage();
-        }
-
-        return "Lỗi cơ sở dữ liệu khi {$action}. Vui lòng thử lại sau.";
     }
 }
