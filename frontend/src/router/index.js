@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { isMenuPathAllowed } from '@/utils/menuAccess'
 
 const routes = [
   {
@@ -376,9 +377,13 @@ router.beforeEach(async (to, from, next) => {
 
   const authStore = useAuthStore()
 
-  // Nếu có token nhưng chưa có user → gọi /api/user để khôi phục phiên
-  if (authStore.token && !authStore.user) {
-    await authStore.fetchUser()
+  // Có token → luôn refresh /user để lấy nhan_vien.vai_tro.danh_sach_menu mới nhất
+  if (authStore.token) {
+    if (!authStore.user) {
+      await authStore.fetchUser()
+    } else if (!authStore.user?.nhan_vien?.vai_tro && authStore.user?.role !== 'admin') {
+      await authStore.fetchUser()
+    }
   }
 
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
@@ -386,7 +391,25 @@ router.beforeEach(async (to, from, next) => {
   }
 
   if (to.meta.guest && authStore.isAuthenticated) {
-    return next({ name: 'tong-quan' })
+    return next(authStore.defaultHomePath)
+  }
+
+  // Chặn vào trang menu không được phân quyền theo vai_tro.danh_sach_menu
+  if (
+    authStore.isAuthenticated &&
+    to.meta.requiresAuth &&
+    !isMenuPathAllowed(to.path, authStore.allowedMenuPaths)
+  ) {
+    const home = authStore.defaultHomePath
+    if (
+      home &&
+      home !== to.path &&
+      isMenuPathAllowed(home, authStore.allowedMenuPaths)
+    ) {
+      return next(home)
+    }
+    // Không còn trang được phép → tránh vòng lặp redirect
+    return next()
   }
 
   return next()

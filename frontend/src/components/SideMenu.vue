@@ -113,7 +113,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import * as Icons from '@element-plus/icons-vue'
 import { ArrowDown } from '@element-plus/icons-vue'
-import menuGroups from '@/data/menu.json'
+import { useAuthStore } from '@/stores/auth'
 import { useLayoutStore } from '@/stores/layout'
 
 const props = defineProps({
@@ -124,7 +124,12 @@ const props = defineProps({
 })
 
 const route = useRoute()
+const authStore = useAuthStore()
 const layoutStore = useLayoutStore()
+
+/** Menu đã lọc theo vai_tro.danh_sach_menu của user */
+const menuGroups = computed(() => authStore.menuGroups)
+
 /** Giữ menu cha active khi đang ở trang cấu hình con. */
 const activeMenu = computed(() => {
   if (route.path.startsWith('/he-thong/cau-hinh-quan-tri')) {
@@ -139,7 +144,7 @@ const openGroups = ref(new Set())
 
 function initOpenGroups() {
   const next = new Set()
-  menuGroups.forEach((group, index) => {
+  menuGroups.value.forEach((group, index) => {
     if (!group.header) return
     // Mở sẵn nhóm chứa route hiện tại
     const hasActive = group.items?.some(
@@ -153,7 +158,7 @@ function initOpenGroups() {
   })
   // Nếu chưa có nhóm nào mở và đang collapsible → mở nhóm đầu có header
   if (layoutStore.menuGroupCollapsible && next.size === 0) {
-    const first = menuGroups.findIndex((g) => g.header)
+    const first = menuGroups.value.findIndex((g) => g.header)
     if (first >= 0) next.add(first)
   }
   openGroups.value = next
@@ -162,10 +167,18 @@ function initOpenGroups() {
 initOpenGroups()
 
 watch(
+  menuGroups,
+  () => {
+    initOpenGroups()
+  },
+  { deep: true },
+)
+
+watch(
   () => layoutStore.menuGroupCollapsible,
   (enabled) => {
     if (!enabled) {
-      openGroups.value = new Set(menuGroups.map((_, i) => i))
+      openGroups.value = new Set(menuGroups.value.map((_, i) => i))
     } else {
       initOpenGroups()
     }
@@ -176,7 +189,7 @@ watch(
   () => route.path,
   () => {
     if (!layoutStore.menuGroupCollapsible) return
-    const activeIndex = menuGroups.findIndex((group) =>
+    const activeIndex = menuGroups.value.findIndex((group) =>
       group.items?.some(
         (item) =>
           item.index === route.path ||

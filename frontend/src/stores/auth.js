@@ -2,6 +2,12 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '@/api/axios'
 import { ElMessage, ElNotification } from 'element-plus'
+import {
+  filterMenuGroups,
+  firstAllowedMenuPath,
+  getAllowedMenuPaths,
+  allMenuGroups,
+} from '@/utils/menuAccess'
 
 const TOKEN_KEY = 'token'
 const USER_KEY = 'user'
@@ -25,6 +31,19 @@ export const useAuthStore = defineStore('auth', () => {
   const loading = ref(false)
 
   const isAuthenticated = computed(() => !!token.value && !!user.value)
+
+  /** null = full menu (admin); [] = không có menu */
+  const allowedMenuPaths = computed(() => getAllowedMenuPaths(user.value))
+
+  /** Menu sidebar đã lọc theo vai trò */
+  const menuGroups = computed(() =>
+    filterMenuGroups(allMenuGroups, allowedMenuPaths.value),
+  )
+
+  /** Path mặc định sau đăng nhập / khi bị chặn */
+  const defaultHomePath = computed(
+    () => firstAllowedMenuPath(allowedMenuPaths.value) || '/tong-quan',
+  )
 
   /** Lưu token vào state + localStorage */
   function setToken(newToken) {
@@ -135,6 +154,9 @@ export const useAuthStore = defineStore('auth', () => {
     token,
     loading,
     isAuthenticated,
+    allowedMenuPaths,
+    menuGroups,
+    defaultHomePath,
     setToken,
     setUser,
     setAuth,

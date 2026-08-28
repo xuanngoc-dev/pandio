@@ -160,6 +160,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { User, Lock } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
+import { isMenuPathAllowed } from '@/utils/menuAccess'
 import TermsPrivacyModal from '@/components/TermsPrivacyModal.vue'
 
 const REMEMBER_KEY = 'pandio_remember_login'
@@ -252,8 +253,12 @@ async function onSubmit() {
 
     persistRememberedLogin()
 
-    const redirect = route.query.redirect || '/tong-quan'
-    router.push(String(redirect))
+    const requested = String(route.query.redirect || '')
+    const redirect =
+      requested && isMenuPathAllowed(requested, authStore.allowedMenuPaths)
+        ? requested
+        : authStore.defaultHomePath
+    router.push(redirect)
   } catch {
     // Lỗi đã được interceptor / store xử lý hiển thị
   } finally {
