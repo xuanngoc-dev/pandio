@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'ten_hop_dong',
@@ -28,5 +29,15 @@ class LoaiHopDong extends Model
             'noi_dung' => 'array',
             'thong_tin_dieu_phoi' => 'array',
         ];
+    }
+
+    public function hopDongSuDungDichVu(): HasMany
+    {
+        return $this->hasMany(HopDongSuDungDichVu::class, 'loai_hop_dong_id');
+    }
+
+    public function nhomDichVu(): HasMany
+    {
+        return $this->hasMany(DichVuDanhSachDichNhomDichVu::class, 'loai_hop_dong_id');
     }
 }

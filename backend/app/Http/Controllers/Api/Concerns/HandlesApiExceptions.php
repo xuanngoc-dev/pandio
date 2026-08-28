@@ -128,23 +128,28 @@ trait HandlesApiExceptions
 
     protected function mapQueryExceptionMessage(QueryException $e, string $action): string
     {
-        if (config('app.debug')) {
-            return $e->getMessage();
-        }
-
         $sqlState = (string) ($e->errorInfo[0] ?? '');
         $driverCode = (int) ($e->errorInfo[1] ?? 0);
 
-        if ($sqlState === '23000' || $driverCode === 1062) {
+        // Integrity / FK: luôn trả message thân thiện (không lộ SQLSTATE ra FE)
+        if ($driverCode === 1062) {
             return "Dữ liệu bị trùng khi {$action}.";
         }
 
         if ($driverCode === 1451) {
-            return "Không thể {$action} vì dữ liệu đang được tham chiếu.";
+            return "Không thể {$action} vì dữ liệu đang được tham chiếu bởi bản ghi khác.";
         }
 
         if ($driverCode === 1452) {
             return "Dữ liệu liên kết không hợp lệ khi {$action}.";
+        }
+
+        if ($sqlState === '23000') {
+            return "Không thể {$action} vì ràng buộc dữ liệu.";
+        }
+
+        if (config('app.debug')) {
+            return $e->getMessage();
         }
 
         return "Lỗi cơ sở dữ liệu khi {$action}. Vui lòng thử lại sau.";

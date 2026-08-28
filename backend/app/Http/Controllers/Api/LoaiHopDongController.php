@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Models\DichVuDanhSachDichVuLe;
 use App\Models\LoaiHopDong;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -85,11 +86,34 @@ class LoaiHopDongController extends BaseApiController
     }
 
     /**
-     * Xóa loại hợp đồng khách hàng.
+     * Xóa loại hợp đồng khách hàng — chỉ khi không còn dữ liệu liên kết.
      */
     public function destroy(LoaiHopDong $loai_hop_dong): JsonResponse
     {
         return $this->handleApi(function () use ($loai_hop_dong) {
+            $soHopDong = $loai_hop_dong->hopDongSuDungDichVu()->count();
+            if ($soHopDong > 0) {
+                return response()->json([
+                    'message' => "Không thể xóa loại hợp đồng đang được dùng bởi {$soHopDong} hợp đồng dịch vụ.",
+                ], 422);
+            }
+
+            $soNhomDichVu = $loai_hop_dong->nhomDichVu()->count();
+            if ($soNhomDichVu > 0) {
+                return response()->json([
+                    'message' => "Không thể xóa loại hợp đồng đang được dùng bởi {$soNhomDichVu} nhóm dịch vụ.",
+                ], 422);
+            }
+
+            $soDichVuLe = DichVuDanhSachDichVuLe::query()
+                ->whereJsonContains('loai_hop_dong_ids', (int) $loai_hop_dong->id)
+                ->count();
+            if ($soDichVuLe > 0) {
+                return response()->json([
+                    'message' => "Không thể xóa loại hợp đồng đang được gắn với {$soDichVuLe} dịch vụ lẻ.",
+                ], 422);
+            }
+
             $loai_hop_dong->delete();
 
             return response()->json(['message' => 'Đã xóa loại hợp đồng.']);
