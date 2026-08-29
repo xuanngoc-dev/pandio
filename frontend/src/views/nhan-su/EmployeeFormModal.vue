@@ -61,24 +61,6 @@
                   </CustomFormItem>
                 </CustomCol>
                 <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
-                  <CustomFormItem label="Mật khẩu" prop="password">
-                    <CustomInput
-                      v-model="form.password"
-                      type="password"
-                      show-password
-                      :placeholder="editingId ? 'Để trống nếu không đổi' : 'Mật khẩu đăng nhập'"
-                    />
-                  </CustomFormItem>
-                </CustomCol>
-                <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
-                  <CustomFormItem label="Trạng thái" prop="status">
-                    <CustomSelect v-model="form.status" style="width: 100%">
-                      <CustomOption label="Đang hoạt động" value="active" />
-                      <CustomOption label="Không hoạt động" value="inactive" />
-                    </CustomSelect>
-                  </CustomFormItem>
-                </CustomCol>
-                <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
                   <CustomFormItem label="Loại nhân viên" prop="loai_nhan_vien">
                     <CustomSelect v-model="form.loai_nhan_vien" clearable placeholder="Chọn" style="width: 100%">
                       <CustomOption label="Full time" value="full_time" />
@@ -123,6 +105,19 @@
                         :value="vt.id"
                       />
                     </CustomSelect>
+                  </CustomFormItem>
+                </CustomCol>
+                <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
+                  <CustomFormItem label="Điều phối" prop="is_dieu_phoi">
+                    <div class="dieu-phoi-field">
+                      <el-switch
+                        v-model="form.is_dieu_phoi"
+                        inline-prompt
+                        active-text="Bật"
+                        inactive-text="Tắt"
+                      />
+                      <span class="dieu-phoi-hint">Bật → gán vai trò điều phối</span>
+                    </div>
                   </CustomFormItem>
                 </CustomCol>
                 <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
@@ -332,6 +327,7 @@ const emptyForm = () => ({
   phone: '',
   password: '',
   role: 'user',
+  is_dieu_phoi: false,
   status: 'active',
   hinh_anh: '',
   phong_ban_ids: [],
@@ -381,23 +377,6 @@ const rules = {
     { type: 'email', message: 'Email không hợp lệ', trigger: 'blur' },
   ],
   phone: [{ required: true, message: 'Vui lòng nhập SĐT', trigger: 'blur' }],
-  password: [
-    {
-      validator: (_rule, value, callback) => {
-        if (!editingId.value && !value) {
-          callback(new Error('Vui lòng nhập mật khẩu'))
-          return
-        }
-        if (value && value.length < 8) {
-          callback(new Error('Mật khẩu tối thiểu 8 ký tự'))
-          return
-        }
-        callback()
-      },
-      trigger: 'blur',
-    },
-  ],
-  status: [{ required: true, message: 'Vui lòng chọn trạng thái', trigger: 'change' }],
 }
 
 function toDateOnly(value) {
@@ -417,6 +396,7 @@ function fillFromEmployee(row) {
     phone: row.phone || '',
     password: '',
     role: row.role || 'user',
+    is_dieu_phoi: false,
     status: row.status || 'active',
     hinh_anh: nvData.hinh_anh || '',
     phong_ban_ids: Array.isArray(nvData.phong_ban_ids) ? [...nvData.phong_ban_ids] : [],
@@ -563,8 +543,8 @@ function fillSampleData() {
     name: fullName,
     email: `${emailLocal}@example.com`,
     phone: `09${randomDigits(8)}`,
-    password: `Pass${randomDigits(6)}`,
     role: 'user',
+    is_dieu_phoi: false,
     status: pick(['active', 'inactive']),
     phong_ban_ids: props.departments.length
       ? [pick(props.departments).id]
@@ -612,7 +592,6 @@ function buildPayload() {
     name: form.name.trim(),
     email: form.email.trim(),
     phone: form.phone.trim(),
-    role: form.role || 'user',
     status: form.status,
     hinh_anh: form.hinh_anh?.trim() || null,
     phong_ban_ids: Array.isArray(form.phong_ban_ids) ? form.phong_ban_ids : [],
@@ -634,8 +613,14 @@ function buildPayload() {
     luong_thuong_phu_cap: serializeLuongThuongPhuCap(form.luong_thuong_phu_cap, props.loaiQuayChup),
   }
 
-  if (form.password) {
-    payload.password = form.password
+  if (editingId.value) {
+    // Chỉ gửi role khi bật Điều phối → gán coordinator; tắt thì không đụng role
+    if (form.is_dieu_phoi) {
+      payload.role = 'coordinator'
+    }
+  } else {
+    payload.password = '123456789'
+    payload.role = form.is_dieu_phoi ? 'coordinator' : 'user'
   }
 
   return payload
@@ -675,6 +660,19 @@ async function save() {
 </script>
 
 <style scoped>
+.dieu-phoi-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+}
+
+.dieu-phoi-hint {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  line-height: 1.3;
+}
+
 .salary-groups {
   display: flex;
   flex-direction: column;

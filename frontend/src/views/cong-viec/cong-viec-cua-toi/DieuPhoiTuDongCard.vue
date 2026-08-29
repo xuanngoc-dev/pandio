@@ -729,17 +729,7 @@ function toStaffId(value) {
 
 function isAdminOrCoordinator(user) {
   const role = String(user?.role || '').toLowerCase()
-  if (['admin', 'coordinator', 'coordination'].includes(role)) return true
-  const ten = getVaiTroTen(user).toLowerCase()
-  if (!ten) return false
-  const ascii = toAscii(ten)
-  return (
-    ten.includes('coordinator') ||
-    ascii.includes('coordinator') ||
-    ascii.includes('coordination') ||
-    ascii.includes('dieu phoi') ||
-    ten.includes('điều phối')
-  )
+  return role === 'admin' || role === 'coordinator'
 }
 
 function userHasHauKyJobRole(user) {

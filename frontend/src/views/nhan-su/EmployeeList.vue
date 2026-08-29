@@ -248,14 +248,35 @@
         <CustomTableColumn
           v-if="columnSettings.isColumnVisible('tai_khoan')"
           label="Tài khoản"
-          width="130"
+          width="120"
         >
           <template #default="{ row }">
-            <div class="cell-stack">
-              <CustomTag size="small" effect="plain">{{ roleLabel(row.role) }}</CustomTag>
-              <CustomTag :type="statusType(row.status)" size="small">
+            <CustomTag size="small" effect="plain">{{ roleLabel(row.role) }}</CustomTag>
+          </template>
+        </CustomTableColumn>
+
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('trang_thai')"
+          label="Trạng thái"
+          width="180"
+          align="center"
+        >
+          <template #default="{ row }">
+            <div class="status-cell">
+              <el-switch
+                :model-value="row.status"
+                active-value="active"
+                inactive-value="inactive"
+                :loading="togglingId === row.id"
+                :disabled="togglingId === row.id"
+                :before-change="() => toggleStatus(row)"
+              />
+              <span
+                class="status-label"
+                :class="row.status === 'active' ? 'is-active' : 'is-inactive'"
+              >
                 {{ statusLabel(row.status) }}
-              </CustomTag>
+              </span>
             </div>
           </template>
         </CustomTableColumn>
@@ -409,6 +430,7 @@ const tableColumns = [
   { key: 'luong', label: 'Lương' },
   { key: 'bhxh', label: 'BHXH' },
   { key: 'tai_khoan', label: 'Tài khoản' },
+  { key: 'trang_thai', label: 'Trạng thái' },
 ]
 const columnSettings = useTableColumns('nhan-su.employee-list', tableColumns, {
   pin: { selection: false },
@@ -421,6 +443,7 @@ const departments = ref([])
 const vaiTroOptions = ref([])
 const loaiQuayChupOptions = ref([])
 const loading = ref(false)
+const togglingId = ref(null)
 const page = ref(1)
 const perPage = ref(10)
 const total = ref(0)
@@ -545,15 +568,37 @@ function avatarInitial(name) {
 }
 
 function roleLabel(role) {
-  return { user: 'User', admin: 'Admin' }[role] || role
+  return {
+    user: 'User',
+    admin: 'Admin',
+    coordinator: 'Điều phối',
+  }[role] || role
 }
 
 function statusLabel(status) {
   return { active: 'Đang hoạt động', inactive: 'Không hoạt động' }[status] || status
 }
 
-function statusType(status) {
-  return { active: 'success', inactive: 'info' }[status] || 'info'
+async function toggleStatus(row) {
+  if (!row?.id) return false
+
+  const next = row.status === 'active' ? 'inactive' : 'active'
+  togglingId.value = row.id
+  try {
+    await updateUser(row.id, {
+      name: row.name,
+      email: row.email,
+      phone: row.phone || '',
+      status: next,
+    })
+    row.status = next
+    ElMessage.success('Đã cập nhật trạng thái.')
+    return true
+  } catch {
+    return false
+  } finally {
+    togglingId.value = null
+  }
 }
 
 function genderLabel(value) {
@@ -713,6 +758,28 @@ onMounted(() => {
   flex-wrap: wrap;
   gap: 4px;
   margin-top: 2px;
+}
+
+.status-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.status-label {
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.status-label.is-active {
+  color: var(--el-color-success);
+}
+
+.status-label.is-inactive {
+  color: var(--el-text-color-secondary);
 }
 
 .expand-panel {
