@@ -58,10 +58,10 @@
               format="DD/MM/YYYY"
               value-format="YYYY-MM-DD"
               :placeholder="`Chọn ${field.ten_thong_tin.toLowerCase()}`"
-              :disabled="disabled"
+              :disabled="disabled || isDateLocked(field)"
               :disabled-date="disabledPastDate"
               style="width: 100%"
-              clearable
+              :clearable="!isDateLocked(field)"
             />
           </template>
 
@@ -208,6 +208,8 @@ const props = defineProps({
   requireDates: { type: Boolean, default: false },
   requireNgayChup: { type: Boolean, default: false },
   disabled: { type: Boolean, default: false },
+  /** Khóa field ngày chụp (đã chọn từ lịch) */
+  lockNgayChup: { type: Boolean, default: false },
 })
 
 const buoiChupOptions = BUOI_CHUP_OPTIONS
@@ -297,6 +299,10 @@ function isRequired(field) {
     return true
   }
   return false
+}
+
+function isDateLocked(field) {
+  return Boolean(props.lockNgayChup && field?.key === 'ngay_chup')
 }
 
 function propFor(key) {

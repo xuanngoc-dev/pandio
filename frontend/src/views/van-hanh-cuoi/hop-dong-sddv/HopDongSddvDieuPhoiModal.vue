@@ -1,5 +1,6 @@
 <template>
   <CustomDialog
+    v-if="!embedded"
     v-model="visible"
     :title="dialogTitle"
     :width="1280"
@@ -50,20 +51,54 @@
           v-model="activeSessionName"
           type="border-card"
           class="session-tabs"
+          :editable="canEditSessions"
           :class="{
             'is-slide-left': slideDirection === 'left',
             'is-slide-right': slideDirection !== 'left',
+            'is-max-sessions': !canAddSession,
           }"
+          @edit="handleTabsEdit"
         >
           <el-tab-pane
             v-for="(session, index) in formModel.sessions"
             :key="session._uid"
             :name="String(session._uid)"
+            :closable="canEditSessions && formModel.sessions.length > 1"
             lazy
           >
             <template #label>
-              <span class="session-tab-label" :title="displayTenLich(session, index)">
-                {{ displayTenLich(session, index) }}
+              <span
+                class="session-tab-label"
+                :title="
+                  canEditSessions && editingUid !== session._uid
+                    ? 'Nhấp đúp hoặc bấm icon để đổi tên'
+                    : displayTenLich(session, index)
+                "
+                @dblclick.stop="canEditSessions && startRename(session, index)"
+              >
+                <input
+                  v-if="canEditSessions && editingUid === session._uid"
+                  :ref="setTitleInputRef"
+                  v-model="editingTitle"
+                  class="session-tab-input"
+                  :maxlength="TEN_LICH_MAX_LENGTH"
+                  @mousedown.stop
+                  @click.stop
+                  @keydown="onTitleKeydown($event, session, index)"
+                  @keyup.stop
+                  @blur="commitRename(session, index)"
+                />
+                <template v-else>
+                  <span class="session-tab-text">{{ displayTenLich(session, index) }}</span>
+                  <CustomIcon
+                    v-if="canEditSessions"
+                    class="session-tab-edit"
+                    @mousedown.stop
+                    @click.stop="startRename(session, index)"
+                  >
+                    <EditPen />
+                  </CustomIcon>
+                </template>
               </span>
             </template>
             <HopDongSddvDieuPhoiSessionFields
@@ -73,6 +108,7 @@
               :loai-quay-chup-options="loaiQuayChupOptions"
               :prop-prefix="`sessions.${index}`"
               :disabled="!canEditDieuPhoi"
+              :lock-ngay-chup="Boolean(session._lockNgayChup)"
               require-dates
             />
           </el-tab-pane>
@@ -86,7 +122,7 @@
         <CustomButton
           type="primary"
           :loading="saving"
-          :disabled="!canEditDieuPhoi || loading || !fields.length || !formModel.sessions.length"
+          :disabled="!canSave"
           @click="save"
         >
           Lưu
@@ -94,11 +130,121 @@
       </div>
     </template>
   </CustomDialog>
+
+  <div v-else v-loading="loading" class="dieu-phoi-body">
+    <el-empty
+      v-if="!loading && !fields.length"
+      description="Loại hợp đồng chưa cấu hình thông tin điều phối."
+    />
+
+    <el-empty
+      v-else-if="!loading && !formModel.sessions.length"
+      description="Chưa có lịch quay chụp. Vui lòng thêm lịch ở form hợp đồng."
+    />
+
+    <CustomForm
+      v-else-if="fields.length && formModel.sessions.length"
+      ref="formRef"
+      :model="formModel"
+      :rules="formRules"
+      label-position="top"
+    >
+      <CustomRow :gutter="16" class="shared-date-row">
+        <CustomCol
+          v-for="key in SHARED_LICH_QUAY_CHUP_KEYS"
+          :key="key"
+          v-bind="sharedDateColProps"
+        >
+          <CustomFormItem :label="sharedLichQuayChupLabel(key)" :prop="key">
+            <el-date-picker
+              v-model="formModel[key]"
+              type="date"
+              format="DD/MM/YYYY"
+              value-format="YYYY-MM-DD"
+              :placeholder="`Chọn ${sharedLichQuayChupLabel(key).toLowerCase()}`"
+              :disabled="!canEditDieuPhoi"
+              :disabled-date="disabledPastDate"
+              style="width: 100%"
+              clearable
+            />
+          </CustomFormItem>
+        </CustomCol>
+      </CustomRow>
+
+      <el-tabs
+        v-model="activeSessionName"
+        type="border-card"
+        class="session-tabs"
+        :editable="canEditSessions"
+        :class="{
+          'is-slide-left': slideDirection === 'left',
+          'is-slide-right': slideDirection !== 'left',
+          'is-max-sessions': !canAddSession,
+        }"
+        @edit="handleTabsEdit"
+      >
+        <el-tab-pane
+          v-for="(session, index) in formModel.sessions"
+          :key="session._uid"
+          :name="String(session._uid)"
+          :closable="canEditSessions && formModel.sessions.length > 1"
+          lazy
+        >
+          <template #label>
+            <span
+              class="session-tab-label"
+              :title="
+                canEditSessions && editingUid !== session._uid
+                  ? 'Nhấp đúp hoặc bấm icon để đổi tên'
+                  : displayTenLich(session, index)
+              "
+              @dblclick.stop="canEditSessions && startRename(session, index)"
+            >
+              <input
+                v-if="canEditSessions && editingUid === session._uid"
+                :ref="setTitleInputRef"
+                v-model="editingTitle"
+                class="session-tab-input"
+                :maxlength="TEN_LICH_MAX_LENGTH"
+                @mousedown.stop
+                @click.stop
+                @keydown="onTitleKeydown($event, session, index)"
+                @keyup.stop
+                @blur="commitRename(session, index)"
+              />
+              <template v-else>
+                <span class="session-tab-text">{{ displayTenLich(session, index) }}</span>
+                <CustomIcon
+                  v-if="canEditSessions"
+                  class="session-tab-edit"
+                  @mousedown.stop
+                  @click.stop="startRename(session, index)"
+                >
+                  <EditPen />
+                </CustomIcon>
+              </template>
+            </span>
+          </template>
+          <HopDongSddvDieuPhoiSessionFields
+            v-model="formModel.sessions[index]"
+            :fields="sessionFields"
+            :user-options="userOptions"
+            :loai-quay-chup-options="loaiQuayChupOptions"
+            :prop-prefix="`sessions.${index}`"
+            :disabled="!canEditDieuPhoi"
+            :lock-ngay-chup="Boolean(session._lockNgayChup)"
+            require-dates
+          />
+        </el-tab-pane>
+      </el-tabs>
+    </CustomForm>
+  </div>
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { EditPen } from '@element-plus/icons-vue'
 import { fetchDanhMucLoaiQuayChup } from '@/api/danhMucLoaiQuayChup'
 import { capNhatThongTinDieuPhoi, getHopDongSuDungDichVu } from '@/api/hopDongSuDungDichVu'
 import { getLoaiHopDong } from '@/api/loaiHopDong'
@@ -109,6 +255,7 @@ import {
   CustomDialog,
   CustomForm,
   CustomFormItem,
+  CustomIcon,
   CustomRow,
 } from '@/components/element'
 import { useAuthStore } from '@/stores/auth'
@@ -118,6 +265,7 @@ import {
   SO_DIEM_CHUP_DEFAULT,
   SO_DIEM_CHUP_KEY,
   TEN_LICH_KEY,
+  TEN_LICH_MAX_LENGTH,
   THO_DUNG_VIDEO_KEY,
   THO_DUNG_VIDEO_NGOAI_KEY,
   buildLoaiQuayChupField,
@@ -132,6 +280,7 @@ import {
   isDieuPhoiExtraSessionKey,
   isSharedLichQuayChupKey,
   normalizeDieuPhoiSessions,
+  normalizeTenLichQuayChup,
   parseSessionLoaiQuayChup,
   loaiQuayChupRequiredRule,
   withTienKyIfStaffAssigned,
@@ -146,6 +295,15 @@ const REQUIRED_DATE_KEYS = new Set(['ngay_chup', ...SHARED_LICH_QUAY_CHUP_KEYS])
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   hopDongId: { type: [Number, String], default: null },
+  /** Prefill / ghi đè ngày chụp trên mọi buổi khi mở form */
+  defaultNgayChup: { type: String, default: '' },
+  /** Render body only (dùng trong wizard / dialog cha) */
+  embedded: { type: Boolean, default: false },
+  /**
+   * @deprecated Luôn bật thêm/xoá/đổi tên khi có quyền điều phối.
+   * Giữ prop để tương thích nơi đang truyền (ThemModal).
+   */
+  allowEditSessions: { type: Boolean, default: true },
 })
 
 const emit = defineEmits(['update:modelValue', 'saved', 'closed'])
@@ -156,6 +314,13 @@ const canEditDieuPhoi = computed(() => {
   const role = String(authStore.user?.role || '').toLowerCase()
   return role === 'admin' || role === 'coordinator'
 })
+
+/** Thêm / xoá / đổi tên buổi — giống bước lịch quay chụp */
+const canEditSessions = computed(() => canEditDieuPhoi.value)
+
+const canAddSession = computed(
+  () => canEditSessions.value && formModel.sessions.length < MAX_LICH_QUAY_CHUP,
+)
 
 const visible = computed({
   get: () => props.modelValue,
@@ -172,6 +337,9 @@ const userOptions = ref([])
 const loaiQuayChupOptions = ref([])
 const activeSessionName = ref('')
 const slideDirection = ref('right')
+const editingUid = ref(null)
+const editingTitle = ref('')
+const titleInputRef = ref(null)
 let sessionUid = 0
 
 const formModel = reactive({
@@ -189,6 +357,14 @@ const sharedDateColProps = {
   lg: 8,
   xl: 8,
 }
+
+const canSave = computed(
+  () =>
+    canEditDieuPhoi.value &&
+    !loading.value &&
+    fields.value.length > 0 &&
+    formModel.sessions.length > 0,
+)
 
 const dialogTitle = computed(() => {
   const ma = hopDong.value?.ma_hop_dong
@@ -293,10 +469,124 @@ function displayTenLich(session, index) {
   return name || defaultTenLichQuayChup(index)
 }
 
+function setTitleInputRef(el) {
+  if (el) titleInputRef.value = el
+}
+
+function startRename(session, index) {
+  if (!canEditSessions.value || !session) return
+  activeSessionName.value = sessionName(session)
+  editingUid.value = session._uid
+  editingTitle.value = displayTenLich(session, index)
+  nextTick(() => {
+    titleInputRef.value?.focus?.()
+    titleInputRef.value?.select?.()
+  })
+}
+
+function onTitleKeydown(event, session, index) {
+  event.stopPropagation()
+  if (event.key === 'Enter') {
+    event.preventDefault()
+    commitRename(session, index)
+    return
+  }
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    cancelRename()
+  }
+}
+
+function commitRename(session, index) {
+  if (!session || editingUid.value !== session._uid) return
+  session._ten_lich = normalizeTenLichQuayChup(editingTitle.value, index)
+  editingUid.value = null
+  editingTitle.value = ''
+}
+
+function cancelRename() {
+  editingUid.value = null
+  editingTitle.value = ''
+}
+
+function resolvedDefaultNgayChup() {
+  const ngay = String(props.defaultNgayChup || '').slice(0, 10)
+  return /^\d{4}-\d{2}-\d{2}$/.test(ngay) ? ngay : ''
+}
+
+function createEmptySession(index = formModel.sessions.length) {
+  const values = {
+    _uid: nextUid(),
+    _ten_lich: defaultTenLichQuayChup(index),
+    _lockNgayChup: false,
+    [LOAI_QUAY_CHUP_KEY]: null,
+  }
+  for (const field of fields.value) {
+    if (isSharedLichQuayChupKey(field.key)) continue
+    values[field.key] = defaultValueByLoai(field.loai_du_lieu, field.key)
+  }
+
+  // Buổi mới / HĐ chưa có buổi: gán + khóa ngày từ lịch
+  const ngay = resolvedDefaultNgayChup()
+  if (ngay && fields.value.some((f) => f.key === 'ngay_chup')) {
+    values.ngay_chup = ngay
+    values._lockNgayChup = true
+  }
+  return values
+}
+
+function addSession() {
+  if (!canEditSessions.value) return
+  if (!canAddSession.value) {
+    ElMessage.warning(`Tối đa ${MAX_LICH_QUAY_CHUP} lịch quay chụp.`)
+    return
+  }
+  const session = createEmptySession(formModel.sessions.length)
+  formModel.sessions.push(session)
+  activeSessionName.value = sessionName(session)
+}
+
+function removeSessionByName(targetName) {
+  if (!canEditSessions.value) return
+  if (formModel.sessions.length <= 1) {
+    ElMessage.warning('Cần ít nhất 1 lịch quay chụp.')
+    return
+  }
+
+  const name = String(targetName ?? '')
+  const index = formModel.sessions.findIndex((session) => sessionName(session) === name)
+  if (index === -1) return
+
+  let nextActive = activeSessionName.value
+  if (sessionName(formModel.sessions[index]) === String(activeSessionName.value)) {
+    const nextSession = formModel.sessions[index + 1] || formModel.sessions[index - 1]
+    nextActive = sessionName(nextSession)
+  }
+
+  if (String(editingUid.value) === name) {
+    cancelRename()
+  }
+
+  formModel.sessions.splice(index, 1)
+  syncActiveSession(nextActive)
+}
+
+function handleTabsEdit(targetName, action) {
+  if (!canEditSessions.value) return
+  if (action === 'add') {
+    addSession()
+    return
+  }
+  if (action === 'remove') {
+    removeSessionByName(targetName)
+  }
+}
+
 function sessionFromSaved(savedMap, index = 0) {
   const values = {
     _uid: nextUid(),
     _ten_lich: getTenLichQuayChup(savedMap, index),
+    _lockNgayChup: false,
     [LOAI_QUAY_CHUP_KEY]: parseSessionLoaiQuayChup(savedMap),
   }
   const source = savedMap && typeof savedMap === 'object' && !Array.isArray(savedMap) ? savedMap : {}
@@ -319,6 +609,7 @@ function sessionFromSaved(savedMap, index = 0) {
     }
   }
 
+  // Buổi đã có: giữ nguyên ngày chụp, cho phép sửa
   return values
 }
 
@@ -406,10 +697,17 @@ async function loadData() {
       0,
       MAX_LICH_QUAY_CHUP,
     )
-    formModel.sessions = savedSessions.map((item, index) => sessionFromSaved(item, index))
+    if (savedSessions.length) {
+      formModel.sessions = savedSessions.map((item, index) => sessionFromSaved(item, index))
+    } else if (canEditDieuPhoi.value && fields.value.length) {
+      formModel.sessions = [createEmptySession(0)]
+    } else {
+      formModel.sessions = []
+    }
     for (const key of SHARED_LICH_QUAY_CHUP_KEYS) {
       formModel[key] = firstDieuPhoiGiaTri(hopDong.value?.thong_tin_dieu_phoi, key)
     }
+    cancelRename()
     syncActiveSession()
   } catch {
     fields.value = []
@@ -474,12 +772,12 @@ function focusFirstInvalidSession(invalidFields) {
 }
 
 async function save() {
-  if (!canEditDieuPhoi.value) return
-  if (!props.hopDongId || !fields.value.length) return
+  if (!canEditDieuPhoi.value) return false
+  if (!props.hopDongId || !fields.value.length) return false
 
   if (!formModel.sessions.length) {
     ElMessage.warning('Chưa có lịch quay chụp để điều phối.')
-    return
+    return false
   }
 
   const valid = await formRef.value?.validate().catch((invalidFields) => {
@@ -488,7 +786,7 @@ async function save() {
   })
   if (!valid) {
     ElMessage.warning('Vui lòng điền đầy đủ các trường bắt buộc.')
-    return
+    return false
   }
 
   saving.value = true
@@ -498,15 +796,19 @@ async function save() {
     })
     ElMessage.success('Đã lưu thông tin điều phối.')
     emit('saved', data)
-    visible.value = false
+    if (!props.embedded) {
+      visible.value = false
+    }
+    return true
   } catch {
     // interceptor
+    return false
   } finally {
     saving.value = false
   }
 }
 
-function onClosed() {
+function resetState() {
   formRef.value?.clearValidate?.()
   fields.value = []
   fieldMeta.value = {}
@@ -516,7 +818,12 @@ function onClosed() {
   userOptions.value = []
   loaiQuayChupOptions.value = []
   activeSessionName.value = ''
+  cancelRename()
   saving.value = false
+}
+
+function onClosed() {
+  resetState()
   emit('closed')
 }
 
@@ -532,12 +839,36 @@ watch(activeSessionName, (next, prev) => {
 })
 
 watch(
-  () => props.modelValue,
-  (isOpen) => {
-    if (!isOpen) return
-    loadData()
+  () => ({
+    open: props.embedded ? Boolean(props.hopDongId) : props.modelValue,
+    hopDongId: props.hopDongId,
+    defaultNgayChup: props.defaultNgayChup,
+  }),
+  (state, prev) => {
+    if (!state.open) {
+      if (props.embedded && prev?.open) resetState()
+      return
+    }
+    if (
+      state.hopDongId &&
+      (!prev ||
+        !prev.open ||
+        prev.hopDongId !== state.hopDongId ||
+        prev.defaultNgayChup !== state.defaultNgayChup)
+    ) {
+      loadData()
+    }
   },
+  { immediate: true },
 )
+
+defineExpose({
+  save,
+  resetState,
+  loading,
+  saving,
+  canSave,
+})
 </script>
 
 <style scoped lang="scss">
@@ -567,6 +898,17 @@ watch(
     padding: 16px 16px 4px;
   }
 
+  :deep(.el-tabs__new-tab) {
+    width: 22px;
+    height: 22px;
+    margin: 10px 12px 10px auto;
+    border-radius: 4px;
+  }
+
+  &.is-max-sessions :deep(.el-tabs__new-tab) {
+    display: none;
+  }
+
   :deep(.el-tabs__item) {
     height: 40px;
     font-weight: 600;
@@ -582,11 +924,49 @@ watch(
 }
 
 .session-tab-label {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   max-width: 180px;
+}
+
+.session-tab-text {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.session-tab-edit {
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease;
+  cursor: pointer;
+}
+
+.session-tabs :deep(.el-tabs__item:hover) .session-tab-edit,
+.session-tabs :deep(.el-tabs__item.is-active) .session-tab-edit {
+  opacity: 1;
+}
+
+.session-tab-edit:hover {
+  color: var(--el-color-primary);
+}
+
+.session-tab-input {
+  width: 148px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--el-color-primary);
+  border-radius: 4px;
+  background: var(--el-bg-color);
+  color: var(--el-text-color-primary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 22px;
+  outline: none;
 }
 
 @keyframes session-tab-in-right {

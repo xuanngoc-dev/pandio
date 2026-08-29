@@ -162,6 +162,20 @@
                 +{{ hopDongDotMoreCount(data.day) }}
               </span>
             </button>
+            <CustomTooltip
+              v-if="canThemLich && !isPastDay(data.day)"
+              content="Thêm lịch điều phối"
+              placement="top"
+            >
+              <button
+                type="button"
+                class="day-add-btn"
+                aria-label="Thêm lịch điều phối"
+                @click.stop="openThemLich(data.day)"
+              >
+                <el-icon :size="14"><Plus /></el-icon>
+              </button>
+            </CustomTooltip>
           </div>
         </template>
       </el-calendar>
@@ -219,23 +233,37 @@
       :ngay-chup="chiTietNgayChup"
       @saved="loadLichChupMake"
     />
+
+    <LichChupMakeThemModal
+      v-model="themVisible"
+      :ngay-chup="themNgayChup"
+      @saved="loadLichChupMake"
+    />
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { ArrowLeft, ArrowRight, Calendar, Refresh } from '@element-plus/icons-vue'
+import { ArrowLeft, ArrowRight, Calendar, Plus, Refresh } from '@element-plus/icons-vue'
 import { fetchNgayNghi } from '@/api/ngayNghi'
 import { fetchLichChupMake } from '@/api/hopDongSuDungDichVu'
 import { fetchTienIchThoiTiet, weatherIconUrl } from '@/api/thoiTiet'
+import { useAuthStore } from '@/stores/auth'
 import { formatLunarLabel, formatLunarTooltip, isLunarMonthStart } from '@/utils/lunar'
 import LichChupMakeChiTietModal from './LichChupMakeChiTietModal.vue'
+import LichChupMakeThemModal from './LichChupMakeThemModal.vue'
 
 const PREFS_STORAGE_KEY = 'pandio.lichChupMake.loaiPrefs'
 /** Số hợp đồng tối đa hiện trên mỗi ô ngày (desktop) */
 const MAX_DAY_ITEMS = 4
 /** Số chấm hợp đồng tối đa trên mỗi ô ngày (mobile) */
 const MAX_DAY_DOTS = 6
+
+const authStore = useAuthStore()
+const canThemLich = computed(() => {
+  const role = String(authStore.user?.role || '').toLowerCase()
+  return role === 'admin' || role === 'coordinator'
+})
 
 /** Palette mặc định theo ma_hop_dong (fallback theo index) */
 const LOAI_COLOR_BY_MA = {
@@ -329,6 +357,10 @@ const loaiHopDongLegend = ref([])
 /** Modal chi tiết theo ngày */
 const chiTietVisible = ref(false)
 const chiTietNgayChup = ref('')
+
+/** Modal thêm lịch điều phối */
+const themVisible = ref(false)
+const themNgayChup = ref('')
 
 /**
  * Tuỳ chọn người dùng theo loai_hop_dong_id:
@@ -702,16 +734,31 @@ function openChiTiet(day) {
   chiTietVisible.value = true
 }
 
+function openThemLich(day) {
+  if (isPastDay(day)) return
+  themNgayChup.value = dayKey(day)
+  themVisible.value = true
+}
+
 function isNgayNghi(day) {
   return Boolean(ngayNghiByDate.value[dayKey(day)])
 }
 
 function isToday(day) {
+  return dayKey(day) === todayYmd()
+}
+
+/** Ngày trước hôm nay (YYYY-MM-DD so sánh chuỗi) */
+function isPastDay(day) {
+  return dayKey(day) < todayYmd()
+}
+
+function todayYmd() {
   const now = new Date()
   const y = now.getFullYear()
   const m = String(now.getMonth() + 1).padStart(2, '0')
   const d = String(now.getDate()).padStart(2, '0')
-  return dayKey(day) === `${y}-${m}-${d}`
+  return `${y}-${m}-${d}`
 }
 
 function ngayNghiLabel(day) {
@@ -857,6 +904,7 @@ onMounted(() => {
 }
 
 .day-cell {
+  position: relative;
   height: 100%;
   box-sizing: border-box;
   display: flex;
@@ -877,6 +925,39 @@ onMounted(() => {
       color: #a8071a;
       font-weight: 700;
     }
+  }
+
+  &:hover .day-add-btn,
+  &:focus-within .day-add-btn {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+.day-add-btn {
+  position: absolute;
+  left: 4px;
+  bottom: 3px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--el-border-color);
+  border-radius: 6px;
+  background: var(--el-bg-color);
+  color: var(--el-color-primary);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  transition: opacity 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+
+  &:hover {
+    background: var(--el-color-primary-light-9);
+    border-color: var(--el-color-primary-light-5);
   }
 }
 
@@ -1283,6 +1364,16 @@ onMounted(() => {
     display: flex;
     justify-content: center;
     margin-top: 0;
+  }
+
+  .day-add-btn {
+    opacity: 1;
+    pointer-events: auto;
+    width: 18px;
+    height: 18px;
+    left: 2px;
+    bottom: 2px;
+    border-radius: 4px;
   }
 
   .day-cell.is-ngay-nghi {
