@@ -396,7 +396,7 @@ function fillFromEmployee(row) {
     phone: row.phone || '',
     password: '',
     role: row.role || 'user',
-    is_dieu_phoi: false,
+    is_dieu_phoi: row.role === 'coordinator',
     status: row.status || 'active',
     hinh_anh: nvData.hinh_anh || '',
     phong_ban_ids: Array.isArray(nvData.phong_ban_ids) ? [...nvData.phong_ban_ids] : [],
@@ -614,9 +614,9 @@ function buildPayload() {
   }
 
   if (editingId.value) {
-    // Chỉ gửi role khi bật Điều phối → gán coordinator; tắt thì không đụng role
-    if (form.is_dieu_phoi) {
-      payload.role = 'coordinator'
+    // Admin giữ nguyên role; còn lại: bật → coordinator, tắt → user
+    if (form.role !== 'admin') {
+      payload.role = form.is_dieu_phoi ? 'coordinator' : 'user'
     }
   } else {
     payload.password = '123456789'

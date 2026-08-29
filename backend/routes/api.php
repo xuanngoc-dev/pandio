@@ -194,6 +194,7 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
     Route::post('/hop-dong-su-dung-dich-vu/kiem-tra-ma-giam-gia', [HopDongSuDungDichVuController::class, 'kiemTraMaGiamGia']); // Kiểm tra mã giảm giá, trả số tiền giảm
     Route::post('/hop-dong-su-dung-dich-vu/{hop_dong_su_dung_dich_vu}/nhan-cong-viec', [HopDongSuDungDichVuController::class, 'nhanCongViec']); // Nhân viên nhận việc điều phối
     Route::post('/hop-dong-su-dung-dich-vu/{hop_dong_su_dung_dich_vu}/ket-qua-hop-dong', [HopDongSuDungDichVuController::class, 'capNhatKetQuaHopDong']); // Cập nhật kết quả HĐ (file, trạng thái sản xuất)
+    Route::post('/hop-dong-su-dung-dich-vu/{hop_dong_su_dung_dich_vu}/dieu-phoi', [HopDongSuDungDichVuController::class, 'capNhatThongTinDieuPhoi']); // Cập nhật thông tin điều phối (chỉ admin/coordinator)
     Route::post('/hop-dong-su-dung-dich-vu/{hop_dong_su_dung_dich_vu}/ngay-dieu-phoi', [HopDongSuDungDichVuController::class, 'capNhatNgayDieuPhoi']); // Cập nhật ngày trả file lẻ / file in / khách hẹn qua (tiền kỳ & hậu kỳ)
     Route::post('/hop-dong-su-dung-dich-vu/{hop_dong_su_dung_dich_vu}/chuyen-hau-ky', [HopDongSuDungDichVuController::class, 'chuyenHauKy']); // Tiền kỳ → hậu kỳ (cần file gốc)
     Route::post('/hop-dong-su-dung-dich-vu/{hop_dong_su_dung_dich_vu}/chuyen-gui-in', [HopDongSuDungDichVuController::class, 'chuyenGuiIn']); // Hậu kỳ → gửi in (cần file lẻ + file in)

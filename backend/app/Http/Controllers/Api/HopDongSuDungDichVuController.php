@@ -556,6 +556,39 @@ class HopDongSuDungDichVuController extends BaseApiController
     }
 
     /**
+     * Cập nhật toàn bộ thong_tin_dieu_phoi (modal điều phối).
+     * Chỉ admin / coordinator (user.role).
+     */
+    public function capNhatThongTinDieuPhoi(Request $request, HopDongSuDungDichVu $hop_dong_su_dung_dich_vu): JsonResponse
+    {
+        return $this->handleApi(function () use ($request, $hop_dong_su_dung_dich_vu) {
+            $user = $request->user();
+            if (! $user) {
+                abort(401, 'Unauthenticated.');
+            }
+            if (! $this->userIsAdminOrCoordinator($user)) {
+                abort(403, 'Chỉ admin hoặc coordinator được cập nhật thông tin điều phối.');
+            }
+
+            $validated = $this->validatePayload($request, $hop_dong_su_dung_dich_vu->id, true);
+            if (! array_key_exists('thong_tin_dieu_phoi', $validated)) {
+                abort(422, 'Thiếu thông tin điều phối.');
+            }
+
+            $validated = $this->syncThongTinDieuPhoiOnSave($validated, $hop_dong_su_dung_dich_vu);
+            $payload = [
+                'thong_tin_dieu_phoi' => $validated['thong_tin_dieu_phoi'],
+            ];
+            if (array_key_exists('ket_qua_hop_dong', $validated)) {
+                $payload['ket_qua_hop_dong'] = $validated['ket_qua_hop_dong'];
+            }
+            $hop_dong_su_dung_dich_vu->update($payload);
+
+            return response()->json($this->loadDetail($hop_dong_su_dung_dich_vu->fresh()));
+        }, 'cập nhật thông tin điều phối');
+    }
+
+    /**
      * Cập nhật ngày dùng chung trong thong_tin_dieu_phoi.
      * Bước tiền kỳ và hậu kỳ: admin/coordinator được sửa ngày trả file lẻ,
      * ngày trả file in và ngày khách hẹn qua.
@@ -1111,6 +1144,15 @@ class HopDongSuDungDichVuController extends BaseApiController
     public function update(Request $request, HopDongSuDungDichVu $hop_dong_su_dung_dich_vu): JsonResponse
     {
         return $this->handleApi(function () use ($request, $hop_dong_su_dung_dich_vu) {
+            // Modal điều phối chỉ gửi thong_tin_dieu_phoi — bắt buộc admin/coordinator.
+            // Form HĐ (bước lịch) gửi kèm trang_thai / nested → vẫn cho phép sale lưu lịch.
+            if ($request->exists('thong_tin_dieu_phoi')
+                && array_keys($request->all()) === ['thong_tin_dieu_phoi']
+                && ! $this->userIsAdminOrCoordinator($request->user())
+            ) {
+                abort(403, 'Chỉ admin hoặc coordinator được cập nhật thông tin điều phối.');
+            }
+
             $validated = $this->validatePayload($request, $hop_dong_su_dung_dich_vu->id, true);
             unset($validated['nguoi_tao_id'], $validated['ma_hop_dong']);
             $validated = $this->syncThongTinDieuPhoiOnSave($validated, $hop_dong_su_dung_dich_vu);
@@ -1758,6 +1800,7 @@ class HopDongSuDungDichVuController extends BaseApiController
         return HopDongSuDungDichVu::DIEU_PHOI_STAFF_KEYS;
     }
 
+    /** Chỉ dựa vào users.role = admin | coordinator (khớp frontend). */
     private function userIsAdminOrCoordinator($user): bool
     {
         if (! $user) {
@@ -1765,19 +1808,8 @@ class HopDongSuDungDichVuController extends BaseApiController
         }
 
         $role = strtolower(trim((string) ($user->role ?? '')));
-        if (in_array($role, ['admin', 'coordinator', 'coordination'], true)) {
-            return true;
-        }
 
-        $ten = $this->userVaiTroTen($user);
-        if ($ten === '') {
-            return false;
-        }
-
-        return str_contains($ten, 'coordinator')
-            || str_contains($ten, 'coordination')
-            || str_contains($ten, 'điều phối')
-            || str_contains($ten, 'dieu phoi');
+        return in_array($role, ['admin', 'coordinator'], true);
     }
 
     private function userVaiTroTen($user): string

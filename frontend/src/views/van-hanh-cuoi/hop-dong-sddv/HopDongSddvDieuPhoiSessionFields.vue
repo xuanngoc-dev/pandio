@@ -12,6 +12,7 @@
             placeholder="Chọn loại quay chụp"
             filterable
             clearable
+            :disabled="disabled"
             style="width: 100%"
           >
             <CustomOption
@@ -38,6 +39,7 @@
               v-model="values[field.key]"
               :placeholder="`Chọn ${field.ten_thong_tin.toLowerCase()}`"
               clearable
+              :disabled="disabled"
               style="width: 100%"
             >
               <CustomOption
@@ -56,6 +58,7 @@
               format="DD/MM/YYYY"
               value-format="YYYY-MM-DD"
               :placeholder="`Chọn ${field.ten_thong_tin.toLowerCase()}`"
+              :disabled="disabled"
               :disabled-date="disabledPastDate"
               style="width: 100%"
               clearable
@@ -68,6 +71,7 @@
               format="HH:mm"
               value-format="HH:mm"
               :placeholder="`Chọn ${field.ten_thong_tin.toLowerCase()}`"
+              :disabled="disabled"
               style="width: 100%"
               clearable
             />
@@ -80,6 +84,7 @@
               :min="numberFieldMin(field)"
               :max="numberFieldMax(field)"
               :placeholder="`Nhập ${field.ten_thong_tin.toLowerCase()}`"
+              :disabled="disabled"
               @update:model-value="onNumberFieldInput(field, $event)"
               @blur="onNumberFieldBlur(field)"
             />
@@ -95,6 +100,7 @@
               :collapse-tags="!isSingleStaffSelect(field)"
               :collapse-tags-tooltip="!isSingleStaffSelect(field)"
               clearable
+              :disabled="disabled"
               style="width: 100%"
               @update:model-value="onStaffSelect(field, $event)"
             >
@@ -118,6 +124,7 @@
               collapse-tags
               collapse-tags-tooltip
               clearable
+              :disabled="disabled"
               style="width: 100%"
             >
               <CustomOption
@@ -134,6 +141,7 @@
               v-model="values[field.key]"
               :placeholder="`Nhập ${field.ten_thong_tin.toLowerCase()}`"
               clearable
+              :disabled="disabled"
             />
           </template>
         </CustomFormItem>
@@ -154,6 +162,7 @@
             type="textarea"
             :rows="3"
             :placeholder="`Nhập ${field.ten_thong_tin.toLowerCase()}`"
+            :disabled="disabled"
           />
         </CustomFormItem>
       </CustomCol>
@@ -198,6 +207,7 @@ const props = defineProps({
   propPrefix: { type: String, default: '' },
   requireDates: { type: Boolean, default: false },
   requireNgayChup: { type: Boolean, default: false },
+  disabled: { type: Boolean, default: false },
 })
 
 const buoiChupOptions = BUOI_CHUP_OPTIONS

@@ -37,6 +37,7 @@
                 format="DD/MM/YYYY"
                 value-format="YYYY-MM-DD"
                 :placeholder="`Chọn ${sharedLichQuayChupLabel(key).toLowerCase()}`"
+                :disabled="!canEditDieuPhoi"
                 :disabled-date="disabledPastDate"
                 style="width: 100%"
                 clearable
@@ -71,6 +72,7 @@
               :user-options="userOptions"
               :loai-quay-chup-options="loaiQuayChupOptions"
               :prop-prefix="`sessions.${index}`"
+              :disabled="!canEditDieuPhoi"
               require-dates
             />
           </el-tab-pane>
@@ -84,7 +86,7 @@
         <CustomButton
           type="primary"
           :loading="saving"
-          :disabled="loading || !fields.length || !formModel.sessions.length"
+          :disabled="!canEditDieuPhoi || loading || !fields.length || !formModel.sessions.length"
           @click="save"
         >
           Lưu
@@ -98,7 +100,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { fetchDanhMucLoaiQuayChup } from '@/api/danhMucLoaiQuayChup'
-import { getHopDongSuDungDichVu, updateHopDongSuDungDichVu } from '@/api/hopDongSuDungDichVu'
+import { capNhatThongTinDieuPhoi, getHopDongSuDungDichVu } from '@/api/hopDongSuDungDichVu'
 import { getLoaiHopDong } from '@/api/loaiHopDong'
 import { fetchUsers } from '@/api/users'
 import {
@@ -109,6 +111,7 @@ import {
   CustomFormItem,
   CustomRow,
 } from '@/components/element'
+import { useAuthStore } from '@/stores/auth'
 import {
   LOAI_QUAY_CHUP_KEY,
   MAX_LICH_QUAY_CHUP,
@@ -146,6 +149,13 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue', 'saved', 'closed'])
+
+const authStore = useAuthStore()
+
+const canEditDieuPhoi = computed(() => {
+  const role = String(authStore.user?.role || '').toLowerCase()
+  return role === 'admin' || role === 'coordinator'
+})
 
 const visible = computed({
   get: () => props.modelValue,
@@ -464,6 +474,7 @@ function focusFirstInvalidSession(invalidFields) {
 }
 
 async function save() {
+  if (!canEditDieuPhoi.value) return
   if (!props.hopDongId || !fields.value.length) return
 
   if (!formModel.sessions.length) {
@@ -482,7 +493,7 @@ async function save() {
 
   saving.value = true
   try {
-    const { data } = await updateHopDongSuDungDichVu(props.hopDongId, {
+    const { data } = await capNhatThongTinDieuPhoi(props.hopDongId, {
       thong_tin_dieu_phoi: buildPayload(),
     })
     ElMessage.success('Đã lưu thông tin điều phối.')

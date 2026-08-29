@@ -111,6 +111,16 @@ export function capNhatKetQuaHopDong(id, payload) {
 }
 
 /**
+ * Cập nhật toàn bộ thong_tin_dieu_phoi (modal điều phối).
+ * Chỉ admin / coordinator.
+ * @param {number|string} id
+ * @param {{ thong_tin_dieu_phoi: object }} payload
+ */
+export function capNhatThongTinDieuPhoi(id, payload) {
+  return api.post(`/hop-dong-su-dung-dich-vu/${id}/dieu-phoi`, payload)
+}
+
+/**
  * Cập nhật ngày dùng chung trong thong_tin_dieu_phoi (file lẻ, file in, khách hẹn qua).
  * Admin/coordinator được sửa ở bước tiền kỳ và hậu kỳ.
  * @param {number|string} id

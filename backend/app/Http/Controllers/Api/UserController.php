@@ -131,9 +131,13 @@ class UserController extends BaseApiController
                     'name' => $validated['name'],
                     'email' => $validated['email'],
                     'phone' => $validated['phone'],
-                    'role' => $validated['role'],
                     'status' => $validated['status'],
                 ];
+
+                // Chỉ cập nhật role khi client gửi lên (VD: bật Điều phối → coordinator)
+                if (array_key_exists('role', $validated)) {
+                    $userData['role'] = $validated['role'];
+                }
 
                 if (! empty($validated['password'])) {
                     $userData['password'] = $validated['password'];
@@ -220,7 +224,11 @@ class UserController extends BaseApiController
                 'string',
                 Password::defaults(),
             ],
-            'role' => ['required', 'string', Rule::in(['user', 'admin'])],
+            'role' => [
+                $isUpdate ? 'sometimes' : 'required',
+                'string',
+                Rule::in(['user', 'admin', 'coordinator']),
+            ],
             'status' => ['required', 'string', Rule::in(['active', 'inactive'])],
 
             'hinh_anh' => ['nullable', 'string', 'max:1000'],
