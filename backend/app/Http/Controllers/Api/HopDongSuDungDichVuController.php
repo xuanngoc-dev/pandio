@@ -567,7 +567,7 @@ class HopDongSuDungDichVuController extends BaseApiController
                 abort(401, 'Unauthenticated.');
             }
             if (! $this->userIsAdminOrCoordinator($user)) {
-                abort(403, 'Chỉ admin hoặc coordinator được cập nhật thông tin điều phối.');
+                abort(403, 'Chỉ admin hoặc điều phối viên được cập nhật thông tin điều phối.');
             }
 
             $validated = $this->validatePayload($request, $hop_dong_su_dung_dich_vu->id, true);
@@ -1150,7 +1150,7 @@ class HopDongSuDungDichVuController extends BaseApiController
                 && array_keys($request->all()) === ['thong_tin_dieu_phoi']
                 && ! $this->userIsAdminOrCoordinator($request->user())
             ) {
-                abort(403, 'Chỉ admin hoặc coordinator được cập nhật thông tin điều phối.');
+                abort(403, 'Chỉ admin hoặc điều phối viên được cập nhật thông tin điều phối.');
             }
 
             $validated = $this->validatePayload($request, $hop_dong_su_dung_dich_vu->id, true);
