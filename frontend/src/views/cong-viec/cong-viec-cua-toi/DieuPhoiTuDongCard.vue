@@ -83,6 +83,56 @@
         </div>
       </div>
 
+      <div class="cong-viec-card__row cong-viec-card__row--inline">
+        <span class="label">Note thợ shop</span>
+        <div class="cong-viec-card__date-value">
+          <template v-if="noteThoShopEditing">
+            <CustomSelect
+              v-model="noteThoShopDraft"
+              clearable
+              placeholder="Chọn note"
+              size="small"
+              :loading="savingNoteThoShop"
+              class="cong-viec-card__note-select"
+              @change="saveNoteThoShop"
+              @visible-change="onNoteThoShopSelectVisibleChange"
+            >
+              <CustomOption
+                v-for="opt in NOTE_THO_SHOP_OPTIONS"
+                :key="opt.value"
+                :label="opt.label"
+                :value="opt.value"
+              />
+            </CustomSelect>
+          </template>
+          <template v-else>
+            <el-tag
+              v-if="noteThoShopValue"
+              size="small"
+              effect="plain"
+              :type="noteThoShopTagType(noteThoShopValue)"
+            >
+              {{ noteThoShopLabel }}
+            </el-tag>
+            <span v-else class="value">—</span>
+            <CustomTooltip
+              v-if="canEditNoteThoShop"
+              :content="noteThoShopValue ? 'Sửa note thợ shop' : 'Thêm note thợ shop'"
+              placement="top"
+            >
+              <CustomButton
+                :type="noteThoShopValue ? 'warning' : 'primary'"
+                circle
+                size="small"
+                :icon="noteThoShopValue ? Edit : Plus"
+                :loading="savingNoteThoShop"
+                @click.stop="openNoteThoShopEdit"
+              />
+            </CustomTooltip>
+          </template>
+        </div>
+      </div>
+
       <div v-if="step !== 'cho_nhan'" class="cong-viec-card__files">
         <div
           v-for="field in fileLinkFields"
@@ -384,6 +434,8 @@ import {
   CustomCard,
   CustomDialog,
   CustomIcon,
+  CustomOption,
+  CustomSelect,
   CustomTooltip,
 } from '@/components/element'
 import { useAuthStore } from '@/stores/auth'
@@ -391,8 +443,13 @@ import {
   collectDieuPhoiGiaTri,
   firstDieuPhoiGiaTri,
   formatLoaiQuayChupLabel,
+  formatNoteThoShopLabel,
   getDieuPhoiGiaTriFromSession,
   normalizeDieuPhoiSessions,
+  normalizeNoteThoShopValue,
+  NOTE_THO_SHOP_KEY,
+  NOTE_THO_SHOP_OPTIONS,
+  noteThoShopTagType,
   parseSessionLoaiQuayChup,
   resolveTrangThaiDieuPhoi,
   sharedLichQuayChupLabel,
@@ -453,6 +510,9 @@ const savingSharedDate = ref(false)
 const sharedDateModalVisible = ref(false)
 const sharedDateField = ref(null)
 const sharedDateInput = ref('')
+const savingNoteThoShop = ref(false)
+const noteThoShopEditing = ref(false)
+const noteThoShopDraft = ref('')
 
 function openDetail() {
   if (!props.item?.id) return
@@ -773,6 +833,20 @@ const canEditSharedDates = computed(
     isAdminOrCoordinator(authStore.user),
 )
 
+const EDITABLE_NOTE_THO_SHOP_STEPS = ['tien_ky', 'hau_ky', 'gui_in', 'hoan_tat_san_xuat']
+
+const canEditNoteThoShop = computed(
+  () =>
+    EDITABLE_NOTE_THO_SHOP_STEPS.includes(props.step) &&
+    isAdminOrCoordinator(authStore.user),
+)
+
+const noteThoShopValue = computed(() =>
+  normalizeNoteThoShopValue(firstDieuPhoiGiaTri(props.item?.thong_tin_dieu_phoi, NOTE_THO_SHOP_KEY)),
+)
+
+const noteThoShopLabel = computed(() => formatNoteThoShopLabel(noteThoShopValue.value))
+
 function getThongTin(row) {
   const info = row?.thong_tin_hop_dong
   return info && typeof info === 'object' && !Array.isArray(info) ? info : {}
@@ -944,6 +1018,51 @@ async function saveSharedDate() {
   } finally {
     savingSharedDate.value = false
   }
+}
+
+async function saveNoteThoShop(value) {
+  if (!canEditNoteThoShop.value) {
+    ElMessage.error('Bạn không có quyền cập nhật note thợ shop.')
+    noteThoShopEditing.value = false
+    return
+  }
+
+  const next = normalizeNoteThoShopValue(value)
+  if (next === noteThoShopValue.value) {
+    noteThoShopEditing.value = false
+    return
+  }
+
+  savingNoteThoShop.value = true
+  try {
+    const { data } = await capNhatNgayDieuPhoi(props.item.id, {
+      key: NOTE_THO_SHOP_KEY,
+      gia_tri: next || null,
+    })
+    ElMessage.success('Đã lưu note thợ shop')
+    noteThoShopEditing.value = false
+    emit('updated', data)
+  } catch (error) {
+    const msg =
+      error?.response?.data?.message ||
+      error?.message ||
+      'Không thể lưu note thợ shop'
+    ElMessage.error(msg)
+  } finally {
+    savingNoteThoShop.value = false
+  }
+}
+
+function openNoteThoShopEdit() {
+  if (!canEditNoteThoShop.value) return
+  noteThoShopDraft.value = noteThoShopValue.value || null
+  noteThoShopEditing.value = true
+}
+
+function onNoteThoShopSelectVisibleChange(visible) {
+  if (visible || savingNoteThoShop.value) return
+  noteThoShopEditing.value = false
+  noteThoShopDraft.value = noteThoShopValue.value || null
 }
 
 async function saveLink() {
@@ -1298,6 +1417,10 @@ async function onBanGiao() {
     .value {
       text-align: right;
     }
+  }
+
+  &__note-select {
+    width: 140px;
   }
 
   &__times {

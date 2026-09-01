@@ -59,6 +59,17 @@ class HopDongSuDungDichVu extends Model
     /** Trạng thái workflow điều phối, lưu ở envelope thong_tin_dieu_phoi. */
     public const TRANG_THAI_DIEU_PHOI_KEY = 'trang_thai_dieu_phoi';
 
+    /** Note trạng thái thợ shop, lưu ở envelope thong_tin_dieu_phoi. */
+    public const NOTE_THO_SHOP_KEY = 'note_tho_shop';
+
+    public const NOTE_THO_SHOP_VALUES = [
+        'dang_lam',
+        'doi_check',
+        'can_sua_lai',
+        'hen_khach_qua',
+        'doi_in',
+    ];
+
     public const TRANG_THAI_DIEU_PHOI_CHO_NHAN = 'cho_nhan';
 
     public const TRANG_THAI_DIEU_PHOI_TIEN_KY = 'tien_ky';

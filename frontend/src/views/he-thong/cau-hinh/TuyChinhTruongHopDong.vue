@@ -622,6 +622,7 @@ const DEFAULT_DIEU_PHOI_FIELDS = [
   { key: 'ngay_tra_file_le', ten_thong_tin: 'Ngày trả file lẻ', loai_du_lieu: 'date' },
   { key: 'ngay_tra_file_in', ten_thong_tin: 'Ngày trả file in', loai_du_lieu: 'date' },
   { key: 'ngay_khach_hen_qua', ten_thong_tin: 'Ngày khách hẹn qua', loai_du_lieu: 'date' },
+  { key: 'note_tho_shop', ten_thong_tin: 'Note thợ shop', loai_du_lieu: 'string' },
   { key: 'dia_diem_chup', ten_thong_tin: 'Địa điểm chụp', loai_du_lieu: 'string' },
   { key: 'tho_chup', ten_thong_tin: 'Thợ chụp', loai_du_lieu: 'array' },
   { key: 'tho_chup_ngoai', ten_thong_tin: 'Thợ chụp ngoài', loai_du_lieu: 'string' },

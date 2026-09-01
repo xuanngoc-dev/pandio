@@ -83,6 +83,7 @@ export function fetchLichHauKyChiTiet(params = {}) {
  *   ngay_tra_file_le?: string,
  *   ngay_tra_file_in?: string,
  *   ngay_khach_hen_qua?: string,
+ *   note_tho_shop?: string[],
  *   co_file_goc?: 0|1,
  *   co_file_le?: 0|1,
  *   co_file_in?: 0|1,
@@ -121,10 +122,10 @@ export function capNhatThongTinDieuPhoi(id, payload) {
 }
 
 /**
- * Cập nhật ngày dùng chung trong thong_tin_dieu_phoi (file lẻ, file in, khách hẹn qua).
- * Admin/coordinator được sửa ở bước tiền kỳ và hậu kỳ.
+ * Cập nhật field dùng chung trong thong_tin_dieu_phoi (ngày trả file, khách hẹn qua, note thợ shop).
+ * Admin/coordinator được sửa ở bước tiền kỳ, hậu kỳ, gửi in và hoàn tất sản xuất.
  * @param {number|string} id
- * @param {{ key: 'ngay_tra_file_le'|'ngay_tra_file_in'|'ngay_khach_hen_qua', gia_tri?: string|null }} payload
+ * @param {{ key: 'ngay_tra_file_le'|'ngay_tra_file_in'|'ngay_khach_hen_qua'|'note_tho_shop', gia_tri?: string|null }} payload
  */
 export function capNhatNgayDieuPhoi(id, payload) {
   return api.post(`/hop-dong-su-dung-dich-vu/${id}/ngay-dieu-phoi`, payload)

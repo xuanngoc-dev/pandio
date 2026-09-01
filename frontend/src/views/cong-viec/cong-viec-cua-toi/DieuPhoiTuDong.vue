@@ -106,19 +106,42 @@
     </el-tabs>
 
     <div v-loading="loading" class="tab-content tab-content--list">
-      <div v-if="fileFilterOptions.length" class="step-file-filters">
-        <el-checkbox-group
-          :model-value="stepFileFilters"
-          @change="onStepFileFilterChange"
-        >
-          <el-checkbox
-            v-for="opt in fileFilterOptions"
-            :key="opt.value"
-            :value="opt.value"
+      <div v-if="fileFilterOptions.length || activeTab === 'hau_ky'" class="step-file-filters">
+        <div v-if="fileFilterOptions.length" class="step-file-filters__files">
+          <el-checkbox-group
+            :model-value="stepFileFilters"
+            @change="onStepFileFilterChange"
           >
-            {{ opt.label }}
-          </el-checkbox>
-        </el-checkbox-group>
+            <el-checkbox
+              v-for="opt in fileFilterOptions"
+              :key="opt.value"
+              :value="opt.value"
+            >
+              {{ opt.label }}
+            </el-checkbox>
+          </el-checkbox-group>
+        </div>
+
+        <div v-if="activeTab === 'hau_ky'" class="step-note-filters">
+          <span class="step-note-filters__label">Note thợ shop:</span>
+          <CustomSelect
+            v-model="stepNoteThoShopFilters"
+            multiple
+            collapse-tags
+            collapse-tags-tooltip
+            placeholder="Chọn note thợ shop"
+            clearable
+            class="step-note-filters__select"
+            @change="onStepNoteThoShopFilterChange"
+          >
+            <CustomOption
+              v-for="opt in NOTE_THO_SHOP_OPTIONS"
+              :key="opt.value"
+              :label="opt.label"
+              :value="opt.value"
+            />
+          </CustomSelect>
+        </div>
       </div>
 
       <el-empty
@@ -167,6 +190,7 @@ import { Search } from '@element-plus/icons-vue'
 import { fetchCongViecDieuPhoiCuaToi } from '@/api/hopDongSuDungDichVu'
 import { fetchLoaiHopDong } from '@/api/loaiHopDong'
 import Pagination from '@/components/Pagination.vue'
+import { NOTE_THO_SHOP_OPTIONS } from '@/utils/thongTinDieuPhoi'
 import {
   CustomButton,
   CustomCol,
@@ -236,6 +260,7 @@ const page = ref(1)
 const perPage = ref(24)
 const total = ref(0)
 const stepFileFilters = ref(['all'])
+const stepNoteThoShopFilters = ref([])
 
 const fileFilterOptions = computed(
   () => STEP_FILE_FILTER_OPTIONS[activeTab.value] || [],
@@ -248,8 +273,16 @@ const stepFileFilterActive = computed(
     !stepFileFilters.value.includes('all'),
 )
 
+const stepNoteThoShopFilterActive = computed(
+  () => activeTab.value === 'hau_ky' && stepNoteThoShopFilters.value.length > 0,
+)
+
+const stepFilterActive = computed(
+  () => stepFileFilterActive.value || stepNoteThoShopFilterActive.value,
+)
+
 const emptyDescription = computed(() => {
-  if (stepFileFilterActive.value) {
+  if (stepFilterActive.value) {
     return 'Không có hợp đồng khớp bộ lọc'
   }
   const label = tabs.find((t) => t.name === activeTab.value)?.label || ''
@@ -274,6 +307,11 @@ function stepFileQueryParams() {
   return params
 }
 
+function stepNoteThoShopQueryParams() {
+  if (!stepNoteThoShopFilterActive.value) return {}
+  return { note_tho_shop: stepNoteThoShopFilters.value }
+}
+
 function onStepFileFilterChange(values) {
   const prev = stepFileFilters.value
   let next = Array.isArray(values) ? [...values] : []
@@ -290,6 +328,11 @@ function onStepFileFilterChange(values) {
   }
 
   stepFileFilters.value = next
+  page.value = 1
+  loadItems()
+}
+
+function onStepNoteThoShopFilterChange() {
   page.value = 1
   loadItems()
 }
@@ -324,6 +367,7 @@ async function loadItems() {
       ngay_tra_file_in: filters.ngay_tra_file_in || undefined,
       ngay_khach_hen_qua: filters.ngay_khach_hen_qua || undefined,
       ...stepFileQueryParams(),
+      ...stepNoteThoShopQueryParams(),
     })
     items.value = data.data || []
     total.value = data.total || 0
@@ -339,6 +383,7 @@ async function loadItems() {
 function onTabChange() {
   page.value = 1
   stepFileFilters.value = ['all']
+  stepNoteThoShopFilters.value = []
   loadItems()
 }
 
@@ -352,7 +397,7 @@ function onAccepted() {
 }
 
 function onItemUpdated(updated) {
-  if (stepFileFilterActive.value) {
+  if (stepFilterActive.value) {
     loadItems()
     return
   }
@@ -436,26 +481,83 @@ onMounted(() => {
   }
 
   .step-file-filters {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 12px 20px;
     margin-bottom: 16px;
     padding: 10px 12px;
     border: 1px solid var(--el-border-color-lighter);
     border-radius: 6px;
     background: var(--el-fill-color-blank);
 
-    :deep(.el-checkbox-group) {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px 16px;
-    }
+    &__files {
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow-x: auto;
 
-    :deep(.el-checkbox) {
-      margin-right: 0;
-      height: auto;
-    }
+      :deep(.el-checkbox-group) {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 4px 16px;
+      }
 
-    :deep(.el-checkbox__label) {
+      :deep(.el-checkbox) {
+        margin-right: 0;
+        height: auto;
+        white-space: nowrap;
+      }
+
+      :deep(.el-checkbox__label) {
+        font-size: 13px;
+        line-height: 1.4;
+      }
+    }
+  }
+
+  .step-note-filters {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 8px 10px;
+    min-width: 0;
+
+    &__label {
+      flex: 0 0 auto;
       font-size: 13px;
+      font-weight: 500;
       line-height: 1.4;
+      white-space: nowrap;
+      color: var(--el-text-color-regular);
+    }
+
+    &__select {
+      width: 220px;
+      min-width: 160px;
+    }
+  }
+
+  @media (max-width: 991px) {
+    .step-file-filters {
+      flex-direction: column;
+      align-items: stretch;
+      flex-wrap: wrap;
+      gap: 10px;
+
+      &__files :deep(.el-checkbox-group) {
+        flex-wrap: wrap;
+      }
+    }
+
+    .step-note-filters {
+      padding-top: 10px;
+      border-top: 1px dashed var(--el-border-color-lighter);
+
+      &__select {
+        flex: 1;
+        width: auto;
+        max-width: none;
+      }
     }
   }
 

@@ -373,7 +373,7 @@ class HopDongSuDungDichVuController extends BaseApiController
      * danh_sach_buoi_chup[*].{tho_chup|tho_make|quay_phim}.gia_tri
      *
      * Query: page, per_page, ket_qua_trang_thai, keyword, loai_hop_dong_id,
-     * ngay_chup, ngay_tra_file_le, ngay_tra_file_in, ngay_khach_hen_qua,
+     * ngay_chup, ngay_tra_file_le, ngay_tra_file_in, ngay_khach_hen_qua, note_tho_shop[],
      * co_file_goc (tiền kỳ / hậu kỳ), co_file_le, co_file_in (hậu kỳ): 1 = đã có link, 0 = chưa có
      * Tab lọc theo thong_tin_dieu_phoi.trang_thai_dieu_phoi (fallback ket_qua_hop_dong.trang_thai).
      */
@@ -401,6 +401,8 @@ class HopDongSuDungDichVuController extends BaseApiController
                 'ngay_tra_file_le' => ['sometimes', 'nullable', 'date'],
                 'ngay_tra_file_in' => ['sometimes', 'nullable', 'date'],
                 'ngay_khach_hen_qua' => ['sometimes', 'nullable', 'date'],
+                'note_tho_shop' => ['sometimes', 'nullable', 'array'],
+                'note_tho_shop.*' => ['string', Rule::in(HopDongSuDungDichVu::NOTE_THO_SHOP_VALUES)],
                 'co_file_goc' => ['sometimes', 'nullable', 'boolean'],
                 'co_file_le' => ['sometimes', 'nullable', 'boolean'],
                 'co_file_in' => ['sometimes', 'nullable', 'boolean'],
@@ -595,9 +597,9 @@ class HopDongSuDungDichVuController extends BaseApiController
     }
 
     /**
-     * Cập nhật ngày dùng chung trong thong_tin_dieu_phoi.
-     * Bước tiền kỳ và hậu kỳ: admin/coordinator được sửa ngày trả file lẻ,
-     * ngày trả file in và ngày khách hẹn qua.
+     * Cập nhật field dùng chung trong thong_tin_dieu_phoi.
+     * Bước tiền kỳ, hậu kỳ, gửi in, hoàn tất sản xuất: admin/coordinator được sửa
+     * ngày trả file lẻ, ngày trả file in, ngày khách hẹn qua và note thợ shop.
      */
     public function capNhatNgayDieuPhoi(Request $request, HopDongSuDungDichVu $hop_dong_su_dung_dich_vu): JsonResponse
     {
@@ -612,8 +614,9 @@ class HopDongSuDungDichVuController extends BaseApiController
                     'ngay_tra_file_le',
                     'ngay_tra_file_in',
                     'ngay_khach_hen_qua',
+                    HopDongSuDungDichVu::NOTE_THO_SHOP_KEY,
                 ])],
-                'gia_tri' => ['nullable', 'date'],
+                'gia_tri' => ['nullable'],
             ]);
 
             $key = $validated['key'];
@@ -624,17 +627,26 @@ class HopDongSuDungDichVuController extends BaseApiController
             $allowedStatuses = [
                 HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_TIEN_KY,
                 HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_HAU_KY,
+                HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_GUI_IN,
+                HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_HOAN_TAT_SAN_XUAT,
             ];
             if (! in_array($status, $allowedStatuses, true)) {
-                abort(422, 'Chỉ được cập nhật ngày điều phối ở bước tiền kỳ hoặc hậu kỳ.');
+                abort(422, 'Chỉ được cập nhật thông tin điều phối ở các bước tiền kỳ, hậu kỳ, gửi in hoặc hoàn tất sản xuất.');
             }
             if (! $this->userIsAdminOrCoordinator($user)) {
-                abort(403, 'Chỉ admin hoặc coordinator được cập nhật ngày điều phối.');
+                abort(403, 'Chỉ admin hoặc coordinator được cập nhật thông tin điều phối.');
             }
 
             $raw = $validated['gia_tri'] ?? null;
             $normalized = '';
-            if ($raw !== null && $raw !== '') {
+            if ($key === HopDongSuDungDichVu::NOTE_THO_SHOP_KEY) {
+                if ($raw !== null && $raw !== '') {
+                    $normalized = trim((string) $raw);
+                    if (! in_array($normalized, HopDongSuDungDichVu::NOTE_THO_SHOP_VALUES, true)) {
+                        abort(422, 'Note thợ shop không hợp lệ.');
+                    }
+                }
+            } elseif ($raw !== null && $raw !== '') {
                 $normalized = substr((string) $raw, 0, 10);
                 if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $normalized)) {
                     abort(422, 'Ngày không hợp lệ.');
@@ -650,7 +662,7 @@ class HopDongSuDungDichVuController extends BaseApiController
             return response()->json(
                 $hop_dong_su_dung_dich_vu->fresh()->load(['loaiHopDong:id,ten_hop_dong,ma_hop_dong'])
             );
-        }, 'cập nhật ngày điều phối');
+        }, 'cập nhật thông tin điều phối');
     }
 
     /**
@@ -1955,6 +1967,31 @@ class HopDongSuDungDichVuController extends BaseApiController
 
             $this->applyDieuPhoiDateEqualsFilter($query, $field, (string) $value);
         }
+
+        $this->applyNoteThoShopFilter($query, $filters['note_tho_shop'] ?? null);
+    }
+
+    /**
+     * Lọc theo note thợ shop (thong_tin_dieu_phoi.note_tho_shop).
+     *
+     * @param  list<string>|null  $values
+     */
+    private function applyNoteThoShopFilter($query, mixed $values): void
+    {
+        if (! is_array($values) || $values === []) {
+            return;
+        }
+
+        $allowed = array_values(array_filter(
+            $values,
+            fn ($value) => in_array($value, HopDongSuDungDichVu::NOTE_THO_SHOP_VALUES, true),
+        ));
+        if ($allowed === []) {
+            return;
+        }
+
+        $expr = "NULLIF(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(thong_tin_dieu_phoi, '$.note_tho_shop')), 'null'), '')";
+        $query->whereIn(DB::raw($expr), $allowed);
     }
 
     private const DIEU_PHOI_SESSION_INDEX_MAX = 6;

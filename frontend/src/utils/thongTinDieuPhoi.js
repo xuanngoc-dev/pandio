@@ -167,6 +167,43 @@ export const SHARED_LICH_QUAY_CHUP_LABELS = {
   ngay_khach_hen_qua: 'Ngày khách hẹn qua',
 }
 
+/** Note trạng thái thợ shop, lưu ở envelope thong_tin_dieu_phoi */
+export const NOTE_THO_SHOP_KEY = 'note_tho_shop'
+export const NOTE_THO_SHOP_OPTIONS = [
+  { value: 'dang_lam', label: 'Đang làm' },
+  { value: 'doi_check', label: 'Đợi check' },
+  { value: 'can_sua_lai', label: 'Cần sửa lại' },
+  { value: 'hen_khach_qua', label: 'Hẹn khách qua' },
+  { value: 'doi_in', label: 'Đợi in' },
+]
+
+export function isEnvelopeTopLevelKey(key) {
+  return isSharedLichQuayChupKey(key) || key === NOTE_THO_SHOP_KEY
+}
+
+export function normalizeNoteThoShopValue(value) {
+  if (value == null || value === '') return ''
+  return String(value).trim()
+}
+
+export function formatNoteThoShopLabel(value) {
+  const normalized = normalizeNoteThoShopValue(value)
+  if (!normalized) return ''
+  const map = Object.fromEntries(NOTE_THO_SHOP_OPTIONS.map((opt) => [opt.value, opt.label]))
+  return map[normalized] || normalized
+}
+
+export function noteThoShopTagType(value) {
+  const map = {
+    dang_lam: 'primary',
+    doi_check: 'warning',
+    can_sua_lai: 'danger',
+    hen_khach_qua: 'success',
+    doi_in: 'info',
+  }
+  return map[normalizeNoteThoShopValue(value)] || 'info'
+}
+
 export function sharedLichQuayChupLabel(key) {
   return SHARED_LICH_QUAY_CHUP_LABELS[key] || key
 }
@@ -212,6 +249,7 @@ export function emptyDieuPhoiEnvelope() {
     ngay_tra_file_le: '',
     ngay_tra_file_in: '',
     ngay_khach_hen_qua: '',
+    [NOTE_THO_SHOP_KEY]: '',
     [TRANG_THAI_DIEU_PHOI_KEY]: '',
     [DANH_SACH_BUOI_CHUP_KEY]: [],
   }
@@ -343,7 +381,7 @@ function pushUnique(result, seen, value) {
 export function collectDieuPhoiGiaTri(raw, fieldKey) {
   const result = []
   const seen = new Set()
-  if (isSharedLichQuayChupKey(fieldKey)) {
+  if (isEnvelopeTopLevelKey(fieldKey)) {
     const top = readTopLevelDieuPhoiValue(raw, fieldKey)
     if (top != null && top !== '') pushUnique(result, seen, top)
     return result
@@ -417,8 +455,14 @@ export function buildDieuPhoiEnvelope(existingRaw, nextSessions, sharedDates = {
     dates[key] = normalizeSharedDieuPhoiDate(value)
   }
 
+  const noteThoShop =
+    sharedDates[NOTE_THO_SHOP_KEY] !== undefined
+      ? sharedDates[NOTE_THO_SHOP_KEY]
+      : firstDieuPhoiGiaTri(existingRaw, NOTE_THO_SHOP_KEY)
+
   return {
     ...dates,
+    [NOTE_THO_SHOP_KEY]: normalizeNoteThoShopValue(noteThoShop),
     [TRANG_THAI_DIEU_PHOI_KEY]:
       sharedDates[TRANG_THAI_DIEU_PHOI_KEY] !== undefined
         ? sharedDates[TRANG_THAI_DIEU_PHOI_KEY]
