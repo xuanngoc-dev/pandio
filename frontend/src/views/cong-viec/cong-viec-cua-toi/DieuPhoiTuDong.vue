@@ -141,6 +141,26 @@
               :value="opt.value"
             />
           </CustomSelect>
+          <div class="step-view-toggle">
+            <CustomTooltip content="Dạng lưới" placement="top">
+              <CustomButton
+                :type="hauKyViewMode === 'grid' ? 'primary' : 'default'"
+                circle
+                size="small"
+                :icon="Grid"
+                @click="hauKyViewMode = 'grid'"
+              />
+            </CustomTooltip>
+            <CustomTooltip content="Dạng bảng" placement="top">
+              <CustomButton
+                :type="hauKyViewMode === 'table' ? 'primary' : 'default'"
+                circle
+                size="small"
+                :icon="List"
+                @click="hauKyViewMode = 'table'"
+              />
+            </CustomTooltip>
+          </div>
         </div>
       </div>
 
@@ -150,7 +170,15 @@
       />
 
       <template v-else-if="items.length">
-        <CustomRow :gutter="16">
+        <DieuPhoiTuDongTable
+          v-if="showHauKyTable"
+          :items="items"
+          :step="activeTab"
+          @status-changed="onAccepted"
+          @updated="onItemUpdated"
+        />
+
+        <CustomRow v-else :gutter="16">
           <CustomCol
             v-for="item in items"
             :key="item.id"
@@ -186,7 +214,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { Search } from '@element-plus/icons-vue'
+import { Grid, List, Search } from '@element-plus/icons-vue'
 import { fetchCongViecDieuPhoiCuaToi } from '@/api/hopDongSuDungDichVu'
 import { fetchLoaiHopDong } from '@/api/loaiHopDong'
 import Pagination from '@/components/Pagination.vue'
@@ -201,6 +229,10 @@ import {
   CustomSelect,
 } from '@/components/element'
 import DieuPhoiTuDongCard from './DieuPhoiTuDongCard.vue'
+import DieuPhoiTuDongTable from './DieuPhoiTuDongTable.vue'
+
+const HAU_KY_VIEW_GRID = 'grid'
+const HAU_KY_VIEW_TABLE = 'table'
 
 const tabs = [
   { name: 'tien_ky', label: 'Tiền kỳ' },
@@ -261,6 +293,11 @@ const perPage = ref(24)
 const total = ref(0)
 const stepFileFilters = ref(['all'])
 const stepNoteThoShopFilters = ref([])
+const hauKyViewMode = ref(HAU_KY_VIEW_GRID)
+
+const showHauKyTable = computed(
+  () => activeTab.value === 'hau_ky' && hauKyViewMode.value === HAU_KY_VIEW_TABLE,
+)
 
 const fileFilterOptions = computed(
   () => STEP_FILE_FILTER_OPTIONS[activeTab.value] || [],
@@ -384,6 +421,7 @@ function onTabChange() {
   page.value = 1
   stepFileFilters.value = ['all']
   stepNoteThoShopFilters.value = []
+  hauKyViewMode.value = HAU_KY_VIEW_GRID
   loadItems()
 }
 
@@ -537,6 +575,14 @@ onMounted(() => {
     }
   }
 
+  .step-view-toggle {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 6px;
+    margin-left: 4px;
+  }
+
   @media (max-width: 991px) {
     .step-file-filters {
       flex-direction: column;
@@ -550,6 +596,7 @@ onMounted(() => {
     }
 
     .step-note-filters {
+      width: 100%;
       padding-top: 10px;
       border-top: 1px dashed var(--el-border-color-lighter);
 
@@ -558,6 +605,10 @@ onMounted(() => {
         width: auto;
         max-width: none;
       }
+    }
+
+    .step-view-toggle {
+      margin-left: 0;
     }
   }
 
