@@ -13,8 +13,9 @@
       />
 
       <template v-else-if="hopDong">
+        <el-tabs v-model="activeTab" class="detail-tabs">
+          <el-tab-pane label="Thông tin chung" name="chung">
         <section class="detail-section">
-          <div class="detail-section__title">Thông tin chung</div>
           <CustomForm label-position="top">
             <CustomRow :gutter="16">
               <CustomCol v-bind="fieldColProps">
@@ -91,10 +92,11 @@
             </CustomRow>
           </CustomForm>
         </section>
+          </el-tab-pane>
 
-        <section v-if="thongTinHopDongItems.length" class="detail-section">
-          <div class="detail-section__title">Thông tin hợp đồng</div>
-          <CustomForm label-position="top">
+          <el-tab-pane label="Thông tin hợp đồng" name="hop-dong">
+        <section class="detail-section">
+          <CustomForm v-if="thongTinHopDongItems.length" label-position="top">
             <CustomRow :gutter="16">
               <CustomCol
                 v-for="item in thongTinHopDongItems"
@@ -112,17 +114,37 @@
               </CustomCol>
             </CustomRow>
           </CustomForm>
+          <div v-else class="detail-empty">Chưa có thông tin hợp đồng.</div>
         </section>
+          </el-tab-pane>
 
+          <el-tab-pane label="Combo dịch vụ" name="combo">
         <section class="detail-section">
           <div class="detail-section__title">Combo dịch vụ</div>
-          <CustomTable v-if="comboRows.length" :data="comboRows" stripe style="width: 100%">
+          <CustomTable
+            v-if="comboRows.length"
+            :data="comboRows"
+            stripe
+            show-summary
+            :summary-method="getComboSummaries"
+            style="width: 100%"
+          >
             <CustomTableColumn label="STT" width="64" align="center">
               <template #default="{ $index }">{{ $index + 1 }}</template>
             </CustomTableColumn>
             <CustomTableColumn prop="ten" label="Tên combo" min-width="200" />
+            <CustomTableColumn prop="so_diem_chup" label="Số điểm chụp" width="120" align="center">
+              <template #default="{ row }">
+                {{ formatComboMetric(row, 'so_diem_chup') }}
+              </template>
+            </CustomTableColumn>
+            <CustomTableColumn prop="so_anh_chinh_sua" label="Số lượng ảnh" width="120" align="center">
+              <template #default="{ row }">
+                {{ formatComboMetric(row, 'so_anh_chinh_sua') }}
+              </template>
+            </CustomTableColumn>
             <CustomTableColumn prop="so_luong" label="Số lượng" width="100" align="center" />
-            <CustomTableColumn label="Thành tiền" width="140" align="right">
+            <CustomTableColumn prop="thanh_tien" label="Thành tiền" width="140" align="right">
               <template #default="{ row }">{{ formatMoney(row.thanh_tien) }}</template>
             </CustomTableColumn>
             <CustomTableColumn prop="ghi_chu" label="Ghi chú" min-width="160">
@@ -189,9 +211,10 @@
           </CustomTable>
           <div v-else class="detail-empty">Chưa có trang phục.</div>
         </section>
+          </el-tab-pane>
 
+          <el-tab-pane label="Thanh toán" name="thanh-toan">
         <section class="detail-section">
-          <div class="detail-section__title">Thanh toán</div>
           <CustomForm label-position="top">
             <CustomRow :gutter="16">
               <CustomCol v-bind="fieldColProps">
@@ -322,7 +345,9 @@
             </CustomRow>
           </CustomForm>
         </section>
+          </el-tab-pane>
 
+          <el-tab-pane label="Điều phối lịch" name="dieu-phoi">
         <section v-if="sharedDateItems.length" class="detail-section">
           <div class="detail-section__title">Ngày trả file</div>
           <CustomForm label-position="top">
@@ -340,45 +365,58 @@
           </CustomForm>
         </section>
 
-        <section
-          v-for="(session, sessionIndex) in dieuPhoiSessions"
-          :key="`dieu-phoi-${sessionIndex}`"
-          class="detail-section"
+        <el-collapse
+          v-if="dieuPhoiSessions.length"
+          v-model="dieuPhoiActiveSessions"
+          class="dieu-phoi-collapse"
         >
-          <div class="detail-section__title">
-            {{ session.title }}
-          </div>
-          <CustomForm label-position="top">
-            <CustomRow v-if="session.normalItems.length" :gutter="16">
-              <CustomCol
-                v-for="item in session.normalItems"
-                :key="item.key"
-                v-bind="fieldColProps"
-              >
-                <CustomFormItem :label="item.label">
-                  <CustomInput :model-value="item.value" readonly />
-                </CustomFormItem>
-              </CustomCol>
-            </CustomRow>
+          <el-collapse-item
+            v-for="(session, sessionIndex) in dieuPhoiSessions"
+            :key="`dieu-phoi-${sessionIndex}`"
+            :name="String(sessionIndex)"
+            :title="session.title"
+          >
+            <CustomForm label-position="top">
+              <CustomRow v-if="session.normalItems.length" :gutter="16">
+                <CustomCol
+                  v-for="item in session.normalItems"
+                  :key="item.key"
+                  v-bind="fieldColProps"
+                >
+                  <CustomFormItem :label="item.label">
+                    <CustomInput :model-value="item.value" readonly />
+                  </CustomFormItem>
+                </CustomCol>
+              </CustomRow>
 
-            <CustomRow v-if="session.textareaItems.length" :gutter="16">
-              <CustomCol
-                v-for="item in session.textareaItems"
-                :key="item.key"
-                v-bind="textareaColProps"
-              >
-                <CustomFormItem :label="item.label">
-                  <CustomInput
-                    :model-value="item.value"
-                    type="textarea"
-                    :rows="3"
-                    readonly
-                  />
-                </CustomFormItem>
-              </CustomCol>
-            </CustomRow>
-          </CustomForm>
-        </section>
+              <CustomRow v-if="session.textareaItems.length" :gutter="16">
+                <CustomCol
+                  v-for="item in session.textareaItems"
+                  :key="item.key"
+                  v-bind="textareaColProps"
+                >
+                  <CustomFormItem :label="item.label">
+                    <CustomInput
+                      :model-value="item.value"
+                      type="textarea"
+                      :rows="3"
+                      readonly
+                    />
+                  </CustomFormItem>
+                </CustomCol>
+              </CustomRow>
+            </CustomForm>
+          </el-collapse-item>
+        </el-collapse>
+
+        <div
+          v-if="!sharedDateItems.length && !dieuPhoiSessions.length"
+          class="detail-empty"
+        >
+          Chưa có thông tin điều phối lịch.
+        </div>
+          </el-tab-pane>
+        </el-tabs>
       </template>
     </div>
 
@@ -450,6 +488,8 @@ const visible = computed({
 })
 
 const loading = ref(false)
+const activeTab = ref('chung')
+const dieuPhoiActiveSessions = ref([])
 const hopDong = ref(null)
 const loaiHopDong = ref(null)
 const userOptions = ref([])
@@ -513,6 +553,8 @@ const comboRows = computed(() => {
   return rows.map((row) => ({
     ten: row.combo?.ten_nhom || `Combo #${row.combo_id}`,
     so_luong: Number(row.so_luong) || 0,
+    so_diem_chup: Number(row.combo?.so_diem_chup) || 0,
+    so_anh_chinh_sua: Number(row.combo?.so_anh_chinh_sua) || 0,
     thanh_tien: Number(row.thanh_tien) || 0,
     ghi_chu: row.ghi_chu || '',
   }))
@@ -659,6 +701,45 @@ function formatMoney(value) {
   return `${num.toLocaleString('vi-VN')} ₫`
 }
 
+function comboMetricTotal(row, key) {
+  const unit = Math.max(0, Number(row?.[key]) || 0)
+  const soLuong = Math.max(1, Number(row?.so_luong) || 1)
+  return unit * soLuong
+}
+
+function formatComboMetric(row, key) {
+  const total = comboMetricTotal(row, key)
+  return total > 0 ? total : '—'
+}
+
+function formatComboMetricSum(value) {
+  const total = Math.max(0, Number(value) || 0)
+  return total > 0 ? total : '—'
+}
+
+function getComboSummaries({ columns }) {
+  const tongDiemChup = comboRows.value.reduce(
+    (sum, row) => sum + comboMetricTotal(row, 'so_diem_chup'),
+    0,
+  )
+  const tongAnh = comboRows.value.reduce(
+    (sum, row) => sum + comboMetricTotal(row, 'so_anh_chinh_sua'),
+    0,
+  )
+  const tongTien = comboRows.value.reduce(
+    (sum, row) => sum + (Number(row.thanh_tien) || 0),
+    0,
+  )
+
+  return columns.map((column, index) => {
+    if (index === 0) return 'Tổng'
+    if (column.property === 'so_diem_chup') return formatComboMetricSum(tongDiemChup)
+    if (column.property === 'so_anh_chinh_sua') return formatComboMetricSum(tongAnh)
+    if (column.property === 'thanh_tien') return formatMoney(tongTien)
+    return ''
+  })
+}
+
 function formatDate(value) {
   if (!value) return '—'
   const date = new Date(value)
@@ -762,11 +843,17 @@ async function loadData() {
 }
 
 function onClosed() {
+  activeTab.value = 'chung'
+  dieuPhoiActiveSessions.value = []
   hopDong.value = null
   loaiHopDong.value = null
   userOptions.value = []
   emit('closed')
 }
+
+watch(dieuPhoiSessions, (sessions) => {
+  dieuPhoiActiveSessions.value = sessions.length ? ['0'] : []
+})
 
 watch(
   () => props.modelValue,
@@ -782,7 +869,22 @@ watch(
   min-height: 220px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+}
+
+.detail-tabs {
+  :deep(.el-tabs__header) {
+    margin-bottom: 16px;
+  }
+
+  :deep(.el-tabs__content) {
+    overflow: visible;
+  }
+}
+
+.detail-section {
+  & + & {
+    margin-top: 18px;
+  }
 }
 
 .detail-section__title {
@@ -797,6 +899,34 @@ watch(
   background: var(--el-fill-color-lighter);
   color: var(--el-text-color-secondary);
   font-size: 13px;
+}
+
+.dieu-phoi-collapse {
+  border: none;
+
+  :deep(.el-collapse-item) {
+    & + .el-collapse-item {
+      margin-top: 10px;
+    }
+  }
+
+  :deep(.el-collapse-item__header) {
+    padding: 0 14px;
+    height: 44px;
+    line-height: 44px;
+    font-weight: 600;
+    border-radius: 8px;
+    border: 1px solid var(--el-border-color-lighter);
+    background: var(--el-fill-color-lighter);
+  }
+
+  :deep(.el-collapse-item__wrap) {
+    border: none;
+  }
+
+  :deep(.el-collapse-item__content) {
+    padding: 14px 0 4px;
+  }
 }
 
 .footer-actions {
