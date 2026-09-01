@@ -283,6 +283,9 @@ import {
   normalizeTenLichQuayChup,
   parseSessionLoaiQuayChup,
   loaiQuayChupRequiredRule,
+  SAP_XEP_TRANG_PHUC_KEY,
+  defaultSapXepTrangPhucGiaTri,
+  normalizeSapXepTrangPhucValue,
   withTienKyIfStaffAssigned,
   SHARED_LICH_QUAY_CHUP_KEYS,
   emptySharedLichQuayChupDates,
@@ -424,6 +427,7 @@ function disabledPastDate(date) {
 
 function defaultValueByLoai(loai, key) {
   if (key === SO_DIEM_CHUP_KEY) return SO_DIEM_CHUP_DEFAULT
+  if (key === SAP_XEP_TRANG_PHUC_KEY) return defaultSapXepTrangPhucGiaTri()
   return loai === 'array' ? [] : null
 }
 
@@ -602,6 +606,8 @@ function sessionFromSaved(savedMap, index = 0) {
 
     if (field.key === SO_DIEM_CHUP_KEY) {
       values[field.key] = clampSoDiemChup(rawValue)
+    } else if (field.key === SAP_XEP_TRANG_PHUC_KEY) {
+      values[field.key] = normalizeSapXepTrangPhucValue(rawValue)
     } else if (field.loai_du_lieu === 'array') {
       values[field.key] = clampStaffArrayValue(field, rawValue)
     } else {
@@ -614,7 +620,7 @@ function sessionFromSaved(savedMap, index = 0) {
 }
 
 function buildFieldsFromSchema(schema) {
-  const source = insertDieuPhoiSchemaFields(
+  const withVideoFields = insertDieuPhoiSchemaFields(
     schema && typeof schema === 'object' && !Array.isArray(schema) ? schema : {},
     [
       {
@@ -630,6 +636,17 @@ function buildFieldsFromSchema(schema) {
       },
     ],
     'quay_phim_ngoai',
+  )
+  const source = insertDieuPhoiSchemaFields(
+    withVideoFields,
+    [
+      {
+        key: SAP_XEP_TRANG_PHUC_KEY,
+        ten_thong_tin: 'Sắp xếp trang phục',
+        loai_du_lieu: 'string',
+      },
+    ],
+    'so_diem_chup',
   )
 
   const nextFields = []
@@ -734,6 +751,8 @@ function buildPayload() {
 
       if (field.key === SO_DIEM_CHUP_KEY) {
         giaTri = clampSoDiemChup(giaTri)
+      } else if (field.key === SAP_XEP_TRANG_PHUC_KEY) {
+        giaTri = normalizeSapXepTrangPhucValue(giaTri)
       } else if (loai === 'array') {
         giaTri = clampStaffArrayValue(field, giaTri)
       } else if (giaTri === '' || giaTri === undefined) {

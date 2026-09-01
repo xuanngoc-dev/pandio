@@ -71,11 +71,29 @@
 
         <div class="selected-table-wrap">
           <div class="selected-table-title">Danh sách combo đã chọn</div>
-          <CustomTable v-if="selectedCombos.length" :data="selectedCombos" stripe style="width: 100%">
+          <CustomTable
+            v-if="selectedCombos.length"
+            :data="selectedCombos"
+            stripe
+            show-summary
+            :summary-method="getComboSummaries"
+            class="selected-combo-table"
+            style="width: 100%"
+          >
             <CustomTableColumn label="STT" width="64" align="center">
               <template #default="{ $index }">{{ $index + 1 }}</template>
             </CustomTableColumn>
             <CustomTableColumn prop="ten" label="Tên dịch vụ" min-width="180" />
+            <CustomTableColumn prop="so_diem_chup" label="Số điểm chụp" width="120" align="center">
+              <template #default="{ row }">
+                {{ formatComboMetric(row, 'so_diem_chup') }}
+              </template>
+            </CustomTableColumn>
+            <CustomTableColumn prop="so_anh_chinh_sua" label="Số ảnh chỉnh sửa" width="140" align="center">
+              <template #default="{ row }">
+                {{ formatComboMetric(row, 'so_anh_chinh_sua') }}
+              </template>
+            </CustomTableColumn>
             <CustomTableColumn label="Số lượng" width="140" align="center">
               <template #default="{ row }">
                 <el-input-number
@@ -88,7 +106,7 @@
                 />
               </template>
             </CustomTableColumn>
-            <CustomTableColumn label="Thành tiền" width="140" align="right">
+            <CustomTableColumn prop="thanh_tien" label="Thành tiền" width="140" align="right">
               <template #default="{ row }">
                 {{ formatMoney(rowThanhTien(row)) }}
               </template>
@@ -319,6 +337,10 @@ const tienDichVu = computed(() =>
 
 const tongTienDichVu = computed(() => tienCombo.value + tienDichVu.value)
 
+const tongSoDiemChup = computed(() =>
+  selectedCombos.value.reduce((sum, row) => sum + comboMetricTotal(row, 'so_diem_chup'), 0),
+)
+
 function filterServiceOptions(items, filter, getName, getPrice = displayPrice) {
   const keyword = String(filter.keyword || '').trim().toLowerCase()
   const giaTu = filter.gia_tu === null || filter.gia_tu === '' ? null : Number(filter.gia_tu)
@@ -359,6 +381,41 @@ function rowThanhTien(row) {
   return donGia * soLuong
 }
 
+function comboMetricTotal(row, key) {
+  const unit = Math.max(0, Number(row?.[key]) || 0)
+  const soLuong = Math.max(1, Number(row?.so_luong) || 1)
+  return unit * soLuong
+}
+
+function formatComboMetric(row, key) {
+  const total = comboMetricTotal(row, key)
+  return total > 0 ? total : '—'
+}
+
+function formatComboMetricSum(value) {
+  const total = Math.max(0, Number(value) || 0)
+  return total > 0 ? total : '—'
+}
+
+function getComboSummaries({ columns }) {
+  const tongDiemChup = selectedCombos.value.reduce(
+    (sum, row) => sum + comboMetricTotal(row, 'so_diem_chup'),
+    0,
+  )
+  const tongAnhChinhSua = selectedCombos.value.reduce(
+    (sum, row) => sum + comboMetricTotal(row, 'so_anh_chinh_sua'),
+    0,
+  )
+
+  return columns.map((column, index) => {
+    if (index === 0) return 'Tổng'
+    if (column.property === 'so_diem_chup') return formatComboMetricSum(tongDiemChup)
+    if (column.property === 'so_anh_chinh_sua') return formatComboMetricSum(tongAnhChinhSua)
+    if (column.property === 'thanh_tien') return formatMoney(tienCombo.value)
+    return ''
+  })
+}
+
 function isComboSelected(id) {
   return selectedCombos.value.some((row) => row.id === id)
 }
@@ -377,6 +434,8 @@ function toggleCombo(item) {
     id: item.id,
     ten: item.ten_nhom,
     don_gia: displayPrice(item),
+    so_diem_chup: Number(item.so_diem_chup) || 0,
+    so_anh_chinh_sua: Number(item.so_anh_chinh_sua) || 0,
     so_luong: 1,
     ghi_chu: '',
   })
@@ -454,6 +513,8 @@ function hydrate(hopDong) {
       id: row.combo_id,
       ten: catalog.ten_nhom || `Combo #${row.combo_id}`,
       don_gia: donGia || Math.round(Number(row.thanh_tien || 0) / soLuong),
+      so_diem_chup: Number(catalog.so_diem_chup) || 0,
+      so_anh_chinh_sua: Number(catalog.so_anh_chinh_sua) || 0,
       so_luong: soLuong,
       ghi_chu: row.ghi_chu || '',
     }
@@ -489,6 +550,10 @@ function getTongTien() {
   return tongTienDichVu.value
 }
 
+function getTongSoDiemChup() {
+  return tongSoDiemChup.value
+}
+
 function getPayload() {
   return {
     combos: selectedCombos.value.map((row) => ({
@@ -515,10 +580,11 @@ watch(
 )
 
 watch(
-  [tongTienDichVu, selectedCombos, selectedDichVuLes],
+  [tongTienDichVu, tongSoDiemChup, selectedCombos, selectedDichVuLes],
   () => {
     emit('tong-tien-change', {
       total: tongTienDichVu.value,
+      tongSoDiemChup: tongSoDiemChup.value,
       hasSelection: selectedCombos.value.length > 0 || selectedDichVuLes.value.length > 0,
     })
   },
@@ -531,6 +597,7 @@ defineExpose({
   reset,
   getPayload,
   getTongTien,
+  getTongSoDiemChup,
 })
 </script>
 
@@ -767,6 +834,16 @@ defineExpose({
   font-size: 13px;
   background: var(--el-fill-color-lighter);
   border-radius: 6px;
+}
+
+.selected-combo-table :deep(.el-table__footer-wrapper td) {
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+  background: var(--el-fill-color-lighter);
+}
+
+.selected-combo-table :deep(.el-table__footer-wrapper td:nth-child(6)) {
+  color: var(--el-color-primary);
 }
 
 .step2-summary {

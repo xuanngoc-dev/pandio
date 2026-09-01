@@ -412,11 +412,13 @@ import {
   SHARED_LICH_QUAY_CHUP_KEYS,
   firstDieuPhoiGiaTri,
   formatLoaiQuayChupLabel,
+  formatSapXepTrangPhucLabel,
   getTenLichQuayChup,
   isDieuPhoiExtraSessionKey,
   isSharedLichQuayChupKey,
   normalizeDieuPhoiSessions,
   parseSessionLoaiQuayChup,
+  SAP_XEP_TRANG_PHUC_KEY,
   sharedLichQuayChupLabel,
 } from '@/utils/thongTinDieuPhoi'
 
@@ -710,6 +712,9 @@ function formatDieuPhoiValue(key, loai, value) {
   if (value == null || value === '') return '—'
   if (loai === 'date') return formatDate(value)
   if (loai === 'time') return String(value)
+  if (key === SAP_XEP_TRANG_PHUC_KEY) {
+    return formatSapXepTrangPhucLabel(value) || '—'
+  }
   if (loai === 'array') {
     const list = Array.isArray(value) ? value : [value]
     if (!list.length) return '—'

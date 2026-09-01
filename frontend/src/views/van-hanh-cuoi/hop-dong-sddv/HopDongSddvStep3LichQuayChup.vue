@@ -120,6 +120,8 @@ import {
   MAX_LICH_QUAY_CHUP,
   SO_DIEM_CHUP_DEFAULT,
   SO_DIEM_CHUP_KEY,
+  SO_DIEM_CHUP_MAX,
+  SO_DIEM_CHUP_MIN,
   TEN_LICH_KEY,
   TEN_LICH_MAX_LENGTH,
   TRANG_PHUC_FIELD_KEY,
@@ -127,7 +129,6 @@ import {
   buildLoaiQuayChupField,
   buildTenLichField,
   buildTrangPhucField,
-  clampSoDiemChup,
   defaultTenLichQuayChup,
   buildDieuPhoiEnvelope,
   firstDieuPhoiGiaTri,
@@ -141,6 +142,10 @@ import {
   parseSessionLoaiQuayChup,
   parseSessionTrangPhucItems,
   loaiQuayChupRequiredRule,
+  SAP_XEP_TRANG_PHUC_KEY,
+  defaultSapXepTrangPhucGiaTri,
+  insertDieuPhoiSchemaFields,
+  normalizeSapXepTrangPhucValue,
   SHARED_LICH_QUAY_CHUP_KEYS,
   emptySharedLichQuayChupDates,
   sharedLichQuayChupLabel,
@@ -150,6 +155,8 @@ import HopDongSddvDieuPhoiSessionFields from './HopDongSddvDieuPhoiSessionFields
 
 const props = defineProps({
   form: { type: Object, required: true },
+  /** Tổng số điểm chụp từ combo đã chọn ở bước 2 */
+  tongSoDiemChupCombo: { type: Number, default: 0 },
 })
 
 const formRef = ref(null)
@@ -223,8 +230,32 @@ function nextUid() {
   return sessionUid
 }
 
-function defaultValue(loai, key) {
-  if (key === SO_DIEM_CHUP_KEY) return SO_DIEM_CHUP_DEFAULT
+function clampSoDiemChupForSchema(value) {
+  const field = dieuPhoiFields.value.find((item) => item.key === SO_DIEM_CHUP_KEY)
+  const n = Math.round(Number(value))
+  if (!Number.isFinite(n)) return SO_DIEM_CHUP_DEFAULT
+  const min = Number(field?.gia_tri_toi_thieu ?? SO_DIEM_CHUP_MIN)
+  const max = Number(field?.gia_tri_toi_da ?? SO_DIEM_CHUP_MAX)
+  let result = n
+  if (Number.isFinite(min)) result = Math.max(min, result)
+  if (Number.isFinite(max)) result = Math.min(max, result)
+  return result
+}
+
+function defaultSoDiemChup(sessionIndex = 0) {
+  if (sessionIndex !== 0) return SO_DIEM_CHUP_DEFAULT
+  const total = Math.max(0, Math.round(Number(props.tongSoDiemChupCombo) || 0))
+  if (total <= 0) return SO_DIEM_CHUP_DEFAULT
+  return clampSoDiemChupForSchema(total)
+}
+
+function hasSavedDieuPhoiSessions() {
+  return normalizeDieuPhoiSessions(props.form?.thong_tin_dieu_phoi).length > 0
+}
+
+function defaultValue(loai, key, sessionIndex = 0) {
+  if (key === SO_DIEM_CHUP_KEY) return defaultSoDiemChup(sessionIndex)
+  if (key === SAP_XEP_TRANG_PHUC_KEY) return defaultSapXepTrangPhucGiaTri()
   return loai === 'array' ? [] : null
 }
 
@@ -261,7 +292,7 @@ function createEmptySessionValues(index = formModel.sessions.length) {
   }
   for (const field of dieuPhoiFields.value) {
     if (isSharedLichQuayChupKey(field.key)) continue
-    values[field.key] = defaultValue(field.loai_du_lieu, field.key)
+    values[field.key] = defaultValue(field.loai_du_lieu, field.key, index)
   }
   return values
 }
@@ -281,7 +312,9 @@ function sessionValuesFromSaved(savedMap, index = 0) {
     const savedItem = source[field.key] && typeof source[field.key] === 'object' ? source[field.key] : null
     const rawValue = savedItem?.gia_tri !== undefined ? savedItem.gia_tri : defaultValue(field.loai_du_lieu, field.key)
     if (field.key === SO_DIEM_CHUP_KEY) {
-      values[field.key] = clampSoDiemChup(rawValue)
+      values[field.key] = clampSoDiemChupForSchema(rawValue)
+    } else if (field.key === SAP_XEP_TRANG_PHUC_KEY) {
+      values[field.key] = normalizeSapXepTrangPhucValue(rawValue)
     } else {
       values[field.key] =
         field.loai_du_lieu === 'array' ? normalizeArray(rawValue) : normalizeScalar(rawValue)
@@ -311,7 +344,17 @@ function sessionValuesFromSaved(savedMap, index = 0) {
 }
 
 function buildFieldsFromSchema(schema) {
-  const source = schema && typeof schema === 'object' && !Array.isArray(schema) ? schema : {}
+  const source = insertDieuPhoiSchemaFields(
+    schema && typeof schema === 'object' && !Array.isArray(schema) ? schema : {},
+    [
+      {
+        key: SAP_XEP_TRANG_PHUC_KEY,
+        ten_thong_tin: 'Sắp xếp trang phục',
+        loai_du_lieu: 'string',
+      },
+    ],
+    'so_diem_chup',
+  )
   const nextFields = []
   const nextMeta = {}
 
@@ -447,10 +490,21 @@ function hydrateSessionsFromForm() {
     formModel.sessions = savedSessions.map((item, index) => sessionValuesFromSaved(item, index))
   } else {
     formModel.sessions = dieuPhoiFields.value.length ? [createEmptySessionValues(0)] : []
+    applyComboSoDiemChupDefault()
   }
   hydrateSharedDatesFromForm()
   cancelRename()
   syncActiveSession()
+}
+
+function applyComboSoDiemChupDefault() {
+  if (!dieuPhoiFields.value.some((field) => field.key === SO_DIEM_CHUP_KEY)) return
+  if (hasSavedDieuPhoiSessions()) return
+  const value = defaultSoDiemChup(0)
+  const firstSession = formModel.sessions[0]
+  if (firstSession) {
+    firstSession[SO_DIEM_CHUP_KEY] = value
+  }
 }
 
 function addSession() {
@@ -565,7 +619,9 @@ function getDieuPhoiPayload(existing = null) {
       let giaTri = session[field.key]
 
       if (field.key === SO_DIEM_CHUP_KEY) {
-        giaTri = clampSoDiemChup(giaTri)
+        giaTri = clampSoDiemChupForSchema(giaTri)
+      } else if (field.key === SAP_XEP_TRANG_PHUC_KEY) {
+        giaTri = normalizeSapXepTrangPhucValue(giaTri)
       } else if (loai === 'array') {
         giaTri = normalizeArray(giaTri)
       } else if (giaTri === '' || giaTri === undefined) {
@@ -696,12 +752,20 @@ watch(activeSessionName, (next, prev) => {
   nextTick(() => loadActivePickerOptions())
 })
 
+watch(
+  () => props.tongSoDiemChupCombo,
+  () => {
+    applyComboSoDiemChupDefault()
+  },
+)
+
 defineExpose({
   validate,
   getDieuPhoiPayload,
   getConceptTrangPhucPayload,
   loadDieuPhoiSchema,
   loadActivePickerOptions,
+  applyComboSoDiemChupDefault,
   hydrate,
   reset,
 })

@@ -51,6 +51,23 @@
             </CustomSelect>
           </template>
 
+          <template v-else-if="field.key === SAP_XEP_TRANG_PHUC_KEY">
+            <CustomSelect
+              v-model="values[field.key]"
+              :placeholder="`Chọn ${field.ten_thong_tin.toLowerCase()}`"
+              clearable
+              :disabled="disabled"
+              style="width: 100%"
+            >
+              <CustomOption
+                v-for="opt in sapXepTrangPhucOptions"
+                :key="opt.value"
+                :label="opt.label"
+                :value="opt.value"
+              />
+            </CustomSelect>
+          </template>
+
           <template v-else-if="field.loai_du_lieu === 'date'">
             <el-date-picker
               v-model="values[field.key]"
@@ -176,6 +193,8 @@ import { fetchDanhMucLoaiQuayChup } from '@/api/danhMucLoaiQuayChup'
 import {
   BUOI_CHUP_OPTIONS,
   DIEU_PHOI_STAFF_KEYS,
+  SAP_XEP_TRANG_PHUC_KEY,
+  SAP_XEP_TRANG_PHUC_OPTIONS,
   clampStaffArrayValue,
   LOAI_QUAY_CHUP_KEY,
   staffSelectMax,
@@ -213,6 +232,7 @@ const props = defineProps({
 })
 
 const buoiChupOptions = BUOI_CHUP_OPTIONS
+const sapXepTrangPhucOptions = SAP_XEP_TRANG_PHUC_OPTIONS
 const loadedLoaiQuayChupOptions = ref([])
 
 const resolvedLoaiQuayChupOptions = computed(() =>

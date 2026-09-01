@@ -161,7 +161,9 @@ import {
   SHARED_LICH_QUAY_CHUP_KEYS,
   firstDieuPhoiGiaTri,
   formatLoaiQuayChupLabel,
+  formatSapXepTrangPhucLabel,
   formatTrangPhucDieuPhoiLabel,
+  SAP_XEP_TRANG_PHUC_KEY,
   getDieuPhoiGiaTriFromSession,
   getTenLichQuayChup,
   isDieuPhoiExtraSessionKey,
@@ -352,6 +354,9 @@ function formatDieuPhoiValue(key, loai, value) {
     const map = Object.fromEntries(BUOI_CHUP_OPTIONS.map((opt) => [opt.value, opt.label]))
     const list = Array.isArray(value) ? value : [value]
     return list.map((item) => map[String(item).toLowerCase()] || String(item)).join(', ')
+  }
+  if (key === SAP_XEP_TRANG_PHUC_KEY) {
+    return formatSapXepTrangPhucLabel(value) || '—'
   }
   if (loai === 'array') {
     const list = Array.isArray(value) ? value : [value]

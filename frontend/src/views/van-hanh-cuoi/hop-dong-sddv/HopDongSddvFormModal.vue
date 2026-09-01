@@ -49,6 +49,7 @@
       v-show="activeStep === 2"
       ref="stepLichRef"
       :form="form"
+      :tong-so-diem-chup-combo="step2TongSoDiemChup"
     />
 
     <HopDongSddvStep4ThanhToan
@@ -68,7 +69,7 @@
           :loading="saving"
           @click="onSaveCurrentStep"
         >
-          Lưu
+          Lưu nháp
         </CustomButton>
         <CustomButton
           v-if="activeStep < steps.length - 1"
@@ -171,6 +172,7 @@ const dynamicFields = computed(() => {
 })
 
 const step2TongTien = ref(0)
+const step2TongSoDiemChup = ref(0)
 const step2HasSelection = ref(false)
 
 const step2TongTienDisplay = computed(() => {
@@ -181,6 +183,7 @@ const step2TongTienDisplay = computed(() => {
 function onStep2TongTienChange(payload) {
   if (payload && typeof payload === 'object') {
     step2TongTien.value = Number(payload.total) || 0
+    step2TongSoDiemChup.value = Number(payload.tongSoDiemChup) || 0
     step2HasSelection.value = Boolean(payload.hasSelection)
     return
   }
@@ -436,6 +439,7 @@ async function onNext() {
     const ok = await saveStep2(true)
     if (!ok) return
     await stepLichRef.value?.loadDieuPhoiSchema()
+    stepLichRef.value?.applyComboSoDiemChupDefault?.()
     await nextTick()
     stepLichRef.value?.loadActivePickerOptions?.()
   } else if (activeStep.value === 2) {
@@ -499,7 +503,10 @@ watch(activeStep, (step) => {
   if (step === 1) step2Ref.value?.loadOptions()
   if (step === 2) {
     stepLichRef.value?.loadDieuPhoiSchema()
-    nextTick(() => stepLichRef.value?.loadActivePickerOptions?.())
+    nextTick(() => {
+      stepLichRef.value?.applyComboSoDiemChupDefault?.()
+      stepLichRef.value?.loadActivePickerOptions?.()
+    })
   }
 })
 </script>

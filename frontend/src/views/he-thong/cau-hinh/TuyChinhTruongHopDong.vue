@@ -613,6 +613,12 @@ const DEFAULT_DIEU_PHOI_FIELDS = [
     gia_tri_toi_thieu: SO_DIEM_CHUP_MIN,
     gia_tri_toi_da: SO_DIEM_CHUP_MAX,
   },
+  {
+    key: 'sap_xep_trang_phuc',
+    ten_thong_tin: 'Sắp xếp trang phục',
+    loai_du_lieu: 'string',
+    gia_tri: 'chua_xep_do',
+  },
   { key: 'ngay_tra_file_le', ten_thong_tin: 'Ngày trả file lẻ', loai_du_lieu: 'date' },
   { key: 'ngay_tra_file_in', ten_thong_tin: 'Ngày trả file in', loai_du_lieu: 'date' },
   { key: 'ngay_khach_hen_qua', ten_thong_tin: 'Ngày khách hẹn qua', loai_du_lieu: 'date' },

@@ -80,10 +80,41 @@ export const SO_DIEM_CHUP_MIN = 1
 export const SO_DIEM_CHUP_MAX = 3
 export const SO_DIEM_CHUP_DEFAULT = 1
 
+/** Tổng số ảnh chỉnh sửa từ combo, lưu ở envelope thong_tin_dieu_phoi */
+export const SO_ANH_CHINH_SUA_KEY = 'so_anh_chinh_sua'
+
 export function clampSoDiemChup(value) {
   const n = Math.round(Number(value))
   if (!Number.isFinite(n)) return SO_DIEM_CHUP_DEFAULT
   return Math.min(SO_DIEM_CHUP_MAX, Math.max(SO_DIEM_CHUP_MIN, n))
+}
+
+export const SAP_XEP_TRANG_PHUC_KEY = 'sap_xep_trang_phuc'
+export const SAP_XEP_TRANG_PHUC_DEFAULT = 'chua_xep_do'
+export const SAP_XEP_TRANG_PHUC_OPTIONS = [
+  { value: 'chua_xep_do', label: 'Chưa xếp đồ' },
+  { value: 'da_xep_do', label: 'Đã xếp đồ' },
+  { value: 'da_hoan_tra', label: 'Đã hoàn trả' },
+]
+
+export function defaultSapXepTrangPhucGiaTri() {
+  return SAP_XEP_TRANG_PHUC_DEFAULT
+}
+
+export function normalizeSapXepTrangPhucValue(value) {
+  if (Array.isArray(value)) {
+    const first = value.find((item) => item != null && item !== '')
+    return first != null ? String(first) : null
+  }
+  if (value == null || value === '') return null
+  return String(value)
+}
+
+export function formatSapXepTrangPhucLabel(value) {
+  const normalized = normalizeSapXepTrangPhucValue(value)
+  if (!normalized) return ''
+  const map = Object.fromEntries(SAP_XEP_TRANG_PHUC_OPTIONS.map((opt) => [opt.value, opt.label]))
+  return map[normalized] || normalized
 }
 
 /** Field lịch quay chụp hiển thị ở bước tạo/sửa hợp đồng */
@@ -92,6 +123,7 @@ export const LICH_QUAY_CHUP_KEYS = [
   'gio_chup',
   'ngay_chup',
   'so_diem_chup',
+  SAP_XEP_TRANG_PHUC_KEY,
   'ngay_tra_file_le',
   'ngay_tra_file_in',
   'ngay_khach_hen_qua',
@@ -161,6 +193,20 @@ export function emptyDieuPhoiEnvelope() {
     [TRANG_THAI_DIEU_PHOI_KEY]: '',
     [DANH_SACH_BUOI_CHUP_KEY]: [],
   }
+}
+
+export function getSoAnhChinhSua(raw) {
+  if (!isDieuPhoiSessionMap(raw)) return 0
+  const item = raw[SO_ANH_CHINH_SUA_KEY]
+  if (item == null || item === '') return 0
+  if (typeof item === 'number') return Math.max(0, Math.round(item))
+  if (typeof item === 'object' && !Array.isArray(item)) {
+    const value = item.gia_tri
+    const n = Math.round(Number(value))
+    return Number.isFinite(n) ? Math.max(0, n) : 0
+  }
+  const n = Math.round(Number(item))
+  return Number.isFinite(n) ? Math.max(0, n) : 0
 }
 
 export function getTrangThaiDieuPhoi(raw) {
