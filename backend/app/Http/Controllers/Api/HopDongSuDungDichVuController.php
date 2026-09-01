@@ -155,6 +155,8 @@ class HopDongSuDungDichVuController extends BaseApiController
                         continue;
                     }
 
+                    $sapXepTrangPhuc = HopDongSuDungDichVu::dieuPhoiGiaTri($session, 'sap_xep_trang_phuc');
+
                     $items[] = [
                         'id' => $hd->id,
                         'ngay_chup' => $ngayChup,
@@ -168,6 +170,9 @@ class HopDongSuDungDichVuController extends BaseApiController
                         'ten_hop_dong' => $hd->loaiHopDong?->ten_hop_dong,
                         'ma_loai_hop_dong' => $hd->loaiHopDong?->ma_hop_dong,
                         'trang_thai' => $hd->trang_thai,
+                        'sap_xep_trang_phuc' => $sapXepTrangPhuc !== null && $sapXepTrangPhuc !== ''
+                            ? (string) $sapXepTrangPhuc
+                            : 'chua_xep_do',
                     ];
                 }
             }

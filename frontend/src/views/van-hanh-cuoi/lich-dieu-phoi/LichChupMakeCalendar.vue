@@ -7,6 +7,20 @@
           <div class="legend legend-meta">
             <span class="legend-swatch is-ngay-nghi" />
             <span class="legend-text">Ngày nghỉ</span>
+            <span class="legend-divider" aria-hidden="true" />
+            <CustomTooltip
+              v-for="opt in sapXepDoLegend"
+              :key="opt.value"
+              :content="opt.label"
+              placement="top"
+            >
+              <span class="legend-sap-xep">
+                <el-icon :size="14" :style="{ color: opt.color }">
+                  <ShoppingBag />
+                </el-icon>
+                <span class="legend-text">{{ opt.shortLabel }}</span>
+              </span>
+            </CustomTooltip>
           </div>
         </div>
       </template>
@@ -114,7 +128,7 @@
             <div v-if="hopDongVisibleByDate(data.day).length" class="day-items day-items--list">
               <CustomTooltip
                 v-for="item in hopDongPreviewByDate(data.day)"
-                :key="item.id"
+                :key="itemRowKey(item)"
                 :content="itemTooltip(item)"
                 placement="top"
               >
@@ -130,6 +144,16 @@
                   <span class="day-item-color" aria-hidden="true" />
                   <span class="day-item-time">{{ formatGioChup(item.gio_chup) }}</span>
                   <span class="day-item-name">{{ itemLabel(item) }}</span>
+                  <CustomTooltip
+                    :content="sapXepDoTooltip(item)"
+                    placement="top"
+                  >
+                    <span class="day-item-sap-xep" @click.stop>
+                      <el-icon :size="14" :style="{ color: sapXepDoIconColor(item) }">
+                        <ShoppingBag />
+                      </el-icon>
+                    </span>
+                  </CustomTooltip>
                 </button>
               </CustomTooltip>
               <button
@@ -150,7 +174,7 @@
             >
               <span
                 v-for="item in hopDongDotPreviewByDate(data.day)"
-                :key="item.id"
+                :key="itemRowKey(item)"
                 class="day-dot"
                 :style="{ background: loaiColorMap[item.loai_hop_dong_id] || '#909399' }"
                 :title="itemTooltip(item)"
@@ -244,12 +268,17 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { ArrowLeft, ArrowRight, Calendar, Plus, Refresh } from '@element-plus/icons-vue'
+import { ArrowLeft, ArrowRight, Calendar, Plus, Refresh, ShoppingBag } from '@element-plus/icons-vue'
 import { fetchNgayNghi } from '@/api/ngayNghi'
 import { fetchLichChupMake } from '@/api/hopDongSuDungDichVu'
 import { fetchTienIchThoiTiet, weatherIconUrl } from '@/api/thoiTiet'
 import { useAuthStore } from '@/stores/auth'
 import { formatLunarLabel, formatLunarTooltip, isLunarMonthStart } from '@/utils/lunar'
+import {
+  formatSapXepTrangPhucLabel,
+  SAP_XEP_TRANG_PHUC_OPTIONS,
+  sapXepTrangPhucIconColor,
+} from '@/utils/thongTinDieuPhoi'
 import LichChupMakeChiTietModal from './LichChupMakeChiTietModal.vue'
 import LichChupMakeThemModal from './LichChupMakeThemModal.vue'
 
@@ -307,6 +336,17 @@ const PREDEFINE_COLORS = [
   '#ad1457',
   '#283593',
 ]
+
+const sapXepDoLegend = SAP_XEP_TRANG_PHUC_OPTIONS.map((opt) => ({
+  ...opt,
+  color: sapXepTrangPhucIconColor(opt.value),
+  shortLabel:
+    {
+      chua_xep_do: 'Chưa xếp',
+      da_xep_do: 'Đã xếp',
+      da_hoan_tra: 'Hoàn trả',
+    }[opt.value] || opt.label,
+}))
 
 /** Mặc định: tháng hiện tại */
 const selectedDate = ref(new Date())
@@ -719,12 +759,25 @@ function itemLabel(item) {
   return item?.ten_khach_hang || item?.ma_hop_dong || 'Hợp đồng'
 }
 
+function itemRowKey(item) {
+  return `${item?.id || 'hd'}-${item?.gio_chup || ''}-${item?.ngay_chup || ''}`
+}
+
+function sapXepDoIconColor(item) {
+  return sapXepTrangPhucIconColor(item?.sap_xep_trang_phuc)
+}
+
+function sapXepDoTooltip(item) {
+  return `Sắp xếp đồ: ${formatSapXepTrangPhucLabel(item?.sap_xep_trang_phuc) || 'Chưa xếp đồ'}`
+}
+
 function itemTooltip(item) {
   const parts = [
     formatGioChup(item?.gio_chup),
     item?.ten_hop_dong,
     item?.ten_khach_hang,
     item?.ma_hop_dong,
+    sapXepDoTooltip(item),
   ].filter(Boolean)
   return parts.join(' · ')
 }
@@ -819,6 +872,20 @@ onMounted(() => {
   gap: 8px;
   font-size: 13px;
   color: var(--el-text-color-secondary);
+  flex-wrap: wrap;
+}
+
+.legend-divider {
+  width: 1px;
+  height: 14px;
+  background: var(--el-border-color);
+  flex-shrink: 0;
+}
+
+.legend-sap-xep {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .legend-swatch {
@@ -1129,9 +1196,25 @@ onMounted(() => {
   font-variant-numeric: tabular-nums;
 }
 
+.day-item-sap-xep {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  align-self: center;
+  margin-left: auto;
+  padding-left: 4px;
+  line-height: 1;
+
+  :deep(svg) {
+    stroke-width: 2.5;
+    filter: drop-shadow(0 0 0.4px currentColor);
+  }
+}
+
 .day-item-name {
   min-width: 0;
-  flex: 1;
+  flex: 1 1 auto;
   align-self: center;
   font-size: 10px;
   font-weight: 500;

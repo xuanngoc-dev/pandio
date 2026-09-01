@@ -2,7 +2,7 @@
   <CustomDialog
     v-model="visible"
     :title="dialogTitle"
-    :width="1200"
+    :width="1400"
     class="lich-chup-make-chi-tiet-modal"
     @closed="onClosed"
   >
@@ -53,6 +53,13 @@
           </CustomTag>
         </template>
       </CustomTableColumn>
+      <CustomTableColumn label="Sắp xếp đồ" width="130" align="center">
+        <template #default="{ row }">
+          <CustomTag :type="sapXepDoTagType(row)" size="small">
+            {{ sapXepDoLabel(row) }}
+          </CustomTag>
+        </template>
+      </CustomTableColumn>
       <!-- <CustomTableColumn label="Tổng tiền" min-width="120" align="right">
         <template #default="{ row }">
           {{ formatMoney(row.tong_tien) }}
@@ -99,9 +106,12 @@ import { fetchLichChupMakeChiTiet } from '@/api/hopDongSuDungDichVu'
 import HopDongSddvDieuPhoiModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvDieuPhoiModal.vue'
 import {
   formatLoaiQuayChupLabel,
+  formatSapXepTrangPhucLabel,
   getDieuPhoiGiaTriFromSession,
   normalizeDieuPhoiSessions,
   parseSessionLoaiQuayChup,
+  SAP_XEP_TRANG_PHUC_KEY,
+  sapXepTrangPhucTagType,
 } from '@/utils/thongTinDieuPhoi'
 
 const visible = defineModel({ type: Boolean, default: false })
@@ -214,6 +224,18 @@ function formatGioChup(row) {
 function formatLoaiDichVu(row) {
   const loaiQuayChup = parseSessionLoaiQuayChup(row?._session)
   return formatLoaiQuayChupLabel(loaiQuayChup) || '—'
+}
+
+function sapXepDoValue(row) {
+  return getDieuPhoiGiaTriFromSession(row?._session, SAP_XEP_TRANG_PHUC_KEY)
+}
+
+function sapXepDoLabel(row) {
+  return formatSapXepTrangPhucLabel(sapXepDoValue(row)) || '—'
+}
+
+function sapXepDoTagType(row) {
+  return sapXepTrangPhucTagType(sapXepDoValue(row))
 }
 
 function openDieuPhoi(row) {

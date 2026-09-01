@@ -117,6 +117,28 @@ export function formatSapXepTrangPhucLabel(value) {
   return map[normalized] || normalized
 }
 
+export function resolveSapXepTrangPhucValue(value) {
+  return normalizeSapXepTrangPhucValue(value) || SAP_XEP_TRANG_PHUC_DEFAULT
+}
+
+export function sapXepTrangPhucTagType(value) {
+  const map = {
+    chua_xep_do: 'info',
+    da_xep_do: 'success',
+    da_hoan_tra: 'primary',
+  }
+  return map[resolveSapXepTrangPhucValue(value)] || 'info'
+}
+
+export function sapXepTrangPhucIconColor(value) {
+  const map = {
+    chua_xep_do: '#909399',
+    da_xep_do: '#67c23a',
+    da_hoan_tra: '#409eff',
+  }
+  return map[resolveSapXepTrangPhucValue(value)] || '#909399'
+}
+
 /** Field lịch quay chụp hiển thị ở bước tạo/sửa hợp đồng */
 export const LICH_QUAY_CHUP_KEYS = [
   'buoi_chup',
