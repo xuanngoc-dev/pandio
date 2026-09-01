@@ -22,7 +22,13 @@ export const SALARY_FIELD_DEFINITIONS = [
   { key: 'phu_cap_an_trua', name: 'Phụ cấp ăn trưa' },
   { key: 'phu_cap_dien_thoai', name: 'Phụ cấp điện thoại' },
   { key: 'phu_cap_nha_o', name: 'Phụ cấp nhà ở' },
+  { key: 'phu_cap_thu_bay_va_chu_nhat', name: 'Phụ cấp thứ 7/chủ nhật', defaultValue: 0 },
+  { key: 'phu_cap_di_lam_ngay_nghi', name: 'Phụ cấp đi làm ngày nghỉ', defaultValue: 0 },
   { key: 'thuong_chuyen_can', name: 'Thưởng chuyên cần' },
+  { key: 'chuyen_can_khong_nghi', name: 'Chuyên cần không nghỉ', defaultValue: 0 },
+  { key: 'chuyen_can_nghi_1_ngay', name: 'Chuyên cần nghỉ 1 ngày', defaultValue: 0 },
+  { key: 'chuyen_can_nghi_2_ngay', name: 'Chuyên cần nghỉ 2 ngày', defaultValue: 0 },
+  { key: 'chuyen_can_nghi_3_ngay', name: 'Chuyên cần nghỉ 3 ngày', defaultValue: 0 },
   { key: 'hoa_hong_hop_dong_sddv', name: 'Hoa hồng HĐ sử dụng dịch vụ' },
   { key: 'hoa_hong_hop_dong_trang_phuc', name: 'Hoa hồng HĐ trang phục' },
   { key: 'phi_xu_ly_hd_thue_trang_phuc', name: 'Phí xử lý HĐ thuê trang phục' },
@@ -33,18 +39,30 @@ export const SALARY_FIELD_GROUPS = [
   {
     key: 'luong',
     title: 'Lương',
-    keys: ['luong_cung', 'luong_mem', 'luong_1_gio', 'luong_tang_ca_1_gio', 'luong_chinh_sua_anh', 'luong_dung_video'],
+    keys: ['luong_cung', 'luong_mem', 'luong_1_gio', 'luong_tang_ca_1_gio'],
   },
   {
     key: 'phu_cap',
     title: 'Phụ cấp',
-    keys: ['phu_cap', 'phu_cap_xang', 'phu_cap_an_trua', 'phu_cap_dien_thoai', 'phu_cap_nha_o'],
+    keys: [
+      'phu_cap',
+      'phu_cap_xang',
+      'phu_cap_an_trua',
+      'phu_cap_dien_thoai',
+      'phu_cap_nha_o',
+      'phu_cap_thu_bay_va_chu_nhat',
+      'phu_cap_di_lam_ngay_nghi',
+    ],
   },
   {
     key: 'thuong',
     title: 'Thưởng',
     keys: [
       'thuong_chuyen_can',
+      'chuyen_can_khong_nghi',
+      'chuyen_can_nghi_1_ngay',
+      'chuyen_can_nghi_2_ngay',
+      'chuyen_can_nghi_3_ngay',
       'hoa_hong_hop_dong_sddv',
       'hoa_hong_hop_dong_trang_phuc',
       'phi_xu_ly_hd_thue_trang_phuc',
@@ -54,7 +72,7 @@ export const SALARY_FIELD_GROUPS = [
   {
     key: LUONG_THEO_DICH_VU_KEY,
     title: 'Lương theo dịch vụ',
-    keys: [],
+    keys: ['luong_chinh_sua_anh', 'luong_dung_video'],
     table: true,
   },
 ]
@@ -118,7 +136,9 @@ export function createDefaultLuongThuongPhuCap(overrides = {}) {
     }
     result[def.key] = {
       name: src.name || def.name,
-      value: src.value != null && src.value !== '' ? Number(src.value) : null,
+      value: src.value != null && src.value !== ''
+        ? Number(src.value)
+        : (def.defaultValue != null ? def.defaultValue : null),
       note: src.note != null && src.note !== '' ? String(src.note) : (def.note || ''),
     }
   }

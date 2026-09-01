@@ -359,6 +359,7 @@ class UserController extends BaseApiController
 
         $definitions = \App\Models\NhanVien::salaryFieldDefinitions();
         $defaultNotes = \App\Models\NhanVien::salaryFieldNotes();
+        $defaultValues = \App\Models\NhanVien::salaryFieldDefaultValues();
         $result = [];
 
         foreach ($definitions as $key => $defaultName) {
@@ -370,10 +371,11 @@ class UserController extends BaseApiController
             }
 
             $defaultNote = $defaultNotes[$key] ?? null;
+            $fieldDefaultValue = $defaultValues[$key] ?? null;
             if (! is_array($item)) {
                 $result[$key] = [
                     'name' => $defaultName,
-                    'value' => null,
+                    'value' => $fieldDefaultValue,
                     'note' => $defaultNote,
                 ];
                 continue;
@@ -385,7 +387,9 @@ class UserController extends BaseApiController
 
             $result[$key] = [
                 'name' => trim((string) ($item['name'] ?? $defaultName)) ?: $defaultName,
-                'value' => $value === null || $value === '' ? null : (float) $value,
+                'value' => $value === null || $value === ''
+                    ? $fieldDefaultValue
+                    : (float) $value,
                 'note' => $normalizedNote ?? $defaultNote,
             ];
         }

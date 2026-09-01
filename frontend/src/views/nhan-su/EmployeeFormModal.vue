@@ -260,6 +260,7 @@
               </CustomRow>
               <EmployeeLuongDiemTheoLoai
                 v-if="group.table"
+                :class="{ 'luong-dich-vu-table': group.items.length }"
                 :luong="form.luong_thuong_phu_cap"
                 :loai-list="loaiQuayChup"
               />
@@ -575,7 +576,12 @@ function fillSampleData() {
       phu_cap_an_trua: { value: randomInt(5, 10) * 100_000 },
       phu_cap_dien_thoai: { value: randomInt(1, 4) * 100_000 },
       phu_cap_nha_o: { value: randomInt(5, 15) * 100_000 },
+      phu_cap_thu_bay_va_chu_nhat: { value: 0 },
       thuong_chuyen_can: { value: randomInt(2, 8) * 100_000 },
+      chuyen_can_khong_nghi: { value: 0 },
+      chuyen_can_nghi_1_ngay: { value: 0 },
+      chuyen_can_nghi_2_ngay: { value: 0 },
+      chuyen_can_nghi_3_ngay: { value: 0 },
       hoa_hong_hop_dong_sddv: { value: randomInt(0, 5) * 100_000 },
       hoa_hong_hop_dong_trang_phuc: { value: randomInt(0, 3) * 100_000 },
       luong_theo_dich_vu: sampleLuongTheoDichVu(props.loaiQuayChup, randomInt),
@@ -704,6 +710,10 @@ async function save() {
 
 .salary-fields :deep(.el-input-number .el-input__inner) {
   text-align: left;
+}
+
+.luong-dich-vu-table {
+  margin-top: 8px;
 }
 
 .personal-layout {

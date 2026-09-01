@@ -68,7 +68,13 @@ class NhanVien extends Model
             'phu_cap_an_trua' => 'Phụ cấp ăn trưa',
             'phu_cap_dien_thoai' => 'Phụ cấp điện thoại',
             'phu_cap_nha_o' => 'Phụ cấp nhà ở',
+            'phu_cap_thu_bay_va_chu_nhat' => 'Phụ cấp thứ 7/chủ nhật',
+            'phu_cap_di_lam_ngay_nghi' => 'Phụ cấp đi làm ngày nghỉ',
             'thuong_chuyen_can' => 'Thưởng chuyên cần',
+            'chuyen_can_khong_nghi' => 'Chuyên cần không nghỉ',
+            'chuyen_can_nghi_1_ngay' => 'Chuyên cần nghỉ 1 ngày',
+            'chuyen_can_nghi_2_ngay' => 'Chuyên cần nghỉ 2 ngày',
+            'chuyen_can_nghi_3_ngay' => 'Chuyên cần nghỉ 3 ngày',
             'hoa_hong_hop_dong_sddv' => 'Hoa hồng HĐ sử dụng dịch vụ',
             'hoa_hong_hop_dong_trang_phuc' => 'Hoa hồng HĐ trang phục',
             'phi_xu_ly_hd_thue_trang_phuc' => 'Phí xử lý HĐ thuê trang phục',
@@ -96,6 +102,23 @@ class NhanVien extends Model
         return [
             'luong_1_gio' => 'Dành cho part time',
             'luong_tang_ca_1_gio' => 'Dành cho cả part_time và full_time',
+        ];
+    }
+
+    /**
+     * Giá trị mặc định theo từng khoản lương/thưởng/phụ cấp.
+     *
+     * @return array<string, float|int>
+     */
+    public static function salaryFieldDefaultValues(): array
+    {
+        return [
+            'phu_cap_thu_bay_va_chu_nhat' => 0,
+            'phu_cap_di_lam_ngay_nghi' => 0,
+            'chuyen_can_khong_nghi' => 0,
+            'chuyen_can_nghi_1_ngay' => 0,
+            'chuyen_can_nghi_2_ngay' => 0,
+            'chuyen_can_nghi_3_ngay' => 0,
         ];
     }
 
