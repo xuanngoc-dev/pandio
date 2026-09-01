@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\CauHinhJson;
+use App\Models\DichVuDanhSachDichNhomDichVu;
 use App\Models\HopDongDongSddvCombo;
 use App\Models\HopDongDongSddvConcept;
 use App\Models\HopDongDongSddvDichVu;
@@ -1444,7 +1445,7 @@ class HopDongSuDungDichVuController extends BaseApiController
         return [
             'loaiHopDong:id,ten_hop_dong,ma_hop_dong',
             'nguoiTao:id,name,phone',
-            'combos.combo:id,ma_nhom,ten_nhom,gia_goc,gia_khuyen_mai',
+            'combos.combo:id,ma_nhom,ten_nhom,gia_goc,gia_khuyen_mai,so_diem_chup,so_anh_chinh_sua',
             'dichVu.dichVu:id,ma_dich_vu,ten_dich_vu,gia_goc,gia_khuyen_mai',
             'concepts.concept:id,ma_concept,ten_concept,dia_diem,hinh_anh,trang_thai',
             'trangPhucs.trangPhuc:id,ma_san_pham,ten_san_pham,gia_cho_thue,hinh_anh,trang_thai',
@@ -1680,6 +1681,7 @@ class HopDongSuDungDichVuController extends BaseApiController
     ): void {
         if (is_array($combos)) {
             $this->syncCombos($hopDong, $combos);
+            $this->syncSoAnhChinhSuaFromCombos($hopDong, $combos);
         }
         if (is_array($dichVu)) {
             $this->syncDichVu($hopDong, $dichVu);
@@ -1708,6 +1710,44 @@ class HopDongSuDungDichVuController extends BaseApiController
                 'ghi_chu' => $item['ghi_chu'] !== '' ? $item['ghi_chu'] : null,
             ]);
         }
+    }
+
+    /**
+     * Cập nhật thong_tin_dieu_phoi.so_anh_chinh_sua = tổng (combo.so_anh_chinh_sua × số lượng).
+     *
+     * @param  array<int, array{combo_id: int, so_luong: int}>  $items
+     */
+    private function syncSoAnhChinhSuaFromCombos(HopDongSuDungDichVu $hopDong, array $items): void
+    {
+        $comboIds = array_values(array_unique(array_map(
+            fn (array $item) => (int) $item['combo_id'],
+            $items,
+        )));
+
+        $comboMap = $comboIds === []
+            ? collect()
+            : DichVuDanhSachDichNhomDichVu::query()
+                ->whereIn('id', $comboIds)
+                ->get(['id', 'so_anh_chinh_sua'])
+                ->keyBy('id');
+
+        $total = 0;
+        foreach ($items as $item) {
+            $combo = $comboMap->get((int) $item['combo_id']);
+            $soAnh = (int) ($combo?->so_anh_chinh_sua ?? 0);
+            $soLuong = max(1, (int) ($item['so_luong'] ?? 1));
+            $total += $soAnh * $soLuong;
+        }
+
+        $dieuPhoi = is_array($hopDong->thong_tin_dieu_phoi) ? $hopDong->thong_tin_dieu_phoi : [];
+        $dieuPhoi[HopDongSuDungDichVu::SO_ANH_CHINH_SUA_KEY] = [
+            'su_dung' => true,
+            'ten_thong_tin' => 'Số ảnh chỉnh sửa',
+            'loai_du_lieu' => 'number',
+            'gia_tri' => $total,
+        ];
+
+        $hopDong->update(['thong_tin_dieu_phoi' => $dieuPhoi]);
     }
 
     /**

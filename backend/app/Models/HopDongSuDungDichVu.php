@@ -53,6 +53,9 @@ class HopDongSuDungDichVu extends Model
     /** Nhân sự hậu kỳ: thợ edit / thợ dựng video. */
     public const DIEU_PHOI_HAU_KY_STAFF_KEYS = ['tho_edit', 'tho_dung_video'];
 
+    /** Tổng số ảnh chỉnh sửa từ combo, lưu ở envelope thong_tin_dieu_phoi. */
+    public const SO_ANH_CHINH_SUA_KEY = 'so_anh_chinh_sua';
+
     /** Trạng thái workflow điều phối, lưu ở envelope thong_tin_dieu_phoi. */
     public const TRANG_THAI_DIEU_PHOI_KEY = 'trang_thai_dieu_phoi';
 
