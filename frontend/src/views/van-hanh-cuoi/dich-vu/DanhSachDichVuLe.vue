@@ -238,7 +238,20 @@
             </CustomFormItem>
           </CustomCol>
           <CustomCol :span="24">
-            <CustomFormItem label="Loại hợp đồng áp dụng" prop="loai_hop_dong_ids">
+            <CustomFormItem prop="loai_hop_dong_ids" class="loai-hop-dong-form-item">
+              <template #label>
+                <div class="loai-hop-dong-label-row">
+                  <span>Loại hợp đồng áp dụng</span>
+                  <el-checkbox
+                    v-if="loaiHopDongOptions.length"
+                    :model-value="isAllLoaiHopDongSelected"
+                    :indeterminate="isLoaiHopDongIndeterminate"
+                    @change="toggleAllLoaiHopDong"
+                  >
+                    Chọn tất cả
+                  </el-checkbox>
+                </div>
+              </template>
               <div class="loai-hop-dong-section">
                 <div class="loai-hop-dong-card-grid">
                   <button
@@ -464,8 +477,25 @@ function formatLoaiHopDong(row) {
   return labels.length ? labels.join(', ') : '—'
 }
 
+const isAllLoaiHopDongSelected = computed(() => {
+  const options = loaiHopDongOptions.value
+  if (!options.length) return false
+  return options.every((item) => form.loai_hop_dong_ids.includes(item.id))
+})
+
+const isLoaiHopDongIndeterminate = computed(() => {
+  if (isAllLoaiHopDongSelected.value) return false
+  return loaiHopDongOptions.value.some((item) => form.loai_hop_dong_ids.includes(item.id))
+})
+
 function isLoaiHopDongSelected(id) {
   return form.loai_hop_dong_ids.includes(id)
+}
+
+function toggleAllLoaiHopDong(checked) {
+  form.loai_hop_dong_ids = checked
+    ? loaiHopDongOptions.value.map((item) => item.id)
+    : []
 }
 
 function toggleLoaiHopDong(id) {
@@ -678,6 +708,26 @@ onMounted(async () => {
 </script>
 
 <style scoped lang="scss">
+.loai-hop-dong-form-item {
+  :deep(.el-form-item__label) {
+    width: 100%;
+    padding-right: 0;
+  }
+}
+
+.loai-hop-dong-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 12px;
+
+  :deep(.el-checkbox) {
+    height: auto;
+    margin-right: 0;
+  }
+}
+
 .loai-hop-dong-section {
   width: 100%;
 }
