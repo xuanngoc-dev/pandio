@@ -316,13 +316,21 @@ function todayKey() {
   return toDateKey(new Date())
 }
 
+function currentMonthStartKey() {
+  const now = new Date()
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`
+}
+
 /**
- * Khoá ngày quá khứ.
- * Admin được đăng ký từ hôm nay; role khác chỉ từ ngày mai trở đi.
+ * Khoá ngày không được chỉnh.
+ * Admin: từ đầu tháng hiện tại trở đi; role khác: từ ngày mai trở đi.
  */
 function isDateLocked(dateKey) {
   const today = todayKey()
-  return isAdmin.value ? dateKey < today : dateKey <= today
+  if (!isAdmin.value) {
+    return dateKey <= today
+  }
+  return dateKey < currentMonthStartKey()
 }
 
 const weekDays = computed(() => {
@@ -561,7 +569,7 @@ async function onCaChange(user, dateKey, caLamId) {
   if (isDateLocked(dateKey)) {
     ElMessage.warning(
       isAdmin.value
-        ? 'Không được đăng ký ca cho ngày trong quá khứ.'
+        ? 'Không được đăng ký ca cho ngày trước tháng hiện tại.'
         : 'Chỉ được đăng ký ca từ ngày mai trở đi.',
     )
     return
@@ -645,7 +653,7 @@ async function onWeekCaChange(user, caLamId) {
       caLamId == null
         ? 'Đã xóa ca đăng ký các ngày còn lại trong tuần.'
         : isAdmin.value
-          ? 'Đã áp dụng ca cho cả tuần (từ hôm nay trở đi).'
+          ? 'Đã áp dụng ca cho cả tuần (từ đầu tháng hiện tại trở đi).'
           : 'Đã áp dụng ca cho cả tuần (từ ngày mai trở đi).',
     )
   } catch {

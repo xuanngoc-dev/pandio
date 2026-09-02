@@ -43,6 +43,7 @@ class DiemDanhController extends BaseApiController
             $query = DiemDanh::query()
                 ->with([
                     'user:id,name,email',
+                    'user.nhanVien:id,user_id,loai_nhan_vien',
                     'caLam:id,ten_ca,gio_bat_dau,gio_ket_thuc',
                 ])
                 ->when($keyword !== '', function ($q) use ($keyword) {
@@ -273,7 +274,7 @@ class DiemDanhController extends BaseApiController
                     ? $this->tinhTienPhat('ve_som', $thoiGianVeSom)
                     : 0;
 
-                [$gioLamCoBan, $gioLamTangCa] = $this->tinhGioLam($gioVao, $now, $caLam);
+                [$gioLamCoBan, $gioLamTangCa] = $this->tinhGioLam($gioVao, $now, $caLam, $user);
                 [$luongCoBan, $luongTangCa] = $this->tinhLuong($user, $gioLamCoBan, $gioLamTangCa);
 
                 $lyDo = $diemDanh->ly_do ?: $this->resolveLyDo((int) $user->id, $today);
@@ -470,7 +471,7 @@ class DiemDanhController extends BaseApiController
                     ? $this->tinhTienPhat('ve_som', $thoiGianVeSom)
                     : 0;
 
-                [$gioLamCoBan, $gioLamTangCa] = $this->tinhGioLam($gioVao, $gioRa, $caLam);
+                [$gioLamCoBan, $gioLamTangCa] = $this->tinhGioLam($gioVao, $gioRa, $caLam, $target);
                 [$luongCoBan, $luongTangCa] = $this->tinhLuong($target, $gioLamCoBan, $gioLamTangCa);
 
                 $payload = [
@@ -706,8 +707,14 @@ class DiemDanhController extends BaseApiController
     /**
      * @return array{0: float, 1: float}
      */
-    private function tinhGioLam(Carbon $gioVao, Carbon $gioRa, mixed $caLam): array
+    private function tinhGioLam(Carbon $gioVao, Carbon $gioRa, mixed $caLam, mixed $user = null): array
     {
+        if ($this->isPartTime($user)) {
+            $phutCoBan = max(0, (int) $gioVao->diffInMinutes($gioRa));
+
+            return [round($phutCoBan / 60, 2), 0.0];
+        }
+
         $config = $this->chamCongConfig();
         $gioTangCaStr = (string) data_get($config, 'gio_tinh_tang_ca.gia_tri', '18:00');
         $minOtMinutes = (int) data_get($config, 'so_phut_toi_thieu_de_tinh_tang_ca.gia_tri', 30);
@@ -735,6 +742,17 @@ class DiemDanhController extends BaseApiController
         return [$gioLamCoBan, round($phutTangCa / 60, 2)];
     }
 
+    private function isPartTime(mixed $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        $user->loadMissing('nhanVien');
+
+        return ($user->nhanVien?->loai_nhan_vien ?? null) === 'part_time';
+    }
+
     /**
      * @return array{0: float, 1: float}
      */
@@ -746,16 +764,25 @@ class DiemDanhController extends BaseApiController
             return [0.0, 0.0];
         }
 
+        $luongTangCaGio = $nhanVien->getLuongValue('luong_tang_ca_1_gio');
+        $luongTangCa = round($luongTangCaGio * $gioLamTangCa, 2);
+
+        if ($this->isPartTime($user)) {
+            $luong1Gio = $nhanVien->getLuongValue('luong_1_gio');
+            $luongCoBanNgay = ($luong1Gio > 0 && $gioLamCoBan > 0)
+                ? round($luong1Gio * $gioLamCoBan, 2)
+                : 0.0;
+
+            return [$luongCoBanNgay, $luongTangCa];
+        }
+
         $luongCoBanThang = $nhanVien->getLuongValue('luong_1_gio');
         $congChuan = (float) ($nhanVien->cong_chuan ?? 0);
-        $luongTangCaGio = $nhanVien->getLuongValue('luong_tang_ca_1_gio');
 
         // Lương cơ bản ngày ≈ (lương tháng / công chuẩn) × (giờ làm cơ bản / 8)
         $luongCoBanNgay = ($luongCoBanThang > 0 && $congChuan > 0 && $gioLamCoBan > 0)
             ? round(($luongCoBanThang / $congChuan) * ($gioLamCoBan / 8), 2)
             : 0.0;
-
-        $luongTangCa = round($luongTangCaGio * $gioLamTangCa, 2);
 
         return [$luongCoBanNgay, $luongTangCa];
     }

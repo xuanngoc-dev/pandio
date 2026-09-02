@@ -40,12 +40,32 @@
         <CustomTableColumn
           v-if="columnSettings.isColumnVisible('ho_ten')"
           label="Họ tên"
-          min-width="150"
+          min-width="180"
           fixed="left"
           show-overflow-tooltip
         >
           <template #default="{ row }">
-            {{ row.user?.name || '—' }}
+            <div class="employee-cell">
+              <div class="employee-cell__name-row">
+                <span class="employee-cell__name">{{ row.user?.name || '—' }}</span>
+                <CustomTooltip
+                  v-if="employeeLoaiNhanVien(row)"
+                  :content="employeeTypeLabel(employeeLoaiNhanVien(row))"
+                  placement="top"
+                >
+                  <CustomIcon
+                    class="employee-type-icon"
+                    :class="
+                      employeeLoaiNhanVien(row) === 'full_time'
+                        ? 'employee-type-icon--full'
+                        : 'employee-type-icon--part'
+                    "
+                  >
+                    <component :is="employeeTypeIcon(employeeLoaiNhanVien(row))" />
+                  </CustomIcon>
+                </CustomTooltip>
+              </div>
+            </div>
           </template>
         </CustomTableColumn>
         <CustomTableColumn
@@ -210,7 +230,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { CircleCheck, SwitchButton } from '@element-plus/icons-vue'
+import { CircleCheck, SwitchButton, Briefcase, Clock } from '@element-plus/icons-vue'
 import {
   checkinDiemDanh,
   checkoutDiemDanh,
@@ -228,6 +248,7 @@ import {
   CustomTable,
   CustomTableColumn,
   CustomTag,
+  CustomTooltip,
 } from '@/components/element'
 import Pagination from '@/components/Pagination.vue'
 
@@ -266,6 +287,20 @@ const canCheckin = ref(true)
 const canCheckout = ref(false)
 const kiemSoatIpDiemDanh = ref(false)
 const alreadyDone = computed(() => !canCheckin.value && !canCheckout.value)
+
+function employeeLoaiNhanVien(row) {
+  return row.user?.nhan_vien?.loai_nhan_vien || null
+}
+
+function employeeTypeLabel(value) {
+  if (value === 'full_time') return 'Full time'
+  if (value === 'part_time') return 'Part time'
+  return ''
+}
+
+function employeeTypeIcon(value) {
+  return value === 'part_time' ? Clock : Briefcase
+}
 
 function formatTime(value) {
   if (!value) return '—'
@@ -395,3 +430,42 @@ watch(
 
 onMounted(loadChamCongConfig)
 </script>
+
+<style scoped>
+.employee-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.3;
+  padding: 2px 0;
+}
+
+.employee-cell__name-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.employee-cell__name {
+  font-weight: 500;
+  color: var(--el-text-color-primary);
+}
+
+.employee-type-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  cursor: default;
+}
+
+.employee-type-icon--full {
+  color: var(--el-color-primary);
+}
+
+.employee-type-icon--part {
+  color: var(--el-color-warning);
+}
+</style>

@@ -262,19 +262,23 @@ class DangKyCaLamViecController extends BaseApiController
 
     /**
      * Ngày sớm nhất được phép đăng ký/sửa/xóa ca.
-     * Admin: hôm nay; role khác: ngày mai.
+     * Admin: đầu tháng hiện tại; role khác: ngày mai.
      */
     private function minEditableDate(Request $request): Carbon
     {
         $today = $this->todayDate();
 
-        return $this->isAdmin($request) ? $today : $today->copy()->addDay();
+        if ($this->isAdmin($request)) {
+            return $today->copy()->startOfMonth();
+        }
+
+        return $today->copy()->addDay();
     }
 
     private function ngayLamErrorMessage(Request $request): string
     {
         return $this->isAdmin($request)
-            ? 'Không được đăng ký ca cho ngày trong quá khứ.'
+            ? 'Không được đăng ký ca cho ngày trước tháng hiện tại.'
             : 'Chỉ được đăng ký ca từ ngày mai trở đi.';
     }
 

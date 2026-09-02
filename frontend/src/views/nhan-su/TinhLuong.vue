@@ -67,8 +67,8 @@
             <CustomTableColumn label="Ngày" width="120" fixed="left" align="center">
               <template #default="{ row }">
                 <div class="day-cell" :class="{ 'day-cell--weekend': row.is_weekend }">
-                  <span class="day-cell__date">{{ formatDateLabel(row.ngay) }}</span>
-                  <span class="day-cell__dow">{{ row.thu }}</span>
+                  <span class="day-cell__date">{{ row.thu }}-{{ formatDateLabel(row.ngay) }}</span>
+                  <!-- <span class="day-cell__dow"></span> -->
                 </div>
               </template>
             </CustomTableColumn>
