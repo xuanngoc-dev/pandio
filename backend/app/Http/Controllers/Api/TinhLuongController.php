@@ -170,12 +170,8 @@ class TinhLuongController extends BaseApiController
             ->get()
             ->keyBy(fn (DiemDanh $item) => $item->ngay_lam?->format('Y-m-d'));
 
-        $loaiNhanVien = (string) ($nhanVien->loai_nhan_vien ?? '');
-        $congChuan = (float) ($nhanVien->cong_chuan ?? 0);
         $luongCung = $nhanVien->getLuongValue('luong_cung');
         $luongMem = $nhanVien->getLuongValue('luong_mem');
-        $luong1Gio = $nhanVien->getLuongValue('luong_1_gio');
-        $luongTangCa1Gio = $nhanVien->getLuongValue('luong_tang_ca_1_gio');
         $phuCap = [
             'phu_cap' => $nhanVien->getLuongValue('phu_cap'),
             'phu_cap_xang' => $nhanVien->getLuongValue('phu_cap_xang'),
@@ -215,22 +211,15 @@ class TinhLuongController extends BaseApiController
 
             $gioLamCoBan = round((float) ($record?->gio_lam_co_ban ?? 0), 2);
             $gioLamTangCa = round((float) ($record?->gio_lam_tang_ca ?? 0), 2);
-            [$tienTheoGio, $tienTangCa] = $this->tinhTienGioLam(
-                $loaiNhanVien,
-                $gioLamCoBan,
-                $gioLamTangCa,
-                $luongCung,
-                $luong1Gio,
-                $luongTangCa1Gio,
-                $congChuan,
-            );
+            $luongCoBan = round((float) ($record?->luong_co_ban ?? 0), 2);
+            $luongTangCa = round((float) ($record?->luong_tang_ca ?? 0), 2);
             $tienPhatDiMuon = round((float) ($record?->tien_phat_di_muon ?? 0), 2);
             $tienPhatVeSom = round((float) ($record?->tien_phat_ve_som ?? 0), 2);
 
             $tong['gio_lam_co_ban'] += $gioLamCoBan;
             $tong['gio_lam_tang_ca'] += $gioLamTangCa;
-            $tong['tong_luong_theo_gio'] += $tienTheoGio;
-            $tong['tong_tang_ca'] += $tienTangCa;
+            $tong['tong_luong_theo_gio'] += $luongCoBan;
+            $tong['tong_tang_ca'] += $luongTangCa;
             $tong['hoa_hong_hd_tp'] += $hoaHongTp;
             $tong['hoa_hong_hd_sddv'] += $hoaHongSddv;
             $tong['san_xuat_make'] += $sanXuat['make'];
@@ -251,6 +240,8 @@ class TinhLuongController extends BaseApiController
                     'gio_ra' => $record?->gio_ra,
                     'gio_lam_co_ban' => $gioLamCoBan,
                     'gio_lam_tang_ca' => $gioLamTangCa,
+                    'luong_co_ban' => $luongCoBan,
+                    'luong_tang_ca' => $luongTangCa,
                     'hoa_hong' => [
                         'hd_tp' => $hoaHongTp,
                         'hd_sddv' => $hoaHongSddv,
@@ -324,35 +315,6 @@ class TinhLuongController extends BaseApiController
         }
 
         return $result;
-    }
-
-    /**
-     * @return array{0: float, 1: float}
-     */
-    private function tinhTienGioLam(
-        string $loaiNhanVien,
-        float $gioLamCoBan,
-        float $gioLamTangCa,
-        float $luongCung,
-        float $luong1Gio,
-        float $luongTangCa1Gio,
-        float $congChuan,
-    ): array {
-        if ($loaiNhanVien === 'full_time') {
-            $tienTheoGio = ($luongCung > 0 && $congChuan > 0 && $gioLamCoBan > 0)
-                ? round(($luongCung / $congChuan) * ($gioLamCoBan / 8), 2)
-                : 0.0;
-        } else {
-            $tienTheoGio = ($luong1Gio > 0 && $gioLamCoBan > 0)
-                ? round($luong1Gio * $gioLamCoBan, 2)
-                : 0.0;
-        }
-
-        $tienTangCa = ($luongTangCa1Gio > 0 && $gioLamTangCa > 0)
-            ? round($luongTangCa1Gio * $gioLamTangCa, 2)
-            : 0.0;
-
-        return [$tienTheoGio, $tienTangCa];
     }
 
     /**

@@ -29,29 +29,11 @@
         </div>
       </template>
 
-      <section class="calendar-section" :class="{ 'is-collapsed': !calendarExpanded }">
-        <button
-          type="button"
-          class="calendar-section__header"
-          @click="calendarExpanded = !calendarExpanded"
-        >
-          <div class="calendar-section__title-wrap">
-            <span class="calendar-section__title">
-              Chi tiết theo ngày · tháng {{ formatMonthLabel(selectedMonth) }}
-            </span>
-            <span class="calendar-section__hint">
-              {{ calendarExpanded ? 'Thu gọn' : 'Mở rộng' }}
-            </span>
-          </div>
-          <CustomIcon
-            class="calendar-section__arrow"
-            :class="{ 'is-expanded': calendarExpanded }"
-          >
-            <ArrowDown />
-          </CustomIcon>
-        </button>
-
-        <div v-show="calendarExpanded" class="calendar-section__body">
+      <el-collapse v-model="calendarActiveNames" class="calendar-collapse">
+        <el-collapse-item name="daily">
+          <template #title>
+            Chi tiết theo ngày · tháng {{ formatMonthLabel(selectedMonth) }}
+          </template>
           <CustomTable
             v-loading="loading"
             :data="days"
@@ -73,7 +55,7 @@
               </template>
             </CustomTableColumn>
 
-            <CustomTableColumn label="Giờ làm" min-width="140" align="center">
+            <CustomTableColumn :label="isPartTime ? 'Giờ vào/ra' : 'Giờ làm'" min-width="140" align="center">
               <template #default="{ row }">
                 <span v-if="row.co_diem_danh" class="time-range">
                   {{ formatTime(row.gio_vao) }} - {{ formatTime(row.gio_ra) }}
@@ -81,6 +63,30 @@
                 <span v-else class="muted">—</span>
               </template>
             </CustomTableColumn>
+
+            <template v-if="isPartTime">
+              <CustomTableColumn
+                prop="gio_lam_co_ban"
+                label="Giờ làm"
+                width="100"
+                align="center"
+              >
+                <template #default="{ row }">
+                  {{ formatHoursValue(row.gio_lam_co_ban) }}
+                </template>
+              </CustomTableColumn>
+
+              <CustomTableColumn
+                prop="luong_co_ban"
+                label="Thành tiền"
+                min-width="120"
+                align="right"
+              >
+                <template #default="{ row }">
+                  {{ formatMoney(row.luong_co_ban) }}
+                </template>
+              </CustomTableColumn>
+            </template>
 
             <CustomTableColumn
               prop="gio_lam_tang_ca"
@@ -168,8 +174,8 @@
               </CustomTableColumn>
             </CustomTableColumn>
           </CustomTable>
-        </div>
-      </section>
+        </el-collapse-item>
+      </el-collapse>
     </CustomCard>
 
     <CustomCard shadow="hover" class="fixed-salary-card" v-loading="loading">
@@ -242,7 +248,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { ArrowDown, Search } from '@element-plus/icons-vue'
+import { Search } from '@element-plus/icons-vue'
 import { fetchBangLuongChiTietTheoNgay } from '@/api/tinhLuong'
 import {
   CustomButton,
@@ -254,6 +260,7 @@ import {
 } from '@/components/element'
 
 const MONEY_PROPS = [
+  'luong_co_ban',
   'hoa_hong_hd_tp',
   'hoa_hong_hd_sddv',
   'san_xuat_make',
@@ -310,7 +317,7 @@ const GROUP_C_DEFS = [
 const loading = ref(false)
 const selectedMonth = ref(currentMonthValue())
 const payload = ref(null)
-const calendarExpanded = ref(true)
+const calendarActiveNames = ref([])
 
 const days = computed(() => payload.value?.days || [])
 
@@ -320,6 +327,8 @@ const employeeTypeLabel = computed(() => {
   if (type === 'part_time') return 'Part time'
   return ''
 })
+
+const isPartTime = computed(() => payload.value?.nhan_vien?.loai_nhan_vien === 'part_time')
 
 const summaryGroups = computed(() => {
   const nv = payload.value?.nhan_vien || {}
@@ -444,12 +453,17 @@ function getSummaries({ columns }) {
     const prop = column.property
     if (!prop) return ''
 
+    if (prop === 'gio_lam_co_ban') {
+      return formatHoursValue(tong.gio_lam_co_ban)
+    }
+
     if (prop === 'gio_lam_tang_ca') {
       return formatHoursValue(tong.gio_lam_tang_ca)
     }
 
     if (MONEY_PROPS.includes(prop)) {
-      return formatMoney(tong[prop])
+      const tongKey = prop === 'luong_co_ban' ? 'tong_luong_theo_gio' : prop
+      return formatMoney(tong[tongKey])
     }
 
     return ''
@@ -502,57 +516,25 @@ onMounted(() => {
   color: var(--el-text-color-secondary);
 }
 
-.calendar-section {
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 10px;
-  overflow: hidden;
+.calendar-collapse {
+  border: none;
 
-  &__header {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 12px 14px;
-    border: 0;
-    background: var(--el-fill-color-light);
-    cursor: pointer;
-    text-align: left;
-  }
-
-  &__title-wrap {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  &__title {
+  :deep(.el-collapse-item__header) {
+    padding: 0 14px;
+    height: 44px;
+    line-height: 44px;
     font-weight: 600;
-    color: var(--el-text-color-primary);
+    border-radius: 10px;
+    border: 1px solid var(--el-border-color-lighter);
+    background: var(--el-fill-color-light);
   }
 
-  &__hint {
-    font-size: 12px;
-    color: var(--el-text-color-secondary);
+  :deep(.el-collapse-item__wrap) {
+    border: none;
   }
 
-  &__arrow {
-    transition: transform 0.2s ease;
-    color: var(--el-text-color-secondary);
-
-    &.is-expanded {
-      transform: rotate(180deg);
-    }
-  }
-
-  &__body {
-    padding: 12px;
-  }
-
-  &.is-collapsed {
-    .calendar-section__header {
-      border-radius: 10px;
-    }
+  :deep(.el-collapse-item__content) {
+    padding: 12px 0 0;
   }
 }
 
