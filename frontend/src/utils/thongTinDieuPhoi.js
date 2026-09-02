@@ -170,11 +170,18 @@ export const SHARED_LICH_QUAY_CHUP_LABELS = {
 /** Note trạng thái thợ shop, lưu ở envelope thong_tin_dieu_phoi */
 export const NOTE_THO_SHOP_KEY = 'note_tho_shop'
 export const NOTE_THO_SHOP_OPTIONS = [
-  { value: 'dang_lam', label: 'Đang làm' },
-  { value: 'doi_check', label: 'Đợi check' },
+  { value: 'doi_moi', label: 'Đôi mới' },
+  { value: 'hen_qua', label: 'Hẹn qua' },
   { value: 'can_sua_lai', label: 'Cần sửa lại' },
-  { value: 'hen_khach_qua', label: 'Hẹn khách qua' },
+  { value: 'doi_check', label: 'Đợi check' },
   { value: 'doi_in', label: 'Đợi in' },
+  { value: 'da_in', label: 'Đã in' },
+  { value: 'phong_su_cuoi', label: 'Phóng sự cưới' },
+  { value: 'lay_truoc_anh_phong', label: 'Lấy trước ảnh phóng' },
+  { value: 'sua_truoc_anh_thiep', label: 'Sửa trước ảnh thiệp' },
+  { value: 'con_anh_sua', label: 'Còn ảnh sửa' },
+  { value: 'con_album', label: 'Còn album' },
+  { value: 'con_slide', label: 'Còn slide' },
 ]
 
 export function isEnvelopeTopLevelKey(key) {
@@ -190,16 +197,30 @@ export function formatNoteThoShopLabel(value) {
   const normalized = normalizeNoteThoShopValue(value)
   if (!normalized) return ''
   const map = Object.fromEntries(NOTE_THO_SHOP_OPTIONS.map((opt) => [opt.value, opt.label]))
-  return map[normalized] || normalized
+  const legacy = {
+    dang_lam: 'Đang làm',
+    hen_khach_qua: 'Hẹn khách qua',
+  }
+  return map[normalized] || legacy[normalized] || normalized
 }
 
 export function noteThoShopTagType(value) {
   const map = {
-    dang_lam: 'primary',
-    doi_check: 'warning',
+    doi_moi: 'primary',
+    hen_qua: 'success',
     can_sua_lai: 'danger',
-    hen_khach_qua: 'success',
+    doi_check: 'warning',
     doi_in: 'info',
+    da_in: 'success',
+    phong_su_cuoi: 'primary',
+    lay_truoc_anh_phong: 'warning',
+    sua_truoc_anh_thiep: 'warning',
+    con_anh_sua: 'info',
+    con_album: 'info',
+    con_slide: 'info',
+    // Giá trị cũ (hiển thị tag nếu còn dữ liệu)
+    dang_lam: 'primary',
+    hen_khach_qua: 'success',
   }
   return map[normalizeNoteThoShopValue(value)] || 'info'
 }

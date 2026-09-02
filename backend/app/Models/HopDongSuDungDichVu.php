@@ -63,11 +63,18 @@ class HopDongSuDungDichVu extends Model
     public const NOTE_THO_SHOP_KEY = 'note_tho_shop';
 
     public const NOTE_THO_SHOP_VALUES = [
-        'dang_lam',
-        'doi_check',
+        'doi_moi',
+        'hen_qua',
         'can_sua_lai',
-        'hen_khach_qua',
+        'doi_check',
         'doi_in',
+        'da_in',
+        'phong_su_cuoi',
+        'lay_truoc_anh_phong',
+        'sua_truoc_anh_thiep',
+        'con_anh_sua',
+        'con_album',
+        'con_slide',
     ];
 
     public const TRANG_THAI_DIEU_PHOI_CHO_NHAN = 'cho_nhan';
