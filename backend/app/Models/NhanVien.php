@@ -75,8 +75,8 @@ class NhanVien extends Model
             'chuyen_can_nghi_1_ngay' => 'Chuyên cần nghỉ 1 ngày',
             'chuyen_can_nghi_2_ngay' => 'Chuyên cần nghỉ 2 ngày',
             'chuyen_can_nghi_3_ngay' => 'Chuyên cần nghỉ 3 ngày',
-            'hoa_hong_hop_dong_sddv' => 'Hoa hồng HĐ sử dụng dịch vụ',
-            'hoa_hong_hop_dong_trang_phuc' => 'Hoa hồng HĐ trang phục',
+            'hoa_hong_hop_dong_sddv' => 'Hoa hồng HĐ sử dụng dịch vụ (%)',
+            'hoa_hong_hop_dong_trang_phuc' => 'Hoa hồng HĐ trang phục (%)',
             'phi_xu_ly_hd_thue_trang_phuc' => 'Phí xử lý HĐ thuê trang phục',
             'luong_theo_dich_vu' => 'Lương theo dịch vụ',
         ];

@@ -102,11 +102,12 @@
             <!--
               Hoa hồng theo ngày (backend tính sẵn):
               - HĐ TP: mỗi HĐ cho thuê trang phục có nguoi_cho_thue = user đăng nhập,
-                gắn theo ngay_thue, loại trừ trạng thái moi_tao/nhap/da_huy.
-                Công thức ngày = số HĐ trong ngày × đơn giá hoa_hong_hop_dong_trang_phuc (hồ sơ NV).
-              - HĐ SDDV: mỗi HĐ sử dụng dịch vụ có nguoi_tao_id = user đăng nhập,
+                tong_tien > 0, gắn theo ngay_thue, loại trừ moi_tao/nhap/da_huy.
+                Công thức ngày = Σ (tong_tien × hoa_hong_hop_dong_trang_phuc% / 100).
+              - HĐ SDDV: HĐ sử dụng dịch vụ có nguoi_tao_id = user đăng nhập
+                hoặc user nằm trong nguoi_tham_gia_ids, tong_tien > 0,
                 gắn theo ngày tạo (created_at, Asia/Ho_Chi_Minh), loại trừ moi_tao/nhap/da_huy.
-                Công thức ngày = số HĐ trong ngày × đơn giá hoa_hong_hop_dong_sddv (hồ sơ NV).
+                Công thức ngày = Σ (tong_tien × hoa_hong_hop_dong_sddv% / 100).
             -->
             <CustomTableColumn label="Hoa hồng" align="center">
               <CustomTableColumn
@@ -283,17 +284,18 @@ const GROUP_A_DEFS = [
  * Nhóm B — thu nhập phát sinh trong tháng.
  *
  * Hoa hồng HĐ TP (hoa_hong_hd_tp):
- * - Nguồn: hop_dong_cho_thue_trang_phuc với nguoi_cho_thue = user đăng nhập
+ * - Nguồn: hop_dong_cho_thue_trang_phuc với nguoi_cho_thue = user đăng nhập, tong_tien > 0
  * - Ngày tính: ngay_thue; bỏ HĐ trạng thái moi_tao / nhap / da_huy
- * - Đơn giá: nhan_vien.luong_thuong_phu_cap.hoa_hong_hop_dong_trang_phuc.value
- * - Công thức ngày: so_hop_dong_trong_ngay × don_gia
+ * - Tỷ lệ %: nhan_vien.luong_thuong_phu_cap.hoa_hong_hop_dong_trang_phuc.value (0–100)
+ * - Công thức ngày: Σ (tong_tien × tỷ_lệ / 100)
  * - Tổng tháng: Σ hoa hồng theo từng ngày trong tháng
  *
  * Hoa hồng HĐ SDDV (hoa_hong_hd_sddv):
  * - Nguồn: hop_dong_su_dung_dich_vu với nguoi_tao_id = user đăng nhập
+ *   hoặc user id nằm trong nguoi_tham_gia_ids; tong_tien > 0
  * - Ngày tính: DATE(created_at) theo Asia/Ho_Chi_Minh; bỏ HĐ moi_tao / nhap / da_huy
- * - Đơn giá: nhan_vien.luong_thuong_phu_cap.hoa_hong_hop_dong_sddv.value
- * - Công thức ngày: so_hop_dong_trong_ngay × don_gia
+ * - Tỷ lệ %: nhan_vien.luong_thuong_phu_cap.hoa_hong_hop_dong_sddv.value (0–100)
+ * - Công thức ngày: Σ (tong_tien × tỷ_lệ / 100) cho các HĐ tạo trong ngày
  * - Tổng tháng: Σ hoa hồng theo từng ngày trong tháng
  *
  * Phụ cấp thứ 7/chủ nhật (phu_cap_thu_bay_va_chu_nhat):

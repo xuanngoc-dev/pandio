@@ -29,8 +29,8 @@ export const SALARY_FIELD_DEFINITIONS = [
   { key: 'chuyen_can_nghi_1_ngay', name: 'Chuyên cần nghỉ 1 ngày', defaultValue: 0 },
   { key: 'chuyen_can_nghi_2_ngay', name: 'Chuyên cần nghỉ 2 ngày', defaultValue: 0 },
   { key: 'chuyen_can_nghi_3_ngay', name: 'Chuyên cần nghỉ 3 ngày', defaultValue: 0 },
-  { key: 'hoa_hong_hop_dong_sddv', name: 'Hoa hồng HĐ sử dụng dịch vụ' },
-  { key: 'hoa_hong_hop_dong_trang_phuc', name: 'Hoa hồng HĐ trang phục' },
+  { key: 'hoa_hong_hop_dong_sddv', name: 'Hoa hồng HĐ sử dụng dịch vụ (%)', kind: 'percent' },
+  { key: 'hoa_hong_hop_dong_trang_phuc', name: 'Hoa hồng HĐ trang phục (%)', kind: 'percent' },
   { key: 'phi_xu_ly_hd_thue_trang_phuc', name: 'Phí xử lý HĐ thuê trang phục' },
   { key: LUONG_THEO_DICH_VU_KEY, name: 'Lương theo dịch vụ', kind: 'dich_vu' },
 ]
@@ -139,7 +139,9 @@ export function createDefaultLuongThuongPhuCap(overrides = {}) {
       value: src.value != null && src.value !== ''
         ? Number(src.value)
         : (def.defaultValue != null ? def.defaultValue : null),
-      note: src.note != null && src.note !== '' ? String(src.note) : (def.note || ''),
+      note: def.kind === 'percent'
+        ? ''
+        : (src.note != null && src.note !== '' ? String(src.note) : (def.note || '')),
     }
   }
   return result
@@ -193,6 +195,7 @@ export function dichVuRate(luong, loaiId, role, level) {
 
 export function buildSalaryGroups(luongData) {
   const data = createDefaultLuongThuongPhuCap(luongData || {})
+  const defByKey = Object.fromEntries(SALARY_FIELD_DEFINITIONS.map((def) => [def.key, def]))
   return SALARY_FIELD_GROUPS.map((group) => ({
     key: group.key,
     title: group.title,
@@ -201,6 +204,7 @@ export function buildSalaryGroups(luongData) {
     items: (group.keys || []).map((key) => ({
       key,
       ...data[key],
+      kind: defByKey[key]?.kind || 'money',
     })),
   }))
 }
@@ -210,11 +214,33 @@ export function salaryValueOf(nvData, key) {
   return item?.value ?? null
 }
 
+export const PERCENT_SALARY_KEYS = new Set(
+  SALARY_FIELD_DEFINITIONS.filter((def) => def.kind === 'percent').map((def) => def.key),
+)
+
+export function isPercentSalaryKey(key) {
+  return PERCENT_SALARY_KEYS.has(key)
+}
+
+export function formatPercent(value) {
+  if (value == null || value === '') return '—'
+  const n = Number(value)
+  if (!Number.isFinite(n)) return '—'
+  return `${n.toLocaleString('vi-VN', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })}%`
+}
+
 export function formatMoney(value) {
   if (value == null || value === '') return '—'
   const formatted = formatInteger(value)
   if (!formatted) return '—'
   return `${formatted} ₫`
+}
+
+export function formatSalaryFieldValue(key, value) {
+  return isPercentSalaryKey(key) ? formatPercent(value) : formatMoney(value)
 }
 
 function serializeLuongTheoDichVuItems(itemsMap, loaiList = []) {

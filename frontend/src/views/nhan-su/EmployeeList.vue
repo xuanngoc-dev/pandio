@@ -125,7 +125,7 @@
                     class="expand-field"
                   >
                     <label class="expand-field__label">{{ item.name }}</label>
-                    <CustomInput :model-value="formatMoney(item.value)" readonly />
+                    <CustomInput :model-value="formatSalaryFieldValue(item.key, item.value)" readonly />
                     <span v-if="item.note" class="expand-field__note">{{ item.note }}</span>
                   </div>
                 </div>
@@ -419,6 +419,7 @@ import EmployeeLuongDiemTheoLoai from './EmployeeLuongDiemTheoLoai.vue'
 import {
   buildSalaryGroups,
   formatMoney,
+  formatSalaryFieldValue,
   salaryValueOf,
 } from './employeeSalaryFields'
 

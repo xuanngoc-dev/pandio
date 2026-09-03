@@ -260,6 +260,20 @@ class UserController extends BaseApiController
             'luong_thuong_phu_cap.*.name' => ['nullable', 'string', 'max:255'],
             'luong_thuong_phu_cap.*.value' => ['nullable', 'numeric', 'min:0'],
             'luong_thuong_phu_cap.*.note' => ['nullable', 'string', 'max:1000'],
+            'luong_thuong_phu_cap.hoa_hong_hop_dong_sddv.value' => [
+                'nullable',
+                'numeric',
+                'min:0',
+                'max:100',
+                'decimal:0,2',
+            ],
+            'luong_thuong_phu_cap.hoa_hong_hop_dong_trang_phuc.value' => [
+                'nullable',
+                'numeric',
+                'min:0',
+                'max:100',
+                'decimal:0,2',
+            ],
             'luong_thuong_phu_cap.luong_theo_dich_vu.items' => ['nullable', 'array'],
             'luong_thuong_phu_cap.luong_theo_dich_vu.items.*.id' => ['nullable', 'integer', 'min:1'],
             'luong_thuong_phu_cap.luong_theo_dich_vu.items.*.ten_dich_vu' => ['nullable', 'string', 'max:255'],
@@ -275,6 +289,10 @@ class UserController extends BaseApiController
             'email.unique' => 'Email đã được sử dụng.',
             'cccd.unique' => 'CCCD đã được sử dụng.',
             'password.required' => 'Vui lòng nhập mật khẩu.',
+            'luong_thuong_phu_cap.hoa_hong_hop_dong_sddv.value.max' => 'Hoa hồng HĐ sử dụng dịch vụ phải từ 0 đến 100%.',
+            'luong_thuong_phu_cap.hoa_hong_hop_dong_sddv.value.decimal' => 'Hoa hồng HĐ sử dụng dịch vụ chỉ nhận tối đa 2 số sau dấu phẩy.',
+            'luong_thuong_phu_cap.hoa_hong_hop_dong_trang_phuc.value.max' => 'Hoa hồng HĐ trang phục phải từ 0 đến 100%.',
+            'luong_thuong_phu_cap.hoa_hong_hop_dong_trang_phuc.value.decimal' => 'Hoa hồng HĐ trang phục chỉ nhận tối đa 2 số sau dấu phẩy.',
         ]);
     }
 
@@ -362,6 +380,11 @@ class UserController extends BaseApiController
         $defaultValues = \App\Models\NhanVien::salaryFieldDefaultValues();
         $result = [];
 
+        $percentKeys = [
+            'hoa_hong_hop_dong_sddv',
+            'hoa_hong_hop_dong_trang_phuc',
+        ];
+
         foreach ($definitions as $key => $defaultName) {
             $item = $input[$key] ?? null;
 
@@ -385,12 +408,22 @@ class UserController extends BaseApiController
             $note = $item['note'] ?? null;
             $normalizedNote = $note === null || $note === '' ? null : trim((string) $note);
 
+            if ($value === null || $value === '') {
+                $normalizedValue = $fieldDefaultValue;
+            } else {
+                $normalizedValue = (float) $value;
+                if (in_array($key, $percentKeys, true)) {
+                    $normalizedValue = round(max(0, min(100, $normalizedValue)), 2);
+                }
+            }
+
             $result[$key] = [
                 'name' => trim((string) ($item['name'] ?? $defaultName)) ?: $defaultName,
-                'value' => $value === null || $value === ''
-                    ? $fieldDefaultValue
-                    : (float) $value,
-                'note' => $normalizedNote ?? $defaultNote,
+                'value' => $normalizedValue,
+                // Hoa hồng %: không lưu note hướng dẫn dưới input
+                'note' => in_array($key, $percentKeys, true)
+                    ? null
+                    : ($normalizedNote ?? $defaultNote),
             ];
         }
 

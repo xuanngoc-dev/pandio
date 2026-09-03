@@ -425,22 +425,26 @@ class TinhLuongController extends BaseApiController
     }
 
     /**
-     * Hoa hồng HĐ trang phục theo ngày thuê (người cho thuê = user).
+     * Hoa hồng HĐ trang phục theo ngày thuê.
+     * Công thức ngày = Σ (tong_tien × tỷ lệ % / 100).
      *
      * @return array<string, float>
      */
-    private function hoaHongTrangPhucByDate(int $userId, string $tuNgay, string $denNgay, float $donGia): array
+    private function hoaHongTrangPhucByDate(int $userId, string $tuNgay, string $denNgay, float $phanTram): array
     {
-        if ($donGia <= 0) {
+        if ($phanTram <= 0) {
             return [];
         }
 
+        $tyLe = $phanTram / 100;
+
         $rows = HopDongChoThueTrangPhuc::query()
             ->where('nguoi_cho_thue', $userId)
+            ->where('tong_tien', '>', 0)
             ->whereNotIn('trang_thai', ['moi_tao', 'nhap', 'da_huy'])
             ->whereDate('ngay_thue', '>=', $tuNgay)
             ->whereDate('ngay_thue', '<=', $denNgay)
-            ->get(['id', 'ngay_thue']);
+            ->get(['id', 'ngay_thue', 'tong_tien']);
 
         $map = [];
         foreach ($rows as $row) {
@@ -448,29 +452,40 @@ class TinhLuongController extends BaseApiController
             if (! $dateKey) {
                 continue;
             }
-            $map[$dateKey] = round(($map[$dateKey] ?? 0) + $donGia, 2);
+            $amount = (float) $row->tong_tien * $tyLe;
+            $map[$dateKey] = round(($map[$dateKey] ?? 0) + $amount, 2);
         }
 
         return $map;
     }
 
     /**
-     * Hoa hồng HĐ SDDV theo ngày tạo (người tạo = user).
+     * Hoa hồng HĐ SDDV theo ngày tạo.
+     * HĐ có nguoi_tao_id = user hoặc user nằm trong nguoi_tham_gia_ids,
+     * tong_tien > 0, bỏ moi_tao/nhap/da_huy.
+     * Công thức ngày = Σ (tong_tien × tỷ lệ % / 100).
      *
      * @return array<string, float>
      */
-    private function hoaHongSddvByDate(int $userId, string $tuNgay, string $denNgay, float $donGia): array
+    private function hoaHongSddvByDate(int $userId, string $tuNgay, string $denNgay, float $phanTram): array
     {
-        if ($donGia <= 0) {
+        if ($phanTram <= 0) {
             return [];
         }
 
+        $tyLe = $phanTram / 100;
+
         $rows = HopDongSuDungDichVu::query()
-            ->where('nguoi_tao_id', $userId)
+            ->where(function ($q) use ($userId) {
+                $q->where('nguoi_tao_id', $userId)
+                    ->orWhereJsonContains('nguoi_tham_gia_ids', $userId)
+                    ->orWhereJsonContains('nguoi_tham_gia_ids', (string) $userId);
+            })
+            ->where('tong_tien', '>', 0)
             ->whereNotIn('trang_thai', ['moi_tao', 'nhap', 'da_huy'])
             ->whereDate('created_at', '>=', $tuNgay)
             ->whereDate('created_at', '<=', $denNgay)
-            ->get(['id', 'created_at']);
+            ->get(['id', 'created_at', 'tong_tien']);
 
         $map = [];
         foreach ($rows as $row) {
@@ -480,7 +495,8 @@ class TinhLuongController extends BaseApiController
             if (! $dateKey) {
                 continue;
             }
-            $map[$dateKey] = round(($map[$dateKey] ?? 0) + $donGia, 2);
+            $amount = (float) $row->tong_tien * $tyLe;
+            $map[$dateKey] = round(($map[$dateKey] ?? 0) + $amount, 2);
         }
 
         return $map;

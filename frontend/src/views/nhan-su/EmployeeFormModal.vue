@@ -250,11 +250,26 @@
                   <CustomFormItem
                     :label="item.name"
                     :prop="`luong_thuong_phu_cap.${item.key}.value`"
+                    :rules="salaryValueRules(item)"
                   >
+                    <div v-if="item.kind === 'percent'" class="percent-input">
+                      <el-input-number
+                        v-model="form.luong_thuong_phu_cap[item.key].value"
+                        :min="0"
+                        :max="100"
+                        :precision="2"
+                        :step="0.01"
+                        controls-position="right"
+                        :placeholder="item.name"
+                        style="width: 100%"
+                      />
+                    </div>
                     <MoneyInput
+                      v-else
                       v-model="form.luong_thuong_phu_cap[item.key].value"
                       style="width: 100%"
                     />
+                    <div v-if="item.note" class="salary-field-note">{{ item.note }}</div>
                   </CustomFormItem>
                 </CustomCol>
               </CustomRow>
@@ -304,6 +319,38 @@ import {
   sampleLuongTheoDichVu,
   serializeLuongThuongPhuCap,
 } from './employeeSalaryFields'
+
+const PERCENT_MAX = 100
+
+function salaryValueRules(item) {
+  if (item?.kind !== 'percent') return []
+  return [
+    {
+      validator: (_rule, value, callback) => {
+        if (value == null || value === '') {
+          callback()
+          return
+        }
+        const n = Number(value)
+        if (!Number.isFinite(n)) {
+          callback(new Error(`${item.name} không hợp lệ`))
+          return
+        }
+        if (n < 0 || n > PERCENT_MAX) {
+          callback(new Error(`${item.name} phải từ 0 đến 100%`))
+          return
+        }
+        const rounded = Math.round(n * 100) / 100
+        if (Math.abs(n - rounded) > 1e-9) {
+          callback(new Error(`${item.name} chỉ nhận tối đa 2 số sau dấu phẩy`))
+          return
+        }
+        callback()
+      },
+      trigger: ['blur', 'change'],
+    },
+  ]
+}
 
 const visible = defineModel({ type: Boolean, default: false })
 
@@ -582,8 +629,8 @@ function fillSampleData() {
       chuyen_can_nghi_1_ngay: { value: 0 },
       chuyen_can_nghi_2_ngay: { value: 0 },
       chuyen_can_nghi_3_ngay: { value: 0 },
-      hoa_hong_hop_dong_sddv: { value: randomInt(0, 5) * 100_000 },
-      hoa_hong_hop_dong_trang_phuc: { value: randomInt(0, 3) * 100_000 },
+      hoa_hong_hop_dong_sddv: { value: Number((Math.random() * 5).toFixed(2)) },
+      hoa_hong_hop_dong_trang_phuc: { value: Number((Math.random() * 3).toFixed(2)) },
       luong_theo_dich_vu: sampleLuongTheoDichVu(props.loaiQuayChup, randomInt),
     }),
   })
@@ -710,6 +757,21 @@ async function save() {
 
 .salary-fields :deep(.el-input-number .el-input__inner) {
   text-align: left;
+}
+
+.percent-input {
+  width: 100%;
+
+  :deep(.el-input-number) {
+    width: 100%;
+  }
+}
+
+.salary-field-note {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--el-text-color-secondary);
 }
 
 .luong-dich-vu-table {
