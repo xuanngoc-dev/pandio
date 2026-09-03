@@ -60,11 +60,49 @@
           </CustomTag>
         </template>
       </CustomTableColumn>
-      <CustomTableColumn label="Sắp xếp đồ" width="130" align="center">
+      <CustomTableColumn label="Sắp xếp đồ" width="170" align="center">
         <template #default="{ row }">
-          <CustomTag :type="sapXepDoTagType(row)" size="small">
-            {{ sapXepDoLabel(row) }}
-          </CustomTag>
+          <div class="sap-xep-do-cell">
+            <CustomTag :type="sapXepDoTagType(row)" size="small">
+              {{ sapXepDoLabel(row) }}
+            </CustomTag>
+            <CustomTooltip
+              :content="
+                canEditSapXepDo(row)
+                  ? 'Đổi trạng thái sắp xếp đồ'
+                  : sapXepDoDisabledReason(row)
+              "
+              placement="top"
+            >
+              <span class="sap-xep-do-edit-wrap">
+                <el-dropdown
+                  trigger="click"
+                  :disabled="!canEditSapXepDo(row) || isUpdatingSapXepDo(row)"
+                  @command="(value) => updateSapXepDo(row, value)"
+                >
+                  <CustomButton
+                    type="primary"
+                    link
+                    :icon="EditPen"
+                    :loading="isUpdatingSapXepDo(row)"
+                    :disabled="!canEditSapXepDo(row)"
+                  />
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item
+                        v-for="opt in sapXepDoOptions"
+                        :key="opt.value"
+                        :command="opt.value"
+                        :disabled="resolveSapXepDoValue(row) === opt.value"
+                      >
+                        {{ opt.label }}
+                      </el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </span>
+            </CustomTooltip>
+          </div>
         </template>
       </CustomTableColumn>
       <!-- <CustomTableColumn label="Tổng tiền" min-width="120" align="right">
@@ -114,17 +152,24 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Position } from '@element-plus/icons-vue'
-import { fetchLichChupMakeChiTiet } from '@/api/hopDongSuDungDichVu'
+import { EditPen, Position } from '@element-plus/icons-vue'
+import {
+  capNhatThongTinDieuPhoi,
+  fetchLichChupMakeChiTiet,
+} from '@/api/hopDongSuDungDichVu'
 import HopDongSddvDieuPhoiModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvDieuPhoiModal.vue'
 import {
+  DANH_SACH_BUOI_CHUP_KEY,
   formatLoaiQuayChupLabel,
   formatSapXepTrangPhucLabel,
   getDieuPhoiGiaTriFromSession,
   normalizeDieuPhoiSessions,
+  normalizeSapXepTrangPhucValue,
   parseSessionLoaiQuayChup,
+  resolveSapXepTrangPhucValue,
   resolveTrangThaiDieuPhoi,
   SAP_XEP_TRANG_PHUC_KEY,
+  SAP_XEP_TRANG_PHUC_OPTIONS,
   sapXepTrangPhucTagType,
 } from '@/utils/thongTinDieuPhoi'
 
@@ -145,6 +190,8 @@ const perPage = 20
 const total = ref(0)
 const dieuPhoiModalVisible = ref(false)
 const dieuPhoiHopDongId = ref(null)
+const updatingSapXepDoKey = ref(null)
+const sapXepDoOptions = SAP_XEP_TRANG_PHUC_OPTIONS
 
 const dialogTitle = computed(() => {
   const ngay = formatDateVi(props.ngayChup)
@@ -295,12 +342,85 @@ function sapXepDoValue(row) {
   return getDieuPhoiGiaTriFromSession(row?._session, SAP_XEP_TRANG_PHUC_KEY)
 }
 
+function resolveSapXepDoValue(row) {
+  return resolveSapXepTrangPhucValue(sapXepDoValue(row))
+}
+
 function sapXepDoLabel(row) {
   return formatSapXepTrangPhucLabel(sapXepDoValue(row)) || '—'
 }
 
 function sapXepDoTagType(row) {
   return sapXepTrangPhucTagType(sapXepDoValue(row))
+}
+
+function canEditSapXepDo(row) {
+  if (!row?.id || !row?._session) return false
+  return getTrangThaiDieuPhoi(row) !== 'hoan_tat_san_xuat'
+}
+
+function sapXepDoDisabledReason(row) {
+  if (!row?._session) return 'Không tìm thấy buổi chụp để cập nhật'
+  if (getTrangThaiDieuPhoi(row) === 'hoan_tat_san_xuat') {
+    return 'Đã hoàn tất sản xuất — không thể đổi trạng thái sắp xếp đồ'
+  }
+  return 'Không thể đổi trạng thái sắp xếp đồ'
+}
+
+function isUpdatingSapXepDo(row) {
+  return updatingSapXepDoKey.value === row?._rowKey
+}
+
+function buildSapXepDoPayload(row, value) {
+  const envelope =
+    row?.thong_tin_dieu_phoi && typeof row.thong_tin_dieu_phoi === 'object'
+      ? JSON.parse(JSON.stringify(row.thong_tin_dieu_phoi))
+      : {}
+  const sessions = Array.isArray(envelope[DANH_SACH_BUOI_CHUP_KEY])
+    ? envelope[DANH_SACH_BUOI_CHUP_KEY]
+    : null
+  const session = sessions?.[row._sessionIndex]
+  if (!session || typeof session !== 'object') return null
+
+  const normalized = normalizeSapXepTrangPhucValue(value)
+  const existing = session[SAP_XEP_TRANG_PHUC_KEY]
+  if (existing && typeof existing === 'object' && !Array.isArray(existing)) {
+    existing.gia_tri = normalized
+  } else {
+    session[SAP_XEP_TRANG_PHUC_KEY] = {
+      su_dung: true,
+      ten_thong_tin: 'Sắp xếp trang phục',
+      loai_du_lieu: 'string',
+      gia_tri: normalized,
+    }
+  }
+  return envelope
+}
+
+async function updateSapXepDo(row, value) {
+  if (!canEditSapXepDo(row)) {
+    ElMessage.warning(sapXepDoDisabledReason(row))
+    return
+  }
+  if (resolveSapXepDoValue(row) === value) return
+
+  const payload = buildSapXepDoPayload(row, value)
+  if (!payload) {
+    ElMessage.warning('Không tìm thấy buổi chụp để cập nhật')
+    return
+  }
+
+  updatingSapXepDoKey.value = row._rowKey
+  try {
+    await capNhatThongTinDieuPhoi(row.id, { thong_tin_dieu_phoi: payload })
+    ElMessage.success('Đã cập nhật trạng thái sắp xếp đồ')
+    await loadItems()
+    emit('saved')
+  } catch {
+    // interceptor
+  } finally {
+    updatingSapXepDoKey.value = null
+  }
 }
 
 function openDieuPhoi(row) {
@@ -362,6 +482,18 @@ watch(
 .sub-text {
   font-size: 12px;
   color: var(--el-text-color-secondary);
+}
+
+.sap-xep-do-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.sap-xep-do-edit-wrap {
+  display: inline-flex;
+  align-items: center;
 }
 
 .pager {
