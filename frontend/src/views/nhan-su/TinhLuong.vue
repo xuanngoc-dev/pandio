@@ -300,67 +300,79 @@
         </div>
       </template>
 
-      <div class="summary-groups">
-        <div
-          v-for="group in summaryGroups"
-          :key="group.key"
-          class="summary-group"
-        >
-          <div class="summary-group__title">
-            <span class="summary-group__code">{{ group.code }}</span>
-            {{ group.title }}
-          </div>
-          <CustomTable
-            :data="group.rows"
-            stripe
-            border
-            row-key="key"
-            show-summary
-            :summary-method="(param) => getGroupSummaries(param, group)"
-            style="width: 100%"
-            class="summary-table"
-            :empty-text="'Chưa có dữ liệu'"
-          >
-            <CustomTableColumn label="STT" width="64" align="center">
-              <template #default="{ $index }">
-                {{ $index + 1 }}
-              </template>
-            </CustomTableColumn>
-            <CustomTableColumn prop="label" label="Khoản mục" min-width="220" />
-            <CustomTableColumn prop="value" label="Số tiền" min-width="160" align="right">
-              <template #default="{ row }">
-                {{ formatMoneyCell(row.value) }}
-              </template>
-            </CustomTableColumn>
-          </CustomTable>
-        </div>
-
-        <div class="net-pay-box">
-          <CustomTable
-            :data="netPayRows"
-            border
-            row-key="key"
-            style="width: 100%"
-            class="summary-table net-pay-table"
-          >
-            <CustomTableColumn prop="label" label="Công thức" min-width="220" />
-            <CustomTableColumn prop="value" label="Số tiền" min-width="160" align="right">
-              <template #default="{ row }">
-                <span :class="{ 'net-pay-value': row.key === 'thuc_nhan' }">
-                  {{ formatMoneyCell(row.value) }}
-                </span>
-              </template>
-            </CustomTableColumn>
-          </CustomTable>
-        </div>
-      </div>
+      <CustomTable
+        :data="summaryTableRows"
+        stripe
+        border
+        row-key="key"
+        style="width: 100%"
+        class="summary-table"
+        :row-class-name="getSummaryRowClassName"
+        :empty-text="'Chưa có dữ liệu'"
+      >
+        <CustomTableColumn label="STT" width="88" align="center">
+          <template #default="{ row }">
+            <span v-if="row.kind === 'item'">{{ row.stt }}</span>
+            <button
+              v-else-if="row.kind === 'section'"
+              type="button"
+              class="summary-section-toggle"
+              :aria-expanded="isSummarySectionExpanded(row.code)"
+              :aria-label="`${isSummarySectionExpanded(row.code) ? 'Thu gọn' : 'Mở rộng'} nhóm ${row.code}`"
+              @click="toggleSummarySection(row.code)"
+            >
+              <CustomIcon
+                class="summary-section-toggle__icon"
+                :class="{ 'is-expanded': isSummarySectionExpanded(row.code) }"
+              >
+                <ArrowRight />
+              </CustomIcon>
+              <span class="summary-section-code">{{ row.code }}</span>
+            </button>
+          </template>
+        </CustomTableColumn>
+        <CustomTableColumn prop="label" label="Khoản mục" min-width="260">
+          <template #default="{ row }">
+            <button
+              v-if="row.kind === 'section'"
+              type="button"
+              class="summary-section-label-btn"
+              @click="toggleSummarySection(row.code)"
+            >
+              {{ row.label }}
+            </button>
+            <span
+              v-else
+              :class="{
+                'summary-total-label': row.kind === 'total',
+                'summary-net-label': row.kind === 'net',
+              }"
+            >
+              {{ row.label }}
+            </span>
+          </template>
+        </CustomTableColumn>
+        <CustomTableColumn prop="value" label="Số tiền" min-width="160" align="right">
+          <template #default="{ row }">
+            <span
+              v-if="row.kind === 'section' ? !isSummarySectionExpanded(row.code) : true"
+              :class="{
+                'summary-total-value': row.kind === 'section' || row.kind === 'total',
+                'summary-net-value': row.kind === 'net',
+              }"
+            >
+              {{ formatMoneyCell(row.value) }}
+            </span>
+          </template>
+        </CustomTableColumn>
+      </CustomTable>
     </CustomCard>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { Search } from '@element-plus/icons-vue'
+import { ArrowRight, Search } from '@element-plus/icons-vue'
 import { fetchBangLuongChiTietTheoNgay } from '@/api/tinhLuong'
 import {
   CustomButton,
@@ -461,6 +473,8 @@ const sanXuatChiTietModalRef = ref(null)
 const hoaHongChiTietModalRef = ref(null)
 /** Mặc định ẩn các ngày sau hôm nay trong bảng chi tiết. */
 const showFutureDays = ref(false)
+/** Nhóm A/B/C đang mở rộng chi tiết khoản mục. */
+const summaryExpanded = ref({ A: true, B: true, C: true })
 
 const days = computed(() => payload.value?.days || [])
 
@@ -480,7 +494,7 @@ const employeeTypeLabel = computed(() => {
 
 const isPartTime = computed(() => payload.value?.nhan_vien?.loai_nhan_vien === 'part_time')
 
-const summaryGroups = computed(() => {
+const summaryTableRows = computed(() => {
   const nv = payload.value?.nhan_vien || {}
   const tong = payload.value?.tong_ket || {}
 
@@ -500,53 +514,77 @@ const summaryGroups = computed(() => {
     value: Number(tong[item.key] || 0),
   }))
 
-  return [
-    {
-      key: 'a',
-      code: 'A',
-      title: 'Lương cứng & phụ cấp',
-      totalLabel: 'Tổng A',
-      total: Number(tong.tong_a || sumRows(rowsA)),
-      rows: rowsA,
-    },
-    {
-      key: 'b',
-      code: 'B',
-      title: 'Thu nhập phát sinh',
-      totalLabel: 'Tổng B',
-      total: Number(tong.tong_b || sumRows(rowsB)),
-      rows: rowsB,
-    },
-    {
-      key: 'c',
-      code: 'C',
-      title: 'Khấu trừ',
-      totalLabel: 'Tổng C',
-      total: Number(tong.tong_c || sumRows(rowsC)),
-      rows: rowsC,
-    },
-  ]
-})
+  const tongA = Number(tong.tong_a || sumRows(rowsA))
+  const tongB = Number(tong.tong_b || sumRows(rowsB))
+  const tongC = Number(tong.tong_c || sumRows(rowsC))
 
-const netPayRows = computed(() => {
-  const tong = payload.value?.tong_ket || {}
-  const tongA = Number(tong.tong_a || 0)
-  const tongB = Number(tong.tong_b || 0)
-  const tongC = Number(tong.tong_c || 0)
   return [
-    { key: 'tong_a', label: 'Tổng A', value: tongA },
-    { key: 'tong_b', label: 'Tổng B', value: tongB },
-    { key: 'tong_c', label: 'Tổng C', value: tongC },
+    ...buildSummarySection('A', 'Lương cứng & phụ cấp', rowsA, tongA),
+    ...buildSummarySection('B', 'Thu nhập phát sinh', rowsB, tongB),
+    ...buildSummarySection('C', 'Khấu trừ', rowsC, tongC),
     {
       key: 'thuc_nhan',
+      kind: 'net',
       label: 'Thực nhận (A + B − C)',
       value: Number(tong.thuc_nhan ?? tongA + tongB - tongC),
     },
   ]
 })
 
+function buildSummarySection(code, title, rows, total) {
+  const expanded = isSummarySectionExpanded(code)
+  const section = [
+    {
+      key: `section_${code}`,
+      kind: 'section',
+      code,
+      label: title,
+      value: total,
+    },
+  ]
+
+  if (!expanded) return section
+
+  return [
+    ...section,
+    ...rows.map((row, index) => ({
+      ...row,
+      kind: 'item',
+      stt: index + 1,
+    })),
+    {
+      key: `tong_${code.toLowerCase()}`,
+      kind: 'total',
+      label: `Tổng ${code}`,
+      value: total,
+    },
+  ]
+}
+
+function isSummarySectionExpanded(code) {
+  return Boolean(summaryExpanded.value[code])
+}
+
+function toggleSummarySection(code) {
+  summaryExpanded.value = {
+    ...summaryExpanded.value,
+    [code]: !summaryExpanded.value[code],
+  }
+}
+
 function sumRows(rows) {
   return rows.reduce((sum, row) => sum + (Number(row.value) || 0), 0)
+}
+
+function getSummaryRowClassName({ row }) {
+  if (row.kind === 'section') {
+    return isSummarySectionExpanded(row.code)
+      ? 'summary-row--section'
+      : 'summary-row--section summary-row--section-collapsed'
+  }
+  if (row.kind === 'total') return 'summary-row--total'
+  if (row.kind === 'net') return 'summary-row--net'
+  return ''
 }
 
 function currentMonthValue() {
@@ -652,15 +690,6 @@ function getSummaries({ columns }) {
       return formatMoney(tong[tongKey])
     }
 
-    return ''
-  })
-}
-
-function getGroupSummaries({ columns }, group) {
-  return columns.map((column, index) => {
-    if (index === 0) return ''
-    if (column.property === 'label') return group.totalLabel
-    if (column.property === 'value') return formatMoneyCell(group.total)
     return ''
   })
 }
@@ -818,67 +847,95 @@ onMounted(() => {
   }
 }
 
-.summary-groups {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 18px;
-  align-items: start;
-
-  @media (min-width: 768px) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.summary-group {
-  min-width: 0;
-
-  &__title {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: 650;
-    margin-bottom: 10px;
-    color: var(--el-text-color-primary);
-  }
-
-  &__code {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 28px;
-    height: 28px;
-    padding: 0 8px;
-    border-radius: 8px;
-    background: var(--el-color-primary);
-    color: #fff;
-    font-size: 13px;
-    font-weight: 700;
-  }
-}
-
 .summary-table {
   :deep(.el-table__footer-wrapper td) {
     font-weight: 700;
     background: var(--el-fill-color-light);
   }
+
+  :deep(.summary-row--section td) {
+    background: var(--el-fill-color-light);
+    font-weight: 650;
+  }
+
+  :deep(.summary-row--section-collapsed td) {
+    background: color-mix(in srgb, var(--el-color-primary) 6%, transparent);
+  }
+
+  :deep(.summary-row--total td) {
+    font-weight: 700;
+    background: color-mix(in srgb, var(--el-color-primary) 6%, transparent);
+  }
+
+  :deep(.summary-row--net td) {
+    font-weight: 700;
+    background: color-mix(in srgb, var(--el-color-primary) 12%, transparent);
+  }
 }
 
-.net-pay-box {
-  min-width: 0;
-  padding: 12px;
-  border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--el-color-primary) 28%, transparent);
-  background: color-mix(in srgb, var(--el-color-primary) 6%, transparent);
+.summary-section-toggle {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  color: inherit;
+
+  &__icon {
+    font-size: 12px;
+    color: var(--el-text-color-secondary);
+    transition: transform 0.2s ease;
+
+    &.is-expanded {
+      transform: rotate(90deg);
+    }
+  }
 }
 
-.net-pay-value {
+.summary-section-code {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: var(--el-color-primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.summary-section-label-btn {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+  text-align: left;
+
+  &:hover {
+    color: var(--el-color-primary);
+  }
+}
+
+.summary-total-label,
+.summary-total-value {
+  font-weight: 700;
+}
+
+.summary-net-label,
+.summary-net-value {
   font-weight: 700;
   color: var(--el-color-primary);
-}
-
-.net-pay-table {
-  :deep(.el-table__row:last-child td) {
-    font-weight: 700;
-  }
 }
 </style>
