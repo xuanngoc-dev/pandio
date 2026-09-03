@@ -167,12 +167,13 @@
         @change="loadItems"
       />
     </CustomCard>
+
+    <LuongNhanVienChiTietModal ref="chiTietModalRef" />
   </div>
 </template>
 
 <script setup>
 import { onMounted, ref } from 'vue'
-import { ElMessage } from 'element-plus'
 import { Search, View } from '@element-plus/icons-vue'
 import { fetchLuongTongHop } from '@/api/tinhLuong'
 import Pagination from '@/components/Pagination.vue'
@@ -188,6 +189,7 @@ import {
   CustomTableColumn,
   CustomTooltip,
 } from '@/components/element'
+import LuongNhanVienChiTietModal from './LuongNhanVienChiTietModal.vue'
 
 const loading = ref(false)
 const items = ref([])
@@ -196,6 +198,7 @@ const perPage = ref(10)
 const total = ref(0)
 const keyword = ref('')
 const selectedMonth = ref(currentMonthValue())
+const chiTietModalRef = ref(null)
 
 function currentMonthValue() {
   const now = new Date()
@@ -251,7 +254,11 @@ async function loadItems() {
 }
 
 function viewDetail(row) {
-  ElMessage.info(`Chi tiết lương của ${row.name || 'nhân viên'} sẽ sớm được bổ sung.`)
+  chiTietModalRef.value?.open({
+    userId: row.user_id,
+    thang: selectedMonth.value,
+    name: row.name,
+  })
 }
 
 onMounted(() => {

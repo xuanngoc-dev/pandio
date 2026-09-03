@@ -100,6 +100,7 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
 
     // --- Tính lương ---
     Route::get('/tinh-luong/chi-tiet-theo-ngay', [TinhLuongController::class, 'chiTietTheoNgay']); // Bảng lương chi tiết từng ngày (user hiện tại)
+    Route::get('/tinh-luong/chi-tiet-theo-ngay-nhan-vien', [TinhLuongController::class, 'chiTietTheoNgayNhanVien']); // Bảng lương chi tiết từng ngày theo user_id
     Route::get('/tinh-luong/tong-hop', [TinhLuongController::class, 'tongHop']);                   // Lương tổng hợp theo tháng (danh sách nhân viên)
 
     // --- Phòng ban ---

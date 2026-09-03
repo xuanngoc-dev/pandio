@@ -65,6 +65,37 @@ class TinhLuongController extends BaseApiController
     }
 
     /**
+     * Bảng lương chi tiết theo ngày trong tháng của một nhân viên (theo user_id).
+     *
+     * Query: user_id (required), thang (YYYY-MM, required)
+     */
+    public function chiTietTheoNgayNhanVien(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'user_id' => ['required', 'integer', 'min:1'],
+                'thang' => ['required', 'string', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/'],
+            ]);
+
+            $user = User::query()
+                ->with(['nhanVien:id,user_id,loai_nhan_vien,cong_chuan,luong_thuong_phu_cap'])
+                ->select(['id', 'name', 'email'])
+                ->findOrFail((int) $validated['user_id']);
+
+            $nhanVien = $user->nhanVien;
+            if (! $nhanVien) {
+                throw ValidationException::withMessages([
+                    'nhan_vien' => ['Tài khoản chưa có hồ sơ nhân sự.'],
+                ]);
+            }
+
+            $payload = $this->buildBangLuongThang($user, $nhanVien, $validated['thang'], includeDays: true);
+
+            return response()->json($payload);
+        }, 'lấy bảng lương chi tiết theo ngày của nhân viên');
+    }
+
+    /**
      * Lương tổng hợp theo tháng — danh sách nhân viên (phân trang).
      *
      * Query: thang (YYYY-MM, required), page, per_page, keyword
