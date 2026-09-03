@@ -174,15 +174,19 @@
             </CustomTableColumn>
 
             <!--
-              Sản xuất theo ngày (backend tính sẵn) — Make / Chụp / Quay phim:
+              Sản xuất theo ngày (backend tính sẵn) — Make / Chụp / Quay / Edit:
               - Nguồn: hop_dong_su_dung_dich_vu đã có thoi_gian_hoan_tat_san_xuat
                 (đã hoàn tất sản xuất; user nằm trong tho_make / tho_chup / quay_phim
-                của ít nhất một buổi trong danh_sach_buoi_chup).
+                / tho_edit của ít nhất một buổi trong danh_sach_buoi_chup).
               - Ngày tính: DATE(thoi_gian_hoan_tat_san_xuat) theo Asia/Ho_Chi_Minh.
-              - Mỗi buổi: so_diem_chup + loai_quay_chup → map
+              - Make/Chụp/Quay: mỗi buổi so_diem_chup + loai_quay_chup → map
                 luong_thuong_phu_cap.luong_theo_dich_vu.items[ma_dich_vu]
                 → đơn giá role theo mức điểm 1/2/3.
-              - 1 HĐ nhiều buổi → cộng buổi; 1 ngày nhiều HĐ → cộng HĐ.
+              - Edit: 1 lần / HĐ nếu user là tho_edit;
+                tổng ảnh = Σ (combo.so_anh_chinh_sua × so_luong) từ
+                hop_dong_dong_sddv_combos + dich_vu_danh_sach_dich_nhom_dich_vu;
+                thành tiền = tổng ảnh × luong_chinh_sua_anh.
+              - 1 ngày nhiều HĐ → cộng HĐ.
             -->
             <CustomTableColumn label="Sản xuất" align="center">
               <CustomTableColumn
@@ -261,7 +265,20 @@
                 align="right"
               >
                 <template #default="{ row }">
-                  {{ formatMoney(row.san_xuat?.edit) }}
+                  <CustomTooltip
+                    v-if="hasSanXuatChiTiet(row, 'edit')"
+                    content="Xem chi tiết lương edit"
+                    placement="top"
+                  >
+                    <button
+                      type="button"
+                      class="money-link"
+                      @click="openSanXuatChiTiet(row, 'edit')"
+                    >
+                      {{ formatMoney(row.san_xuat?.edit) }}
+                    </button>
+                  </CustomTooltip>
+                  <span v-else>{{ formatMoney(row.san_xuat?.edit) }}</span>
                 </template>
               </CustomTableColumn>
             </CustomTableColumn>
@@ -407,13 +424,15 @@ const GROUP_A_DEFS = [
  * - T7, CN và ngày lễ active: không cần điểm danh
  * - part_time: lấy thuong_chuyen_can cố định trong hồ sơ NV
  *
- * Lương sản xuất Make/Chụp/Quay (san_xuat_*):
+ * Lương sản xuất Make/Chụp/Quay/Edit (san_xuat_*):
  * - Nguồn: HĐ SDDV đã có thoi_gian_hoan_tat_san_xuat; user được gán
- *   tho_make / tho_chup / quay_phim trong danh_sach_buoi_chup
+ *   tho_make / tho_chup / quay_phim / tho_edit trong danh_sach_buoi_chup
  * - Ngày tính: DATE(thoi_gian_hoan_tat_san_xuat)
- * - Mỗi buổi: so_diem_chup + loai_quay_chup → đơn giá trong
+ * - Make/Chụp/Quay: mỗi buổi so_diem_chup + loai_quay_chup → đơn giá trong
  *   luong_theo_dich_vu.items[ma_dich_vu].{make|chup|quay_phim}[1|2|3]
- * - Cộng dồn buổi trong HĐ, cộng dồn HĐ trong ngày
+ * - Edit: 1 lần / HĐ; tổng ảnh từ combo (so_anh_chinh_sua × so_luong)
+ *   × luong_chinh_sua_anh trong luong_thuong_phu_cap
+ * - Cộng dồn HĐ trong ngày
  */
 const GROUP_B_DEFS = [
   { key: 'tong_luong_theo_gio', label: 'Tổng lương theo giờ' },

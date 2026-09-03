@@ -607,11 +607,19 @@ class TinhLuongController extends BaseApiController
      * (đã từng chuyển sang trang_thai_dieu_phoi = hoan_tat_san_xuat).
      * Ngày tính lương = DATE(thoi_gian_hoan_tat_san_xuat) theo Asia/Ho_Chi_Minh.
      *
+     * Make / Chụp / Quay phim:
      * Mỗi buổi trong danh_sach_buoi_chup mà user được gán (tho_make / tho_chup /
-     * quay_phim / tho_edit): lấy so_diem_chup + loai_quay_chup, map sang
+     * quay_phim): lấy so_diem_chup + loai_quay_chup, map sang
      * nhan_vien.luong_thuong_phu_cap.luong_theo_dich_vu.items[ma_dich_vu]
      * → đơn giá role theo mức điểm 1/2/3.
      * Nhiều buổi trong 1 HĐ cộng dồn; nhiều HĐ trong 1 ngày cộng dồn.
+     *
+     * Edit:
+     * User được gán tho_edit ở ít nhất một buổi của HĐ → tính 1 lần / HĐ.
+     * Tổng ảnh = Σ (hop_dong_dong_sddv_combos.so_luong ×
+     *   dich_vu_danh_sach_dich_nhom_dich_vu.so_anh_chinh_sua).
+     * Thành tiền = tổng ảnh × luong_thuong_phu_cap.luong_chinh_sua_anh.
+     * Nhiều HĐ trong 1 ngày → cộng dồn.
      *
      * Khi $withChiTiet = true, mỗi ngày kèm chi_tiet.{role}[] để hiển thị modal.
      *
@@ -623,6 +631,10 @@ class TinhLuongController extends BaseApiController
         $dateExpr = "LEFT(NULLIF(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(thong_tin_dieu_phoi, '$.{$hoanTatKey}')), 'null'), ''), 10)";
 
         $contracts = HopDongSuDungDichVu::query()
+            ->with([
+                'combos:id,ma_hop_dong_id,combo_id,so_luong',
+                'combos.combo:id,ma_nhom,ten_nhom,so_anh_chinh_sua',
+            ])
             ->whereNotIn('trang_thai', ['moi_tao', 'nhap', 'da_huy'])
             ->whereNotNull('thong_tin_dieu_phoi')
             ->whereRaw("{$dateExpr} IS NOT NULL")
@@ -645,6 +657,8 @@ class TinhLuongController extends BaseApiController
             })
             ->get(['id', 'ma_hop_dong', 'ten_khach_hang', 'thong_tin_dieu_phoi']);
 
+        $donGiaEdit = round((float) $nhanVien->getLuongValue('luong_chinh_sua_anh'), 2);
+
         $map = [];
         foreach ($contracts as $hd) {
             $envelope = is_array($hd->thong_tin_dieu_phoi) ? $hd->thong_tin_dieu_phoi : [];
@@ -654,10 +668,16 @@ class TinhLuongController extends BaseApiController
             }
 
             $sessions = HopDongSuDungDichVu::normalizeDieuPhoiSessions($envelope);
+            $isThoEditHopDong = false;
+
             foreach ($sessions as $sessionIndex => $session) {
                 $roles = $this->rolesOfUserInDieuPhoi($session, $userId);
                 if ($roles === []) {
                     continue;
+                }
+
+                if (in_array('edit', $roles, true)) {
+                    $isThoEditHopDong = true;
                 }
 
                 $diem = $this->resolveSoDiemChupFromSession($session);
@@ -674,6 +694,10 @@ class TinhLuongController extends BaseApiController
                 }
 
                 foreach ($roles as $role) {
+                    if ($role === 'edit') {
+                        continue;
+                    }
+
                     $map[$dateKey]['so_job'][$role] = (int) ($map[$dateKey]['so_job'][$role] ?? 0) + 1;
 
                     $donGia = 0.0;
@@ -705,9 +729,72 @@ class TinhLuongController extends BaseApiController
                     ];
                 }
             }
+
+            if (! $isThoEditHopDong) {
+                continue;
+            }
+
+            if (! isset($map[$dateKey])) {
+                $map[$dateKey] = $this->emptySanXuat($withChiTiet);
+            }
+
+            $editBreakdown = $this->resolveSoAnhChinhSuaFromCombos($hd);
+            $soAnh = (int) ($editBreakdown['tong_so_anh'] ?? 0);
+            $thanhTienEdit = round($soAnh * $donGiaEdit, 2);
+
+            $map[$dateKey]['so_job']['edit'] = (int) ($map[$dateKey]['so_job']['edit'] ?? 0) + 1;
+            if ($thanhTienEdit > 0) {
+                $map[$dateKey]['edit'] = round($map[$dateKey]['edit'] + $thanhTienEdit, 2);
+            }
+
+            if ($withChiTiet) {
+                $map[$dateKey]['chi_tiet']['edit'][] = [
+                    'hop_dong_id' => (int) $hd->id,
+                    'ma_hop_dong' => (string) ($hd->ma_hop_dong ?? ''),
+                    'ten_khach_hang' => (string) ($hd->ten_khach_hang ?? ''),
+                    'so_anh_chinh_sua' => $soAnh,
+                    'don_gia' => $donGiaEdit,
+                    'thanh_tien' => $thanhTienEdit,
+                    'combos' => $editBreakdown['combos'],
+                ];
+            }
         }
 
         return $map;
+    }
+
+    /**
+     * Tổng số ảnh chỉnh sửa từ combos của HĐ:
+     * Σ (so_luong × dich_vu_danh_sach_dich_nhom_dich_vu.so_anh_chinh_sua).
+     *
+     * @return array{tong_so_anh: int, combos: list<array{combo_id: int, ma_nhom: string, ten_nhom: string, so_luong: int, so_anh_chinh_sua: int, tong_anh: int}>}
+     */
+    private function resolveSoAnhChinhSuaFromCombos(HopDongSuDungDichVu $hd): array
+    {
+        $combos = [];
+        $tong = 0;
+
+        foreach ($hd->combos as $row) {
+            $combo = $row->combo;
+            $soLuong = max(1, (int) ($row->so_luong ?? 1));
+            $soAnh = (int) ($combo?->so_anh_chinh_sua ?? 0);
+            $tongAnh = $soAnh * $soLuong;
+            $tong += $tongAnh;
+
+            $combos[] = [
+                'combo_id' => (int) ($row->combo_id ?? $combo?->id ?? 0),
+                'ma_nhom' => (string) ($combo?->ma_nhom ?? ''),
+                'ten_nhom' => (string) ($combo?->ten_nhom ?? ''),
+                'so_luong' => $soLuong,
+                'so_anh_chinh_sua' => $soAnh,
+                'tong_anh' => $tongAnh,
+            ];
+        }
+
+        return [
+            'tong_so_anh' => $tong,
+            'combos' => $combos,
+        ];
     }
 
     /**
