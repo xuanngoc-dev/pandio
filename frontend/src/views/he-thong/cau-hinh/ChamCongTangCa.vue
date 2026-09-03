@@ -15,7 +15,10 @@
           <div class="setting-grid">
             <div class="setting-item">
               <label class="setting-item__title">
-                <el-checkbox v-model="form.yeu_cau_dang_ky_ca_moi_duoc_diem_danh.gia_tri" />
+                <el-checkbox
+                  v-model="form.yeu_cau_dang_ky_ca_moi_duoc_diem_danh.gia_tri"
+                  disabled
+                />
                 <span>Yêu cầu đăng ký ca mới được điểm danh</span>
               </label>
               <CustomFormItem prop="yeu_cau_dang_ky_ca_moi_duoc_diem_danh.mo_ta" class="mo-ta-item">
@@ -189,7 +192,7 @@ const CONFIG_GROUP_KEY = 'cham_cong_tang_ca'
 const DEFAULTS = {
   yeu_cau_dang_ky_ca_moi_duoc_diem_danh: {
     mo_ta: 'Nhân viên phải đăng ký ca làm việc trước khi được điểm danh.',
-    gia_tri: false,
+    gia_tri: true,
   },
   kiem_soat_ip_diem_danh: {
     mo_ta: 'Chỉ cho phép điểm danh từ các IP đã được cấu hình.',
@@ -243,9 +246,11 @@ function applyFromServer(group = {}) {
     const saved = group[key]
     const fallback = DEFAULTS[key]
     form[key].mo_ta = typeof saved?.mo_ta === 'string' ? saved.mo_ta : fallback.mo_ta
-    form[key].gia_tri = saved?.gia_tri !== undefined && saved?.gia_tri !== null
-      ? saved.gia_tri
-      : fallback.gia_tri
+    form[key].gia_tri = key === 'yeu_cau_dang_ky_ca_moi_duoc_diem_danh'
+      ? true
+      : (saved?.gia_tri !== undefined && saved?.gia_tri !== null
+        ? saved.gia_tri
+        : fallback.gia_tri)
   }
 }
 
@@ -253,7 +258,7 @@ function buildGroupPayload() {
   return {
     yeu_cau_dang_ky_ca_moi_duoc_diem_danh: {
       mo_ta: form.yeu_cau_dang_ky_ca_moi_duoc_diem_danh.mo_ta?.trim() || DEFAULTS.yeu_cau_dang_ky_ca_moi_duoc_diem_danh.mo_ta,
-      gia_tri: Boolean(form.yeu_cau_dang_ky_ca_moi_duoc_diem_danh.gia_tri),
+      gia_tri: true,
     },
     kiem_soat_ip_diem_danh: {
       mo_ta: form.kiem_soat_ip_diem_danh.mo_ta?.trim() || DEFAULTS.kiem_soat_ip_diem_danh.mo_ta,
