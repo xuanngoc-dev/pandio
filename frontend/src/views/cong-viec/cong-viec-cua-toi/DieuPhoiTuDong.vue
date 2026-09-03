@@ -106,7 +106,10 @@
     </el-tabs>
 
     <div v-loading="loading" class="tab-content tab-content--list">
-      <div v-if="fileFilterOptions.length || activeTab === 'hau_ky'" class="step-file-filters">
+      <div
+        v-if="fileFilterOptions.length || activeTab === 'hau_ky' || showViewToggle"
+        class="step-file-filters"
+      >
         <div v-if="fileFilterOptions.length" class="step-file-filters__files">
           <el-checkbox-group
             :model-value="stepFileFilters"
@@ -141,26 +144,27 @@
               :value="opt.value"
             />
           </CustomSelect>
-          <div class="step-view-toggle">
-            <CustomTooltip content="Dạng lưới" placement="top">
-              <CustomButton
-                :type="hauKyViewMode === 'grid' ? 'primary' : 'default'"
-                circle
-                size="small"
-                :icon="Grid"
-                @click="hauKyViewMode = 'grid'"
-              />
-            </CustomTooltip>
-            <CustomTooltip content="Dạng bảng" placement="top">
-              <CustomButton
-                :type="hauKyViewMode === 'table' ? 'primary' : 'default'"
-                circle
-                size="small"
-                :icon="List"
-                @click="hauKyViewMode = 'table'"
-              />
-            </CustomTooltip>
-          </div>
+        </div>
+
+        <div v-if="showViewToggle" class="step-view-toggle">
+          <CustomTooltip content="Dạng lưới" placement="top">
+            <CustomButton
+              :type="viewMode === VIEW_GRID ? 'primary' : 'default'"
+              circle
+              size="small"
+              :icon="Grid"
+              @click="viewMode = VIEW_GRID"
+            />
+          </CustomTooltip>
+          <CustomTooltip content="Dạng bảng" placement="top">
+            <CustomButton
+              :type="viewMode === VIEW_TABLE ? 'primary' : 'default'"
+              circle
+              size="small"
+              :icon="List"
+              @click="viewMode = VIEW_TABLE"
+            />
+          </CustomTooltip>
         </div>
       </div>
 
@@ -171,7 +175,7 @@
 
       <template v-else-if="items.length">
         <DieuPhoiTuDongTable
-          v-if="showHauKyTable"
+          v-if="showTableView"
           :items="items"
           :step="activeTab"
           @status-changed="onAccepted"
@@ -227,12 +231,14 @@ import {
   CustomOption,
   CustomRow,
   CustomSelect,
+  CustomTooltip,
 } from '@/components/element'
 import DieuPhoiTuDongCard from './DieuPhoiTuDongCard.vue'
 import DieuPhoiTuDongTable from './DieuPhoiTuDongTable.vue'
 
-const HAU_KY_VIEW_GRID = 'grid'
-const HAU_KY_VIEW_TABLE = 'table'
+const VIEW_GRID = 'grid'
+const VIEW_TABLE = 'table'
+const VIEW_TOGGLE_STEPS = ['tien_ky', 'hau_ky', 'gui_in', 'hoan_tat_san_xuat']
 
 const tabs = [
   { name: 'tien_ky', label: 'Tiền kỳ' },
@@ -293,10 +299,12 @@ const perPage = ref(24)
 const total = ref(0)
 const stepFileFilters = ref(['all'])
 const stepNoteThoShopFilters = ref([])
-const hauKyViewMode = ref(HAU_KY_VIEW_GRID)
+const viewMode = ref(VIEW_GRID)
 
-const showHauKyTable = computed(
-  () => activeTab.value === 'hau_ky' && hauKyViewMode.value === HAU_KY_VIEW_TABLE,
+const showViewToggle = computed(() => VIEW_TOGGLE_STEPS.includes(activeTab.value))
+
+const showTableView = computed(
+  () => showViewToggle.value && viewMode.value === VIEW_TABLE,
 )
 
 const fileFilterOptions = computed(
@@ -421,7 +429,7 @@ function onTabChange() {
   page.value = 1
   stepFileFilters.value = ['all']
   stepNoteThoShopFilters.value = []
-  hauKyViewMode.value = HAU_KY_VIEW_GRID
+  viewMode.value = VIEW_GRID
   loadItems()
 }
 
@@ -580,7 +588,7 @@ onMounted(() => {
     flex: 0 0 auto;
     align-items: center;
     gap: 6px;
-    margin-left: 4px;
+    margin-left: auto;
   }
 
   @media (max-width: 991px) {
@@ -609,6 +617,8 @@ onMounted(() => {
 
     .step-view-toggle {
       margin-left: 0;
+      justify-content: flex-end;
+      width: 100%;
     }
   }
 

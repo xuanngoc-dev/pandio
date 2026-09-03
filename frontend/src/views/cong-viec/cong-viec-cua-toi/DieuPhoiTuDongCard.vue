@@ -12,7 +12,14 @@
         <span class="code">- [{{ maHopDong }}]</span>
       </div>
 
-      <div v-if="thoiGianChupItems.length" class="cong-viec-card__row">
+      <div
+        v-if="step === 'hoan_tat_san_xuat'"
+        class="cong-viec-card__row cong-viec-card__row--inline"
+      >
+        <span class="label">Thời gian hoàn thành sản xuất</span>
+        <span class="value">{{ thoiGianHoanTatSanXuat || '—' }}</span>
+      </div>
+      <div v-else-if="thoiGianChupItems.length" class="cong-viec-card__row">
         <span class="label">
           Thời gian chụp
           <CustomTooltip
@@ -439,6 +446,7 @@ import {
   CustomTooltip,
 } from '@/components/element'
 import { useAuthStore } from '@/stores/auth'
+import { getThoiGianHoanTatSanXuat } from '@/utils/dieuPhoiTuDongDisplay'
 import {
   collectDieuPhoiGiaTri,
   firstDieuPhoiGiaTri,
@@ -657,6 +665,8 @@ const thoiGianChupItems = computed(() =>
     })
     .filter(Boolean),
 )
+
+const thoiGianHoanTatSanXuat = computed(() => getThoiGianHoanTatSanXuat(props.item))
 
 const ngayTraFileLe = computed(() =>
   collectDieuPhoiGiaTri(props.item?.thong_tin_dieu_phoi, 'ngay_tra_file_le')

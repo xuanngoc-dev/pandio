@@ -9,6 +9,7 @@ import {
   NOTE_THO_SHOP_KEY,
   parseSessionLoaiQuayChup,
   sharedLichQuayChupLabel,
+  THOI_GIAN_HOAN_TAT_SAN_XUAT_KEY,
 } from './thongTinDieuPhoi'
 
 const STAFF_ROLE_LABELS = {
@@ -52,6 +53,35 @@ export function formatDieuPhoiDate(value) {
   const mm = String(date.getMonth() + 1).padStart(2, '0')
   const yyyy = date.getFullYear()
   return `${dd}/${mm}/${yyyy}`
+}
+
+export function formatDieuPhoiDateTime(value) {
+  if (value == null || value === '') return ''
+  const raw = String(value).trim()
+  // MySQL datetime "YYYY-MM-DD HH:mm:ss" — parse as local
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/)
+  if (match) {
+    return `${match[3]}/${match[2]}/${match[1]} ${match[4]}:${match[5]}`
+  }
+  const date = new Date(raw)
+  if (Number.isNaN(date.getTime())) return raw
+  const dd = String(date.getDate()).padStart(2, '0')
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const yyyy = date.getFullYear()
+  const hh = String(date.getHours()).padStart(2, '0')
+  const mi = String(date.getMinutes()).padStart(2, '0')
+  return `${dd}/${mm}/${yyyy} ${hh}:${mi}`
+}
+
+export function getThoiGianHoanTatSanXuat(row) {
+  const raw = row?.thong_tin_dieu_phoi
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return ''
+  const value = raw[THOI_GIAN_HOAN_TAT_SAN_XUAT_KEY] ?? raw.thoi_gian_hoan_tat_san_xuat
+  if (value == null || value === '') return ''
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    return formatDieuPhoiDateTime(value.gia_tri)
+  }
+  return formatDieuPhoiDateTime(value)
 }
 
 function formatTime(value) {
@@ -232,7 +262,7 @@ export function getDieuPhoiFileLinks(row, step = 'hau_ky') {
   let defs = FILE_LINK_DEFS
   if (step === 'tien_ky') {
     defs = FILE_LINK_DEFS.filter((def) => def.key === 'link_file_goc')
-  } else if (step === 'hau_ky') {
+  } else if (step === 'hau_ky' || step === 'gui_in' || step === 'hoan_tat_san_xuat') {
     defs = FILE_LINK_DEFS
   }
 
@@ -303,6 +333,14 @@ export function getDieuPhoiDateDeadlineStatus(row, key, hasFile, lateLabel, okLa
     lateLabel,
     okLabel,
   })
+}
+
+export function canChuyenHauKy(row) {
+  const ketQua =
+    row?.ket_qua_hop_dong && typeof row.ket_qua_hop_dong === 'object' && !Array.isArray(row.ket_qua_hop_dong)
+      ? row.ket_qua_hop_dong
+      : {}
+  return ketQua?.link_file_goc?.gia_tri != null && String(ketQua.link_file_goc.gia_tri).trim() !== ''
 }
 
 export function canChuyenGuiIn(row) {

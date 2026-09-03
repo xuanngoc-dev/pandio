@@ -15,9 +15,16 @@
 
       <CustomTableColumn label="Mã HĐ" prop="ma_hop_dong" min-width="120" show-overflow-tooltip />
 
-      <CustomTableColumn label="Thời gian chụp" min-width="200" show-overflow-tooltip>
+      <CustomTableColumn
+        :label="step === 'hoan_tat_san_xuat' ? 'Thời gian hoàn thành sản xuất' : 'Thời gian chụp'"
+        min-width="200"
+        show-overflow-tooltip
+      >
         <template #default="{ row }">
-          <template v-if="buildDieuPhoiThoiGianChupItems(row).length">
+          <template v-if="step === 'hoan_tat_san_xuat'">
+            {{ getThoiGianHoanTatSanXuat(row) || '—' }}
+          </template>
+          <template v-else-if="buildDieuPhoiThoiGianChupItems(row).length">
             <template
               v-for="(item, index) in buildDieuPhoiThoiGianChupItems(row)"
               :key="index"
@@ -189,6 +196,28 @@
               />
             </CustomTooltip>
             <CustomTooltip
+              v-if="step === 'tien_ky'"
+              :content="
+                canChuyenHauKy(row)
+                  ? 'Chuyển sang hậu kỳ'
+                  : 'Cần có File gốc trước khi chuyển sang hậu kỳ'
+              "
+              placement="top"
+            >
+              <span class="dieu-phoi-table__action-wrap">
+                <CustomButton
+                  type="primary"
+                  circle
+                  size="small"
+                  :icon="Right"
+                  :disabled="!canChuyenHauKy(row)"
+                  :loading="movingId === row.id"
+                  @click.stop="onChuyenHauKy(row)"
+                />
+              </span>
+            </CustomTooltip>
+            <CustomTooltip
+              v-else-if="step === 'hau_ky'"
               :content="
                 canChuyenGuiIn(row)
                   ? 'Chuyển sang gửi in'
@@ -207,6 +236,20 @@
                   @click.stop="onChuyenGuiIn(row)"
                 />
               </span>
+            </CustomTooltip>
+            <CustomTooltip
+              v-else-if="step === 'gui_in'"
+              content="Hoàn tất sản xuất"
+              placement="top"
+            >
+              <CustomButton
+                type="success"
+                circle
+                size="small"
+                :icon="Finished"
+                :loading="movingId === row.id"
+                @click.stop="onHoanTatSanXuat(row)"
+              />
             </CustomTooltip>
           </div>
         </template>
@@ -262,8 +305,10 @@
 import { computed, ref } from 'vue'
 import {
   Edit,
+  Finished,
   Plus,
   Printer,
+  Right,
   View,
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -271,6 +316,8 @@ import {
   capNhatKetQuaHopDong,
   capNhatNgayDieuPhoi,
   chuyenGuiInCongViec,
+  chuyenHauKyCongViec,
+  chuyenHoanTatSanXuatCongViec,
 } from '@/api/hopDongSuDungDichVu'
 import {
   CustomButton,
@@ -285,6 +332,7 @@ import { useAuthStore } from '@/stores/auth'
 import {
   buildDieuPhoiThoiGianChupItems,
   canChuyenGuiIn,
+  canChuyenHauKy,
   canEditDieuPhoiFile,
   canEditNoteThoShop,
   canEditSharedDates,
@@ -294,6 +342,7 @@ import {
   getDieuPhoiNoteThoShopLabel,
   getDieuPhoiNoteThoShopValue,
   getDieuPhoiVaiTroLabels,
+  getThoiGianHoanTatSanXuat,
   normalizeDieuPhoiUrl,
 } from '@/utils/dieuPhoiTuDongDisplay'
 import {
@@ -342,11 +391,9 @@ const noteEditingRowId = ref(null)
 const noteDraft = ref('')
 const savingNote = ref(false)
 
-const fileColumns = [
-  { key: 'link_file_goc', label: 'File gốc' },
-  { key: 'link_file_le', label: 'File lẻ' },
-  { key: 'link_file_in', label: 'File in' },
-]
+const fileColumns = computed(() =>
+  getDieuPhoiFileLinks({}, props.step).map(({ key, label }) => ({ key, label })),
+)
 
 const linkModalTitle = computed(() => {
   if (!linkModalField.value) return 'Thêm link'
@@ -510,6 +557,39 @@ async function saveLink() {
   }
 }
 
+async function onChuyenHauKy(row) {
+  if (!row?.id || !canChuyenHauKy(row)) return
+
+  try {
+    await ElMessageBox.confirm(
+      `Chuyển hợp đồng ${row.ma_hop_dong || ''} sang hậu kỳ?`,
+      'Chuyển sang hậu kỳ',
+      {
+        type: 'info',
+        confirmButtonText: 'Chuyển',
+        cancelButtonText: 'Hủy',
+      },
+    )
+  } catch {
+    return
+  }
+
+  movingId.value = row.id
+  try {
+    await chuyenHauKyCongViec(row.id)
+    ElMessage.success('Đã chuyển sang hậu kỳ')
+    emit('status-changed')
+  } catch (error) {
+    const msg =
+      error?.response?.data?.message ||
+      error?.message ||
+      'Không thể chuyển sang hậu kỳ'
+    ElMessage.error(msg)
+  } finally {
+    movingId.value = null
+  }
+}
+
 async function onChuyenGuiIn(row) {
   if (!row?.id || !canChuyenGuiIn(row)) return
 
@@ -537,6 +617,39 @@ async function onChuyenGuiIn(row) {
       error?.response?.data?.message ||
       error?.message ||
       'Không thể chuyển sang gửi in'
+    ElMessage.error(msg)
+  } finally {
+    movingId.value = null
+  }
+}
+
+async function onHoanTatSanXuat(row) {
+  if (!row?.id) return
+
+  try {
+    await ElMessageBox.confirm(
+      `Hoàn tất sản xuất hợp đồng ${row.ma_hop_dong || ''}?`,
+      'Hoàn tất sản xuất',
+      {
+        type: 'info',
+        confirmButtonText: 'Đồng ý',
+        cancelButtonText: 'Hủy',
+      },
+    )
+  } catch {
+    return
+  }
+
+  movingId.value = row.id
+  try {
+    await chuyenHoanTatSanXuatCongViec(row.id)
+    ElMessage.success('Đã chuyển sang hoàn tất sản xuất')
+    emit('status-changed')
+  } catch (error) {
+    const msg =
+      error?.response?.data?.message ||
+      error?.message ||
+      'Không thể hoàn tất sản xuất'
     ElMessage.error(msg)
   } finally {
     movingId.value = null
