@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Models\CauHinhNgayNghi;
 use App\Models\DiemDanh;
 use App\Models\HopDongChoThueTrangPhuc;
 use App\Models\HopDongSuDungDichVu;
@@ -172,6 +173,7 @@ class TinhLuongController extends BaseApiController
 
         $luongCung = $nhanVien->getLuongValue('luong_cung');
         $luongMem = $nhanVien->getLuongValue('luong_mem');
+        $loaiNhanVien = (string) ($nhanVien->loai_nhan_vien ?? '');
         $phuCap = [
             'phu_cap' => $nhanVien->getLuongValue('phu_cap'),
             'phu_cap_xang' => $nhanVien->getLuongValue('phu_cap_xang'),
@@ -179,13 +181,14 @@ class TinhLuongController extends BaseApiController
             'phu_cap_dien_thoai' => $nhanVien->getLuongValue('phu_cap_dien_thoai'),
             'phu_cap_nha_o' => $nhanVien->getLuongValue('phu_cap_nha_o'),
         ];
-        $thuongChuyenCan = $nhanVien->getLuongValue('thuong_chuyen_can');
+        $holidayDates = $this->activeHolidayDates($tuNgay, $denNgay);
 
         $hoaHongTpByDate = $this->hoaHongTrangPhucByDate($userId, $tuNgay, $denNgay, $nhanVien->getLuongValue('hoa_hong_hop_dong_trang_phuc'));
         $hoaHongSddvByDate = $this->hoaHongSddvByDate($userId, $tuNgay, $denNgay, $nhanVien->getLuongValue('hoa_hong_hop_dong_sddv'));
         $sanXuatByDate = $this->sanXuatByDate($userId, $tuNgay, $denNgay, $nhanVien);
 
         $days = [];
+        $soNgayLamThuBayChuNhat = 0;
         $tong = [
             'gio_lam_co_ban' => 0.0,
             'gio_lam_tang_ca' => 0.0,
@@ -215,6 +218,10 @@ class TinhLuongController extends BaseApiController
             $luongTangCa = round((float) ($record?->luong_tang_ca ?? 0), 2);
             $tienPhatDiMuon = round((float) ($record?->tien_phat_di_muon ?? 0), 2);
             $tienPhatVeSom = round((float) ($record?->tien_phat_ve_som ?? 0), 2);
+
+            if ($record !== null && $date->isWeekend()) {
+                $soNgayLamThuBayChuNhat++;
+            }
 
             $tong['gio_lam_co_ban'] += $gioLamCoBan;
             $tong['gio_lam_tang_ca'] += $gioLamTangCa;
@@ -251,6 +258,25 @@ class TinhLuongController extends BaseApiController
             }
         }
 
+        $donGiaPhuCapThuBayChuNhat = $nhanVien->getLuongValue('phu_cap_thu_bay_va_chu_nhat');
+        $phuCapThuBayChuNhat = round($soNgayLamThuBayChuNhat * $donGiaPhuCapThuBayChuNhat, 2);
+
+        if ($loaiNhanVien === 'full_time') {
+            $today = Carbon::now(self::TIMEZONE)->startOfDay();
+            $chuyenCanDenNgay = $end->copy()->startOfDay();
+            if ($chuyenCanDenNgay->gt($today)) {
+                $chuyenCanDenNgay = $today;
+            }
+
+            $soNgayNghi = $start->gt($chuyenCanDenNgay)
+                ? 0
+                : $this->demSoNgayNghiFullTime($start, $chuyenCanDenNgay, $records, $holidayDates);
+            $thuongChuyenCan = $this->tinhThuongChuyenCanFullTime($nhanVien, $soNgayNghi);
+        } else {
+            $soNgayNghi = 0;
+            $thuongChuyenCan = $nhanVien->getLuongValue('thuong_chuyen_can');
+        }
+
         $tongPhuCap = array_sum($phuCap);
         $tongHoaHong = $tong['hoa_hong_hd_tp'] + $tong['hoa_hong_hd_sddv'];
         $tongSanXuat = $tong['san_xuat_make']
@@ -263,6 +289,7 @@ class TinhLuongController extends BaseApiController
             + $tong['tong_tang_ca']
             + $tongHoaHong
             + $tongSanXuat
+            + $phuCapThuBayChuNhat
             + $thuongChuyenCan;
         $tongC = $tong['tien_phat_di_muon']
             + $tong['tien_phat_ve_som']
@@ -295,6 +322,9 @@ class TinhLuongController extends BaseApiController
                 'san_xuat_chup' => round($tong['san_xuat_chup'], 2),
                 'san_xuat_quay_phim' => round($tong['san_xuat_quay_phim'], 2),
                 'san_xuat_edit' => round($tong['san_xuat_edit'], 2),
+                'phu_cap_thu_bay_va_chu_nhat' => round($phuCapThuBayChuNhat, 2),
+                'so_ngay_lam_thu_bay_chu_nhat' => $soNgayLamThuBayChuNhat,
+                'so_ngay_nghi' => $soNgayNghi,
                 'thuong_chuyen_can' => round($thuongChuyenCan, 2),
                 'tong_hoa_hong' => round($tongHoaHong, 2),
                 'tong_san_xuat' => round($tongSanXuat, 2),
@@ -315,6 +345,83 @@ class TinhLuongController extends BaseApiController
         }
 
         return $result;
+    }
+
+    /**
+     * @return array<string, true>
+     */
+    private function activeHolidayDates(string $tuNgay, string $denNgay): array
+    {
+        $rows = CauHinhNgayNghi::query()
+            ->where('trang_thai', 'active')
+            ->whereDate('ngay_ket_thuc', '>=', $tuNgay)
+            ->whereDate('ngay_bat_dau', '<=', $denNgay)
+            ->get(['ngay_bat_dau', 'ngay_ket_thuc']);
+
+        $map = [];
+        foreach ($rows as $row) {
+            $start = Carbon::parse($row->ngay_bat_dau, self::TIMEZONE)->startOfDay();
+            $end = Carbon::parse($row->ngay_ket_thuc, self::TIMEZONE)->startOfDay();
+            for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
+                $key = $date->toDateString();
+                if ($key >= $tuNgay && $key <= $denNgay) {
+                    $map[$key] = true;
+                }
+            }
+        }
+
+        return $map;
+    }
+
+    /**
+     * @param  array<string, true>  $holidayDates
+     */
+    private function isNgayKhongTinhNghi(Carbon $date, array $holidayDates): bool
+    {
+        if ($date->isWeekend()) {
+            return true;
+        }
+
+        return isset($holidayDates[$date->toDateString()]);
+    }
+
+    /**
+     * Đếm ngày nghỉ của full_time trong khoảng [start, end]:
+     * ngày trong tuần (không T7/CN, không ngày lễ active) không có bản ghi điểm danh.
+     *
+     * @param  Collection<string, DiemDanh>  $records
+     * @param  array<string, true>  $holidayDates
+     */
+    private function demSoNgayNghiFullTime(Carbon $start, Carbon $end, Collection $records, array $holidayDates): int
+    {
+        $count = 0;
+        for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
+            if ($this->isNgayKhongTinhNghi($date, $holidayDates)) {
+                continue;
+            }
+
+            if (! $records->has($date->toDateString())) {
+                $count++;
+            }
+        }
+
+        return $count;
+    }
+
+    private function tinhThuongChuyenCanFullTime(mixed $nhanVien, int $soNgayNghi): float
+    {
+        if ($soNgayNghi > 3) {
+            return 0.0;
+        }
+
+        $keys = [
+            0 => 'chuyen_can_khong_nghi',
+            1 => 'chuyen_can_nghi_1_ngay',
+            2 => 'chuyen_can_nghi_2_ngay',
+            3 => 'chuyen_can_nghi_3_ngay',
+        ];
+
+        return $nhanVien->getLuongValue($keys[$soNgayNghi]);
     }
 
     /**

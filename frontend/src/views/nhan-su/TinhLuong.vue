@@ -295,6 +295,17 @@ const GROUP_A_DEFS = [
  * - Đơn giá: nhan_vien.luong_thuong_phu_cap.hoa_hong_hop_dong_sddv.value
  * - Công thức ngày: so_hop_dong_trong_ngay × don_gia
  * - Tổng tháng: Σ hoa hồng theo từng ngày trong tháng
+ *
+ * Phụ cấp thứ 7/chủ nhật (phu_cap_thu_bay_va_chu_nhat):
+ * - Đơn giá: nhan_vien.luong_thuong_phu_cap.phu_cap_thu_bay_va_chu_nhat.value
+ * - Công thức: số ngày T7/CN có điểm danh trong tháng × đơn giá
+ *
+ * Thưởng chuyên cần (thuong_chuyen_can) — full_time:
+ * - Mặc định = chuyen_can_khong_nghi; mỗi ngày nghỉ giảm 1 bậc (1→2→3 ngày), >3 ngày → 0
+ * - Khoảng đánh giá: đầu tháng → hôm nay (tháng quá khứ: cả tháng)
+ * - Ngày nghỉ = T2–T6 (không ngày lễ active) không có bản ghi diem_danh
+ * - T7, CN và ngày lễ active: không cần điểm danh
+ * - part_time: lấy thuong_chuyen_can cố định trong hồ sơ NV
  */
 const GROUP_B_DEFS = [
   { key: 'tong_luong_theo_gio', label: 'Tổng lương theo giờ' },
@@ -305,6 +316,7 @@ const GROUP_B_DEFS = [
   { key: 'san_xuat_chup', label: 'Lương chụp' },
   { key: 'san_xuat_quay_phim', label: 'Lương quay phim' },
   { key: 'san_xuat_edit', label: 'Lương edit' },
+  { key: 'phu_cap_thu_bay_va_chu_nhat', label: 'Phụ cấp thứ 7 và chủ nhật' },
   { key: 'thuong_chuyen_can', label: 'Thưởng chuyên cần' },
 ]
 
