@@ -617,7 +617,7 @@ const DEFAULTS = {
 
 const loading = ref(false)
 const saving = ref(false)
-const activeTab = ref('luong_co_ban')
+const activeTab = ref('ky_chot_luong')
 
 const form = reactive(structuredClone(DEFAULTS))
 
