@@ -73,76 +73,42 @@
           </template>
         </CustomTableColumn>
 
-        <CustomTableColumn label="Lương" align="center">
-          <CustomTableColumn label="Lương cứng" min-width="120" align="right">
+        <CustomTableColumn
+          v-for="group in salaryGroups"
+          :key="group.code"
+          align="center"
+          :label-class-name="`salary-group-header salary-group-header--${group.code.toLowerCase()}`"
+        >
+          <template #header>
+            <span class="salary-group-title">
+              <span class="salary-group-code">{{ group.code }}</span>
+              {{ group.label }}
+            </span>
+          </template>
+          <CustomTableColumn
+            v-for="col in group.columns"
+            :key="col.key"
+            :label="col.label"
+            :min-width="col.minWidth"
+            align="right"
+          >
             <template #default="{ row }">
-              {{ formatMoney(row.luong?.luong_cung) }}
-            </template>
-          </CustomTableColumn>
-          <CustomTableColumn label="Lương mềm" min-width="120" align="right">
-            <template #default="{ row }">
-              {{ formatMoney(row.luong?.luong_mem) }}
-            </template>
-          </CustomTableColumn>
-          <CustomTableColumn label="Phụ cấp" min-width="120" align="right">
-            <template #default="{ row }">
-              {{ formatMoney(row.luong?.phu_cap) }}
-            </template>
-          </CustomTableColumn>
-        </CustomTableColumn>
-
-        <CustomTableColumn label="Phát sinh" align="center">
-          <CustomTableColumn label="Lương theo giờ" min-width="130" align="right">
-            <template #default="{ row }">
-              {{ formatMoney(row.phat_sinh?.luong_theo_gio) }}
-            </template>
-          </CustomTableColumn>
-          <CustomTableColumn label="Lương tăng ca" min-width="120" align="right">
-            <template #default="{ row }">
-              {{ formatMoney(row.phat_sinh?.luong_tang_ca) }}
-            </template>
-          </CustomTableColumn>
-          <CustomTableColumn label="Thưởng" min-width="110" align="right">
-            <template #default="{ row }">
-              {{ formatMoney(row.phat_sinh?.thuong) }}
-            </template>
-          </CustomTableColumn>
-          <CustomTableColumn label="Chuyên cần" min-width="110" align="right">
-            <template #default="{ row }">
-              {{ formatMoney(row.phat_sinh?.chuyen_can) }}
-            </template>
-          </CustomTableColumn>
-          <CustomTableColumn label="Hoa hồng" min-width="110" align="right">
-            <template #default="{ row }">
-              {{ formatMoney(row.phat_sinh?.hoa_hong) }}
-            </template>
-          </CustomTableColumn>
-          <CustomTableColumn label="Hậu kỳ" min-width="110" align="right">
-            <template #default="{ row }">
-              {{ formatMoney(row.phat_sinh?.hau_ky) }}
+              <button
+                type="button"
+                class="money-link"
+                :class="{
+                  'money-danger': group.danger && !col.total,
+                  'money-total': col.total,
+                }"
+                @click="viewKhoanMuc(row, group, col)"
+              >
+                {{ formatMoney(row[group.key]?.[col.key]) }}
+              </button>
             </template>
           </CustomTableColumn>
         </CustomTableColumn>
 
-        <CustomTableColumn label="Khấu trừ" align="center">
-          <CustomTableColumn label="Đi muộn" min-width="110" align="right">
-            <template #default="{ row }">
-              <span class="money-danger">{{ formatMoney(row.khau_tru?.di_muon) }}</span>
-            </template>
-          </CustomTableColumn>
-          <CustomTableColumn label="Về sớm" min-width="110" align="right">
-            <template #default="{ row }">
-              <span class="money-danger">{{ formatMoney(row.khau_tru?.ve_som) }}</span>
-            </template>
-          </CustomTableColumn>
-          <CustomTableColumn label="Phát sinh" min-width="110" align="right">
-            <template #default="{ row }">
-              <span class="money-danger">{{ formatMoney(row.khau_tru?.phat_sinh) }}</span>
-            </template>
-          </CustomTableColumn>
-        </CustomTableColumn>
-
-        <CustomTableColumn label="Thực nhận" min-width="140" align="right" fixed="right">
+        <CustomTableColumn label="Thực nhận (A + B − C)" min-width="160" align="right" fixed="right">
           <template #default="{ row }">
             <span class="money-primary">{{ formatMoney(row.thuc_nhan) }}</span>
           </template>
@@ -169,6 +135,7 @@
     </CustomCard>
 
     <LuongNhanVienChiTietModal ref="chiTietModalRef" />
+    <LuongKhoanMucChiTietModal ref="khoanMucModalRef" />
   </div>
 </template>
 
@@ -190,6 +157,7 @@ import {
   CustomTooltip,
 } from '@/components/element'
 import LuongNhanVienChiTietModal from './LuongNhanVienChiTietModal.vue'
+import LuongKhoanMucChiTietModal from './LuongKhoanMucChiTietModal.vue'
 
 const loading = ref(false)
 const items = ref([])
@@ -199,6 +167,55 @@ const total = ref(0)
 const keyword = ref('')
 const selectedMonth = ref(currentMonthValue())
 const chiTietModalRef = ref(null)
+const khoanMucModalRef = ref(null)
+
+const salaryGroups = [
+  {
+    code: 'A',
+    key: 'a',
+    label: 'Lương cứng & phụ cấp',
+    columns: [
+      { key: 'luong_cung', label: 'Lương cứng', minWidth: 120 },
+      { key: 'luong_mem', label: 'Lương mềm', minWidth: 120 },
+      { key: 'phu_cap', label: 'Phụ cấp', minWidth: 110 },
+      { key: 'phu_cap_xang', label: 'Phụ cấp xăng', minWidth: 120 },
+      { key: 'phu_cap_an_trua', label: 'Phụ cấp ăn trưa', minWidth: 130 },
+      { key: 'phu_cap_dien_thoai', label: 'Phụ cấp điện thoại', minWidth: 140 },
+      { key: 'phu_cap_nha_o', label: 'Phụ cấp nhà ở', minWidth: 120 },
+      { key: 'tong', label: 'Tổng A', minWidth: 120, total: true },
+    ],
+  },
+  {
+    code: 'B',
+    key: 'b',
+    label: 'Thu nhập phát sinh',
+    columns: [
+      { key: 'tong_luong_theo_gio', label: 'Tổng lương theo giờ', minWidth: 150 },
+      { key: 'tong_tang_ca', label: 'Tổng tăng ca', minWidth: 120 },
+      { key: 'hoa_hong_hd_tp', label: 'Hoa hồng HĐ TP', minWidth: 130 },
+      { key: 'hoa_hong_hd_sddv', label: 'Hoa hồng HĐ SDDV', minWidth: 140 },
+      { key: 'san_xuat_make', label: 'Lương make', minWidth: 110 },
+      { key: 'san_xuat_chup', label: 'Lương chụp', minWidth: 110 },
+      { key: 'san_xuat_quay_phim', label: 'Lương quay phim', minWidth: 130 },
+      { key: 'san_xuat_edit', label: 'Lương edit', minWidth: 110 },
+      { key: 'phu_cap_thu_bay_va_chu_nhat', label: 'Phụ cấp T7 & CN', minWidth: 130 },
+      { key: 'thuong_chuyen_can', label: 'Thưởng chuyên cần', minWidth: 140 },
+      { key: 'tong', label: 'Tổng B', minWidth: 150, total: true },
+    ],
+  },
+  {
+    code: 'C',
+    key: 'c',
+    label: 'Khấu trừ',
+    danger: true,
+    columns: [
+      { key: 'tien_phat_di_muon', label: 'Tiền đi muộn', minWidth: 120 },
+      { key: 'tien_phat_ve_som', label: 'Tiền về sớm', minWidth: 110 },
+      { key: 'phat_phat_sinh', label: 'Phạt phát sinh', minWidth: 120 },
+      { key: 'tong', label: 'Tổng C', minWidth: 110, total: true },
+    ],
+  },
+]
 
 function currentMonthValue() {
   const now = new Date()
@@ -261,6 +278,19 @@ function viewDetail(row) {
   })
 }
 
+function viewKhoanMuc(row, group, col) {
+  khoanMucModalRef.value?.open({
+    userId: row.user_id,
+    thang: selectedMonth.value,
+    name: row.name,
+    groupCode: group.code,
+    groupLabel: group.label,
+    itemKey: col.key,
+    itemLabel: col.label,
+    danger: Boolean(group.danger) && !col.total,
+  })
+}
+
 onMounted(() => {
   loadItems()
 })
@@ -292,9 +322,76 @@ onMounted(() => {
   color: var(--el-color-danger);
 }
 
+.money-total {
+  font-weight: 700;
+}
+
+.money-link {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  color: var(--el-color-primary);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  text-decoration: none;
+
+  &:hover {
+    color: var(--el-color-primary-light-3);
+  }
+
+  &.money-danger {
+    color: var(--el-color-danger);
+
+    &:hover {
+      color: var(--el-color-danger-light-3);
+    }
+  }
+
+  &.money-total {
+    font-weight: 700;
+  }
+}
+
+.salary-group-title {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 650;
+}
+
+.salary-group-code {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: var(--el-color-primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .salary-summary-table {
   :deep(.el-table__header th) {
     background: var(--el-fill-color-light);
+  }
+
+  :deep(.salary-group-header--a) {
+    background: color-mix(in srgb, var(--el-color-primary) 8%, var(--el-fill-color-light));
+  }
+
+  :deep(.salary-group-header--b) {
+    background: color-mix(in srgb, var(--el-color-success) 10%, var(--el-fill-color-light));
+  }
+
+  :deep(.salary-group-header--c) {
+    background: color-mix(in srgb, var(--el-color-danger) 8%, var(--el-fill-color-light));
   }
 }
 </style>

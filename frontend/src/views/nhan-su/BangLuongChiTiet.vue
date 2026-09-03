@@ -793,8 +793,7 @@ function getSummaries({ columns }) {
   font: inherit;
   font-variant-numeric: tabular-nums;
   cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  text-decoration: none;
 
   &:hover {
     color: var(--el-color-primary-light-3);
