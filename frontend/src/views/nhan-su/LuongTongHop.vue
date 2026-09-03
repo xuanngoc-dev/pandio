@@ -67,8 +67,26 @@
         >
           <template #default="{ row }">
             <div class="employee-cell">
-              <span class="employee-cell__name">{{ row.name || '—' }}</span>
-              <span v-if="row.email" class="employee-cell__email">{{ row.email }}</span>
+              <div class="employee-cell__name-row">
+                <span class="employee-cell__name">{{ row.name || '—' }}</span>
+                <CustomTooltip
+                  v-if="row.loai_nhan_vien"
+                  :content="employeeTypeLabel(row.loai_nhan_vien)"
+                  placement="top"
+                >
+                  <CustomIcon
+                    class="employee-type-icon"
+                    :class="
+                      row.loai_nhan_vien === 'full_time'
+                        ? 'employee-type-icon--full'
+                        : 'employee-type-icon--part'
+                    "
+                  >
+                    <component :is="employeeTypeIcon(row.loai_nhan_vien)" />
+                  </CustomIcon>
+                </CustomTooltip>
+              </div>
+              <span v-if="row.phone" class="employee-cell__email">{{ row.phone }}</span>
             </div>
           </template>
         </CustomTableColumn>
@@ -141,7 +159,7 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
-import { Search, View } from '@element-plus/icons-vue'
+import { Briefcase, Clock, Search, View } from '@element-plus/icons-vue'
 import { fetchLuongTongHop } from '@/api/tinhLuong'
 import Pagination from '@/components/Pagination.vue'
 import {
@@ -236,6 +254,16 @@ function formatMoney(value) {
   return `${num.toLocaleString('vi-VN')} ₫`
 }
 
+function employeeTypeLabel(value) {
+  if (value === 'full_time') return 'Full time'
+  if (value === 'part_time') return 'Part time'
+  return ''
+}
+
+function employeeTypeIcon(value) {
+  return value === 'part_time' ? Clock : Briefcase
+}
+
 function onSearch() {
   page.value = 1
   loadItems()
@@ -303,6 +331,13 @@ onMounted(() => {
   gap: 2px;
   line-height: 1.25;
 
+  &__name-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+
   &__name {
     font-weight: 600;
   }
@@ -311,6 +346,23 @@ onMounted(() => {
     font-size: 12px;
     color: var(--el-text-color-secondary);
   }
+}
+
+.employee-type-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  cursor: default;
+}
+
+.employee-type-icon--full {
+  color: var(--el-color-primary);
+}
+
+.employee-type-icon--part {
+  color: var(--el-color-warning);
 }
 
 .money-primary {
