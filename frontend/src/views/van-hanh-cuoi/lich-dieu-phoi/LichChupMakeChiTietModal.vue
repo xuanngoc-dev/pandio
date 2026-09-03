@@ -2,7 +2,7 @@
   <CustomDialog
     v-model="visible"
     :title="dialogTitle"
-    :width="1400"
+    :width="1500"
     class="lich-chup-make-chi-tiet-modal"
     @closed="onClosed"
   >
@@ -41,15 +41,22 @@
           <div v-if="row.sdt_khach_hang" class="sub-text">{{ row.sdt_khach_hang }}</div>
         </template>
       </CustomTableColumn>
-      <CustomTableColumn label="Người tạo" min-width="130">
+      <!-- <CustomTableColumn label="Người tạo" min-width="130">
         <template #default="{ row }">
           {{ row.nguoi_tao?.name || '—' }}
         </template>
-      </CustomTableColumn>
+      </CustomTableColumn> -->
       <CustomTableColumn label="Trạng thái" width="130" align="center">
         <template #default="{ row }">
           <CustomTag :type="trangThaiTagType(row.trang_thai)" size="small">
             {{ trangThaiLabel(row.trang_thai) }}
+          </CustomTag>
+        </template>
+      </CustomTableColumn>
+      <CustomTableColumn label="Trạng thái điều phối" width="150" align="center">
+        <template #default="{ row }">
+          <CustomTag :type="trangThaiDieuPhoiTagType(getTrangThaiDieuPhoi(row))" size="small">
+            {{ trangThaiDieuPhoiLabel(getTrangThaiDieuPhoi(row)) }}
           </CustomTag>
         </template>
       </CustomTableColumn>
@@ -69,10 +76,16 @@
         <template #default="{ row }">
           <CustomTooltip
             v-if="row.trang_thai === 'dang_thuc_hien'"
-            content="Điều phối"
+            :content="canDieuPhoi(row) ? 'Điều phối' : dieuPhoiDisabledReason(row)"
             placement="top"
           >
-            <CustomButton type="warning" link :icon="Position" @click="openDieuPhoi(row)" />
+            <CustomButton
+              type="warning"
+              link
+              :icon="Position"
+              :disabled="!canDieuPhoi(row)"
+              @click="openDieuPhoi(row)"
+            />
           </CustomTooltip>
           <span v-else>—</span>
         </template>
@@ -110,6 +123,7 @@ import {
   getDieuPhoiGiaTriFromSession,
   normalizeDieuPhoiSessions,
   parseSessionLoaiQuayChup,
+  resolveTrangThaiDieuPhoi,
   SAP_XEP_TRANG_PHUC_KEY,
   sapXepTrangPhucTagType,
 } from '@/utils/thongTinDieuPhoi'
@@ -163,6 +177,57 @@ function trangThaiTagType(value) {
     hoan_thanh: 'success',
   }
   return map[value] || 'info'
+}
+
+const TRANG_THAI_DIEU_PHOI_LABEL = {
+  tien_ky: 'Tiền kỳ',
+  hau_ky: 'Hậu kỳ',
+  gui_in: 'Gửi in',
+  hoan_tat_san_xuat: 'Hoàn tất sản xuất',
+  cho_nhan: 'Chờ nhận',
+  dang_xu_ly: 'Đang xử lý',
+  gui_khach_kiem_tra: 'Gửi khách kiểm tra',
+  san_xuat_in_an: 'Sản xuất & in ấn',
+  cho_nghiem_thu: 'Chờ nghiệm thu',
+  hoan_thanh: 'Hoàn thành',
+}
+
+function getTrangThaiDieuPhoi(row) {
+  return resolveTrangThaiDieuPhoi(row) || null
+}
+
+function trangThaiDieuPhoiLabel(value) {
+  if (!value) return '—'
+  return TRANG_THAI_DIEU_PHOI_LABEL[value] || value
+}
+
+function trangThaiDieuPhoiTagType(value) {
+  const map = {
+    tien_ky: 'info',
+    hau_ky: 'warning',
+    gui_in: 'primary',
+    hoan_tat_san_xuat: 'success',
+    cho_nhan: 'info',
+    dang_xu_ly: 'warning',
+    gui_khach_kiem_tra: 'primary',
+    san_xuat_in_an: 'warning',
+    cho_nghiem_thu: 'primary',
+    hoan_thanh: 'success',
+  }
+  return map[value] || 'info'
+}
+
+function canDieuPhoi(row) {
+  if (!row?.id || !row?.loai_hop_dong_id) return false
+  return getTrangThaiDieuPhoi(row) !== 'hoan_tat_san_xuat'
+}
+
+function dieuPhoiDisabledReason(row) {
+  if (!row?.loai_hop_dong_id) return 'Hợp đồng chưa chọn loại hợp đồng'
+  if (getTrangThaiDieuPhoi(row) === 'hoan_tat_san_xuat') {
+    return 'Đã hoàn tất sản xuất — không thể điều phối thêm'
+  }
+  return 'Không thể điều phối'
 }
 
 function formatMoney(value) {
@@ -239,8 +304,8 @@ function sapXepDoTagType(row) {
 }
 
 function openDieuPhoi(row) {
-  if (!row?.loai_hop_dong_id) {
-    ElMessage.warning('Hợp đồng chưa chọn loại hợp đồng.')
+  if (!canDieuPhoi(row)) {
+    ElMessage.warning(dieuPhoiDisabledReason(row))
     return
   }
   dieuPhoiHopDongId.value = row.id
