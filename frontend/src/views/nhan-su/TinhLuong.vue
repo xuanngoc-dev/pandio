@@ -118,7 +118,15 @@
                 align="right"
               >
                 <template #default="{ row }">
-                  {{ formatMoney(row.hoa_hong?.hd_tp) }}
+                  <button
+                    v-if="hasHoaHongChiTiet(row, 'hd_tp')"
+                    type="button"
+                    class="money-link"
+                    @click="openHoaHongChiTiet(row, 'hd_tp')"
+                  >
+                    {{ formatMoney(row.hoa_hong?.hd_tp) }}
+                  </button>
+                  <span v-else>{{ formatMoney(row.hoa_hong?.hd_tp) }}</span>
                 </template>
               </CustomTableColumn>
               <CustomTableColumn
@@ -128,11 +136,30 @@
                 align="right"
               >
                 <template #default="{ row }">
-                  {{ formatMoney(row.hoa_hong?.hd_sddv) }}
+                  <button
+                    v-if="hasHoaHongChiTiet(row, 'hd_sddv')"
+                    type="button"
+                    class="money-link"
+                    @click="openHoaHongChiTiet(row, 'hd_sddv')"
+                  >
+                    {{ formatMoney(row.hoa_hong?.hd_sddv) }}
+                  </button>
+                  <span v-else>{{ formatMoney(row.hoa_hong?.hd_sddv) }}</span>
                 </template>
               </CustomTableColumn>
             </CustomTableColumn>
 
+            <!--
+              Sản xuất theo ngày (backend tính sẵn) — Make / Chụp / Quay phim:
+              - Nguồn: hop_dong_su_dung_dich_vu đã có thoi_gian_hoan_tat_san_xuat
+                (đã hoàn tất sản xuất; user nằm trong tho_make / tho_chup / quay_phim
+                của ít nhất một buổi trong danh_sach_buoi_chup).
+              - Ngày tính: DATE(thoi_gian_hoan_tat_san_xuat) theo Asia/Ho_Chi_Minh.
+              - Mỗi buổi: so_diem_chup + loai_quay_chup → map
+                luong_thuong_phu_cap.luong_theo_dich_vu.items[ma_dich_vu]
+                → đơn giá role theo mức điểm 1/2/3.
+              - 1 HĐ nhiều buổi → cộng buổi; 1 ngày nhiều HĐ → cộng HĐ.
+            -->
             <CustomTableColumn label="Sản xuất" align="center">
               <CustomTableColumn
                 prop="san_xuat_make"
@@ -141,7 +168,15 @@
                 align="right"
               >
                 <template #default="{ row }">
-                  {{ formatMoney(row.san_xuat?.make) }}
+                  <button
+                    v-if="hasSanXuatChiTiet(row, 'make')"
+                    type="button"
+                    class="money-link"
+                    @click="openSanXuatChiTiet(row, 'make')"
+                  >
+                    {{ formatMoney(row.san_xuat?.make) }}
+                  </button>
+                  <span v-else>{{ formatMoney(row.san_xuat?.make) }}</span>
                 </template>
               </CustomTableColumn>
               <CustomTableColumn
@@ -151,7 +186,15 @@
                 align="right"
               >
                 <template #default="{ row }">
-                  {{ formatMoney(row.san_xuat?.chup) }}
+                  <button
+                    v-if="hasSanXuatChiTiet(row, 'chup')"
+                    type="button"
+                    class="money-link"
+                    @click="openSanXuatChiTiet(row, 'chup')"
+                  >
+                    {{ formatMoney(row.san_xuat?.chup) }}
+                  </button>
+                  <span v-else>{{ formatMoney(row.san_xuat?.chup) }}</span>
                 </template>
               </CustomTableColumn>
               <CustomTableColumn
@@ -161,7 +204,15 @@
                 align="right"
               >
                 <template #default="{ row }">
-                  {{ formatMoney(row.san_xuat?.quay_phim) }}
+                  <button
+                    v-if="hasSanXuatChiTiet(row, 'quay_phim')"
+                    type="button"
+                    class="money-link"
+                    @click="openSanXuatChiTiet(row, 'quay_phim')"
+                  >
+                    {{ formatMoney(row.san_xuat?.quay_phim) }}
+                  </button>
+                  <span v-else>{{ formatMoney(row.san_xuat?.quay_phim) }}</span>
                 </template>
               </CustomTableColumn>
               <CustomTableColumn
@@ -179,6 +230,9 @@
         </el-collapse-item>
       </el-collapse>
     </CustomCard>
+
+    <SanXuatChiTietModal ref="sanXuatChiTietModalRef" />
+    <HoaHongChiTietModal ref="hoaHongChiTietModalRef" />
 
     <CustomCard shadow="hover" class="fixed-salary-card" v-loading="loading">
       <template #header>
@@ -260,6 +314,8 @@ import {
   CustomTable,
   CustomTableColumn,
 } from '@/components/element'
+import SanXuatChiTietModal from './SanXuatChiTietModal.vue'
+import HoaHongChiTietModal from './HoaHongChiTietModal.vue'
 
 const MONEY_PROPS = [
   'luong_co_ban',
@@ -310,6 +366,14 @@ const GROUP_A_DEFS = [
  * - Ngày nghỉ = T2–T6 (không ngày lễ active) không có bản ghi diem_danh
  * - T7, CN và ngày lễ active: không cần điểm danh
  * - part_time: lấy thuong_chuyen_can cố định trong hồ sơ NV
+ *
+ * Lương sản xuất Make/Chụp/Quay (san_xuat_*):
+ * - Nguồn: HĐ SDDV đã có thoi_gian_hoan_tat_san_xuat; user được gán
+ *   tho_make / tho_chup / quay_phim trong danh_sach_buoi_chup
+ * - Ngày tính: DATE(thoi_gian_hoan_tat_san_xuat)
+ * - Mỗi buổi: so_diem_chup + loai_quay_chup → đơn giá trong
+ *   luong_theo_dich_vu.items[ma_dich_vu].{make|chup|quay_phim}[1|2|3]
+ * - Cộng dồn buổi trong HĐ, cộng dồn HĐ trong ngày
  */
 const GROUP_B_DEFS = [
   { key: 'tong_luong_theo_gio', label: 'Tổng lương theo giờ' },
@@ -334,6 +398,8 @@ const loading = ref(false)
 const selectedMonth = ref(currentMonthValue())
 const payload = ref(null)
 const calendarActiveNames = ref([])
+const sanXuatChiTietModalRef = ref(null)
+const hoaHongChiTietModalRef = ref(null)
 
 const days = computed(() => payload.value?.days || [])
 
@@ -461,6 +527,34 @@ function formatMoneyCell(value) {
   return `${num.toLocaleString('vi-VN')} ₫`
 }
 
+function hasSanXuatChiTiet(row, role) {
+  const items = row?.san_xuat?.chi_tiet?.[role]
+  return Array.isArray(items) && items.length > 0
+}
+
+function openSanXuatChiTiet(row, role) {
+  if (!hasSanXuatChiTiet(row, role)) return
+  sanXuatChiTietModalRef.value?.open({
+    ngay: row.ngay,
+    role,
+    items: row.san_xuat.chi_tiet[role],
+  })
+}
+
+function hasHoaHongChiTiet(row, type) {
+  const items = row?.hoa_hong?.chi_tiet?.[type]
+  return Array.isArray(items) && items.length > 0
+}
+
+function openHoaHongChiTiet(row, type) {
+  if (!hasHoaHongChiTiet(row, type)) return
+  hoaHongChiTietModalRef.value?.open({
+    ngay: row.ngay,
+    type,
+    items: row.hoa_hong.chi_tiet[type],
+  })
+}
+
 function getSummaries({ columns }) {
   const tong = payload.value?.tong_ket || {}
   return columns.map((column, index) => {
@@ -585,6 +679,24 @@ onMounted(() => {
 
 .muted {
   color: var(--el-text-color-placeholder);
+}
+
+.money-link {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  color: var(--el-color-primary);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+
+  &:hover {
+    color: var(--el-color-primary-light-3);
+  }
 }
 
 .salary-table {

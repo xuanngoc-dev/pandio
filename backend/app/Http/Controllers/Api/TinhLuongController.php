@@ -183,9 +183,21 @@ class TinhLuongController extends BaseApiController
         ];
         $holidayDates = $this->activeHolidayDates($tuNgay, $denNgay);
 
-        $hoaHongTpByDate = $this->hoaHongTrangPhucByDate($userId, $tuNgay, $denNgay, $nhanVien->getLuongValue('hoa_hong_hop_dong_trang_phuc'));
-        $hoaHongSddvByDate = $this->hoaHongSddvByDate($userId, $tuNgay, $denNgay, $nhanVien->getLuongValue('hoa_hong_hop_dong_sddv'));
-        $sanXuatByDate = $this->sanXuatByDate($userId, $tuNgay, $denNgay, $nhanVien);
+        $hoaHongTpByDate = $this->hoaHongTrangPhucByDate(
+            $userId,
+            $tuNgay,
+            $denNgay,
+            $nhanVien->getLuongValue('hoa_hong_hop_dong_trang_phuc'),
+            withChiTiet: $includeDays,
+        );
+        $hoaHongSddvByDate = $this->hoaHongSddvByDate(
+            $userId,
+            $tuNgay,
+            $denNgay,
+            $nhanVien->getLuongValue('hoa_hong_hop_dong_sddv'),
+            withChiTiet: $includeDays,
+        );
+        $sanXuatByDate = $this->sanXuatByDate($userId, $tuNgay, $denNgay, $nhanVien, withChiTiet: $includeDays);
 
         $days = [];
         $soNgayLamThuBayChuNhat = 0;
@@ -208,9 +220,11 @@ class TinhLuongController extends BaseApiController
         for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
             $dateKey = $date->toDateString();
             $record = $records->get($dateKey);
-            $hoaHongTp = round((float) ($hoaHongTpByDate[$dateKey] ?? 0), 2);
-            $hoaHongSddv = round((float) ($hoaHongSddvByDate[$dateKey] ?? 0), 2);
-            $sanXuat = $sanXuatByDate[$dateKey] ?? $this->emptySanXuat();
+            $hoaHongTpEntry = $hoaHongTpByDate[$dateKey] ?? null;
+            $hoaHongSddvEntry = $hoaHongSddvByDate[$dateKey] ?? null;
+            $hoaHongTp = round((float) (is_array($hoaHongTpEntry) ? ($hoaHongTpEntry['tong'] ?? 0) : 0), 2);
+            $hoaHongSddv = round((float) (is_array($hoaHongSddvEntry) ? ($hoaHongSddvEntry['tong'] ?? 0) : 0), 2);
+            $sanXuat = $sanXuatByDate[$dateKey] ?? $this->emptySanXuat($includeDays);
 
             $gioLamCoBan = round((float) ($record?->gio_lam_co_ban ?? 0), 2);
             $gioLamTangCa = round((float) ($record?->gio_lam_tang_ca ?? 0), 2);
@@ -252,6 +266,10 @@ class TinhLuongController extends BaseApiController
                     'hoa_hong' => [
                         'hd_tp' => $hoaHongTp,
                         'hd_sddv' => $hoaHongSddv,
+                        'chi_tiet' => [
+                            'hd_tp' => is_array($hoaHongTpEntry) ? ($hoaHongTpEntry['chi_tiet'] ?? []) : [],
+                            'hd_sddv' => is_array($hoaHongSddvEntry) ? ($hoaHongSddvEntry['chi_tiet'] ?? []) : [],
+                        ],
                     ],
                     'san_xuat' => $sanXuat,
                 ];
@@ -430,9 +448,9 @@ class TinhLuongController extends BaseApiController
      * thanh_tien > 0, trang_thai khác moi_tao.
      * Công thức ngày = Σ (thanh_tien × tỷ lệ % / 100).
      *
-     * @return array<string, float>
+     * @return array<string, array{tong: float, chi_tiet?: list<array<string, mixed>>}>
      */
-    private function hoaHongTrangPhucByDate(int $userId, string $tuNgay, string $denNgay, float $phanTram): array
+    private function hoaHongTrangPhucByDate(int $userId, string $tuNgay, string $denNgay, float $phanTram, bool $withChiTiet = false): array
     {
         if ($phanTram <= 0) {
             return [];
@@ -450,7 +468,8 @@ class TinhLuongController extends BaseApiController
             ->where('trang_thai', '!=', 'moi_tao')
             ->whereDate('created_at', '>=', $tuNgay)
             ->whereDate('created_at', '<=', $denNgay)
-            ->get(['id', 'created_at', 'thanh_tien']);
+            ->orderBy('created_at')
+            ->get(['id', 'ma_hop_dong', 'ten_khach_hang', 'created_at', 'thanh_tien', 'nguoi_cho_thue', 'nguoi_tham_gia', 'trang_thai']);
 
         $map = [];
         foreach ($rows as $row) {
@@ -460,8 +479,34 @@ class TinhLuongController extends BaseApiController
             if (! $dateKey) {
                 continue;
             }
-            $amount = (float) $row->thanh_tien * $tyLe;
-            $map[$dateKey] = round(($map[$dateKey] ?? 0) + $amount, 2);
+
+            $giaTri = (float) $row->thanh_tien;
+            $amount = round($giaTri * $tyLe, 2);
+
+            if (! isset($map[$dateKey])) {
+                $map[$dateKey] = ['tong' => 0.0];
+                if ($withChiTiet) {
+                    $map[$dateKey]['chi_tiet'] = [];
+                }
+            }
+
+            $map[$dateKey]['tong'] = round($map[$dateKey]['tong'] + $amount, 2);
+
+            if (! $withChiTiet) {
+                continue;
+            }
+
+            $map[$dateKey]['chi_tiet'][] = [
+                'hop_dong_id' => (int) $row->id,
+                'ma_hop_dong' => (string) ($row->ma_hop_dong ?? ''),
+                'ten_khach_hang' => (string) ($row->ten_khach_hang ?? ''),
+                'trang_thai' => (string) ($row->trang_thai ?? ''),
+                'ngay_tao' => $dateKey,
+                'vai_tro' => $this->resolveVaiTroHoaHongTp($row, $userId),
+                'gia_tri_hop_dong' => $giaTri,
+                'ty_le' => $phanTram,
+                'hoa_hong' => $amount,
+            ];
         }
 
         return $map;
@@ -473,9 +518,9 @@ class TinhLuongController extends BaseApiController
      * tong_tien > 0, bỏ moi_tao/nhap/da_huy.
      * Công thức ngày = Σ (tong_tien × tỷ lệ % / 100).
      *
-     * @return array<string, float>
+     * @return array<string, array{tong: float, chi_tiet?: list<array<string, mixed>>}>
      */
-    private function hoaHongSddvByDate(int $userId, string $tuNgay, string $denNgay, float $phanTram): array
+    private function hoaHongSddvByDate(int $userId, string $tuNgay, string $denNgay, float $phanTram, bool $withChiTiet = false): array
     {
         if ($phanTram <= 0) {
             return [];
@@ -493,7 +538,8 @@ class TinhLuongController extends BaseApiController
             ->whereNotIn('trang_thai', ['moi_tao', 'nhap', 'da_huy'])
             ->whereDate('created_at', '>=', $tuNgay)
             ->whereDate('created_at', '<=', $denNgay)
-            ->get(['id', 'created_at', 'tong_tien']);
+            ->orderBy('created_at')
+            ->get(['id', 'ma_hop_dong', 'ten_khach_hang', 'created_at', 'tong_tien', 'nguoi_tao_id', 'nguoi_tham_gia_ids', 'trang_thai']);
 
         $map = [];
         foreach ($rows as $row) {
@@ -503,24 +549,84 @@ class TinhLuongController extends BaseApiController
             if (! $dateKey) {
                 continue;
             }
-            $amount = (float) $row->tong_tien * $tyLe;
-            $map[$dateKey] = round(($map[$dateKey] ?? 0) + $amount, 2);
+
+            $giaTri = (float) $row->tong_tien;
+            $amount = round($giaTri * $tyLe, 2);
+
+            if (! isset($map[$dateKey])) {
+                $map[$dateKey] = ['tong' => 0.0];
+                if ($withChiTiet) {
+                    $map[$dateKey]['chi_tiet'] = [];
+                }
+            }
+
+            $map[$dateKey]['tong'] = round($map[$dateKey]['tong'] + $amount, 2);
+
+            if (! $withChiTiet) {
+                continue;
+            }
+
+            $map[$dateKey]['chi_tiet'][] = [
+                'hop_dong_id' => (int) $row->id,
+                'ma_hop_dong' => (string) ($row->ma_hop_dong ?? ''),
+                'ten_khach_hang' => (string) ($row->ten_khach_hang ?? ''),
+                'trang_thai' => (string) ($row->trang_thai ?? ''),
+                'ngay_tao' => $dateKey,
+                'vai_tro' => $this->resolveVaiTroHoaHongSddv($row, $userId),
+                'gia_tri_hop_dong' => $giaTri,
+                'ty_le' => $phanTram,
+                'hoa_hong' => $amount,
+            ];
         }
 
         return $map;
     }
 
-    /**
-     * Sản xuất (make/chụp/quay/edit) theo ngày chụp từ điều phối HĐ SDDV.
-     *
-     * @return array<string, array{make: float, chup: float, quay_phim: float, edit: float, so_job: array{make: int, chup: int, quay_phim: int, edit: int}}>
-     */
-    private function sanXuatByDate(int $userId, string $tuNgay, string $denNgay, mixed $nhanVien): array
+    private function resolveVaiTroHoaHongTp(mixed $row, int $userId): string
     {
+        if ((int) ($row->nguoi_cho_thue ?? 0) === $userId) {
+            return 'Người cho thuê';
+        }
+
+        return 'Người tham gia';
+    }
+
+    private function resolveVaiTroHoaHongSddv(mixed $row, int $userId): string
+    {
+        if ((int) ($row->nguoi_tao_id ?? 0) === $userId) {
+            return 'Người tạo';
+        }
+
+        return 'Người tham gia';
+    }
+
+    /**
+     * Sản xuất (make/chụp/quay/edit) theo ngày hoàn tất sản xuất từ HĐ SDDV.
+     *
+     * Nguồn: hop_dong_su_dung_dich_vu đã ghi thoi_gian_hoan_tat_san_xuat
+     * (đã từng chuyển sang trang_thai_dieu_phoi = hoan_tat_san_xuat).
+     * Ngày tính lương = DATE(thoi_gian_hoan_tat_san_xuat) theo Asia/Ho_Chi_Minh.
+     *
+     * Mỗi buổi trong danh_sach_buoi_chup mà user được gán (tho_make / tho_chup /
+     * quay_phim / tho_edit): lấy so_diem_chup + loai_quay_chup, map sang
+     * nhan_vien.luong_thuong_phu_cap.luong_theo_dich_vu.items[ma_dich_vu]
+     * → đơn giá role theo mức điểm 1/2/3.
+     * Nhiều buổi trong 1 HĐ cộng dồn; nhiều HĐ trong 1 ngày cộng dồn.
+     *
+     * Khi $withChiTiet = true, mỗi ngày kèm chi_tiet.{role}[] để hiển thị modal.
+     *
+     * @return array<string, array{make: float, chup: float, quay_phim: float, edit: float, so_job: array{make: int, chup: int, quay_phim: int, edit: int}, chi_tiet?: array<string, list<array<string, mixed>>>}>
+     */
+    private function sanXuatByDate(int $userId, string $tuNgay, string $denNgay, mixed $nhanVien, bool $withChiTiet = false): array
+    {
+        $hoanTatKey = HopDongSuDungDichVu::THOI_GIAN_HOAN_TAT_SAN_XUAT_KEY;
+        $dateExpr = "LEFT(NULLIF(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(thong_tin_dieu_phoi, '$.{$hoanTatKey}')), 'null'), ''), 10)";
+
         $contracts = HopDongSuDungDichVu::query()
-            ->with(['combos.combo:id,so_diem_chup'])
             ->whereNotIn('trang_thai', ['moi_tao', 'nhap', 'da_huy'])
             ->whereNotNull('thong_tin_dieu_phoi')
+            ->whereRaw("{$dateExpr} IS NOT NULL")
+            ->whereRaw("{$dateExpr} BETWEEN ? AND ?", [$tuNgay, $denNgay])
             ->where(function ($q) use ($userId) {
                 foreach (array_keys(self::STAFF_ROLE_KEYS) as $key) {
                     for ($i = 0; $i < 6; $i++) {
@@ -537,49 +643,66 @@ class TinhLuongController extends BaseApiController
                     }
                 }
             })
-            ->get(['id', 'thong_tin_dieu_phoi']);
-
-        $rates = [];
-        foreach (['chup', 'make', 'quay_phim'] as $role) {
-            $rates[$role] = [
-                1 => $nhanVien->getLuongTheoDichVu($role, 1),
-                2 => $nhanVien->getLuongTheoDichVu($role, 2),
-                3 => $nhanVien->getLuongTheoDichVu($role, 3),
-            ];
-        }
+            ->get(['id', 'ma_hop_dong', 'ten_khach_hang', 'thong_tin_dieu_phoi']);
 
         $map = [];
         foreach ($contracts as $hd) {
-            $sessions = HopDongSuDungDichVu::normalizeDieuPhoiSessions($hd->thong_tin_dieu_phoi);
-            $diem = $this->resolveSoDiemChup($hd->combos);
+            $envelope = is_array($hd->thong_tin_dieu_phoi) ? $hd->thong_tin_dieu_phoi : [];
+            $dateKey = $this->resolveNgayHoanTatSanXuat($envelope);
+            if ($dateKey === null || $dateKey < $tuNgay || $dateKey > $denNgay) {
+                continue;
+            }
 
-            foreach ($sessions as $session) {
-                $dateKey = substr((string) HopDongSuDungDichVu::dieuPhoiGiaTri($session, 'ngay_chup'), 0, 10);
-                if ($dateKey === '' || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateKey)) {
-                    continue;
-                }
-                if ($dateKey < $tuNgay || $dateKey > $denNgay) {
-                    continue;
-                }
-
+            $sessions = HopDongSuDungDichVu::normalizeDieuPhoiSessions($envelope);
+            foreach ($sessions as $sessionIndex => $session) {
                 $roles = $this->rolesOfUserInDieuPhoi($session, $userId);
                 if ($roles === []) {
                     continue;
                 }
 
+                $diem = $this->resolveSoDiemChupFromSession($session);
+                $loaiId = $this->resolveLoaiQuayChupId($session);
+                $loaiTen = $this->resolveLoaiQuayChupTen($session);
+                $tenBuoi = $this->resolveTenBuoi($session, $sessionIndex);
+                $ngayChup = substr((string) HopDongSuDungDichVu::dieuPhoiGiaTri($session, 'ngay_chup'), 0, 10);
+                if ($ngayChup === '' || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $ngayChup)) {
+                    $ngayChup = null;
+                }
+
                 if (! isset($map[$dateKey])) {
-                    $map[$dateKey] = $this->emptySanXuat();
+                    $map[$dateKey] = $this->emptySanXuat($withChiTiet);
                 }
 
                 foreach ($roles as $role) {
                     $map[$dateKey]['so_job'][$role] = (int) ($map[$dateKey]['so_job'][$role] ?? 0) + 1;
 
-                    if (isset($rates[$role])) {
-                        $map[$dateKey][$role] = round(
-                            $map[$dateKey][$role] + $this->tienTheoDiem($rates[$role], $diem),
-                            2
-                        );
+                    $donGia = 0.0;
+                    $thanhTien = 0.0;
+                    if (in_array($role, ['make', 'chup', 'quay_phim'], true) && $diem > 0 && $loaiId !== null) {
+                        $donGia = round((float) $nhanVien->getLuongTheoDichVu($role, $diem, $loaiId), 2);
+                        $thanhTien = $donGia;
+                        if ($thanhTien > 0) {
+                            $map[$dateKey][$role] = round($map[$dateKey][$role] + $thanhTien, 2);
+                        }
                     }
+
+                    if (! $withChiTiet || ! in_array($role, ['make', 'chup', 'quay_phim'], true)) {
+                        continue;
+                    }
+
+                    $map[$dateKey]['chi_tiet'][$role][] = [
+                        'hop_dong_id' => (int) $hd->id,
+                        'ma_hop_dong' => (string) ($hd->ma_hop_dong ?? ''),
+                        'ten_khach_hang' => (string) ($hd->ten_khach_hang ?? ''),
+                        'buoi_index' => (int) $sessionIndex,
+                        'ten_buoi' => $tenBuoi,
+                        'ngay_chup' => $ngayChup,
+                        'so_diem_chup' => $diem,
+                        'loai_quay_chup_id' => $loaiId,
+                        'loai_quay_chup_ten' => $loaiTen,
+                        'don_gia' => $donGia,
+                        'thanh_tien' => $thanhTien,
+                    ];
                 }
             }
         }
@@ -588,16 +711,114 @@ class TinhLuongController extends BaseApiController
     }
 
     /**
-     * @param  Collection<int, mixed>  $combos
+     * Ngày hoàn tất sản xuất từ envelope điều phối (Y-m-d, Asia/Ho_Chi_Minh).
+     *
+     * @param  array<string, mixed>  $envelope
      */
-    private function resolveSoDiemChup(Collection $combos): int
+    private function resolveNgayHoanTatSanXuat(array $envelope): ?string
     {
-        $max = 0;
-        foreach ($combos as $item) {
-            $max = max($max, (int) ($item->combo?->so_diem_chup ?? 0));
+        $raw = $envelope[HopDongSuDungDichVu::THOI_GIAN_HOAN_TAT_SAN_XUAT_KEY] ?? null;
+        if ($raw === null || $raw === '') {
+            return null;
         }
 
-        return $max;
+        try {
+            return Carbon::parse($raw)->timezone(self::TIMEZONE)->toDateString();
+        } catch (\Throwable) {
+            $text = substr((string) $raw, 0, 10);
+
+            return preg_match('/^\d{4}-\d{2}-\d{2}$/', $text) ? $text : null;
+        }
+    }
+
+    /**
+     * Số điểm chụp của một buổi (clamp 1–3). 0 nếu thiếu/không hợp lệ.
+     *
+     * @param  array<string, mixed>  $session
+     */
+    private function resolveSoDiemChupFromSession(array $session): int
+    {
+        $raw = HopDongSuDungDichVu::dieuPhoiGiaTri($session, 'so_diem_chup');
+        if ($raw === null) {
+            $fallback = $session['so_diem_chup'] ?? null;
+            if (! is_array($fallback)) {
+                $raw = $fallback;
+            }
+        }
+
+        $diem = (int) $raw;
+        if ($diem <= 0) {
+            return 0;
+        }
+
+        return min(3, max(1, $diem));
+    }
+
+    /**
+     * id loại quay chụp (danh_muc_loai_quay_chup) của buổi.
+     *
+     * @param  array<string, mixed>  $session
+     */
+    private function resolveLoaiQuayChupId(array $session): ?int
+    {
+        $raw = HopDongSuDungDichVu::dieuPhoiGiaTri($session, 'loai_quay_chup');
+        if ($raw === null) {
+            $raw = $session['loai_quay_chup'] ?? null;
+        }
+
+        if (is_array($raw)) {
+            $id = $raw['id'] ?? $raw['danh_muc_loai_quay_chup_id'] ?? $raw['ma_dich_vu'] ?? null;
+            if ($id === null || $id === '') {
+                return null;
+            }
+            $n = (int) $id;
+
+            return $n > 0 ? $n : null;
+        }
+
+        if (is_numeric($raw)) {
+            $n = (int) $raw;
+
+            return $n > 0 ? $n : null;
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $session
+     */
+    private function resolveLoaiQuayChupTen(array $session): string
+    {
+        $raw = HopDongSuDungDichVu::dieuPhoiGiaTri($session, 'loai_quay_chup');
+        if ($raw === null) {
+            $raw = $session['loai_quay_chup'] ?? null;
+        }
+        if (! is_array($raw)) {
+            return '';
+        }
+
+        return trim((string) ($raw['ten_dich_vu'] ?? $raw['ten'] ?? ''));
+    }
+
+    /**
+     * @param  array<string, mixed>  $session
+     */
+    private function resolveTenBuoi(array $session, int $index): string
+    {
+        $raw = HopDongSuDungDichVu::dieuPhoiGiaTri($session, 'ten_lich');
+        if (is_string($raw) && trim($raw) !== '') {
+            return trim($raw);
+        }
+
+        foreach (['ten_lich', '_ten_lich'] as $key) {
+            $direct = $session[$key] ?? null;
+            if (is_string($direct) && trim($direct) !== '') {
+                return trim($direct);
+            }
+        }
+
+        return 'Lịch quay chụp '.($index + 1);
     }
 
     /**
@@ -624,25 +845,11 @@ class TinhLuongController extends BaseApiController
     }
 
     /**
-     * @param  array<int, float>  $rates
+     * @return array{make: float, chup: float, quay_phim: float, edit: float, so_job: array{make: int, chup: int, quay_phim: int, edit: int}, chi_tiet?: array<string, list<array<string, mixed>>>}
      */
-    private function tienTheoDiem(array $rates, int $diem): float
+    private function emptySanXuat(bool $withChiTiet = false): array
     {
-        if ($diem <= 0) {
-            return 0.0;
-        }
-
-        $level = min(3, $diem);
-
-        return round((float) ($rates[$level] ?? 0), 2);
-    }
-
-    /**
-     * @return array{make: float, chup: float, quay_phim: float, edit: float, so_job: array{make: int, chup: int, quay_phim: int, edit: int}}
-     */
-    private function emptySanXuat(): array
-    {
-        return [
+        $result = [
             'make' => 0.0,
             'chup' => 0.0,
             'quay_phim' => 0.0,
@@ -654,5 +861,16 @@ class TinhLuongController extends BaseApiController
                 'edit' => 0,
             ],
         ];
+
+        if ($withChiTiet) {
+            $result['chi_tiet'] = [
+                'make' => [],
+                'chup' => [],
+                'quay_phim' => [],
+                'edit' => [],
+            ];
+        }
+
+        return $result;
     }
 }

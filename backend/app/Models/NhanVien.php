@@ -180,7 +180,7 @@ class NhanVien extends Model
     }
 
     /**
-     * Đơn giá chụp/make/quay phim theo số điểm và loại dịch vụ.
+     * Đơn giá chụp/make/quay phim theo số điểm và loại dịch vụ (ma_dich_vu).
      *
      * @param  'chup'|'make'|'quay_phim'  $role
      */
@@ -204,16 +204,22 @@ class NhanVien extends Model
             return $value !== null && $value !== '' ? (float) $value : $default;
         };
 
+        // Có loại quay chụp → chỉ lấy đúng bản ghi ma_dich_vu / id trùng.
         if ($loaiId !== null && $loaiId !== '') {
             foreach ($list as $item) {
                 if (! is_array($item)) {
                     continue;
                 }
-                $id = $item['id'] ?? $item['danh_muc_loai_quay_chup_id'] ?? null;
-                if ((string) $id === (string) $loaiId) {
+                $id = $item['ma_dich_vu']
+                    ?? $item['id']
+                    ?? $item['danh_muc_loai_quay_chup_id']
+                    ?? null;
+                if ($id !== null && $id !== '' && (string) $id === (string) $loaiId) {
                     return $pick($item);
                 }
             }
+
+            return $default;
         }
 
         foreach ($list as $item) {
