@@ -32,16 +32,30 @@
       <el-collapse v-model="calendarActiveNames" class="calendar-collapse">
         <el-collapse-item name="daily">
           <template #title>
-            Chi tiết theo ngày · tháng {{ formatMonthLabel(selectedMonth) }}
+            <div class="daily-collapse-title">
+              <span class="daily-collapse-title__text">
+                Chi tiết theo ngày · tháng {{ formatMonthLabel(selectedMonth) }}
+              </span>
+              <div class="daily-toolbar" @click.stop>
+                <el-switch
+                  v-model="showFutureDays"
+                  inline-prompt
+                  active-text="Hiện"
+                  inactive-text="Ẩn"
+                />
+                <span class="daily-toolbar__label">Hiển thị ngày chưa đến</span>
+              </div>
+            </div>
           </template>
           <CustomTable
             v-loading="loading"
-            :data="days"
+            :data="visibleDays"
             stripe
             border
             row-key="ngay"
             show-summary
             :summary-method="getSummaries"
+            max-height="min(55vh, 560px)"
             style="width: 100%"
             :empty-text="loading ? 'Đang tải...' : 'Chưa có dữ liệu'"
             class="salary-table"
@@ -118,14 +132,19 @@
                 align="right"
               >
                 <template #default="{ row }">
-                  <button
+                  <CustomTooltip
                     v-if="hasHoaHongChiTiet(row, 'hd_tp')"
-                    type="button"
-                    class="money-link"
-                    @click="openHoaHongChiTiet(row, 'hd_tp')"
+                    content="Xem chi tiết hoa hồng HĐ trang phục"
+                    placement="top"
                   >
-                    {{ formatMoney(row.hoa_hong?.hd_tp) }}
-                  </button>
+                    <button
+                      type="button"
+                      class="money-link"
+                      @click="openHoaHongChiTiet(row, 'hd_tp')"
+                    >
+                      {{ formatMoney(row.hoa_hong?.hd_tp) }}
+                    </button>
+                  </CustomTooltip>
                   <span v-else>{{ formatMoney(row.hoa_hong?.hd_tp) }}</span>
                 </template>
               </CustomTableColumn>
@@ -136,14 +155,19 @@
                 align="right"
               >
                 <template #default="{ row }">
-                  <button
+                  <CustomTooltip
                     v-if="hasHoaHongChiTiet(row, 'hd_sddv')"
-                    type="button"
-                    class="money-link"
-                    @click="openHoaHongChiTiet(row, 'hd_sddv')"
+                    content="Xem chi tiết hoa hồng HĐ sử dụng dịch vụ"
+                    placement="top"
                   >
-                    {{ formatMoney(row.hoa_hong?.hd_sddv) }}
-                  </button>
+                    <button
+                      type="button"
+                      class="money-link"
+                      @click="openHoaHongChiTiet(row, 'hd_sddv')"
+                    >
+                      {{ formatMoney(row.hoa_hong?.hd_sddv) }}
+                    </button>
+                  </CustomTooltip>
                   <span v-else>{{ formatMoney(row.hoa_hong?.hd_sddv) }}</span>
                 </template>
               </CustomTableColumn>
@@ -168,14 +192,19 @@
                 align="right"
               >
                 <template #default="{ row }">
-                  <button
+                  <CustomTooltip
                     v-if="hasSanXuatChiTiet(row, 'make')"
-                    type="button"
-                    class="money-link"
-                    @click="openSanXuatChiTiet(row, 'make')"
+                    content="Xem chi tiết lương make"
+                    placement="top"
                   >
-                    {{ formatMoney(row.san_xuat?.make) }}
-                  </button>
+                    <button
+                      type="button"
+                      class="money-link"
+                      @click="openSanXuatChiTiet(row, 'make')"
+                    >
+                      {{ formatMoney(row.san_xuat?.make) }}
+                    </button>
+                  </CustomTooltip>
                   <span v-else>{{ formatMoney(row.san_xuat?.make) }}</span>
                 </template>
               </CustomTableColumn>
@@ -186,14 +215,19 @@
                 align="right"
               >
                 <template #default="{ row }">
-                  <button
+                  <CustomTooltip
                     v-if="hasSanXuatChiTiet(row, 'chup')"
-                    type="button"
-                    class="money-link"
-                    @click="openSanXuatChiTiet(row, 'chup')"
+                    content="Xem chi tiết lương chụp"
+                    placement="top"
                   >
-                    {{ formatMoney(row.san_xuat?.chup) }}
-                  </button>
+                    <button
+                      type="button"
+                      class="money-link"
+                      @click="openSanXuatChiTiet(row, 'chup')"
+                    >
+                      {{ formatMoney(row.san_xuat?.chup) }}
+                    </button>
+                  </CustomTooltip>
                   <span v-else>{{ formatMoney(row.san_xuat?.chup) }}</span>
                 </template>
               </CustomTableColumn>
@@ -204,14 +238,19 @@
                 align="right"
               >
                 <template #default="{ row }">
-                  <button
+                  <CustomTooltip
                     v-if="hasSanXuatChiTiet(row, 'quay_phim')"
-                    type="button"
-                    class="money-link"
-                    @click="openSanXuatChiTiet(row, 'quay_phim')"
+                    content="Xem chi tiết lương quay phim"
+                    placement="top"
                   >
-                    {{ formatMoney(row.san_xuat?.quay_phim) }}
-                  </button>
+                    <button
+                      type="button"
+                      class="money-link"
+                      @click="openSanXuatChiTiet(row, 'quay_phim')"
+                    >
+                      {{ formatMoney(row.san_xuat?.quay_phim) }}
+                    </button>
+                  </CustomTooltip>
                   <span v-else>{{ formatMoney(row.san_xuat?.quay_phim) }}</span>
                 </template>
               </CustomTableColumn>
@@ -313,6 +352,7 @@ import {
   CustomIcon,
   CustomTable,
   CustomTableColumn,
+  CustomTooltip,
 } from '@/components/element'
 import SanXuatChiTietModal from './SanXuatChiTietModal.vue'
 import HoaHongChiTietModal from './HoaHongChiTietModal.vue'
@@ -400,8 +440,17 @@ const payload = ref(null)
 const calendarActiveNames = ref([])
 const sanXuatChiTietModalRef = ref(null)
 const hoaHongChiTietModalRef = ref(null)
+/** Mặc định ẩn các ngày sau hôm nay trong bảng chi tiết. */
+const showFutureDays = ref(false)
 
 const days = computed(() => payload.value?.days || [])
+
+const visibleDays = computed(() => {
+  const list = days.value
+  if (showFutureDays.value || !list.length) return list
+  const today = todayDateValue()
+  return list.filter((row) => String(row.ngay || '').slice(0, 10) <= today)
+})
 
 const employeeTypeLabel = computed(() => {
   const type = payload.value?.nhan_vien?.loai_nhan_vien
@@ -486,6 +535,14 @@ function currentMonthValue() {
   const y = now.getFullYear()
   const m = String(now.getMonth() + 1).padStart(2, '0')
   return `${y}-${m}`
+}
+
+function todayDateValue() {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const d = String(now.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
 }
 
 function formatMonthLabel(value) {
@@ -639,12 +696,48 @@ onMounted(() => {
     background: var(--el-fill-color-light);
   }
 
+  :deep(.el-collapse-item__title) {
+    flex: 1;
+    min-width: 0;
+  }
+
   :deep(.el-collapse-item__wrap) {
     border: none;
   }
 
   :deep(.el-collapse-item__content) {
     padding: 12px 0 0;
+  }
+}
+
+.daily-collapse-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  padding-right: 8px;
+
+  &__text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.daily-toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  font-weight: 400;
+
+  &__label {
+    font-size: 13px;
+    color: var(--el-text-color-regular);
+    white-space: nowrap;
   }
 }
 
