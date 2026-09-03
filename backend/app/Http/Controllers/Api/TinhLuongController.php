@@ -425,8 +425,10 @@ class TinhLuongController extends BaseApiController
     }
 
     /**
-     * Hoa hồng HĐ trang phục theo ngày thuê.
-     * Công thức ngày = Σ (tong_tien × tỷ lệ % / 100).
+     * Hoa hồng HĐ trang phục theo ngày tạo (created_at).
+     * HĐ có nguoi_cho_thue = user hoặc user nằm trong nguoi_tham_gia,
+     * thanh_tien > 0, trang_thai khác moi_tao.
+     * Công thức ngày = Σ (thanh_tien × tỷ lệ % / 100).
      *
      * @return array<string, float>
      */
@@ -439,20 +441,26 @@ class TinhLuongController extends BaseApiController
         $tyLe = $phanTram / 100;
 
         $rows = HopDongChoThueTrangPhuc::query()
-            ->where('nguoi_cho_thue', $userId)
-            ->where('tong_tien', '>', 0)
-            ->whereNotIn('trang_thai', ['moi_tao', 'nhap', 'da_huy'])
-            ->whereDate('ngay_thue', '>=', $tuNgay)
-            ->whereDate('ngay_thue', '<=', $denNgay)
-            ->get(['id', 'ngay_thue', 'tong_tien']);
+            ->where(function ($q) use ($userId) {
+                $q->where('nguoi_cho_thue', $userId)
+                    ->orWhereJsonContains('nguoi_tham_gia', $userId)
+                    ->orWhereJsonContains('nguoi_tham_gia', (string) $userId);
+            })
+            ->where('thanh_tien', '>', 0)
+            ->where('trang_thai', '!=', 'moi_tao')
+            ->whereDate('created_at', '>=', $tuNgay)
+            ->whereDate('created_at', '<=', $denNgay)
+            ->get(['id', 'created_at', 'thanh_tien']);
 
         $map = [];
         foreach ($rows as $row) {
-            $dateKey = $row->ngay_thue?->format('Y-m-d');
+            $dateKey = $row->created_at
+                ? Carbon::parse($row->created_at)->timezone(self::TIMEZONE)->toDateString()
+                : null;
             if (! $dateKey) {
                 continue;
             }
-            $amount = (float) $row->tong_tien * $tyLe;
+            $amount = (float) $row->thanh_tien * $tyLe;
             $map[$dateKey] = round(($map[$dateKey] ?? 0) + $amount, 2);
         }
 

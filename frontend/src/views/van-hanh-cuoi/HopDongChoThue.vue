@@ -109,13 +109,38 @@
           </template>
         </CustomTableColumn>
         <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ngay_tra_thuc_te')"
+          label="Ngày trả thực tế"
+          width="140"
+          align="center"
+        >
+          <template #default="{ row }">
+            {{ formatDate(row.ngay_tra_chinh_thuc) }}
+          </template>
+        </CustomTableColumn>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('hoan_tra')"
+          label="Hoàn trả"
+          min-width="150"
+          align="center"
+        >
+          <template #default="{ row }">
+            <span
+              class="hoan-tra-status"
+              :class="`hoan-tra-status--${getHoanTraStatus(row).type}`"
+            >
+              {{ getHoanTraStatus(row).text }}
+            </span>
+          </template>
+        </CustomTableColumn>
+        <CustomTableColumn
           v-if="columnSettings.isColumnVisible('tong_tien')"
           label="Tổng tiền"
           width="130"
           align="right"
         >
           <template #default="{ row }">
-            {{ formatMoney(row.tong_tien) }}
+            {{ formatMoney(row.thanh_tien) }}
           </template>
         </CustomTableColumn>
         <CustomTableColumn
@@ -127,9 +152,9 @@
             <div class="thanh-toan-cell">
               <div
                 class="thanh-toan-cell__text"
-                :title="`${formatMoney(row.tien_coc)} / ${formatMoney(row.tong_tien)}`"
+                :title="`${formatMoney(row.tien_coc)} / ${formatMoney(row.thanh_tien)}`"
               >
-                {{ formatMoneyCompact(row.tien_coc) }} / {{ formatMoneyCompact(row.tong_tien) }}
+                {{ formatMoneyCompact(row.tien_coc) }} / {{ formatMoneyCompact(row.thanh_tien) }}
               </div>
               <div class="thanh-toan-progress" :title="`${thanhToanPercent(row)}%`">
                 <div
@@ -169,6 +194,16 @@
             <el-tag :type="trangThaiTagType(row.trang_thai)" size="small">
               {{ trangThaiLabel(row.trang_thai) }}
             </el-tag>
+          </template>
+        </CustomTableColumn>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('ngay_ky')"
+          label="Ngày ký"
+          width="120"
+          align="center"
+        >
+          <template #default="{ row }">
+            {{ formatDate(row.created_at) }}
           </template>
         </CustomTableColumn>
         <CustomTableColumn label="Thao tác" width="140" fixed="right" align="center">
@@ -283,13 +318,16 @@ const tableColumns = [
   { key: 'ma_hop_dong', label: 'Mã HĐ' },
   { key: 'khach_hang', label: 'Khách hàng' },
   { key: 'thoi_gian', label: 'Thời gian' },
+  { key: 'ngay_tra_thuc_te', label: 'Ngày trả thực tế' },
+  { key: 'hoan_tra', label: 'Hoàn trả' },
   { key: 'tong_tien', label: 'Tổng tiền' },
   { key: 'thanh_toan', label: 'Thanh toán' },
   { key: 'nguoi_cho_thue', label: 'Người cho thuê' },
   { key: 'san_pham', label: 'Sản phẩm' },
   { key: 'trang_thai', label: 'Trạng thái' },
+  { key: 'ngay_ky', label: 'Ngày ký' },
 ]
-const columnSettings = useTableColumns('van-hanh-cuoi.hop-dong-cho-thue', tableColumns)
+const columnSettings = useTableColumns('van-hanh-cuoi.hop-dong-cho-thue.v4', tableColumns)
 
 const trangThaiOptions = [
   { value: 'cho_xac_nhan', label: 'Chờ xác nhận' },
@@ -384,32 +422,68 @@ function formatDate(value) {
   return date.toLocaleDateString('vi-VN')
 }
 
-function getNgayTraHienThi(row) {
-  return row?.ngay_tra_chinh_thuc || row?.ngay_tra_du_kien || null
+function toDateOnlyYmd(value) {
+  if (!value) return null
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return null
+    const y = value.getFullYear()
+    const m = String(value.getMonth() + 1).padStart(2, '0')
+    const d = String(value.getDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
+  }
+  const raw = String(value).trim()
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`
+  const date = new Date(raw)
+  if (Number.isNaN(date.getTime())) return null
+  return toDateOnlyYmd(date)
 }
 
-function calcSoNgayThue(from, to) {
-  if (!from || !to) return null
-  const start = new Date(from)
-  const end = new Date(to)
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return null
-  const diff = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1
-  return Math.max(1, diff)
+/** Số ngày từ from → to (dương = to sau from). */
+function daysBetweenYmd(fromYmd, toYmd) {
+  const from = new Date(`${fromYmd}T00:00:00`)
+  const to = new Date(`${toYmd}T00:00:00`)
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return null
+  return Math.round((to - from) / (1000 * 60 * 60 * 24))
+}
+
+/**
+ * Trạng thái hoàn trả:
+ * - Chưa có ngày trả chính thức: so sánh hôm nay với ngày trả dự kiến
+ *   → Quá hạn N ngày / Còn N ngày / Hôm nay hoàn trả
+ * - Có ngày trả chính thức: so sánh với ngày trả dự kiến
+ *   → Trả sớm N ngày / Trả muộn N ngày / Trả đúng hạn
+ */
+function getHoanTraStatus(row) {
+  const duKien = toDateOnlyYmd(row?.ngay_tra_du_kien)
+  if (!duKien) return { text: '—', type: 'muted' }
+
+  const chinhThuc = toDateOnlyYmd(row?.ngay_tra_chinh_thuc)
+  if (chinhThuc) {
+    const diff = daysBetweenYmd(duKien, chinhThuc)
+    if (diff == null) return { text: '—', type: 'muted' }
+    if (diff < 0) return { text: `Trả sớm ${Math.abs(diff)} ngày`, type: 'early' }
+    if (diff > 0) return { text: `Trả muộn ${diff} ngày`, type: 'late' }
+    return { text: 'Trả đúng hạn', type: 'ontime' }
+  }
+
+  const today = toDateOnlyYmd(new Date())
+  const diff = daysBetweenYmd(today, duKien)
+  if (diff == null) return { text: '—', type: 'muted' }
+  if (diff < 0) return { text: `Quá hạn ${Math.abs(diff)} ngày`, type: 'overdue' }
+  if (diff > 0) return { text: `Còn ${diff} ngày`, type: 'remaining' }
+  return { text: 'Hôm nay hoàn trả', type: 'today' }
 }
 
 function formatThoiGianThue(row) {
   const from = formatDate(row?.ngay_thue)
-  const toRaw = getNgayTraHienThi(row)
-  const to = formatDate(toRaw)
-  const soNgay = Number(row?.so_ngay_thue) || calcSoNgayThue(row?.ngay_thue, toRaw)
-  const range = from === '—' && to === '—' ? '—' : `${from} – ${to}`
-  if (soNgay == null) return range
-  // return `${range} (${soNgay} ngày)`
-  return `${range}`
+  const to = formatDate(row?.ngay_tra_du_kien)
+  if (from === '—' && to === '—') return '—'
+  return `${from} – ${to}`
 }
 
 function thanhToanPercent(row) {
-  const tong = Number(row?.tong_tien) || 0
+  const tong = Number(row?.thanh_tien) || 0
   if (tong <= 0) return 0
   const coc = Number(row?.tien_coc) || 0
   return Math.min(100, Math.max(0, Math.round((coc / tong) * 100)))
@@ -627,5 +701,34 @@ onMounted(() => {
   border-radius: inherit;
   background: var(--el-color-primary);
   transition: width 0.2s ease;
+}
+
+.hoan-tra-status {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+
+  &--muted {
+    color: var(--el-text-color-secondary);
+    font-weight: 400;
+  }
+
+  &--remaining {
+    color: var(--el-color-warning);
+  }
+
+  &--today {
+    color: var(--el-color-primary);
+  }
+
+  &--overdue,
+  &--late {
+    color: var(--el-color-danger);
+  }
+
+  &--early,
+  &--ontime {
+    color: var(--el-color-success);
+  }
 }
 </style>

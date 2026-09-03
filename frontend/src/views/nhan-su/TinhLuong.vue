@@ -101,9 +101,10 @@
 
             <!--
               Hoa hồng theo ngày (backend tính sẵn):
-              - HĐ TP: mỗi HĐ cho thuê trang phục có nguoi_cho_thue = user đăng nhập,
-                tong_tien > 0, gắn theo ngay_thue, loại trừ moi_tao/nhap/da_huy.
-                Công thức ngày = Σ (tong_tien × hoa_hong_hop_dong_trang_phuc% / 100).
+              - HĐ TP: nguoi_cho_thue = user hoặc user nằm trong nguoi_tham_gia,
+                thanh_tien > 0, trang_thai khác moi_tao,
+                gắn theo ngày tạo (created_at, Asia/Ho_Chi_Minh).
+                Công thức ngày = Σ (thanh_tien × hoa_hong_hop_dong_trang_phuc% / 100).
               - HĐ SDDV: HĐ sử dụng dịch vụ có nguoi_tao_id = user đăng nhập
                 hoặc user nằm trong nguoi_tham_gia_ids, tong_tien > 0,
                 gắn theo ngày tạo (created_at, Asia/Ho_Chi_Minh), loại trừ moi_tao/nhap/da_huy.
@@ -284,10 +285,11 @@ const GROUP_A_DEFS = [
  * Nhóm B — thu nhập phát sinh trong tháng.
  *
  * Hoa hồng HĐ TP (hoa_hong_hd_tp):
- * - Nguồn: hop_dong_cho_thue_trang_phuc với nguoi_cho_thue = user đăng nhập, tong_tien > 0
- * - Ngày tính: ngay_thue; bỏ HĐ trạng thái moi_tao / nhap / da_huy
+ * - Nguồn: hop_dong_cho_thue_trang_phuc với nguoi_cho_thue = user đăng nhập
+ *   hoặc user id nằm trong nguoi_tham_gia; thanh_tien > 0; trang_thai != moi_tao
+ * - Ngày tính: DATE(created_at) theo Asia/Ho_Chi_Minh
  * - Tỷ lệ %: nhan_vien.luong_thuong_phu_cap.hoa_hong_hop_dong_trang_phuc.value (0–100)
- * - Công thức ngày: Σ (tong_tien × tỷ_lệ / 100)
+ * - Công thức ngày: Σ (thanh_tien × tỷ_lệ / 100)
  * - Tổng tháng: Σ hoa hồng theo từng ngày trong tháng
  *
  * Hoa hồng HĐ SDDV (hoa_hong_hd_sddv):
