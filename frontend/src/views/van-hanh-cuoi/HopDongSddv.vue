@@ -408,8 +408,17 @@
               <CustomTooltip content="Xem hợp đồng" placement="top">
                 <CustomButton type="info" link :icon="View" @click="openDetail(row)" />
               </CustomTooltip>
-              <CustomTooltip content="Điều phối" placement="top">
-                <CustomButton type="warning" link :icon="Position" @click="openDieuPhoi(row)" />
+              <CustomTooltip
+                :content="canDieuPhoi(row) ? 'Điều phối' : dieuPhoiDisabledReason(row)"
+                placement="top"
+              >
+                <CustomButton
+                  type="warning"
+                  link
+                  :icon="Position"
+                  :disabled="!canDieuPhoi(row)"
+                  @click="openDieuPhoi(row)"
+                />
               </CustomTooltip>
               <CustomTooltip :content="thanhToanTooltip(row)" placement="top">
                 <CustomButton
@@ -949,9 +958,22 @@ function openLichQuayChup(row) {
   lichQuayChupModalVisible.value = true
 }
 
+function canDieuPhoi(row) {
+  if (!row?.id || !row?.loai_hop_dong_id) return false
+  return getKetQuaTrangThai(row) !== 'hoan_tat_san_xuat'
+}
+
+function dieuPhoiDisabledReason(row) {
+  if (!row?.loai_hop_dong_id) return 'Hợp đồng chưa chọn loại hợp đồng'
+  if (getKetQuaTrangThai(row) === 'hoan_tat_san_xuat') {
+    return 'Đã hoàn tất sản xuất — không thể điều phối thêm'
+  }
+  return 'Không thể điều phối'
+}
+
 function openDieuPhoi(row) {
-  if (!row?.loai_hop_dong_id) {
-    ElMessage.warning('Hợp đồng chưa chọn loại hợp đồng.')
+  if (!canDieuPhoi(row)) {
+    ElMessage.warning(dieuPhoiDisabledReason(row))
     return
   }
   dieuPhoiHopDongId.value = row.id

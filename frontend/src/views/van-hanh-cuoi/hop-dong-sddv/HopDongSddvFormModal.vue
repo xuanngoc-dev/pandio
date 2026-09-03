@@ -69,7 +69,7 @@
           :loading="saving"
           @click="onSaveCurrentStep"
         >
-          Lưu nháp
+          {{ activeStep === steps.length - 1 ? 'Lưu' : 'Lưu nháp' }}
         </CustomButton>
         <CustomButton
           v-if="activeStep < steps.length - 1"

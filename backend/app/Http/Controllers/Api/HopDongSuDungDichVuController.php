@@ -578,6 +578,11 @@ class HopDongSuDungDichVuController extends BaseApiController
                 abort(403, 'Chỉ admin hoặc điều phối viên được cập nhật thông tin điều phối.');
             }
 
+            $currentStatus = $this->resolveTrangThaiDieuPhoi($hop_dong_su_dung_dich_vu);
+            if ($currentStatus === HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_HOAN_TAT_SAN_XUAT) {
+                abort(422, 'Hợp đồng đã hoàn tất sản xuất — không thể điều phối thêm.');
+            }
+
             $validated = $this->validatePayload($request, $hop_dong_su_dung_dich_vu->id, true);
             if (! array_key_exists('thong_tin_dieu_phoi', $validated)) {
                 abort(422, 'Thiếu thông tin điều phối.');
@@ -773,6 +778,7 @@ class HopDongSuDungDichVuController extends BaseApiController
     /**
      * Chuyển công việc từ gửi in sang hoàn tất sản xuất.
      * Yêu cầu thong_tin_dieu_phoi.trang_thai_dieu_phoi = gui_in.
+     * Ghi thêm thong_tin_dieu_phoi.thoi_gian_hoan_tat_san_xuat.
      */
     public function chuyenHoanTatSanXuat(Request $request, HopDongSuDungDichVu $hop_dong_su_dung_dich_vu): JsonResponse
     {
@@ -1164,11 +1170,18 @@ class HopDongSuDungDichVuController extends BaseApiController
         return $this->handleApi(function () use ($request, $hop_dong_su_dung_dich_vu) {
             // Modal điều phối chỉ gửi thong_tin_dieu_phoi — bắt buộc admin/coordinator.
             // Form HĐ (bước lịch) gửi kèm trang_thai / nested → vẫn cho phép sale lưu lịch.
-            if ($request->exists('thong_tin_dieu_phoi')
-                && array_keys($request->all()) === ['thong_tin_dieu_phoi']
-                && ! $this->userIsAdminOrCoordinator($request->user())
-            ) {
+            $isDieuPhoiOnlyUpdate = $request->exists('thong_tin_dieu_phoi')
+                && array_keys($request->all()) === ['thong_tin_dieu_phoi'];
+
+            if ($isDieuPhoiOnlyUpdate && ! $this->userIsAdminOrCoordinator($request->user())) {
                 abort(403, 'Chỉ admin hoặc điều phối viên được cập nhật thông tin điều phối.');
+            }
+
+            if ($isDieuPhoiOnlyUpdate
+                && $this->resolveTrangThaiDieuPhoi($hop_dong_su_dung_dich_vu)
+                    === HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_HOAN_TAT_SAN_XUAT
+            ) {
+                abort(422, 'Hợp đồng đã hoàn tất sản xuất — không thể điều phối thêm.');
             }
 
             $validated = $this->validatePayload($request, $hop_dong_su_dung_dich_vu->id, true);
@@ -2346,6 +2359,13 @@ class HopDongSuDungDichVuController extends BaseApiController
         $dieuPhoi = is_array($hopDong->thong_tin_dieu_phoi) ? $hopDong->thong_tin_dieu_phoi : [];
         $dieuPhoi[HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_KEY] = $status;
 
+        if ($status === HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_HOAN_TAT_SAN_XUAT) {
+            $existing = $dieuPhoi[HopDongSuDungDichVu::THOI_GIAN_HOAN_TAT_SAN_XUAT_KEY] ?? null;
+            if ($existing === null || $existing === '') {
+                $dieuPhoi[HopDongSuDungDichVu::THOI_GIAN_HOAN_TAT_SAN_XUAT_KEY] = now()->toDateTimeString();
+            }
+        }
+
         $hopDong->update(array_merge($extra, [
             'ket_qua_hop_dong' => $ketQua,
             'thong_tin_dieu_phoi' => $dieuPhoi,
@@ -2370,6 +2390,19 @@ class HopDongSuDungDichVuController extends BaseApiController
             $validated['thong_tin_dieu_phoi'],
             $existingStatus,
         );
+
+        // Giữ thoi_gian_hoan_tat_san_xuat nếu payload mới không gửi kèm.
+        $existingTs = is_array($existing?->thong_tin_dieu_phoi)
+            ? ($existing->thong_tin_dieu_phoi[HopDongSuDungDichVu::THOI_GIAN_HOAN_TAT_SAN_XUAT_KEY] ?? null)
+            : null;
+        if (($existingTs !== null && $existingTs !== '')
+            && (! array_key_exists(HopDongSuDungDichVu::THOI_GIAN_HOAN_TAT_SAN_XUAT_KEY, $payload)
+                || $payload[HopDongSuDungDichVu::THOI_GIAN_HOAN_TAT_SAN_XUAT_KEY] === null
+                || $payload[HopDongSuDungDichVu::THOI_GIAN_HOAN_TAT_SAN_XUAT_KEY] === '')
+        ) {
+            $payload[HopDongSuDungDichVu::THOI_GIAN_HOAN_TAT_SAN_XUAT_KEY] = $existingTs;
+        }
+
         $validated['thong_tin_dieu_phoi'] = $payload;
 
         if (($payload[HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_KEY] ?? null) !== HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_TIEN_KY) {

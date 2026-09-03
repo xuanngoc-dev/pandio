@@ -62,6 +62,8 @@ export function insertDieuPhoiSchemaFields(schema, inserts, afterKey) {
 
 /** Trạng thái workflow điều phối, lưu ở envelope thong_tin_dieu_phoi */
 export const TRANG_THAI_DIEU_PHOI_KEY = 'trang_thai_dieu_phoi'
+/** Thời điểm chuyển hoàn tất sản xuất, lưu ở envelope thong_tin_dieu_phoi */
+export const THOI_GIAN_HOAN_TAT_SAN_XUAT_KEY = 'thoi_gian_hoan_tat_san_xuat'
 export const TRANG_THAI_DIEU_PHOI_CHO_NHAN = 'cho_nhan'
 export const TRANG_THAI_DIEU_PHOI_TIEN_KY = 'tien_ky'
 export const TRANG_THAI_DIEU_PHOI_LATER = [
@@ -260,7 +262,7 @@ export function isDieuPhoiSessionMap(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }
 
-/** Payload chuẩn: { ngay_tra_file_le, ngay_tra_file_in, ngay_khach_hen_qua, trang_thai_dieu_phoi, danh_sach_buoi_chup } */
+/** Payload chuẩn: { ngay_tra_file_le, ngay_tra_file_in, ngay_khach_hen_qua, trang_thai_dieu_phoi, thoi_gian_hoan_tat_san_xuat?, danh_sach_buoi_chup } */
 export function isDieuPhoiEnvelope(value) {
   return isDieuPhoiSessionMap(value) && Array.isArray(value[DANH_SACH_BUOI_CHUP_KEY])
 }

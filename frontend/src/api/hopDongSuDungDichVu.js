@@ -149,6 +149,7 @@ export function chuyenGuiInCongViec(id) {
 
 /**
  * Chuyển công việc từ gửi in sang hoàn tất sản xuất.
+ * Backend ghi thêm thong_tin_dieu_phoi.thoi_gian_hoan_tat_san_xuat.
  * @param {number|string} id
  */
 export function chuyenHoanTatSanXuatCongViec(id) {
