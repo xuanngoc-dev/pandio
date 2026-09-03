@@ -276,6 +276,7 @@ class UserController extends BaseApiController
             ],
             'luong_thuong_phu_cap.luong_theo_dich_vu.items' => ['nullable', 'array'],
             'luong_thuong_phu_cap.luong_theo_dich_vu.items.*.id' => ['nullable', 'integer', 'min:1'],
+            'luong_thuong_phu_cap.luong_theo_dich_vu.items.*.ma_dich_vu' => ['nullable', 'integer', 'min:1'],
             'luong_thuong_phu_cap.luong_theo_dich_vu.items.*.ten_dich_vu' => ['nullable', 'string', 'max:255'],
             'luong_thuong_phu_cap.luong_theo_dich_vu.items.*.chup' => ['nullable', 'array'],
             'luong_thuong_phu_cap.luong_theo_dich_vu.items.*.chup.*' => ['nullable', 'numeric', 'min:0'],
@@ -454,13 +455,19 @@ class UserController extends BaseApiController
             if (! is_array($row)) {
                 continue;
             }
-            $id = (int) ($row['id'] ?? $row['danh_muc_loai_quay_chup_id'] ?? 0);
+            $id = (int) ($row['id'] ?? $row['ma_dich_vu'] ?? $row['danh_muc_loai_quay_chup_id'] ?? 0);
             if ($id <= 0) {
                 continue;
             }
 
+            $maDichVu = (int) ($row['ma_dich_vu'] ?? $id);
+            if ($maDichVu <= 0) {
+                $maDichVu = $id;
+            }
+
             $entry = [
                 'id' => $id,
+                'ma_dich_vu' => $maDichVu,
                 'ten_dich_vu' => trim((string) ($row['ten_dich_vu'] ?? '')) ?: null,
             ];
             foreach ($roles as $role) {

@@ -94,8 +94,10 @@ function normalizeDiemMap(raw) {
 }
 
 function emptyDichVuItem(loai = {}) {
+  const id = loai.id != null ? Number(loai.id) : null
   return {
-    id: loai.id != null ? Number(loai.id) : null,
+    id,
+    ma_dich_vu: id,
     ten_dich_vu: loai.ten_dich_vu || '',
     chup: emptyDiemMap(),
     make: emptyDiemMap(),
@@ -109,11 +111,15 @@ function itemsToMap(raw) {
   const list = Array.isArray(raw) ? raw : Object.values(raw)
   for (const row of list) {
     if (!row || typeof row !== 'object') continue
-    const id = row.id ?? row.danh_muc_loai_quay_chup_id
+    const id = row.id ?? row.ma_dich_vu ?? row.danh_muc_loai_quay_chup_id
     if (id == null || id === '') continue
     const key = String(id)
+    const numericId = Number(id)
     map[key] = {
-      id: Number(id),
+      id: numericId,
+      ma_dich_vu: row.ma_dich_vu != null && row.ma_dich_vu !== ''
+        ? Number(row.ma_dich_vu)
+        : numericId,
       ten_dich_vu: row.ten_dich_vu || '',
       chup: normalizeDiemMap(row.chup),
       make: normalizeDiemMap(row.make),
@@ -169,6 +175,7 @@ export function ensureLuongTheoDichVu(luong, loaiList = []) {
     }
     const item = block.items[id]
     item.id = Number(loai.id)
+    item.ma_dich_vu = Number(loai.id)
     item.ten_dich_vu = loai.ten_dich_vu || item.ten_dich_vu || ''
     for (const role of LUONG_DICH_VU_ROLES) {
       item[role.key] = normalizeDiemMap(item[role.key])
@@ -252,8 +259,10 @@ function serializeLuongTheoDichVuItems(itemsMap, loaiList = []) {
     const id = String(loai.id)
     seen.add(id)
     const src = map[id] || emptyDichVuItem(loai)
+    const numericId = Number(loai.id)
     result.push({
-      id: Number(loai.id),
+      id: numericId,
+      ma_dich_vu: numericId,
       ten_dich_vu: loai.ten_dich_vu || src.ten_dich_vu || '',
       chup: normalizeDiemMap(src.chup),
       make: normalizeDiemMap(src.make),
@@ -263,8 +272,10 @@ function serializeLuongTheoDichVuItems(itemsMap, loaiList = []) {
 
   for (const [id, src] of Object.entries(map)) {
     if (seen.has(id)) continue
+    const numericId = Number(src.id ?? src.ma_dich_vu ?? id)
     result.push({
-      id: Number(src.id),
+      id: numericId,
+      ma_dich_vu: numericId,
       ten_dich_vu: src.ten_dich_vu || '',
       chup: normalizeDiemMap(src.chup),
       make: normalizeDiemMap(src.make),
@@ -298,8 +309,10 @@ export function serializeLuongThuongPhuCap(luong, loaiList = []) {
 export function sampleLuongTheoDichVu(loaiList = [], randomInt) {
   const items = {}
   for (const loai of loaiList) {
+    const numericId = Number(loai.id)
     items[String(loai.id)] = {
-      id: Number(loai.id),
+      id: numericId,
+      ma_dich_vu: numericId,
       ten_dich_vu: loai.ten_dich_vu || '',
       chup: {
         1: randomInt(3, 8) * 100_000,
