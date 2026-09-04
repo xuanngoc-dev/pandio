@@ -318,7 +318,7 @@ const dialogTitle = computed(() => {
 })
 
 const hoaHongGiaTriLabel = computed(() =>
-  itemKey.value === 'hoa_hong_hd_sddv' ? 'Tổng tiền HĐ' : 'Thành tiền HĐ',
+  itemKey.value === 'hoa_hong_hd_sddv' ? 'Tiền khách phải thanh toán' : 'Thành tiền HĐ',
 )
 
 const amountColumnLabel = computed(() => {

@@ -75,11 +75,11 @@ const TYPE_META = {
   },
   hd_sddv: {
     title: 'Hoa hồng HĐ sử dụng dịch vụ',
-    giaTriLabel: 'Tổng tiền HĐ',
+    giaTriLabel: 'Tiền khách phải thanh toán',
     emptyText: 'Không có hợp đồng SDDV nào trong ngày',
     hint: (date) =>
       `Các HĐ sử dụng dịch vụ tạo ngày ${date} mà bạn là người tạo hoặc người tham gia. ` +
-      'Hoa hồng = tổng tiền × tỷ lệ % trong hồ sơ lương.',
+      'Hoa hồng = tiền khách phải thanh toán × tỷ lệ % trong hồ sơ lương.',
   },
 }
 

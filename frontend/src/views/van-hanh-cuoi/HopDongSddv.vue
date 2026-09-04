@@ -274,14 +274,14 @@
           </template>
         </CustomTableColumn>
         <CustomTableColumn
-          v-if="columnSettings.isColumnVisible('tong_tien')"
-          label="Tổng tiền"
-          min-width="130"
+          v-if="columnSettings.isColumnVisible('tong_tien_khach_phai_thanh_toan')"
+          label="Tổng khách thanh toán"
+          min-width="200"
           align="right"
           show-overflow-tooltip
         >
           <template #default="{ row }">
-            {{ formatMoney(row.tong_tien) }}
+            {{ formatMoney(row.tong_tien_khach_phai_thanh_toan) }}
           </template>
         </CustomTableColumn>
         <CustomTableColumn
@@ -552,7 +552,7 @@ import {
   resolveTrangThaiDieuPhoi,
 } from '@/utils/thongTinDieuPhoi'
 
-const COLUMN_STORAGE_KEY = 'van-hanh-cuoi.hop-dong-sddv.v4'
+const COLUMN_STORAGE_KEY = 'van-hanh-cuoi.hop-dong-sddv.v5'
 const CHI_TIET_GROUP = 'Chi tiết hợp đồng'
 
 const tableColumns = [
@@ -560,7 +560,11 @@ const tableColumns = [
   { key: 'loai_hop_dong', label: 'Loại hợp đồng', group: 'Thông tin hợp đồng' },
   { key: 'khach_hang', label: 'Khách hàng', group: 'Thông tin hợp đồng' },
   { key: 'kenh_tiep_can', label: 'Kênh tiếp cận', group: 'Thông tin hợp đồng' },
-  { key: 'tong_tien', label: 'Tổng tiền', group: 'Thông tin hợp đồng' },
+  {
+    key: 'tong_tien_khach_phai_thanh_toan',
+    label: 'Tổng khách thanh toán',
+    group: 'Thông tin hợp đồng',
+  },
   { key: 'tien_coc', label: 'Tiền cọc', group: 'Thông tin hợp đồng' },
   { key: 'nguoi_tao', label: 'Người tạo', group: 'Thông tin hợp đồng' },
   { key: 'trang_thai', label: 'Trạng thái', group: 'Thông tin hợp đồng' },
@@ -989,6 +993,9 @@ function getDaThanhToan(row) {
 }
 
 function getKhachPhaiThanhToan(row) {
+  if (row?.tong_tien_khach_phai_thanh_toan != null) {
+    return Math.max(0, Number(row.tong_tien_khach_phai_thanh_toan) || 0)
+  }
   const tong = Number(row?.tong_tien) || 0
   const phatSinh = Number(row?.phat_sinh) || 0
   const chietKhau = Number(row?.chiet_khau) || 0

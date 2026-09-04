@@ -565,8 +565,8 @@ class TinhLuongController extends BaseApiController
     /**
      * Hoa hồng HĐ SDDV theo ngày tạo.
      * HĐ có nguoi_tao_id = user hoặc user nằm trong nguoi_tham_gia_ids,
-     * tong_tien > 0, bỏ moi_tao/nhap/da_huy.
-     * Công thức ngày = Σ (tong_tien × tỷ lệ % / 100).
+     * tong_tien_khach_phai_thanh_toan > 0, bỏ moi_tao/nhap/da_huy.
+     * Công thức ngày = Σ (tong_tien_khach_phai_thanh_toan × tỷ lệ % / 100).
      *
      * @return array<string, array{tong: float, chi_tiet?: list<array<string, mixed>>}>
      */
@@ -584,12 +584,12 @@ class TinhLuongController extends BaseApiController
                     ->orWhereJsonContains('nguoi_tham_gia_ids', $userId)
                     ->orWhereJsonContains('nguoi_tham_gia_ids', (string) $userId);
             })
-            ->where('tong_tien', '>', 0)
+            ->where('tong_tien_khach_phai_thanh_toan', '>', 0)
             ->whereNotIn('trang_thai', ['moi_tao', 'nhap', 'da_huy'])
             ->whereDate('created_at', '>=', $tuNgay)
             ->whereDate('created_at', '<=', $denNgay)
             ->orderBy('created_at')
-            ->get(['id', 'ma_hop_dong', 'ten_khach_hang', 'created_at', 'tong_tien', 'nguoi_tao_id', 'nguoi_tham_gia_ids', 'trang_thai']);
+            ->get(['id', 'ma_hop_dong', 'ten_khach_hang', 'created_at', 'tong_tien_khach_phai_thanh_toan', 'nguoi_tao_id', 'nguoi_tham_gia_ids', 'trang_thai']);
 
         $map = [];
         foreach ($rows as $row) {
@@ -600,7 +600,7 @@ class TinhLuongController extends BaseApiController
                 continue;
             }
 
-            $giaTri = (float) $row->tong_tien;
+            $giaTri = (float) $row->tong_tien_khach_phai_thanh_toan;
             $amount = round($giaTri * $tyLe, 2);
 
             if (! isset($map[$dateKey])) {

@@ -191,6 +191,7 @@ function getPayload() {
     chiet_khau: Number(props.form.chiet_khau) || 0,
     ma_giam_gia: props.form.ma_giam_gia?.trim() || null,
     khuyen_mai_theo_ma_giam_gia: Number(props.form.khuyen_mai_theo_ma_giam_gia) || 0,
+    tong_tien_khach_phai_thanh_toan: khachHangPhaiThanhToan.value,
     so_tien_thanh_toan_lan_1: Number(props.form.so_tien_thanh_toan_lan_1) || 0,
     so_tien_thanh_toan_lan_2: Number(props.form.so_tien_thanh_toan_lan_2) || 0,
     so_tien_thanh_toan_lan_3: Number(props.form.so_tien_thanh_toan_lan_3) || 0,

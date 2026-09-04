@@ -247,7 +247,10 @@
               </CustomCol>
               <CustomCol v-bind="fieldColProps">
                 <CustomFormItem label="Khách phải thanh toán">
-                  <CustomInput :model-value="formatMoney(khachPhaiThanhToan)" readonly />
+                  <CustomInput
+                    :model-value="formatMoney(hopDong.tong_tien_khach_phai_thanh_toan)"
+                    readonly
+                  />
                 </CustomFormItem>
               </CustomCol>
               <CustomCol v-bind="fieldColProps">
@@ -588,14 +591,6 @@ const trangPhucRows = computed(() => {
     ngay_bat_dau: row.ngay_bat_dau || null,
     ngay_ket_thuc: row.ngay_ket_thuc || null,
   }))
-})
-
-const khachPhaiThanhToan = computed(() => {
-  const tong = Number(hopDong.value?.tong_tien) || 0
-  const phatSinh = Number(hopDong.value?.phat_sinh) || 0
-  const chietKhau = Number(hopDong.value?.chiet_khau) || 0
-  const giamGia = Number(hopDong.value?.khuyen_mai_theo_ma_giam_gia) || 0
-  return Math.max(0, tong + phatSinh - chietKhau - giamGia)
 })
 
 const dieuPhoiSessions = computed(() => {
