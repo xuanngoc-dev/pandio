@@ -19,6 +19,10 @@ class ChotLuongThang extends Model
 
     public const TRANG_THAI_DA_CHOT = 'da_chot';
 
+    public const THANH_TOAN_CHUA = 'chua_thanh_toan';
+
+    public const THANH_TOAN_DA = 'da_thanh_toan';
+
     protected $table = 'chot_luong_thang';
 
     /**

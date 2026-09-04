@@ -140,7 +140,7 @@ class TinhLuongController extends BaseApiController
             }
 
             $query = User::query()
-                ->with(['nhanVien:id,user_id,loai_nhan_vien,cong_chuan,luong_thuong_phu_cap'])
+                ->with([$this->nhanVienTongHopWith()])
                 ->select(['id', 'name', 'email', 'phone', 'status'])
                 ->where('status', 'active')
                 ->whereHas('nhanVien')
@@ -247,7 +247,7 @@ class TinhLuongController extends BaseApiController
             }
 
             $users = User::query()
-                ->with(['nhanVien:id,user_id,loai_nhan_vien,cong_chuan,luong_thuong_phu_cap'])
+                ->with([$this->nhanVienTongHopWith()])
                 ->select(['id', 'name', 'email', 'phone', 'status'])
                 ->where('status', 'active')
                 ->whereHas('nhanVien')
@@ -255,7 +255,7 @@ class TinhLuongController extends BaseApiController
                 ->get();
 
             $items = $users
-                ->map(fn (User $user) => $this->mapTongHopRow($user, $thang))
+                ->map(fn (User $user) => $this->mapTongHopRow($user, $thang, forChot: true))
                 ->values()
                 ->all();
 
@@ -350,6 +350,79 @@ class TinhLuongController extends BaseApiController
     }
 
     /**
+     * Đánh dấu đã chuyển lương cho một nhân viên trong snapshot chốt tháng.
+     *
+     * Body: thang (YYYY-MM), user_id
+     */
+    public function chuyenLuong(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'thang' => ['required', 'string', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/'],
+                'user_id' => ['required', 'integer', 'min:1'],
+            ]);
+
+            $thang = $validated['thang'];
+            $userId = (int) $validated['user_id'];
+            [$nam, $thangSo] = array_map('intval', explode('-', $thang));
+
+            $record = ChotLuongThang::query()
+                ->where('thang', $thangSo)
+                ->where('nam', $nam)
+                ->where('trang_thai', ChotLuongThang::TRANG_THAI_DA_CHOT)
+                ->first();
+
+            if (! $record) {
+                throw ValidationException::withMessages([
+                    'thang' => ['Tháng này chưa được chốt lương. Không thể chuyển lương.'],
+                ]);
+            }
+
+            $duLieu = is_array($record->du_lieu_chot) ? $record->du_lieu_chot : [];
+            $items = is_array($duLieu['items'] ?? null) ? $duLieu['items'] : [];
+            $foundIndex = null;
+
+            foreach ($items as $index => $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                if ((int) ($row['user_id'] ?? 0) === $userId) {
+                    $foundIndex = $index;
+                    break;
+                }
+            }
+
+            if ($foundIndex === null) {
+                throw ValidationException::withMessages([
+                    'user_id' => ['Không tìm thấy nhân viên trong dữ liệu chốt lương tháng này.'],
+                ]);
+            }
+
+            if (($items[$foundIndex]['trang_thai_thanh_toan'] ?? null) === ChotLuongThang::THANH_TOAN_DA) {
+                throw ValidationException::withMessages([
+                    'user_id' => ['Nhân viên này đã được chuyển lương.'],
+                ]);
+            }
+
+            $items[$foundIndex]['trang_thai_thanh_toan'] = ChotLuongThang::THANH_TOAN_DA;
+            $items[$foundIndex]['thanh_toan_luc'] = Carbon::now(self::TIMEZONE)->toIso8601String();
+            $duLieu['items'] = array_values($items);
+
+            $record->update([
+                'du_lieu_chot' => $duLieu,
+            ]);
+
+            return response()->json([
+                'message' => 'Đã cập nhật trạng thái thanh toán lương.',
+                'thang' => $thang,
+                'user_id' => $userId,
+                'trang_thai_thanh_toan' => ChotLuongThang::THANH_TOAN_DA,
+                'thanh_toan_luc' => $items[$foundIndex]['thanh_toan_luc'],
+            ]);
+        }, 'chuyển lương nhân viên');
+    }
+
+    /**
      * Trả snapshot đã chốt nếu tháng có bản ghi da_chot trong chot_luong_thang.
      *
      * @return array<string, mixed>|null
@@ -419,9 +492,17 @@ class TinhLuongController extends BaseApiController
     }
 
     /**
+     * Columns eager-load cho mapTongHopRow (kèm thông tin nhận lương).
+     */
+    private function nhanVienTongHopWith(): string
+    {
+        return 'nhanVien:id,user_id,loai_nhan_vien,cong_chuan,luong_thuong_phu_cap,ngan_hang,chi_nhanh,so_tai_khoan,chu_tai_khoan';
+    }
+
+    /**
      * @return array<string, mixed>
      */
-    private function mapTongHopRow(User $user, string $thang): array
+    private function mapTongHopRow(User $user, string $thang, bool $forChot = false): array
     {
         $nhanVien = $user->nhanVien;
         $payload = $this->buildBangLuongThang($user, $nhanVien, $thang, includeDays: false);
@@ -429,7 +510,7 @@ class TinhLuongController extends BaseApiController
         $tong = $payload['tong_ket'];
         $phuCap = $nv['phu_cap'];
 
-        return [
+        $row = [
             'user_id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
@@ -466,6 +547,18 @@ class TinhLuongController extends BaseApiController
             ],
             'thuc_nhan' => $tong['thuc_nhan'],
         ];
+
+        if ($forChot) {
+            $row['trang_thai_thanh_toan'] = ChotLuongThang::THANH_TOAN_CHUA;
+            $row['thong_tin_nguoi_nhan'] = [
+                'ngan_hang' => $nhanVien?->ngan_hang,
+                'chi_nhanh' => $nhanVien?->chi_nhanh,
+                'so_tai_khoan' => $nhanVien?->so_tai_khoan,
+                'chu_tai_khoan' => $nhanVien?->chu_tai_khoan,
+            ];
+        }
+
+        return $row;
     }
 
     /**

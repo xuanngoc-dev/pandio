@@ -105,6 +105,7 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
     Route::get('/tinh-luong/chot-thang', [TinhLuongController::class, 'trangThaiChot']);           // Trạng thái chốt lương tháng
     Route::post('/tinh-luong/chot-thang', [TinhLuongController::class, 'chotThang']);              // Chốt lương tháng (lưu snapshot)
     Route::delete('/tinh-luong/chot-thang', [TinhLuongController::class, 'huyChotThang']);         // Huỷ chốt lương tháng
+    Route::post('/tinh-luong/chuyen-luong', [TinhLuongController::class, 'chuyenLuong']);          // Đánh dấu đã chuyển lương NV trong snapshot chốt
 
     // --- Phòng ban ---
     Route::get('phong-ban/{phong_ban}/nhan-vien', [PhongBanController::class, 'nhanVien']);                       // Danh sách nhân viên trong phòng ban

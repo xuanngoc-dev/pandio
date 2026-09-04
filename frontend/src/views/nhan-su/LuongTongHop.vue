@@ -2,7 +2,7 @@
   <div class="luong-tong-hop page-list">
     <CustomCard shadow="hover" class="filter-card">
       <CustomRow :gutter="12" class="toolbar">
-        <CustomCol :xs="24" :sm="12" :md="8" :lg="6">
+        <CustomCol :xs="24" :sm="12" :md="8" :lg="5">
           <CustomDatePicker
             v-model="selectedMonth"
             type="month"
@@ -14,7 +14,7 @@
             @change="onSearch"
           />
         </CustomCol>
-        <CustomCol :xs="24" :sm="12" :md="10" :lg="8">
+        <CustomCol :xs="24" :sm="12" :md="10" :lg="4">
           <CustomInput
             v-model="keyword"
             placeholder="Tìm theo tên, email, SĐT..."
@@ -28,10 +28,24 @@
             </template>
           </CustomInput>
         </CustomCol>
-        <CustomCol :xs="24" :sm="12" :md="6" :lg="4">
+        <CustomCol :xs="24" :sm="12" :md="10" :lg="10">
           <CustomButton type="primary" plain :loading="loading" @click="onSearch">
             Tìm kiếm
           </CustomButton>
+            <CustomButton
+              :type="selectedMonth === previousMonthValue() ? 'primary' : 'default'"
+              :plain="selectedMonth !== previousMonthValue()"
+              @click="selectQuickMonth(previousMonthValue())"
+            >
+              Tháng trước
+            </CustomButton>
+            <CustomButton
+              :type="selectedMonth === currentMonthValue() ? 'primary' : 'default'"
+              :plain="selectedMonth !== currentMonthValue()"
+              @click="selectQuickMonth(currentMonthValue())"
+            >
+              Tháng này
+            </CustomButton>
         </CustomCol>
       </CustomRow>
     </CustomCard>
@@ -180,7 +194,38 @@
             </template>
           </CustomTableColumn>
 
-          <CustomTableColumn label="Thao tác" width="90" fixed="right" align="center">
+          <CustomTableColumn
+            v-if="isLockedData"
+            label="Trạng thái"
+            width="168"
+            align="center"
+            fixed="right"
+          >
+            <template #default="{ row }">
+              <div class="status-cell">
+                <CustomTag
+                  :type="row.trang_thai_thanh_toan === 'da_thanh_toan' ? 'success' : 'warning'"
+                  effect="light"
+                >
+                  {{
+                    row.trang_thai_thanh_toan === 'da_thanh_toan'
+                      ? 'Đã thanh toán'
+                      : 'Chưa thanh toán'
+                  }}
+                </CustomTag>
+                <CustomTooltip content="Thông tin người nhận" placement="top">
+                  <CustomButton
+                    type="primary"
+                    link
+                    :icon="InfoFilled"
+                    @click="openThongTinNguoiNhan(row)"
+                  />
+                </CustomTooltip>
+              </div>
+            </template>
+          </CustomTableColumn>
+
+          <CustomTableColumn label="Thao tác" width="110" fixed="right" align="center">
             <template #default="{ row }">
               <div class="action-btns">
                 <CustomTooltip
@@ -193,6 +238,15 @@
                     :icon="View"
                     :disabled="isLockedData"
                     @click="viewDetail(row)"
+                  />
+                </CustomTooltip>
+                <CustomTooltip :content="chuyenLuongTooltip(row)" placement="top">
+                  <CustomButton
+                    type="success"
+                    link
+                    :icon="Money"
+                    :disabled="!canChuyenLuong(row)"
+                    @click="openChuyenLuong(row)"
                   />
                 </CustomTooltip>
               </div>
@@ -212,12 +266,14 @@
 
     <LuongNhanVienChiTietModal ref="chiTietModalRef" />
     <LuongKhoanMucChiTietModal ref="khoanMucModalRef" />
+    <LuongChuyenLuongModal ref="chuyenLuongModalRef" @saved="loadItems" />
+    <LuongThongTinNguoiNhanModal ref="thongTinNguoiNhanModalRef" />
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { Briefcase, Clock, Search, View } from '@element-plus/icons-vue'
+import { Briefcase, Clock, InfoFilled, Money, Search, View } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { chotLuongThang, fetchLuongTongHop, fetchTrangThaiChotLuong, huyChotLuongThang } from '@/api/tinhLuong'
 import Pagination from '@/components/Pagination.vue'
@@ -231,10 +287,13 @@ import {
   CustomRow,
   CustomTable,
   CustomTableColumn,
+  CustomTag,
   CustomTooltip,
 } from '@/components/element'
 import LuongNhanVienChiTietModal from './LuongNhanVienChiTietModal.vue'
 import LuongKhoanMucChiTietModal from './LuongKhoanMucChiTietModal.vue'
+import LuongChuyenLuongModal from './LuongChuyenLuongModal.vue'
+import LuongThongTinNguoiNhanModal from './LuongThongTinNguoiNhanModal.vue'
 
 const loading = ref(false)
 const chotting = ref(false)
@@ -246,6 +305,8 @@ const keyword = ref('')
 const selectedMonth = ref(currentMonthValue())
 const chiTietModalRef = ref(null)
 const khoanMucModalRef = ref(null)
+const chuyenLuongModalRef = ref(null)
+const thongTinNguoiNhanModalRef = ref(null)
 
 const chotStatus = ref({
   da_chot: false,
@@ -330,6 +391,24 @@ function currentMonthValue() {
   const y = now.getFullYear()
   const m = String(now.getMonth() + 1).padStart(2, '0')
   return `${y}-${m}`
+}
+
+function previousMonthValue() {
+  const d = new Date()
+  d.setDate(1)
+  d.setMonth(d.getMonth() - 1)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  return `${y}-${m}`
+}
+
+function selectQuickMonth(value) {
+  if (!value || selectedMonth.value === value) {
+    onSearch()
+    return
+  }
+  selectedMonth.value = value
+  onSearch()
 }
 
 function formatMonthLabel(value) {
@@ -524,6 +603,39 @@ function viewDetail(row) {
   })
 }
 
+function canChuyenLuong(row) {
+  if (!isLockedData.value) return false
+  return row?.trang_thai_thanh_toan !== 'da_thanh_toan'
+}
+
+function chuyenLuongTooltip(row) {
+  if (!isLockedData.value) return 'Chỉ chuyển sau khi chốt lương'
+  if (row?.trang_thai_thanh_toan === 'da_thanh_toan') return 'Đã chuyển lương'
+  return 'Chuyển lương'
+}
+
+function openChuyenLuong(row) {
+  if (!canChuyenLuong(row)) return
+  chuyenLuongModalRef.value?.open({
+    userId: row.user_id,
+    thang: selectedMonth.value,
+    name: row.name,
+    thucNhan: row.thuc_nhan,
+    thongTinNguoiNhan: row.thong_tin_nguoi_nhan,
+    trangThaiThanhToan: row.trang_thai_thanh_toan,
+  })
+}
+
+function openThongTinNguoiNhan(row) {
+  thongTinNguoiNhanModalRef.value?.open({
+    thang: selectedMonth.value,
+    name: row.name,
+    thucNhan: row.thuc_nhan,
+    thongTinNguoiNhan: row.thong_tin_nguoi_nhan,
+    trangThaiThanhToan: row.trang_thai_thanh_toan,
+  })
+}
+
 function viewKhoanMuc(row, group, col) {
   if (isLockedData.value) return
   khoanMucModalRef.value?.open({
@@ -544,6 +656,21 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
+.month-quick-btns {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.status-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
 .chot-btn-wrap {
   display: inline-flex;
 }

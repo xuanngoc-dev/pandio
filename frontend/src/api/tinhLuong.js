@@ -58,3 +58,12 @@ export function chotLuongThang(payload, config = {}) {
 export function huyChotLuongThang(payload, config = {}) {
   return api.delete('/tinh-luong/chot-thang', { data: payload, ...config })
 }
+
+/**
+ * Đánh dấu đã chuyển lương cho một nhân viên trong snapshot chốt tháng.
+ * @param {{ thang: string, user_id: number|string }} payload
+ * @param {{ skipLoading?: boolean }} [config]
+ */
+export function chuyenLuongNhanVien(payload, config = {}) {
+  return api.post('/tinh-luong/chuyen-luong', payload, config)
+}
