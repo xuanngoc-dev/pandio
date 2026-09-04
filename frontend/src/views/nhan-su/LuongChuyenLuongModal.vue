@@ -33,7 +33,19 @@
 
       <div class="payment-layout">
         <section class="bank-panel">
-          <div class="section-title">Tài khoản nhận lương</div>
+          <div class="section-title-row">
+            <div class="section-title">Tài khoản nhận lương</div>
+            <CustomButton
+              type="primary"
+              plain
+              size="small"
+              :loading="fetchingBank"
+              :disabled="!canFetchBank"
+              @click="fetchBankInfo"
+            >
+              Lấy thông tin
+            </CustomButton>
+          </div>
           <div v-if="hasBankInfo" class="bank-card">
             <CustomForm label-position="top" class="bank-form">
               <CustomRow :gutter="16">
@@ -93,7 +105,11 @@
             </div>
           </div>
           <div v-else class="empty-bank">
-            Nhân viên chưa có thông tin tài khoản ngân hàng.
+            <div class="empty-bank__text">
+              Chưa có thông tin tài khoản nhận lương trong dữ liệu chốt.
+              Vui lòng bổ sung trong hồ sơ nhân viên, rồi nhấn
+              <strong>Lấy thông tin</strong> để đồng bộ vào bảng lương tháng này.
+            </div>
           </div>
         </section>
 
@@ -101,7 +117,9 @@
           <div class="section-title">Quét mã QR để chuyển lương</div>
           <div class="qr-frame">
             <div v-if="!hasBankInfo" class="qr-placeholder">
-              <div class="qr-placeholder__text">Không thể tạo QR vì thiếu thông tin tài khoản</div>
+              <div class="qr-placeholder__text">
+                Không thể tạo QR vì thiếu thông tin tài khoản. Hãy lấy thông tin từ hồ sơ nhân viên trước.
+              </div>
             </div>
             <div v-else class="qr-content">
               <img
@@ -135,7 +153,7 @@
 import { computed, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getUser } from '@/api/users'
-import { chuyenLuongNhanVien } from '@/api/tinhLuong'
+import { chuyenLuongNhanVien, layThongTinNguoiNhanLuong } from '@/api/tinhLuong'
 import {
   CustomButton,
   CustomCol,
@@ -153,6 +171,7 @@ const emit = defineEmits(['saved'])
 const visible = ref(false)
 const loading = ref(false)
 const submitting = ref(false)
+const fetchingBank = ref(false)
 const month = ref('')
 const employeeName = ref('')
 const userId = ref(null)
@@ -177,6 +196,10 @@ const hasBankInfo = computed(() => {
 })
 
 const isPaid = computed(() => trangThaiThanhToan.value === 'da_thanh_toan')
+
+const canFetchBank = computed(() => {
+  return Boolean(userId.value && month.value && !isPaid.value && !fetchingBank.value)
+})
 
 const canConfirm = computed(() => {
   return (
@@ -294,6 +317,28 @@ async function copyText(text, successMessage) {
   }
 }
 
+async function fetchBankInfo() {
+  if (!canFetchBank.value) return
+
+  fetchingBank.value = true
+  try {
+    const { data } = await layThongTinNguoiNhanLuong(
+      {
+        thang: month.value,
+        user_id: userId.value,
+      },
+      { skipLoading: true },
+    )
+    applyBankInfo(data?.thong_tin_nguoi_nhan || {})
+    ElMessage.success(data?.message || 'Đã lấy thông tin tài khoản nhận lương.')
+    emit('saved')
+  } catch {
+    // Axios interceptor đã hiển thị lỗi
+  } finally {
+    fetchingBank.value = false
+  }
+}
+
 async function confirmTransferred() {
   if (!canConfirm.value || !userId.value || !month.value) return
 
@@ -334,6 +379,7 @@ async function confirmTransferred() {
 function onClosed() {
   loading.value = false
   submitting.value = false
+  fetchingBank.value = false
   month.value = ''
   employeeName.value = ''
   userId.value = null
@@ -403,6 +449,18 @@ defineExpose({ open })
   color: var(--el-text-color-primary);
 }
 
+.section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+
+  .section-title {
+    margin-bottom: 0;
+  }
+}
+
 .payment-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.85fr);
@@ -464,14 +522,25 @@ defineExpose({ open })
 .empty-bank {
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 16px 12px;
+  padding: 20px 16px;
   text-align: center;
-  color: var(--el-text-color-secondary);
-  background: var(--el-fill-color-lighter);
+  color: var(--el-text-color-regular);
+  background: color-mix(in srgb, var(--el-color-warning) 8%, var(--el-fill-color-lighter));
+  border: 1px solid color-mix(in srgb, var(--el-color-warning) 28%, transparent);
   border-radius: 8px;
   font-size: 13px;
+  line-height: 1.5;
+}
+
+.empty-bank__text {
+  max-width: 360px;
+
+  strong {
+    font-weight: 650;
+  }
 }
 
 .qr-frame {

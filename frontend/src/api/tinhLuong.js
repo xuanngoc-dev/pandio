@@ -67,3 +67,12 @@ export function huyChotLuongThang(payload, config = {}) {
 export function chuyenLuongNhanVien(payload, config = {}) {
   return api.post('/tinh-luong/chuyen-luong', payload, config)
 }
+
+/**
+ * Lấy thông tin TK nhận lương từ hồ sơ nhân viên và ghi vào snapshot chốt tháng.
+ * @param {{ thang: string, user_id: number|string }} payload
+ * @param {{ skipLoading?: boolean }} [config]
+ */
+export function layThongTinNguoiNhanLuong(payload, config = {}) {
+  return api.post('/tinh-luong/lay-thong-tin-nguoi-nhan', payload, config)
+}

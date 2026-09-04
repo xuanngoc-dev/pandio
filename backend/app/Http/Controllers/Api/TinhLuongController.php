@@ -423,6 +423,98 @@ class TinhLuongController extends BaseApiController
     }
 
     /**
+     * Lấy thông tin tài khoản nhận lương từ nhan_vien và ghi vào snapshot chốt tháng.
+     *
+     * Body: thang (YYYY-MM), user_id
+     */
+    public function layThongTinNguoiNhan(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'thang' => ['required', 'string', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/'],
+                'user_id' => ['required', 'integer', 'min:1'],
+            ]);
+
+            $thang = $validated['thang'];
+            $userId = (int) $validated['user_id'];
+            [$nam, $thangSo] = array_map('intval', explode('-', $thang));
+
+            $record = ChotLuongThang::query()
+                ->where('thang', $thangSo)
+                ->where('nam', $nam)
+                ->where('trang_thai', ChotLuongThang::TRANG_THAI_DA_CHOT)
+                ->first();
+
+            if (! $record) {
+                throw ValidationException::withMessages([
+                    'thang' => ['Tháng này chưa được chốt lương.'],
+                ]);
+            }
+
+            $duLieu = is_array($record->du_lieu_chot) ? $record->du_lieu_chot : [];
+            $items = is_array($duLieu['items'] ?? null) ? $duLieu['items'] : [];
+            $foundIndex = null;
+
+            foreach ($items as $index => $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                if ((int) ($row['user_id'] ?? 0) === $userId) {
+                    $foundIndex = $index;
+                    break;
+                }
+            }
+
+            if ($foundIndex === null) {
+                throw ValidationException::withMessages([
+                    'user_id' => ['Không tìm thấy nhân viên trong dữ liệu chốt lương tháng này.'],
+                ]);
+            }
+
+            $user = User::query()
+                ->with($this->nhanVienTongHopWith())
+                ->find($userId);
+
+            if (! $user || ! $user->nhanVien) {
+                throw ValidationException::withMessages([
+                    'user_id' => ['Không tìm thấy hồ sơ nhân viên.'],
+                ]);
+            }
+
+            $nhanVien = $user->nhanVien;
+            $thongTin = [
+                'ngan_hang' => $nhanVien->ngan_hang,
+                'chi_nhanh' => $nhanVien->chi_nhanh,
+                'so_tai_khoan' => $nhanVien->so_tai_khoan,
+                'chu_tai_khoan' => $nhanVien->chu_tai_khoan,
+            ];
+
+            $hasBank = filled($thongTin['ngan_hang']) && filled($thongTin['so_tai_khoan']);
+            if (! $hasBank) {
+                throw ValidationException::withMessages([
+                    'user_id' => [
+                        'Hồ sơ nhân viên chưa có đủ thông tin tài khoản nhận lương (ngân hàng, số tài khoản). Vui lòng bổ sung trong hồ sơ nhân viên rồi thử lại.',
+                    ],
+                ]);
+            }
+
+            $items[$foundIndex]['thong_tin_nguoi_nhan'] = $thongTin;
+            $duLieu['items'] = array_values($items);
+
+            $record->update([
+                'du_lieu_chot' => $duLieu,
+            ]);
+
+            return response()->json([
+                'message' => 'Đã lấy và cập nhật thông tin tài khoản nhận lương.',
+                'thang' => $thang,
+                'user_id' => $userId,
+                'thong_tin_nguoi_nhan' => $thongTin,
+            ]);
+        }, 'lấy thông tin người nhận lương');
+    }
+
+    /**
      * Trả snapshot đã chốt nếu tháng có bản ghi da_chot trong chot_luong_thang.
      *
      * @return array<string, mixed>|null
