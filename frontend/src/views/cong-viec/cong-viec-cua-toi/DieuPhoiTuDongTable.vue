@@ -1,6 +1,12 @@
 <template>
   <div class="dieu-phoi-table">
     <CustomTable :data="items" stripe border style="width: 100%">
+      <CustomTableColumn label="STT" width="60" align="center">
+        <template #default="{ $index, row }">
+          {{ rowStt($index, row) }}
+        </template>
+      </CustomTableColumn>
+
       <CustomTableColumn label="Loại HĐ" min-width="160" show-overflow-tooltip>
         <template #default="{ row }">
           {{ row.loai_hop_dong?.ten_hop_dong || '—' }}
@@ -363,9 +369,30 @@ const props = defineProps({
     type: String,
     default: 'hau_ky',
   },
+  page: {
+    type: Number,
+    default: 1,
+  },
+  perPage: {
+    type: Number,
+    default: 24,
+  },
 })
 
 const emit = defineEmits(['status-changed', 'updated'])
+
+function rowStt(index, row) {
+  const page = Number(props.page)
+  const size = Number(props.perPage)
+  let i = Number(index)
+  if (!Number.isFinite(i) && row) {
+    i = props.items.findIndex((item) => item === row || item?.id === row?.id)
+  }
+  const safePage = Number.isFinite(page) && page > 0 ? page : 1
+  const safeSize = Number.isFinite(size) && size > 0 ? size : 24
+  const safeIndex = Number.isFinite(i) && i >= 0 ? i : 0
+  return (safePage - 1) * safeSize + safeIndex + 1
+}
 
 const authStore = useAuthStore()
 const userId = computed(() => authStore.user?.id)

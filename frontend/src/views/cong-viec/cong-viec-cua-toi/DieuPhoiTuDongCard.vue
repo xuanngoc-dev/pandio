@@ -1,6 +1,7 @@
 <template>
   <CustomCard shadow="hover" class="cong-viec-card">
     <div class="cong-viec-card__header">
+      <span v-if="stt != null" class="cong-viec-card__stt">{{ stt }}.</span>
       <h3 class="cong-viec-card__title" :title="loaiHopDong">
         {{ loaiHopDong }}
       </h3>
@@ -496,6 +497,10 @@ const props = defineProps({
   step: {
     type: String,
     default: 'cho_nhan',
+  },
+  stt: {
+    type: Number,
+    default: null,
   },
 })
 
@@ -1320,11 +1325,18 @@ async function onBanGiao() {
     height: 100%;
   }
 
+  &__stt {
+    flex-shrink: 0;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--el-text-color-secondary);
+  }
+
   &__header {
     display: flex;
     align-items: flex-start;
-    justify-content: space-between;
-    gap: 8px;
+    gap: 6px;
   }
 
   &__title {

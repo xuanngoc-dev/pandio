@@ -178,13 +178,15 @@
           v-if="showTableView"
           :items="items"
           :step="activeTab"
+          :page="page"
+          :per-page="perPage"
           @status-changed="onAccepted"
           @updated="onItemUpdated"
         />
 
         <CustomRow v-else :gutter="16">
           <CustomCol
-            v-for="item in items"
+            v-for="(item, index) in items"
             :key="item.id"
             :xs="12"
             :sm="12"
@@ -196,6 +198,7 @@
             <DieuPhoiTuDongCard
               :item="item"
               :step="activeTab"
+              :stt="(page - 1) * perPage + index + 1"
               @accepted="onAccepted"
               @updated="onItemUpdated"
               @status-changed="onAccepted"
