@@ -2,7 +2,7 @@
   <div class="dieu-phoi-tu-dong">
     <div class="filter-bar">
       <CustomRow :gutter="12" class="toolbar">
-        <CustomCol :xs="12" :sm="12" :md="8" :lg="5">
+        <CustomCol :xs="12" :sm="12" :md="8" :lg="3">
           <CustomInput
             v-model="filters.keyword"
             placeholder="Tìm theo mã HĐ, tên, SĐT khách hàng..."
@@ -16,7 +16,7 @@
             </template>
           </CustomInput>
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="8" :lg="4">
+        <CustomCol :xs="12" :sm="12" :md="8" :lg="3">
           <CustomSelect
             v-model="filters.loai_hop_dong_id"
             placeholder="Loại hợp đồng"
@@ -33,7 +33,7 @@
             />
           </CustomSelect>
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="8" :lg="4">
+        <CustomCol :xs="12" :sm="12" :md="8" :lg="3">
           <el-date-picker
             v-model="filters.ngay_chup"
             type="date"
@@ -44,7 +44,7 @@
             clearable
           />
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="8" :lg="4">
+        <CustomCol :xs="12" :sm="12" :md="8" :lg="3">
           <el-date-picker
             v-model="filters.ngay_tra_file_le"
             type="date"
@@ -55,7 +55,7 @@
             clearable
           />
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="8" :lg="4">
+        <CustomCol :xs="12" :sm="12" :md="8" :lg="3">
           <el-date-picker
             v-model="filters.ngay_tra_file_in"
             type="date"
@@ -66,11 +66,11 @@
             clearable
           />
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="8" :lg="4">
+        <CustomCol :xs="12" :sm="12" :md="8" :lg="3">
           <el-date-picker
             v-model="filters.ngay_khach_hen_qua"
             type="date"
-            placeholder="Ngày khách hẹn qua"
+            placeholder="Ngày khách qua"
             format="DD/MM/YYYY"
             value-format="YYYY-MM-DD"
             style="width: 100%"
