@@ -102,6 +102,9 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
     Route::get('/tinh-luong/chi-tiet-theo-ngay', [TinhLuongController::class, 'chiTietTheoNgay']); // Bảng lương chi tiết từng ngày (user hiện tại)
     Route::get('/tinh-luong/chi-tiet-theo-ngay-nhan-vien', [TinhLuongController::class, 'chiTietTheoNgayNhanVien']); // Bảng lương chi tiết từng ngày theo user_id
     Route::get('/tinh-luong/tong-hop', [TinhLuongController::class, 'tongHop']);                   // Lương tổng hợp theo tháng (danh sách nhân viên)
+    Route::get('/tinh-luong/chot-thang', [TinhLuongController::class, 'trangThaiChot']);           // Trạng thái chốt lương tháng
+    Route::post('/tinh-luong/chot-thang', [TinhLuongController::class, 'chotThang']);              // Chốt lương tháng (lưu snapshot)
+    Route::delete('/tinh-luong/chot-thang', [TinhLuongController::class, 'huyChotThang']);         // Huỷ chốt lương tháng
 
     // --- Phòng ban ---
     Route::get('phong-ban/{phong_ban}/nhan-vien', [PhongBanController::class, 'nhanVien']);                       // Danh sách nhân viên trong phòng ban

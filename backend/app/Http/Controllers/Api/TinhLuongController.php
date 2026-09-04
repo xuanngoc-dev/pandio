@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Models\CauHinhJson;
 use App\Models\CauHinhNgayNghi;
+use App\Models\ChotLuongThang;
 use App\Models\DiemDanh;
 use App\Models\HopDongChoThueTrangPhuc;
 use App\Models\HopDongSuDungDichVu;
@@ -97,6 +99,7 @@ class TinhLuongController extends BaseApiController
 
     /**
      * Lương tổng hợp theo tháng — danh sách nhân viên (phân trang).
+     * Tháng hiện tại / tháng trước nếu đã chốt → trả snapshot du_lieu_chot.
      *
      * Query: thang (YYYY-MM, required), page, per_page, keyword
      */
@@ -110,8 +113,31 @@ class TinhLuongController extends BaseApiController
                 'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
             ]);
 
+            $thang = $validated['thang'];
             $perPage = $validated['per_page'] ?? 10;
             $keyword = trim((string) ($validated['keyword'] ?? ''));
+            $page = max(1, (int) ($validated['page'] ?? $request->input('page', 1)));
+
+            // Ưu tiên snapshot đã chốt (mọi tháng).
+            $lockedPayload = $this->tongHopTuDuLieuChot($thang, $keyword, $page, $perPage);
+            if ($lockedPayload !== null) {
+                return response()->json($lockedPayload);
+            }
+
+            // Tháng cách đây ≥ 2 tháng mà chưa chốt → không có dữ liệu lịch sử.
+            if ($this->isThangCuHonThangTruoc($thang)) {
+                return response()->json([
+                    'thang' => $thang,
+                    'da_chot' => false,
+                    'nguon' => 'khong_co_chot',
+                    'message' => 'Không có dữ liệu chốt lương cho tháng này.',
+                    'data' => [],
+                    'current_page' => 1,
+                    'last_page' => 1,
+                    'per_page' => $perPage,
+                    'total' => 0,
+                ]);
+            }
 
             $query = User::query()
                 ->with(['nhanVien:id,user_id,loai_nhan_vien,cong_chuan,luong_thuong_phu_cap'])
@@ -127,57 +153,16 @@ class TinhLuongController extends BaseApiController
                 })
                 ->orderBy('name');
 
-            $paginator = $query->paginate($perPage);
-            $thang = $validated['thang'];
+            $paginator = $query->paginate($perPage, ['*'], 'page', $page);
 
-            $items = collect($paginator->items())->map(function (User $user) use ($thang) {
-                $nhanVien = $user->nhanVien;
-                $payload = $this->buildBangLuongThang($user, $nhanVien, $thang, includeDays: false);
-                $nv = $payload['nhan_vien'];
-                $tong = $payload['tong_ket'];
-                $phuCap = $nv['phu_cap'];
-
-                return [
-                    'user_id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'phone' => $user->phone,
-                    'loai_nhan_vien' => $nhanVien?->loai_nhan_vien,
-                    'a' => [
-                        'luong_cung' => $nv['luong_co_dinh']['luong_cung'],
-                        'luong_mem' => $nv['luong_co_dinh']['luong_mem'],
-                        'phu_cap' => $phuCap['phu_cap'],
-                        'phu_cap_xang' => $phuCap['phu_cap_xang'],
-                        'phu_cap_an_trua' => $phuCap['phu_cap_an_trua'],
-                        'phu_cap_dien_thoai' => $phuCap['phu_cap_dien_thoai'],
-                        'phu_cap_nha_o' => $phuCap['phu_cap_nha_o'],
-                        'tong' => $tong['tong_a'],
-                    ],
-                    'b' => [
-                        'tong_luong_theo_gio' => $tong['tong_luong_theo_gio'],
-                        'tong_tang_ca' => $tong['tong_tang_ca'],
-                        'hoa_hong_hd_tp' => $tong['hoa_hong_hd_tp'],
-                        'hoa_hong_hd_sddv' => $tong['hoa_hong_hd_sddv'],
-                        'san_xuat_make' => $tong['san_xuat_make'],
-                        'san_xuat_chup' => $tong['san_xuat_chup'],
-                        'san_xuat_quay_phim' => $tong['san_xuat_quay_phim'],
-                        'san_xuat_edit' => $tong['san_xuat_edit'],
-                        'phu_cap_thu_bay_va_chu_nhat' => $tong['phu_cap_thu_bay_va_chu_nhat'],
-                        'thuong_chuyen_can' => $tong['thuong_chuyen_can'],
-                        'tong' => $tong['tong_b'],
-                    ],
-                    'c' => [
-                        'tien_phat_di_muon' => $tong['tien_phat_di_muon'],
-                        'tien_phat_ve_som' => $tong['tien_phat_ve_som'],
-                        'phat_phat_sinh' => $tong['phat_phat_sinh'],
-                        'tong' => $tong['tong_c'],
-                    ],
-                    'thuc_nhan' => $tong['thuc_nhan'],
-                ];
-            })->values();
+            $items = collect($paginator->items())
+                ->map(fn (User $user) => $this->mapTongHopRow($user, $thang))
+                ->values();
 
             return response()->json([
                 'thang' => $thang,
+                'da_chot' => false,
+                'nguon' => 'tinh_toan',
                 'data' => $items,
                 'current_page' => $paginator->currentPage(),
                 'last_page' => $paginator->lastPage(),
@@ -185,6 +170,364 @@ class TinhLuongController extends BaseApiController
                 'total' => $paginator->total(),
             ]);
         }, 'lấy lương tổng hợp theo tháng');
+    }
+
+    /**
+     * Trạng thái chốt lương theo tháng + quyền chốt theo kỳ cấu hình.
+     *
+     * Query: thang (YYYY-MM, required)
+     */
+    public function trangThaiChot(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'thang' => ['required', 'string', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/'],
+            ]);
+
+            $thang = $validated['thang'];
+            [$nam, $thangSo] = array_map('intval', explode('-', $thang));
+            $kyChot = $this->kyChotLuongConfig();
+            $kyWindow = $this->kyChotLuongWindow($thang, $kyChot['ngay_bat_dau'], $kyChot['ngay_ket_thuc']);
+            $trongKy = $this->isTrongKyChotLuong($kyWindow['tu_ngay'], $kyWindow['den_ngay']);
+
+            $record = ChotLuongThang::query()
+                ->where('thang', $thangSo)
+                ->where('nam', $nam)
+                ->first();
+
+            $daChot = $record?->trang_thai === ChotLuongThang::TRANG_THAI_DA_CHOT;
+
+            return response()->json([
+                'thang' => $thang,
+                'trang_thai' => $record?->trang_thai ?? ChotLuongThang::TRANG_THAI_CHUA_CHOT,
+                'da_chot' => $daChot,
+                'co_the_chot' => $trongKy && ! $daChot,
+                'co_the_huy_chot' => $trongKy && $daChot,
+                'trong_ky_chot' => $trongKy,
+                'ky_chot_luong' => array_merge($kyChot, $kyWindow),
+                'nguoi_chot_id' => $record?->nguoi_chot_id,
+                'updated_at' => $record?->updated_at?->toIso8601String(),
+            ]);
+        }, 'lấy trạng thái chốt lương tháng');
+    }
+
+    /**
+     * Chốt lương tháng — lưu snapshot tổng hợp toàn bộ nhân viên vào chot_luong_thang.
+     *
+     * Body: thang (YYYY-MM, required)
+     */
+    public function chotThang(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'thang' => ['required', 'string', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/'],
+            ]);
+
+            $thang = $validated['thang'];
+            [$nam, $thangSo] = array_map('intval', explode('-', $thang));
+            $kyChot = $this->kyChotLuongConfig();
+            $kyWindow = $this->kyChotLuongWindow($thang, $kyChot['ngay_bat_dau'], $kyChot['ngay_ket_thuc']);
+
+            if (! $this->isTrongKyChotLuong($kyWindow['tu_ngay'], $kyWindow['den_ngay'])) {
+                throw ValidationException::withMessages([
+                    'thang' => ['Hiện không nằm trong kỳ chốt lương của tháng này. Không thể chốt lương.'],
+                ]);
+            }
+
+            $existing = ChotLuongThang::query()
+                ->where('thang', $thangSo)
+                ->where('nam', $nam)
+                ->where('trang_thai', ChotLuongThang::TRANG_THAI_DA_CHOT)
+                ->first();
+
+            if ($existing) {
+                throw ValidationException::withMessages([
+                    'thang' => ['Tháng này đã được chốt lương.'],
+                ]);
+            }
+
+            $users = User::query()
+                ->with(['nhanVien:id,user_id,loai_nhan_vien,cong_chuan,luong_thuong_phu_cap'])
+                ->select(['id', 'name', 'email', 'phone', 'status'])
+                ->where('status', 'active')
+                ->whereHas('nhanVien')
+                ->orderBy('name')
+                ->get();
+
+            $items = $users
+                ->map(fn (User $user) => $this->mapTongHopRow($user, $thang))
+                ->values()
+                ->all();
+
+            $record = ChotLuongThang::query()->updateOrCreate(
+                [
+                    'thang' => $thangSo,
+                    'nam' => $nam,
+                ],
+                [
+                    'nguoi_chot_id' => (int) $request->user()->id,
+                    'du_lieu_chot' => [
+                        'thang' => $thang,
+                        'tong_nhan_vien' => count($items),
+                        'items' => $items,
+                        'chot_luc' => Carbon::now(self::TIMEZONE)->toIso8601String(),
+                    ],
+                    'trang_thai' => ChotLuongThang::TRANG_THAI_DA_CHOT,
+                ]
+            );
+
+            return response()->json([
+                'message' => 'Đã chốt lương tháng '.$thang.'.',
+                'thang' => $thang,
+                'trang_thai' => $record->trang_thai,
+                'da_chot' => true,
+                'co_the_chot' => false,
+                'co_the_huy_chot' => true,
+                'trong_ky_chot' => true,
+                'ky_chot_luong' => array_merge($kyChot, $kyWindow),
+                'nguoi_chot_id' => $record->nguoi_chot_id,
+                'tong_nhan_vien' => count($items),
+                'updated_at' => $record->updated_at?->toIso8601String(),
+            ], 201);
+        }, 'chốt lương tháng');
+    }
+
+    /**
+     * Huỷ chốt lương tháng — chỉ cho phép trong kỳ chốt.
+     *
+     * Body: thang (YYYY-MM, required)
+     */
+    public function huyChotThang(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'thang' => ['required', 'string', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/'],
+            ]);
+
+            $thang = $validated['thang'];
+            [$nam, $thangSo] = array_map('intval', explode('-', $thang));
+            $kyChot = $this->kyChotLuongConfig();
+            $kyWindow = $this->kyChotLuongWindow($thang, $kyChot['ngay_bat_dau'], $kyChot['ngay_ket_thuc']);
+            $trongKy = $this->isTrongKyChotLuong($kyWindow['tu_ngay'], $kyWindow['den_ngay']);
+
+            if (! $trongKy) {
+                throw ValidationException::withMessages([
+                    'thang' => ['Hiện không nằm trong kỳ chốt lương của tháng này. Không thể huỷ chốt.'],
+                ]);
+            }
+
+            $record = ChotLuongThang::query()
+                ->where('thang', $thangSo)
+                ->where('nam', $nam)
+                ->where('trang_thai', ChotLuongThang::TRANG_THAI_DA_CHOT)
+                ->first();
+
+            if (! $record) {
+                throw ValidationException::withMessages([
+                    'thang' => ['Tháng này chưa được chốt lương.'],
+                ]);
+            }
+
+            $record->update([
+                'trang_thai' => ChotLuongThang::TRANG_THAI_CHUA_CHOT,
+                'du_lieu_chot' => null,
+                'nguoi_chot_id' => null,
+            ]);
+
+            return response()->json([
+                'message' => 'Đã huỷ chốt lương tháng '.$thang.'.',
+                'thang' => $thang,
+                'trang_thai' => ChotLuongThang::TRANG_THAI_CHUA_CHOT,
+                'da_chot' => false,
+                'co_the_chot' => true,
+                'co_the_huy_chot' => false,
+                'trong_ky_chot' => true,
+                'ky_chot_luong' => array_merge($kyChot, $kyWindow),
+                'nguoi_chot_id' => null,
+                'updated_at' => $record->fresh()?->updated_at?->toIso8601String(),
+            ]);
+        }, 'huỷ chốt lương tháng');
+    }
+
+    /**
+     * Trả snapshot đã chốt nếu tháng có bản ghi da_chot trong chot_luong_thang.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function tongHopTuDuLieuChot(string $thang, string $keyword, int $page, int $perPage): ?array
+    {
+        [$nam, $thangSo] = array_map('intval', explode('-', $thang));
+        $record = ChotLuongThang::query()
+            ->where('thang', $thangSo)
+            ->where('nam', $nam)
+            ->where('trang_thai', ChotLuongThang::TRANG_THAI_DA_CHOT)
+            ->first();
+
+        if (! $record) {
+            return null;
+        }
+
+        $duLieu = is_array($record->du_lieu_chot) ? $record->du_lieu_chot : [];
+        $items = collect(is_array($duLieu['items'] ?? null) ? $duLieu['items'] : [])
+            ->filter(fn ($row) => is_array($row))
+            ->values();
+
+        if ($keyword !== '') {
+            $needle = mb_strtolower($keyword);
+            $items = $items->filter(function (array $row) use ($needle) {
+                $haystack = mb_strtolower(implode(' ', [
+                    (string) ($row['name'] ?? ''),
+                    (string) ($row['email'] ?? ''),
+                    (string) ($row['phone'] ?? ''),
+                ]));
+
+                return str_contains($haystack, $needle);
+            })->values();
+        }
+
+        $total = $items->count();
+        $lastPage = max(1, (int) ceil($total / max(1, $perPage)));
+        $page = min($page, $lastPage);
+        $pageItems = $items->slice(($page - 1) * $perPage, $perPage)->values();
+
+        return [
+            'thang' => $thang,
+            'da_chot' => true,
+            'nguon' => 'chot',
+            'data' => $pageItems,
+            'current_page' => $page,
+            'last_page' => $lastPage,
+            'per_page' => $perPage,
+            'total' => $total,
+        ];
+    }
+
+    private function isThangHienTaiHoacThangTruoc(string $thang): bool
+    {
+        $now = Carbon::now(self::TIMEZONE)->startOfMonth();
+        $target = Carbon::createFromFormat('Y-m', $thang, self::TIMEZONE)->startOfMonth();
+
+        return $target->equalTo($now) || $target->equalTo($now->copy()->subMonth());
+    }
+
+    /** Tháng cách hiện tại ≥ 2 tháng (cũ hơn tháng liền trước). */
+    private function isThangCuHonThangTruoc(string $thang): bool
+    {
+        return ! $this->isThangHienTaiHoacThangTruoc($thang)
+            && Carbon::createFromFormat('Y-m', $thang, self::TIMEZONE)->startOfMonth()
+                ->lt(Carbon::now(self::TIMEZONE)->startOfMonth());
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function mapTongHopRow(User $user, string $thang): array
+    {
+        $nhanVien = $user->nhanVien;
+        $payload = $this->buildBangLuongThang($user, $nhanVien, $thang, includeDays: false);
+        $nv = $payload['nhan_vien'];
+        $tong = $payload['tong_ket'];
+        $phuCap = $nv['phu_cap'];
+
+        return [
+            'user_id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'loai_nhan_vien' => $nhanVien?->loai_nhan_vien,
+            'a' => [
+                'luong_cung' => $nv['luong_co_dinh']['luong_cung'],
+                'luong_mem' => $nv['luong_co_dinh']['luong_mem'],
+                'phu_cap' => $phuCap['phu_cap'],
+                'phu_cap_xang' => $phuCap['phu_cap_xang'],
+                'phu_cap_an_trua' => $phuCap['phu_cap_an_trua'],
+                'phu_cap_dien_thoai' => $phuCap['phu_cap_dien_thoai'],
+                'phu_cap_nha_o' => $phuCap['phu_cap_nha_o'],
+                'tong' => $tong['tong_a'],
+            ],
+            'b' => [
+                'tong_luong_theo_gio' => $tong['tong_luong_theo_gio'],
+                'tong_tang_ca' => $tong['tong_tang_ca'],
+                'hoa_hong_hd_tp' => $tong['hoa_hong_hd_tp'],
+                'hoa_hong_hd_sddv' => $tong['hoa_hong_hd_sddv'],
+                'san_xuat_make' => $tong['san_xuat_make'],
+                'san_xuat_chup' => $tong['san_xuat_chup'],
+                'san_xuat_quay_phim' => $tong['san_xuat_quay_phim'],
+                'san_xuat_edit' => $tong['san_xuat_edit'],
+                'phu_cap_thu_bay_va_chu_nhat' => $tong['phu_cap_thu_bay_va_chu_nhat'],
+                'thuong_chuyen_can' => $tong['thuong_chuyen_can'],
+                'tong' => $tong['tong_b'],
+            ],
+            'c' => [
+                'tien_phat_di_muon' => $tong['tien_phat_di_muon'],
+                'tien_phat_ve_som' => $tong['tien_phat_ve_som'],
+                'phat_phat_sinh' => $tong['phat_phat_sinh'],
+                'tong' => $tong['tong_c'],
+            ],
+            'thuc_nhan' => $tong['thuc_nhan'],
+        ];
+    }
+
+    /**
+     * @return array{ngay_bat_dau: int, ngay_ket_thuc: int}
+     */
+    private function kyChotLuongConfig(): array
+    {
+        $row = CauHinhJson::query()->first();
+        $all = is_array($row?->thong_tin_cau_hinh) ? $row->thong_tin_cau_hinh : [];
+        $group = is_array($all['luong_va_hoa_hong'] ?? null) ? $all['luong_va_hoa_hong'] : [];
+        $ky = is_array($group['ky_chot_luong'] ?? null) ? $group['ky_chot_luong'] : [];
+
+        $batDau = (int) ($ky['ngay_bat_dau'] ?? 26);
+        $ketThuc = (int) ($ky['ngay_ket_thuc'] ?? 25);
+
+        return [
+            'ngay_bat_dau' => max(1, min(31, $batDau)),
+            'ngay_ket_thuc' => max(1, min(31, $ketThuc)),
+        ];
+    }
+
+    /**
+     * Khoảng ngày được phép chốt cho một tháng lương.
+     * - Qua tháng (vd 26→25): từ ngày bắt đầu của tháng lương đến ngày kết thúc tháng kế tiếp.
+     * - Trong cùng tháng (vd 1→5): từ ngày bắt đầu đến ngày kết thúc của tháng kế sau tháng lương.
+     *
+     * @return array{tu_ngay: string, den_ngay: string}
+     */
+    private function kyChotLuongWindow(string $thang, int $ngayBatDau, int $ngayKetThuc): array
+    {
+        $month = Carbon::createFromFormat('Y-m', $thang, self::TIMEZONE)->startOfMonth();
+
+        if ($ngayBatDau <= $ngayKetThuc) {
+            $next = $month->copy()->addMonth();
+            $tuNgay = $this->clampDayInMonth($next, $ngayBatDau)->startOfDay();
+            $denNgay = $this->clampDayInMonth($next, $ngayKetThuc)->endOfDay();
+        } else {
+            $tuNgay = $this->clampDayInMonth($month, $ngayBatDau)->startOfDay();
+            $denNgay = $this->clampDayInMonth($month->copy()->addMonth(), $ngayKetThuc)->endOfDay();
+        }
+
+        return [
+            'tu_ngay' => $tuNgay->toDateString(),
+            'den_ngay' => $denNgay->toDateString(),
+        ];
+    }
+
+    private function clampDayInMonth(Carbon $month, int $day): Carbon
+    {
+        $maxDay = $month->daysInMonth;
+
+        return $month->copy()->day(min(max(1, $day), $maxDay));
+    }
+
+    private function isTrongKyChotLuong(string $tuNgay, string $denNgay): bool
+    {
+        $now = Carbon::now(self::TIMEZONE);
+
+        return $now->betweenIncluded(
+            Carbon::parse($tuNgay, self::TIMEZONE)->startOfDay(),
+            Carbon::parse($denNgay, self::TIMEZONE)->endOfDay(),
+        );
     }
 
     /**

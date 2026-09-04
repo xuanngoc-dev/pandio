@@ -31,3 +31,30 @@ export function fetchBangLuongChiTietTheoNgayNhanVien(params, config = {}) {
 export function fetchLuongTongHop(params, config = {}) {
   return api.get('/tinh-luong/tong-hop', { params, ...config })
 }
+
+/**
+ * Trạng thái chốt lương theo tháng.
+ * @param {{ thang: string }} params — thang: YYYY-MM
+ * @param {{ skipLoading?: boolean }} [config]
+ */
+export function fetchTrangThaiChotLuong(params, config = {}) {
+  return api.get('/tinh-luong/chot-thang', { params, ...config })
+}
+
+/**
+ * Chốt lương tháng — lưu snapshot tổng hợp vào chot_luong_thang.
+ * @param {{ thang: string }} payload — thang: YYYY-MM
+ * @param {{ skipLoading?: boolean }} [config]
+ */
+export function chotLuongThang(payload, config = {}) {
+  return api.post('/tinh-luong/chot-thang', payload, config)
+}
+
+/**
+ * Huỷ chốt lương tháng (chỉ trong kỳ chốt).
+ * @param {{ thang: string }} payload — thang: YYYY-MM
+ * @param {{ skipLoading?: boolean }} [config]
+ */
+export function huyChotLuongThang(payload, config = {}) {
+  return api.delete('/tinh-luong/chot-thang', { data: payload, ...config })
+}

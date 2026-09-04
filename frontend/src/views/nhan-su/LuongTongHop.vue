@@ -39,117 +39,175 @@
     <CustomCard shadow="hover" class="table-card">
       <template #header>
         <div class="card-header">
-          <span class="card-title">Lương tổng hợp · tháng {{ formatMonthLabel(selectedMonth) }}</span>
+          <span class="card-title">
+            Lương tổng hợp · tháng {{ formatMonthLabel(selectedMonth) }}
+            <span v-if="isLockedData" class="locked-badge">Đã chốt</span>
+          </span>
+          <div class="card-header-actions">
+            <CustomTooltip v-if="canHuyChotLuong" content="Huỷ chốt lương tháng đang chọn" placement="top">
+              <span class="chot-btn-wrap">
+                <CustomButton
+                  type="danger"
+                  plain
+                  :loading="chotting"
+                  @click="onHuyChotLuong"
+                >
+                  Huỷ chốt
+                </CustomButton>
+              </span>
+            </CustomTooltip>
+            <CustomTooltip :content="chotButtonTooltip" placement="top">
+              <span class="chot-btn-wrap">
+                <CustomButton
+                  type="warning"
+                  :loading="chotting"
+                  :disabled="!canChotLuong"
+                  @click="onChotLuong"
+                >
+                  {{ daChotLuong ? 'Đã chốt lương' : 'Chốt lương' }}
+                </CustomButton>
+              </span>
+            </CustomTooltip>
+          </div>
         </div>
       </template>
 
-      <CustomTable
-        v-loading="loading"
-        :data="items"
-        stripe
-        border
-        row-key="user_id"
-        style="width: 100%"
-        class="salary-summary-table"
-        :empty-text="loading ? 'Đang tải...' : 'Chưa có dữ liệu'"
-      >
-        <CustomTableColumn label="STT" width="56" align="center" fixed="left">
-          <template #default="{ $index }">
-            {{ (page - 1) * perPage + $index + 1 }}
-          </template>
-        </CustomTableColumn>
+      <div v-if="isEmptyNoChot" class="empty-no-chot">
+        <p class="empty-no-chot__title">Không có dữ liệu</p>
+        <p class="empty-no-chot__desc">
+          Tháng {{ formatMonthLabel(selectedMonth) }} chưa được chốt lương nên không có dữ liệu lịch sử để xem.
+        </p>
+      </div>
 
-        <CustomTableColumn
-          label="Nhân viên"
-          min-width="180"
-          fixed="left"
-          show-overflow-tooltip
+      <template v-else>
+        <CustomTable
+          v-loading="loading"
+          :data="items"
+          stripe
+          border
+          row-key="user_id"
+          style="width: 100%"
+          class="salary-summary-table"
+          :empty-text="loading ? 'Đang tải...' : 'Chưa có dữ liệu'"
         >
-          <template #default="{ row }">
-            <div class="employee-cell">
-              <div class="employee-cell__name-row">
-                <span class="employee-cell__name">{{ row.name || '—' }}</span>
-                <CustomTooltip
-                  v-if="row.loai_nhan_vien"
-                  :content="employeeTypeLabel(row.loai_nhan_vien)"
-                  placement="top"
-                >
-                  <CustomIcon
-                    class="employee-type-icon"
-                    :class="
-                      row.loai_nhan_vien === 'full_time'
-                        ? 'employee-type-icon--full'
-                        : 'employee-type-icon--part'
-                    "
-                  >
-                    <component :is="employeeTypeIcon(row.loai_nhan_vien)" />
-                  </CustomIcon>
-                </CustomTooltip>
-              </div>
-              <span v-if="row.phone" class="employee-cell__email">{{ row.phone }}</span>
-            </div>
-          </template>
-        </CustomTableColumn>
-
-        <CustomTableColumn
-          v-for="group in salaryGroups"
-          :key="group.code"
-          align="center"
-          :label-class-name="`salary-group-header salary-group-header--${group.code.toLowerCase()}`"
-        >
-          <template #header>
-            <span class="salary-group-title">
-              <span class="salary-group-code">{{ group.code }}</span>
-              {{ group.label }}
-            </span>
-          </template>
-          <CustomTableColumn
-            v-for="col in group.columns"
-            :key="col.key"
-            :label="col.label"
-            :min-width="col.minWidth"
-            align="right"
-          >
-            <template #default="{ row }">
-              <button
-                type="button"
-                class="money-link"
-                :class="{
-                  'money-danger': group.danger && !col.total,
-                  'money-total': col.total,
-                }"
-                @click="viewKhoanMuc(row, group, col)"
-              >
-                {{ formatMoney(row[group.key]?.[col.key]) }}
-              </button>
+          <CustomTableColumn label="STT" width="56" align="center" fixed="left">
+            <template #default="{ $index }">
+              {{ (page - 1) * perPage + $index + 1 }}
             </template>
           </CustomTableColumn>
-        </CustomTableColumn>
 
-        <CustomTableColumn label="Thực nhận (A + B − C)" min-width="160" align="right" fixed="right">
-          <template #default="{ row }">
-            <span class="money-primary">{{ formatMoney(row.thuc_nhan) }}</span>
-          </template>
-        </CustomTableColumn>
+          <CustomTableColumn
+            label="Nhân viên"
+            min-width="180"
+            fixed="left"
+            show-overflow-tooltip
+          >
+            <template #default="{ row }">
+              <div class="employee-cell">
+                <div class="employee-cell__name-row">
+                  <span class="employee-cell__name">{{ row.name || '—' }}</span>
+                  <CustomTooltip
+                    v-if="row.loai_nhan_vien"
+                    :content="employeeTypeLabel(row.loai_nhan_vien)"
+                    placement="top"
+                  >
+                    <CustomIcon
+                      class="employee-type-icon"
+                      :class="
+                        row.loai_nhan_vien === 'full_time'
+                          ? 'employee-type-icon--full'
+                          : 'employee-type-icon--part'
+                      "
+                    >
+                      <component :is="employeeTypeIcon(row.loai_nhan_vien)" />
+                    </CustomIcon>
+                  </CustomTooltip>
+                </div>
+                <span v-if="row.phone" class="employee-cell__email">{{ row.phone }}</span>
+              </div>
+            </template>
+          </CustomTableColumn>
 
-        <CustomTableColumn label="Thao tác" width="90" fixed="right" align="center">
-          <template #default="{ row }">
-            <div class="action-btns">
-              <CustomTooltip content="Xem chi tiết" placement="top">
-                <CustomButton type="primary" link :icon="View" @click="viewDetail(row)" />
-              </CustomTooltip>
-            </div>
-          </template>
-        </CustomTableColumn>
-      </CustomTable>
+          <CustomTableColumn
+            v-for="group in salaryGroups"
+            :key="group.code"
+            align="center"
+            :label-class-name="`salary-group-header salary-group-header--${group.code.toLowerCase()}`"
+          >
+            <template #header>
+              <span class="salary-group-title">
+                <span class="salary-group-code">{{ group.code }}</span>
+                {{ group.label }}
+              </span>
+            </template>
+            <CustomTableColumn
+              v-for="col in group.columns"
+              :key="col.key"
+              :label="col.label"
+              :min-width="col.minWidth"
+              align="right"
+            >
+              <template #default="{ row }">
+                <button
+                  v-if="!isLockedData"
+                  type="button"
+                  class="money-link"
+                  :class="{
+                    'money-danger': group.danger && !col.total,
+                    'money-total': col.total,
+                  }"
+                  @click="viewKhoanMuc(row, group, col)"
+                >
+                  {{ formatMoney(row[group.key]?.[col.key]) }}
+                </button>
+                <span
+                  v-else
+                  class="money-locked"
+                  :class="{
+                    'money-danger': group.danger && !col.total,
+                    'money-total': col.total,
+                  }"
+                >
+                  {{ formatMoney(row[group.key]?.[col.key]) }}
+                </span>
+              </template>
+            </CustomTableColumn>
+          </CustomTableColumn>
 
-      <Pagination
-        v-model="page"
-        v-model:page-size="perPage"
-        :total="total"
-        :disabled="loading"
-        @change="loadItems"
-      />
+          <CustomTableColumn label="Thực nhận (A + B − C)" min-width="160" align="right" fixed="right">
+            <template #default="{ row }">
+              <span class="money-primary">{{ formatMoney(row.thuc_nhan) }}</span>
+            </template>
+          </CustomTableColumn>
+
+          <CustomTableColumn label="Thao tác" width="90" fixed="right" align="center">
+            <template #default="{ row }">
+              <div class="action-btns">
+                <CustomTooltip
+                  :content="isLockedData ? 'Tháng đã chốt — không xem chi tiết' : 'Xem chi tiết'"
+                  placement="top"
+                >
+                  <CustomButton
+                    type="primary"
+                    link
+                    :icon="View"
+                    :disabled="isLockedData"
+                    @click="viewDetail(row)"
+                  />
+                </CustomTooltip>
+              </div>
+            </template>
+          </CustomTableColumn>
+        </CustomTable>
+
+        <Pagination
+          v-model="page"
+          v-model:page-size="perPage"
+          :total="total"
+          :disabled="loading"
+          @change="loadItems"
+        />
+      </template>
     </CustomCard>
 
     <LuongNhanVienChiTietModal ref="chiTietModalRef" />
@@ -158,9 +216,10 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { Briefcase, Clock, Search, View } from '@element-plus/icons-vue'
-import { fetchLuongTongHop } from '@/api/tinhLuong'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { chotLuongThang, fetchLuongTongHop, fetchTrangThaiChotLuong, huyChotLuongThang } from '@/api/tinhLuong'
 import Pagination from '@/components/Pagination.vue'
 import {
   CustomButton,
@@ -178,6 +237,7 @@ import LuongNhanVienChiTietModal from './LuongNhanVienChiTietModal.vue'
 import LuongKhoanMucChiTietModal from './LuongKhoanMucChiTietModal.vue'
 
 const loading = ref(false)
+const chotting = ref(false)
 const items = ref([])
 const page = ref(1)
 const perPage = ref(10)
@@ -186,6 +246,36 @@ const keyword = ref('')
 const selectedMonth = ref(currentMonthValue())
 const chiTietModalRef = ref(null)
 const khoanMucModalRef = ref(null)
+
+const chotStatus = ref({
+  da_chot: false,
+  co_the_chot: false,
+  co_the_huy_chot: false,
+  trong_ky_chot: false,
+  ky_chot_luong: null,
+})
+/** Dữ liệu đang hiển thị lấy từ snapshot du_lieu_chot (không cho xem chi tiết động). */
+const isLockedData = ref(false)
+/** Tháng cũ (≥ 2 tháng) chưa có bản ghi chốt → ẩn bảng. */
+const isEmptyNoChot = ref(false)
+
+const daChotLuong = computed(() => Boolean(chotStatus.value.da_chot) || isLockedData.value)
+const canChotLuong = computed(() => Boolean(chotStatus.value.co_the_chot) && !chotting.value)
+const canHuyChotLuong = computed(() => Boolean(chotStatus.value.co_the_huy_chot) && !chotting.value)
+
+const chotButtonTooltip = computed(() => {
+  if (daChotLuong.value) {
+    return canHuyChotLuong.value
+      ? 'Tháng đã chốt — có thể huỷ chốt trong kỳ'
+      : 'Tháng này đã được chốt lương'
+  }
+  if (chotStatus.value.trong_ky_chot) return 'Chốt lương tháng đang chọn'
+  const ky = chotStatus.value.ky_chot_luong
+  if (ky?.tu_ngay && ky?.den_ngay) {
+    return `Chỉ mở trong kỳ chốt: ${formatDateLabel(ky.tu_ngay)} → ${formatDateLabel(ky.den_ngay)}`
+  }
+  return 'Ngoài kỳ chốt lương'
+})
 
 const salaryGroups = [
   {
@@ -248,6 +338,12 @@ function formatMonthLabel(value) {
   return `${m}/${y}`
 }
 
+function formatDateLabel(value) {
+  if (!value || !String(value).includes('-')) return '—'
+  const [y, m, d] = String(value).split('-')
+  return `${d}/${m}/${y}`
+}
+
 function formatMoney(value) {
   const num = Number(value)
   if (!Number.isFinite(num) || num === 0) return '—'
@@ -266,13 +362,50 @@ function employeeTypeIcon(value) {
 
 function onSearch() {
   page.value = 1
-  loadItems()
+  Promise.all([loadItems(), loadChotStatus()])
+}
+
+async function loadChotStatus() {
+  if (!selectedMonth.value) {
+    chotStatus.value = {
+      da_chot: false,
+      co_the_chot: false,
+      co_the_huy_chot: false,
+      trong_ky_chot: false,
+      ky_chot_luong: null,
+    }
+    return
+  }
+
+  try {
+    const { data } = await fetchTrangThaiChotLuong(
+      { thang: selectedMonth.value },
+      { skipLoading: true },
+    )
+    chotStatus.value = {
+      da_chot: Boolean(data.da_chot),
+      co_the_chot: Boolean(data.co_the_chot),
+      co_the_huy_chot: Boolean(data.co_the_huy_chot),
+      trong_ky_chot: Boolean(data.trong_ky_chot),
+      ky_chot_luong: data.ky_chot_luong || null,
+    }
+  } catch {
+    chotStatus.value = {
+      da_chot: false,
+      co_the_chot: false,
+      co_the_huy_chot: false,
+      trong_ky_chot: false,
+      ky_chot_luong: null,
+    }
+  }
 }
 
 async function loadItems() {
   if (!selectedMonth.value) {
     items.value = []
     total.value = 0
+    isLockedData.value = false
+    isEmptyNoChot.value = false
     return
   }
 
@@ -290,15 +423,100 @@ async function loadItems() {
     items.value = data.data || []
     total.value = data.total || 0
     page.value = data.current_page || page.value
+    isLockedData.value = Boolean(data.da_chot) || data.nguon === 'chot'
+    isEmptyNoChot.value = data.nguon === 'khong_co_chot'
   } catch {
     items.value = []
     total.value = 0
+    isLockedData.value = false
+    isEmptyNoChot.value = false
   } finally {
     loading.value = false
   }
 }
 
+async function onChotLuong() {
+  if (!canChotLuong.value || !selectedMonth.value) return
+
+  try {
+    await ElMessageBox.confirm(
+      `Chốt lương tháng ${formatMonthLabel(selectedMonth.value)}? Dữ liệu tổng hợp hiện tại sẽ được lưu lại.`,
+      'Xác nhận chốt lương',
+      {
+        type: 'warning',
+        confirmButtonText: 'Chốt lương',
+        cancelButtonText: 'Hủy',
+      },
+    )
+  } catch {
+    return
+  }
+
+  chotting.value = true
+  try {
+    const { data } = await chotLuongThang(
+      { thang: selectedMonth.value },
+      { skipLoading: true },
+    )
+    chotStatus.value = {
+      da_chot: true,
+      co_the_chot: false,
+      co_the_huy_chot: Boolean(data.co_the_huy_chot ?? true),
+      trong_ky_chot: Boolean(data.trong_ky_chot ?? true),
+      ky_chot_luong: data.ky_chot_luong || chotStatus.value.ky_chot_luong,
+    }
+    ElMessage.success(data.message || `Đã chốt lương tháng ${formatMonthLabel(selectedMonth.value)}.`)
+    await loadItems()
+  } catch {
+    await loadChotStatus()
+  } finally {
+    chotting.value = false
+  }
+}
+
+async function onHuyChotLuong() {
+  if (!canHuyChotLuong.value || !selectedMonth.value) return
+
+  try {
+    await ElMessageBox.confirm(
+      `Huỷ chốt lương tháng ${formatMonthLabel(selectedMonth.value)}? Dữ liệu đã chốt sẽ bị xoá và hệ thống tính lại theo realtime.`,
+      'Xác nhận huỷ chốt',
+      {
+        type: 'warning',
+        confirmButtonText: 'Huỷ chốt',
+        cancelButtonText: 'Đóng',
+      },
+    )
+  } catch {
+    return
+  }
+
+  chotting.value = true
+  try {
+    const { data } = await huyChotLuongThang(
+      { thang: selectedMonth.value },
+      { skipLoading: true },
+    )
+    chotStatus.value = {
+      da_chot: false,
+      co_the_chot: Boolean(data.co_the_chot ?? true),
+      co_the_huy_chot: false,
+      trong_ky_chot: Boolean(data.trong_ky_chot ?? true),
+      ky_chot_luong: data.ky_chot_luong || chotStatus.value.ky_chot_luong,
+    }
+    isLockedData.value = false
+    ElMessage.success(data.message || `Đã huỷ chốt lương tháng ${formatMonthLabel(selectedMonth.value)}.`)
+    await loadItems()
+    await loadChotStatus()
+  } catch {
+    await loadChotStatus()
+  } finally {
+    chotting.value = false
+  }
+}
+
 function viewDetail(row) {
+  if (isLockedData.value) return
   chiTietModalRef.value?.open({
     userId: row.user_id,
     thang: selectedMonth.value,
@@ -307,6 +525,7 @@ function viewDetail(row) {
 }
 
 function viewKhoanMuc(row, group, col) {
+  if (isLockedData.value) return
   khoanMucModalRef.value?.open({
     userId: row.user_id,
     thang: selectedMonth.value,
@@ -320,11 +539,53 @@ function viewKhoanMuc(row, group, col) {
 }
 
 onMounted(() => {
-  loadItems()
+  Promise.all([loadItems(), loadChotStatus()])
 })
 </script>
 
 <style scoped lang="scss">
+.chot-btn-wrap {
+  display: inline-flex;
+}
+
+.locked-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--el-color-warning) 16%, transparent);
+  color: var(--el-color-warning-dark-2);
+  font-size: 12px;
+  font-weight: 650;
+  vertical-align: middle;
+}
+
+.empty-no-chot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 48px 16px;
+  text-align: center;
+
+  &__title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 650;
+    color: var(--el-text-color-primary);
+  }
+
+  &__desc {
+    margin: 0;
+    max-width: 420px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--el-text-color-secondary);
+  }
+}
+
 .employee-cell {
   display: flex;
   flex-direction: column;
@@ -376,6 +637,20 @@ onMounted(() => {
 
 .money-total {
   font-weight: 700;
+}
+
+.money-locked {
+  font-variant-numeric: tabular-nums;
+  color: var(--el-text-color-regular);
+  cursor: default;
+
+  &.money-danger {
+    color: var(--el-color-danger);
+  }
+
+  &.money-total {
+    font-weight: 700;
+  }
 }
 
 .money-link {
