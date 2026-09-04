@@ -48,6 +48,21 @@ export function fetchLichChupMakeChiTiet(params = {}) {
 }
 
 /**
+ * Lịch xếp đồ: flatten từng buổi chụp + lọc keyword / ngày chụp / sap_xep_trang_phuc.
+ * @param {{
+ *   page?: number,
+ *   per_page?: number,
+ *   keyword?: string,
+ *   tu_ngay?: string,
+ *   den_ngay?: string,
+ *   sap_xep_trang_phuc?: string,
+ * }} params
+ */
+export function fetchLichXepDo(params = {}) {
+  return api.get('/hop-dong-su-dung-dich-vu/lich-xep-do', { params })
+}
+
+/**
  * Lịch hậu kỳ: số lượng HĐ theo ngày trả file lẻ / file in / khách hẹn qua.
  * @param {{ tu_ngay: string, den_ngay: string }} params
  * @returns {Promise<{ data: { items: Array<{ ngay: string, tra_file_le: number, tra_file_in: number, khach_qua: number }> } }>}

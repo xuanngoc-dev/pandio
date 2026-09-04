@@ -44,6 +44,12 @@ const routes = [
         meta: { title: 'Lịch khách hàng', requiresAuth: true },
       },
       {
+        path: 'van-hanh-cuoi/lich-xep-do',
+        name: 'lich-xep-do',
+        component: () => import('@/views/van-hanh-cuoi/LichXepDo.vue'),
+        meta: { title: 'Lịch xếp đồ', requiresAuth: true },
+      },
+      {
         path: 'van-hanh-cuoi/trang-phuc',
         name: 'trang-phuc',
         component: () => import('@/views/van-hanh-cuoi/TrangPhuc.vue'),

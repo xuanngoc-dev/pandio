@@ -238,6 +238,162 @@ class HopDongSuDungDichVuController extends BaseApiController
     }
 
     /**
+     * Lịch xếp đồ: flatten từng buổi trong thong_tin_dieu_phoi.danh_sach_buoi_chup.
+     * Loại trừ trang_thai: moi_tao, nhap, da_huy.
+     *
+     * Query: page, per_page, keyword, tu_ngay, den_ngay, sap_xep_trang_phuc
+     */
+    public function lichXepDo(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'page' => ['sometimes', 'integer', 'min:1'],
+                'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+                'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
+                'tu_ngay' => ['sometimes', 'nullable', 'date'],
+                'den_ngay' => ['sometimes', 'nullable', 'date', 'after_or_equal:tu_ngay'],
+                'sap_xep_trang_phuc' => ['sometimes', 'nullable', 'string', Rule::in([
+                    'chua_xep_do',
+                    'da_xep_do',
+                    'da_hoan_tra',
+                ])],
+            ]);
+
+            $page = (int) ($validated['page'] ?? 1);
+            $perPage = (int) ($validated['per_page'] ?? 20);
+            $keyword = trim((string) ($validated['keyword'] ?? ''));
+            $tuNgay = isset($validated['tu_ngay'])
+                ? Carbon::parse($validated['tu_ngay'])->toDateString()
+                : null;
+            $denNgay = isset($validated['den_ngay'])
+                ? Carbon::parse($validated['den_ngay'])->toDateString()
+                : null;
+            $sapXepFilter = trim((string) ($validated['sap_xep_trang_phuc'] ?? ''));
+
+            $rows = HopDongSuDungDichVu::query()
+                ->with(['loaiHopDong:id,ten_hop_dong,ma_hop_dong'])
+                ->whereNotIn('hop_dong_su_dung_dich_vu.trang_thai', ['moi_tao', 'nhap', 'da_huy'])
+                ->whereNotNull('hop_dong_su_dung_dich_vu.thong_tin_dieu_phoi')
+                ->when($keyword !== '', function ($q) use ($keyword) {
+                    $q->where(function ($inner) use ($keyword) {
+                        $inner->where('ma_hop_dong', 'like', "%{$keyword}%")
+                            ->orWhere('ten_khach_hang', 'like', "%{$keyword}%")
+                            ->orWhere('sdt_khach_hang', 'like', "%{$keyword}%")
+                            ->orWhere('dia_chi', 'like', "%{$keyword}%")
+                            ->orWhere('kenh_tiep_can', 'like', "%{$keyword}%")
+                            ->orWhere('ma_giam_gia', 'like', "%{$keyword}%")
+                            ->orWhere('luot_gioi_thieu', 'like', "%{$keyword}%")
+                            ->orWhere('thong_tin_hop_dong', 'like', "%{$keyword}%");
+                    });
+                })
+                ->select([
+                    'hop_dong_su_dung_dich_vu.id',
+                    'hop_dong_su_dung_dich_vu.ma_hop_dong',
+                    'hop_dong_su_dung_dich_vu.ten_khach_hang',
+                    'hop_dong_su_dung_dich_vu.sdt_khach_hang',
+                    'hop_dong_su_dung_dich_vu.loai_hop_dong_id',
+                    'hop_dong_su_dung_dich_vu.trang_thai',
+                    'hop_dong_su_dung_dich_vu.thong_tin_dieu_phoi',
+                ])
+                ->get();
+
+            $items = [];
+            foreach ($rows as $hd) {
+                foreach ($hd->dieuPhoiSessions() as $sessionIndex => $session) {
+                    $ngayChup = substr((string) HopDongSuDungDichVu::dieuPhoiGiaTri($session, 'ngay_chup'), 0, 10);
+                    if ($ngayChup === '' || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $ngayChup)) {
+                        continue;
+                    }
+                    if ($tuNgay !== null && $ngayChup < $tuNgay) {
+                        continue;
+                    }
+                    if ($denNgay !== null && $ngayChup > $denNgay) {
+                        continue;
+                    }
+
+                    $sapXepTrangPhuc = HopDongSuDungDichVu::dieuPhoiGiaTri($session, 'sap_xep_trang_phuc');
+                    $sapXepTrangPhuc = $sapXepTrangPhuc !== null && $sapXepTrangPhuc !== ''
+                        ? (string) $sapXepTrangPhuc
+                        : 'chua_xep_do';
+
+                    if ($sapXepFilter !== '' && $sapXepTrangPhuc !== $sapXepFilter) {
+                        continue;
+                    }
+
+                    $loaiQuayChup = HopDongSuDungDichVu::dieuPhoiGiaTri($session, 'loai_quay_chup');
+                    $tenLoaiQuayChup = null;
+                    if (is_array($loaiQuayChup)) {
+                        $tenLoaiQuayChup = $loaiQuayChup['ten_dich_vu']
+                            ?? $loaiQuayChup['ten']
+                            ?? $loaiQuayChup['label']
+                            ?? null;
+                    } elseif (is_string($loaiQuayChup) && $loaiQuayChup !== '') {
+                        $tenLoaiQuayChup = $loaiQuayChup;
+                    }
+
+                    $ghiChu = HopDongSuDungDichVu::dieuPhoiGiaTri($session, 'ghi_chu_trang_phuc_phu_kien');
+                    if ($ghiChu === null || $ghiChu === '') {
+                        $ghiChu = HopDongSuDungDichVu::dieuPhoiGiaTri($session, 'ghi_chu_dieu_phoi');
+                    }
+
+                    $items[] = [
+                        'row_key' => $hd->id.'-'.$sessionIndex,
+                        'id' => $hd->id,
+                        'session_index' => $sessionIndex,
+                        'ngay_chup' => $ngayChup,
+                        'gio_chup' => $this->normalizeGioChup(
+                            HopDongSuDungDichVu::dieuPhoiGiaTri($session, 'gio_chup')
+                        ),
+                        'ma_hop_dong' => $hd->ma_hop_dong,
+                        'ten_khach_hang' => $hd->ten_khach_hang,
+                        'sdt_khach_hang' => $hd->sdt_khach_hang,
+                        'loai_hop_dong_id' => $hd->loai_hop_dong_id,
+                        'ten_hop_dong' => $hd->loaiHopDong?->ten_hop_dong,
+                        'ma_loai_hop_dong' => $hd->loaiHopDong?->ma_hop_dong,
+                        'ten_loai_quay_chup' => $tenLoaiQuayChup,
+                        'trang_thai' => $hd->trang_thai,
+                        'sap_xep_trang_phuc' => $sapXepTrangPhuc,
+                        'ghi_chu' => is_string($ghiChu) ? $ghiChu : null,
+                        'thong_tin_dieu_phoi' => $hd->thong_tin_dieu_phoi,
+                    ];
+                }
+            }
+
+            usort($items, function (array $a, array $b) {
+                $dateCmp = strcmp((string) $a['ngay_chup'], (string) $b['ngay_chup']);
+                if ($dateCmp !== 0) {
+                    return $dateCmp;
+                }
+                $gioA = $a['gio_chup'] ?: '99:99';
+                $gioB = $b['gio_chup'] ?: '99:99';
+                $gioCmp = strcmp((string) $gioA, (string) $gioB);
+                if ($gioCmp !== 0) {
+                    return $gioCmp;
+                }
+
+                return ($a['id'] <=> $b['id']) ?: ($a['session_index'] <=> $b['session_index']);
+            });
+
+            $total = count($items);
+            $lastPage = max(1, (int) ceil($total / $perPage));
+            if ($page > $lastPage) {
+                $page = $lastPage;
+            }
+            $offset = ($page - 1) * $perPage;
+            $data = array_values(array_slice($items, $offset, $perPage));
+
+            return response()->json([
+                'data' => $data,
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'total' => $total,
+                'last_page' => $lastPage,
+            ]);
+
+        }, 'lấy danh sách lịch xếp đồ');
+    }
+
+    /**
      * Lịch hậu kỳ: số lượng HĐ theo ngày trả file lẻ / file in / khách hẹn qua.
      * Ngày lấy từ thong_tin_dieu_phoi (cấp envelope, dùng chung mọi buổi).
      * Loại trừ trang_thai: moi_tao, nhap, da_huy.

@@ -51,6 +51,12 @@
         ]
       },
       {
+        "index": "/van-hanh-cuoi/lich-xep-do",
+        "title": "Lịch xếp đồ",
+        "icon": "Calendar",
+        "component": "van-hanh-cuoi/LichXepDo"
+      },
+      {
         "index": "/van-hanh-cuoi/trang-phuc",
         "title": "Trang phục",
         "icon": "Box",
