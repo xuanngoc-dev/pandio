@@ -2,9 +2,10 @@
 /**
  * CustomTable — wrapper el-table.
  * Default slot phải là con trực tiếp của el-table để cột được đăng ký đúng.
+ * Mobile (≤767px): chữ/padding gọn hơn; cung cấp isMobile để cột thu width.
  */
-import { provide, ref, toRef } from 'vue'
-import { TABLE_COLUMN_SETTINGS_KEY } from '@/composables/useTableColumns'
+import { nextTick, onBeforeUnmount, onMounted, provide, ref, toRef } from 'vue'
+import { TABLE_COLUMN_SETTINGS_KEY, TABLE_IS_MOBILE_KEY } from '@/composables/useTableColumns'
 
 defineOptions({ name: 'CustomTable', inheritAttrs: false })
 
@@ -19,6 +20,29 @@ const props = defineProps({
 provide(TABLE_COLUMN_SETTINGS_KEY, toRef(props, 'columnSettings'))
 
 const tableRef = ref(null)
+const isMobile = ref(false)
+provide(TABLE_IS_MOBILE_KEY, isMobile)
+
+const MOBILE_MQ = '(max-width: 767px)'
+let mediaQuery = null
+
+function syncMobile() {
+  const next = !!mediaQuery?.matches
+  if (next === isMobile.value) return
+  isMobile.value = next
+  nextTick(() => tableRef.value?.doLayout?.())
+}
+
+onMounted(() => {
+  mediaQuery = window.matchMedia(MOBILE_MQ)
+  isMobile.value = mediaQuery.matches
+  mediaQuery.addEventListener('change', syncMobile)
+})
+
+onBeforeUnmount(() => {
+  mediaQuery?.removeEventListener('change', syncMobile)
+  mediaQuery = null
+})
 
 defineExpose({
   clearSelection: (...args) => tableRef.value?.clearSelection?.(...args),
@@ -35,6 +59,8 @@ defineExpose({
 <template>
   <el-table
     ref="tableRef"
+    class="custom-table"
+    :class="{ 'is-mobile-compact': isMobile }"
     border
     :key="columnSettings?.fixedSignature || undefined"
     v-bind="$attrs"
@@ -48,3 +74,100 @@ defineExpose({
     </template>
   </el-table>
 </template>
+
+<style scoped>
+/* Mobile: thu chữ, padding, margin, gap để nhìn được nhiều nội dung hơn */
+.custom-table.is-mobile-compact {
+  font-size: 11px;
+}
+
+.custom-table.is-mobile-compact :deep(th.el-table__cell),
+.custom-table.is-mobile-compact :deep(td.el-table__cell) {
+  padding: 2px 0;
+}
+
+.custom-table.is-mobile-compact :deep(th.el-table__cell > .cell),
+.custom-table.is-mobile-compact :deep(td.el-table__cell > .cell) {
+  font-size: 11px;
+  line-height: 1.2;
+  padding: 0 2px;
+}
+
+.custom-table.is-mobile-compact :deep(.el-table__header th.el-table__cell > .cell) {
+  font-size: 10px;
+  line-height: 1.15;
+  padding: 0 2px;
+}
+
+.custom-table.is-mobile-compact :deep(.el-checkbox) {
+  height: 12px;
+  margin: 0;
+}
+
+.custom-table.is-mobile-compact :deep(.el-checkbox__inner) {
+  width: 12px;
+  height: 12px;
+}
+
+.custom-table.is-mobile-compact :deep(.el-checkbox__inner::after) {
+  left: 3px;
+  height: 6px;
+  width: 2px;
+}
+
+.custom-table.is-mobile-compact :deep(.el-tag) {
+  height: 18px;
+  margin: 0;
+  padding: 0 4px;
+  font-size: 10px;
+  line-height: 16px;
+}
+
+.custom-table.is-mobile-compact :deep(.el-button) {
+  --el-button-size: 22px;
+  margin: 0;
+  font-size: 11px;
+}
+
+.custom-table.is-mobile-compact :deep(.el-button.is-link),
+.custom-table.is-mobile-compact :deep(.el-button.is-text) {
+  margin: 0;
+  padding: 1px 2px;
+  font-size: 11px;
+}
+
+.custom-table.is-mobile-compact :deep(.el-button + .el-button) {
+  margin-left: 2px;
+}
+
+.custom-table.is-mobile-compact :deep(.el-button .el-icon),
+.custom-table.is-mobile-compact :deep(.el-icon) {
+  font-size: 13px;
+  margin: 0;
+}
+
+.custom-table.is-mobile-compact :deep(.action-btns) {
+  gap: 0;
+  margin: 0;
+}
+
+.custom-table.is-mobile-compact :deep(.status-cell) {
+  gap: 4px;
+  margin: 0;
+}
+
+.custom-table.is-mobile-compact :deep(.status-label) {
+  font-size: 11px;
+  margin: 0;
+}
+
+.custom-table.is-mobile-compact :deep(.custom-table-col),
+.custom-table.is-mobile-compact :deep(.custom-table-col-header) {
+  font-size: 11px;
+}
+
+.custom-table.is-mobile-compact :deep(.el-table__empty-text) {
+  font-size: 11px;
+  line-height: 1.2;
+}
+</style>

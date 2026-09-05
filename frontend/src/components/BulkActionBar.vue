@@ -1,5 +1,5 @@
 <template>
-  <div class="bulk-action-bar">
+  <div class="bulk-action-bar" :class="{ 'is-mobile': isMobile }">
     <CustomTooltip
       v-for="action in actions"
       :key="action.key"
@@ -16,6 +16,7 @@
         >
           <CustomButton
             :type="action.type || 'default'"
+            :size="buttonSize"
             :disabled="action.disabled ?? !(action.badge > 0)"
             :loading="!!action.loading"
             @click="$emit('action', action.key)"
@@ -33,8 +34,11 @@
 /**
  * Thanh nút hành động hàng loạt (badge góc trên phải từng nút).
  * Không dùng plain — nút solid theo type.
+ * Mobile (≤767px): size="small", gap/padding gọn hơn.
  */
+import { computed, onBeforeUnmount, onMounted, provide, ref } from 'vue'
 import { CustomButton, CustomTooltip } from '@/components/element'
+import { BULK_ACTION_BTN_SIZE_KEY } from '@/components/element/buttonContext'
 
 defineProps({
   /**
@@ -56,6 +60,28 @@ defineProps({
 })
 
 defineEmits(['action'])
+
+const MOBILE_MQ = '(max-width: 767px)'
+const isMobile = ref(false)
+let mediaQuery = null
+
+const buttonSize = computed(() => (isMobile.value ? 'small' : undefined))
+provide(BULK_ACTION_BTN_SIZE_KEY, buttonSize)
+
+function syncMobile() {
+  isMobile.value = !!mediaQuery?.matches
+}
+
+onMounted(() => {
+  mediaQuery = window.matchMedia(MOBILE_MQ)
+  syncMobile()
+  mediaQuery.addEventListener('change', syncMobile)
+})
+
+onBeforeUnmount(() => {
+  mediaQuery?.removeEventListener('change', syncMobile)
+  mediaQuery = null
+})
 </script>
 
 <style scoped lang="scss">
@@ -68,6 +94,25 @@ defineEmits(['action'])
 
   > * {
     margin: 0;
+  }
+
+  &.is-mobile {
+    gap: 6px;
+
+    :deep(.el-button) {
+      margin: 0;
+    }
+
+    :deep(.el-button + .el-button) {
+      margin-left: 0;
+    }
+
+    :deep(.el-badge__content) {
+      font-size: 10px;
+      height: 14px;
+      line-height: 14px;
+      padding: 0 4px;
+    }
   }
 }
 
