@@ -1,7 +1,5 @@
 <template>
   <div class="dich-vu-page">
-    <h2 class="page-title">Dịch vụ</h2>
-
     <el-empty v-if="!visibleTabs.length" description="Bạn chưa được phân quyền tab nào trên màn này." />
 
     <el-tabs v-else v-model="activeTab" class="page-tabs">

@@ -2,10 +2,12 @@
 /**
  * CustomInput — wrapper el-input.
  * Chỉnh style / hành vi mặc định tại đây để áp dụng toàn app.
+ * Mobile (≤767px): size="small" trừ khi truyền size tường minh.
  *
  * Với type="number": hiển thị định dạng 1.000.000, model vẫn là số nguyên.
  */
 import { computed, ref, useAttrs, useSlots, watch } from 'vue'
+import { useResponsiveComponentSize } from '@/composables/useResponsiveSize'
 import { formatInteger, parseIntegerInput } from '@/utils/number'
 
 defineOptions({ name: 'CustomInput', inheritAttrs: false })
@@ -16,6 +18,7 @@ const attrs = useAttrs()
 const inputRef = ref(null)
 const slots = useSlots()
 const displayValue = ref('')
+const { resolvedSize } = useResponsiveComponentSize()
 
 const isNumberInput = computed(() => attrs.type === 'number')
 
@@ -79,6 +82,7 @@ defineExpose({
     ref="inputRef"
     :model-value="isNumberInput ? displayValue : model"
     v-bind="inputAttrs"
+    :size="resolvedSize"
     @update:model-value="onUpdate"
     @blur="onBlur"
   >

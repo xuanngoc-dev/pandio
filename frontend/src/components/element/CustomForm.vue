@@ -2,8 +2,10 @@
 /**
  * CustomForm — wrapper el-form.
  * Mặc định label nằm trên (label-position="top").
+ * Mobile (≤767px): size="small" (cascade xuống control chưa set size).
  */
 import { ref, useSlots } from 'vue'
+import { useResponsiveComponentSize } from '@/composables/useResponsiveSize'
 
 defineOptions({ name: 'CustomForm', inheritAttrs: false })
 
@@ -16,6 +18,7 @@ const props = defineProps({
 
 const formRef = ref(null)
 const slots = useSlots()
+const { resolvedSize } = useResponsiveComponentSize()
 
 defineExpose({
   validate: (...args) => formRef.value?.validate?.(...args),
@@ -34,6 +37,7 @@ defineExpose({
     :label-position="props.labelPosition"
     :label-width="props.labelWidth"
     v-bind="$attrs"
+    :size="resolvedSize"
   >
     <template v-for="(_, name) in slots" #[name]="slotData">
       <slot :name="name" v-bind="slotData || {}" />

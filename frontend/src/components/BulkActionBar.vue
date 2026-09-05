@@ -36,9 +36,10 @@
  * Không dùng plain — nút solid theo type.
  * Mobile (≤767px): size="small", gap/padding gọn hơn.
  */
-import { computed, onBeforeUnmount, onMounted, provide, ref } from 'vue'
+import { computed, provide } from 'vue'
 import { CustomButton, CustomTooltip } from '@/components/element'
 import { BULK_ACTION_BTN_SIZE_KEY } from '@/components/element/buttonContext'
+import { useIsMobile } from '@/composables/useResponsiveSize'
 
 defineProps({
   /**
@@ -61,27 +62,9 @@ defineProps({
 
 defineEmits(['action'])
 
-const MOBILE_MQ = '(max-width: 767px)'
-const isMobile = ref(false)
-let mediaQuery = null
-
+const isMobile = useIsMobile()
 const buttonSize = computed(() => (isMobile.value ? 'small' : undefined))
 provide(BULK_ACTION_BTN_SIZE_KEY, buttonSize)
-
-function syncMobile() {
-  isMobile.value = !!mediaQuery?.matches
-}
-
-onMounted(() => {
-  mediaQuery = window.matchMedia(MOBILE_MQ)
-  syncMobile()
-  mediaQuery.addEventListener('change', syncMobile)
-})
-
-onBeforeUnmount(() => {
-  mediaQuery?.removeEventListener('change', syncMobile)
-  mediaQuery = null
-})
 </script>
 
 <style scoped lang="scss">

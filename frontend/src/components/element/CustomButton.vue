@@ -1,21 +1,18 @@
 <script setup>
 /**
  * CustomButton — wrapper el-button.
- * Kế thừa size từ BulkActionBar khi đang mobile (nếu chưa truyền size).
+ * Mobile (≤767px): size="small" trừ khi truyền size tường minh.
+ * Kế thừa size từ BulkActionBar nếu có (ưu tiên sau attrs.size).
  */
-import { computed, inject, unref, useAttrs, useSlots } from 'vue'
+import { inject, useSlots } from 'vue'
 import { BULK_ACTION_BTN_SIZE_KEY } from '@/components/element/buttonContext'
+import { useResponsiveComponentSize } from '@/composables/useResponsiveSize'
 
 defineOptions({ name: 'CustomButton', inheritAttrs: false })
 
 const slots = useSlots()
-const attrs = useAttrs()
 const inheritedSize = inject(BULK_ACTION_BTN_SIZE_KEY, null)
-
-const resolvedSize = computed(() => {
-  if (attrs.size != null && attrs.size !== '') return attrs.size
-  return unref(inheritedSize) || undefined
-})
+const { resolvedSize } = useResponsiveComponentSize({ inherited: inheritedSize })
 </script>
 
 <template>

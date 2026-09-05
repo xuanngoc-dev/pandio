@@ -2,7 +2,7 @@
   <div class="hop-dong-sddv page-list">
     <CustomCard shadow="hover" class="filter-card">
       <CustomRow :gutter="12" class="toolbar">
-        <CustomCol :xs="24" :sm="12" :md="8" :lg="6">
+        <CustomCol :xs="6" :sm="6" :md="6" :lg="6">
           <CustomInput
             v-model="keyword"
             placeholder="Tìm theo mã HĐ, thông tin khách hàng..."

@@ -2,8 +2,10 @@
 /**
  * CustomSelect — wrapper el-select.
  * Khi `multiple`: hiện checkbox "Chọn tất cả" ở đầu dropdown.
+ * Mobile (≤767px): size="small" trừ khi truyền size tường minh.
  */
 import { computed, provide, reactive, ref, useAttrs, useSlots } from 'vue'
+import { useResponsiveComponentSize } from '@/composables/useResponsiveSize'
 
 defineOptions({ name: 'CustomSelect', inheritAttrs: false })
 
@@ -17,6 +19,7 @@ const model = defineModel({ default: undefined })
 const selectRef = ref(null)
 const slots = useSlots()
 const attrs = useAttrs()
+const { resolvedSize } = useResponsiveComponentSize()
 
 const registeredOptions = reactive(new Map())
 
@@ -88,13 +91,14 @@ defineExpose({
 </script>
 
 <template>
-  <el-select ref="selectRef" v-model="model" clearable v-bind="$attrs">
+  <el-select ref="selectRef" v-model="model" clearable v-bind="$attrs" :size="resolvedSize">
     <template v-if="showSelectAllCheckbox" #header>
       <div class="custom-select__select-all" @click.stop @mousedown.stop>
         <el-checkbox
           :model-value="isAllSelected"
           :indeterminate="isIndeterminate"
           :disabled="!selectableValues.length"
+          :size="resolvedSize"
           @change="toggleSelectAll"
         >
           {{ selectAllLabel }}

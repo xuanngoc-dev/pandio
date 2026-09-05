@@ -2,9 +2,11 @@
 /**
  * CustomDatePicker — wrapper el-date-picker.
  * Locale tiếng Việt: "Năm 2026", "Tháng 5" (thay vì "2026 Năm", "Th.5").
+ * Mobile (≤767px): size="small" trừ khi truyền size tường minh.
  */
 import { computed, nextTick, onBeforeUnmount, ref, useAttrs, useSlots } from 'vue'
 import vi from 'element-plus/es/locale/lang/vi'
+import { useResponsiveComponentSize } from '@/composables/useResponsiveSize'
 
 defineOptions({ name: 'CustomDatePicker', inheritAttrs: false })
 
@@ -36,6 +38,7 @@ const model = defineModel({ default: undefined })
 const pickerRef = ref(null)
 const slots = useSlots()
 const attrs = useAttrs()
+const { resolvedSize } = useResponsiveComponentSize()
 const instancePopperClass = `custom-date-picker-popper-${Math.random().toString(36).slice(2, 9)}`
 
 let yearLabelObserver = null
@@ -128,6 +131,7 @@ defineExpose({
       ref="pickerRef"
       v-model="model"
       v-bind="pickerAttrs"
+      :size="resolvedSize"
       :popper-class="mergedPopperClass"
       @visible-change="onVisibleChange"
     >
