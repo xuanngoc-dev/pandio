@@ -5,6 +5,8 @@
       'is-navbar-fixed': navbarFixed,
       'is-sidebar-fixed': sidebarFixed,
       'is-sidebar-overlay': isSidebarOverlay,
+      'is-mobile': isMobile,
+      'is-mobile-menu-open': isMobile && mobileMenuOpen,
     }"
   >
     <!-- Sidebar: slot giữ chỗ trong flow; panel có thể phủ như drawer -->
@@ -21,11 +23,22 @@
           'is-collapsed': collapsed,
           'is-overlay-expanded': isSidebarOverlayExpanded,
           'is-hover-expanded': hoverExpanded,
+          'is-mobile-drawer': isMobile,
+          'is-mobile-open': isMobile && mobileMenuOpen,
         }"
         @mouseenter="onAsideEnter"
         @mouseleave="onAsideLeave"
       >
         <div class="brand">
+          <el-button
+            v-if="isMobile"
+            text
+            class="brand-toggle"
+            aria-label="Ẩn menu"
+            @click="closeMobileMenu"
+          >
+            <el-icon :size="20"><Fold /></el-icon>
+          </el-button>
           <el-avatar
             v-if="brandLogoUrl"
             :size="28"
@@ -34,7 +47,7 @@
             class="brand-logo"
           />
           <el-icon v-else :size="22"><Monitor /></el-icon>
-          <span class="brand-text" :class="{ 'is-hidden': collapsed }">{{ brandName }}</span>
+          <span class="brand-text" :class="{ 'is-hidden': collapsed && !isMobile }">{{ brandName }}</span>
         </div>
 
         <div class="aside-menu">
@@ -43,12 +56,14 @@
       </el-aside>
     </div>
 
-    <div
-      v-if="showAsideMask"
-      class="aside-mask"
-      aria-hidden="true"
-      @click="pinCollapse"
-    />
+    <Transition name="aside-mask">
+      <div
+        v-if="showAsideMask"
+        class="aside-mask"
+        aria-hidden="true"
+        @click="onAsideMaskClick"
+      />
+    </Transition>
 
     <el-container class="content-shell">
       <!-- Header -->
@@ -57,7 +72,30 @@
         :class="{ 'is-fixed': navbarFixed }"
       >
         <div class="header-left">
-          <el-button text @click="togglePinnedCollapse">
+          <el-button
+            v-if="isMobile"
+            text
+            class="mobile-menu-btn"
+            :aria-label="mobileMenuOpen ? 'Ẩn menu' : 'Hiện menu'"
+            @click="toggleMobileMenu"
+          >
+            <el-icon :size="20">
+              <Fold v-if="mobileMenuOpen" />
+              <Expand v-else />
+            </el-icon>
+          </el-button>
+          <div v-if="isMobile" class="header-brand">
+            <el-avatar
+              v-if="brandLogoUrl"
+              :size="28"
+              shape="square"
+              :src="brandLogoUrl"
+              class="brand-logo"
+            />
+            <el-icon v-else :size="20"><Monitor /></el-icon>
+            <span class="header-brand__name">{{ brandName }}</span>
+          </div>
+          <el-button v-else text @click="togglePinnedCollapse">
             <el-icon :size="20">
               <Fold v-if="!pinnedCollapsed" />
               <Expand v-else />
@@ -206,10 +244,13 @@ const {
   toneClass: networkToneClass,
 } = useNetworkStatus()
 
-/** Thu gọn do người dùng / viewport (trạng thái “ghim”) */
+/** Thu gọn do người dùng / viewport (trạng thái “ghim”) — desktop */
 const pinnedCollapsed = ref(false)
 /** Xổ tạm khi hover lúc đang thu gọn */
 const hoverExpanded = ref(false)
+/** Viewport mobile: ẩn sidebar mặc định, mở dạng drawer */
+const isMobile = ref(false)
+const mobileMenuOpen = ref(false)
 const settingsOpen = ref(false)
 const notificationsOpen = ref(false)
 const searchOpen = ref(false)
@@ -227,28 +268,39 @@ const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform)
 const searchShortcutLabel = isMac ? '⌘K' : 'Ctrl+K'
 
 /** Đang thu gọn về mặt hiển thị (ghim thu gọn và không đang hover) */
-const collapsed = computed(
-  () => pinnedCollapsed.value && !hoverExpanded.value
-)
+const collapsed = computed(() => {
+  if (isMobile.value) return false
+  return pinnedCollapsed.value && !hoverExpanded.value
+})
 
-/** Overlay: mode drawer, hoặc xổ tạm bằng hover */
-const isSidebarOverlay = computed(() => !sidebarPushContent.value)
+/** Overlay: mode drawer, hoặc xổ tạm bằng hover, hoặc menu mobile */
+const isSidebarOverlay = computed(() => {
+  if (isMobile.value) return true
+  return !sidebarPushContent.value
+})
 const isSidebarOverlayExpanded = computed(() => {
+  if (isMobile.value) return mobileMenuOpen.value
   if (hoverExpanded.value) return true
   return isSidebarOverlay.value && !pinnedCollapsed.value
 })
 /** Mask chỉ khi mở hẳn kiểu drawer (không dùng khi hover) */
-const showAsideMask = computed(
-  () => isSidebarOverlay.value && !pinnedCollapsed.value
-)
+const showAsideMask = computed(() => {
+  if (isMobile.value) return mobileMenuOpen.value
+  return isSidebarOverlay.value && !pinnedCollapsed.value
+})
 
 const asideSlotWidth = computed(() => {
+  // Mobile: không chiếm chỗ — nội dung full width
+  if (isMobile.value) return '0px'
   // Hover xổ luôn overlay — slot giữ 64px khi đang ghim thu gọn
   if (pinnedCollapsed.value) return '64px'
   if (isSidebarOverlay.value) return '64px'
   return '220px'
 })
-const asidePanelWidth = computed(() => (collapsed.value ? '64px' : '220px'))
+const asidePanelWidth = computed(() => {
+  if (isMobile.value) return '220px'
+  return collapsed.value ? '64px' : '220px'
+})
 
 let hoverLeaveTimer = null
 
@@ -260,13 +312,13 @@ function clearHoverLeaveTimer() {
 }
 
 function onAsideEnter() {
-  if (!pinnedCollapsed.value) return
+  if (isMobile.value || !pinnedCollapsed.value) return
   clearHoverLeaveTimer()
   hoverExpanded.value = true
 }
 
 function onAsideLeave() {
-  if (!pinnedCollapsed.value) return
+  if (isMobile.value || !pinnedCollapsed.value) return
   clearHoverLeaveTimer()
   hoverLeaveTimer = window.setTimeout(() => {
     hoverExpanded.value = false
@@ -286,13 +338,38 @@ function pinCollapse() {
   pinnedCollapsed.value = true
 }
 
+function toggleMobileMenu() {
+  mobileMenuOpen.value = !mobileMenuOpen.value
+}
+
+function closeMobileMenu() {
+  mobileMenuOpen.value = false
+}
+
+function onAsideMaskClick() {
+  if (isMobile.value) {
+    closeMobileMenu()
+    return
+  }
+  pinCollapse()
+}
+
 watch(sidebarPushContent, async () => {
   // Remount aside + SideMenu để el-aside/CSS mode áp dụng đúng ngay, không cần F5
   clearHoverLeaveTimer()
   hoverExpanded.value = false
+  mobileMenuOpen.value = false
   asideMountKey.value += 1
   await nextTick()
 })
+
+/** Đóng drawer mobile khi đổi trang */
+watch(
+  () => route.fullPath,
+  () => {
+    if (isMobile.value) closeMobileMenu()
+  },
+)
 
 const pageTitle = computed(() => route.meta.title || brandName.value)
 const userFullName = computed(() => String(authStore.user?.name || '').trim())
@@ -330,6 +407,9 @@ let clockTimer = null
 function syncCollapseByViewport(e) {
   clearHoverLeaveTimer()
   hoverExpanded.value = false
+  isMobile.value = e.matches
+  mobileMenuOpen.value = false
+  // Desktop: mở rộng; mobile: ẩn menu (không chiếm chỗ)
   pinnedCollapsed.value = e.matches
 }
 
@@ -407,6 +487,8 @@ onMounted(() => {
   }
 
   mediaQuery = window.matchMedia(`(max-width: ${COLLAPSE_BREAKPOINT - 1}px)`)
+  isMobile.value = mediaQuery.matches
+  mobileMenuOpen.value = false
   pinnedCollapsed.value = mediaQuery.matches
   mediaQuery.addEventListener('change', syncCollapseByViewport)
   window.addEventListener('keydown', onGlobalKeydown)
@@ -451,16 +533,16 @@ onUnmounted(() => {
   inset: 0;
   z-index: 90;
   background: var(--el-overlay-color-lighter);
-  animation: aside-mask-in 0.2s ease;
 }
 
-@keyframes aside-mask-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+.aside-mask-enter-active,
+.aside-mask-leave-active {
+  transition: opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.aside-mask-enter-from,
+.aside-mask-leave-to {
+  opacity: 0;
 }
 
 .aside {
@@ -468,7 +550,8 @@ onUnmounted(() => {
   background: var(--el-bg-color);
   transition:
     width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
 
@@ -491,6 +574,26 @@ onUnmounted(() => {
 
   &.is-hover-expanded {
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+  }
+
+  /* Mobile drawer: trượt từ trái, mặc định ẩn */
+  &.is-mobile-drawer {
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    z-index: 100;
+    overflow: hidden;
+    width: 220px !important;
+    transform: translateX(-100%);
+    pointer-events: none;
+    box-shadow: none;
+  }
+
+  &.is-mobile-drawer.is-mobile-open {
+    transform: translateX(0);
+    pointer-events: auto;
+    box-shadow: var(--el-box-shadow-dark);
   }
 }
 
@@ -538,6 +641,15 @@ onUnmounted(() => {
     justify-content: center;
     padding: 0;
   }
+
+  .aside.is-mobile-drawer & {
+    padding: 0 12px 0 8px;
+  }
+}
+
+.brand-toggle {
+  flex-shrink: 0;
+  margin-right: -4px;
 }
 
 .brand-logo {
@@ -687,8 +799,64 @@ onUnmounted(() => {
   gap: 10px;
 }
 
+.mobile-menu-btn {
+  flex-shrink: 0;
+}
+
+.header-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--el-color-primary);
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.header-brand__name {
+  display: none;
+}
+
 @media (max-width: 991px) {
+  .aside-slot {
+    width: 0 !important;
+    overflow: visible;
+    flex-shrink: 0;
+  }
+
+  .header {
+    gap: 10px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--el-border-color) transparent;
+
+    &::-webkit-scrollbar {
+      height: 4px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background-color: var(--el-border-color);
+      border-radius: 2px;
+    }
+  }
+
+  .header-left,
+  .header-right {
+    gap: 8px;
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+  }
+
   .header-search {
+    flex: 0 0 40px;
     flex-basis: 40px;
     max-width: 40px;
     justify-content: center;

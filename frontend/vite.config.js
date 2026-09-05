@@ -11,14 +11,14 @@ export default defineConfig({
     vue(),
     // Tự động import API Composition (ref, computed, ...)
     AutoImport({
-      resolvers: [ElementPlusResolver()],
+      resolvers: [ElementPlusResolver({ importStyle: false })],
       imports: ['vue', 'vue-router', 'pinia'],
       dts: 'src/auto-imports.d.ts',
     }),
     // Auto-import component local (Custom*) + Element Plus on-demand
     Components({
       dirs: ['src/components', 'src/components/element'],
-      resolvers: [ElementPlusResolver()],
+      resolvers: [ElementPlusResolver({ importStyle: false })],
       dts: 'src/components.d.ts',
     }),
   ],

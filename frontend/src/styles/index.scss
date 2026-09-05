@@ -121,3 +121,92 @@ html.dark .el-table {
     font-weight: 400;
   }
 }
+
+/* Mobile: padding đồng nhất 8px
+   Ghi đè trên selector component vì EP set biến ngay trên .el-main/.el-card/... */
+@media (max-width: 991px) {
+  :root {
+    --el-menu-base-level-padding: 8px;
+    --el-menu-level-padding: 8px;
+  }
+
+  .el-main {
+    --el-main-padding: 8px;
+    padding: 8px;
+  }
+
+  .el-header {
+    --el-header-padding: 0 8px;
+    padding: 0 8px;
+  }
+
+  .el-footer {
+    --el-footer-padding: 0 8px;
+    padding: 0 8px;
+  }
+
+  .el-card {
+    --el-card-padding: 8px;
+  }
+
+  .el-card__header,
+  .el-card__body,
+  .el-card__footer {
+    padding: 8px;
+  }
+
+  .el-dialog {
+    --el-dialog-padding-primary: 8px;
+    padding: 8px;
+  }
+
+  .el-drawer {
+    --el-drawer-padding-primary: 8px;
+  }
+
+  .el-drawer__header,
+  .el-drawer__body,
+  .el-drawer__footer {
+    padding: 8px;
+  }
+
+  .el-message-box {
+    --el-messagebox-padding-primary: 8px;
+    padding: 8px;
+  }
+
+  .el-popover {
+    --el-popover-padding: 8px;
+    --el-popover-padding-large: 8px;
+    padding: 8px;
+  }
+
+  .el-alert {
+    --el-alert-padding: 8px;
+    padding: 8px;
+  }
+
+  .el-empty {
+    --el-empty-padding: 8px 0;
+    padding: 8px 0;
+  }
+
+  .el-notification {
+    --el-notification-padding: 8px;
+    padding: 8px;
+  }
+
+  .el-message {
+    --el-message-padding: 8px;
+    padding: 8px;
+  }
+
+  .el-tour {
+    --el-tour-padding-primary: 8px;
+  }
+
+  .el-result {
+    --el-result-padding: 8px;
+    padding: 8px;
+  }
+}

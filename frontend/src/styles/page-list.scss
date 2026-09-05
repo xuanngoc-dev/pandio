@@ -6,6 +6,12 @@
   gap: 16px;
 }
 
+@media (max-width: 991px) {
+  .page-list {
+    gap: 8px;
+  }
+}
+
 .card-header {
   display: flex;
   align-items: center;
