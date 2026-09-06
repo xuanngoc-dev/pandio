@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\DichVuLoaiDichVuController;
 use App\Http\Controllers\Api\DatMuaTrangPhucController;
 use App\Http\Controllers\Api\HopDongChoThueTrangPhucController;
 use App\Http\Controllers\Api\HopDongSuDungDichVuController;
+use App\Http\Controllers\Api\HopDongSuDungDichVuFormDanhGiaController;
 use App\Http\Controllers\Api\HangMucLoaiThuChiController;
 use App\Http\Controllers\Api\KhachHangController;
 use App\Http\Controllers\Api\KhachHangNoteKhachMoiController;
@@ -67,6 +68,10 @@ Route::prefix('auth')->group(function () {
 
 // Form đánh giá — công khai cho khách hàng điền theo slug (không cần đăng nhập)
 Route::get('/public/form-danh-gia/{slug}', [CauHinhFormDanhGiaMauController::class, 'showBySlug']);
+Route::post(
+    '/public/form-danh-gia/{slug}/nop',
+    [HopDongSuDungDichVuFormDanhGiaController::class, 'nopDanhGia']
+); // Khách nộp đánh giá → lưu noi_dung_danh_gia
 
 // Auth bảo vệ bởi Sanctum — thiếu/sai token → 401 JSON; tài khoản không active → chặn
 Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function () {
@@ -151,6 +156,10 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
 
     // --- Form đánh giá mẫu ---
     Route::apiResource('cau-hinh-form-danh-gia-mau', CauHinhFormDanhGiaMauController::class); // CRUD form đánh giá (admin)
+    Route::post(
+        'hop-dong-su-dung-dich-vu-form-danh-gia',
+        [HopDongSuDungDichVuFormDanhGiaController::class, 'store']
+    ); // Tạo link đánh giá theo HĐ + form
 
     // --- Danh mục nguồn khách ---
     Route::apiResource('danh-muc-nguon-khach', DanhMucNguonKhachController::class); // CRUD nguồn khách (Facebook, giới thiệu…)

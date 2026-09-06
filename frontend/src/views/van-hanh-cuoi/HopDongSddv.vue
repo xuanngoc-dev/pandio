@@ -464,6 +464,11 @@
       :hop-dong="doiTrangThaiHopDong"
       @saved="onDoiTrangThaiSaved"
     />
+
+    <HopDongSddvTaoLinkDanhGiaModal
+      v-model="taoLinkDanhGiaModalVisible"
+      :hop-dong="taoLinkDanhGiaHopDong"
+    />
   </div>
 </template>
 
@@ -471,7 +476,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowDown, Calendar, Delete, Document, Edit, Plus, Position, Search, Switch, View, Wallet } from '@element-plus/icons-vue'
+import { ArrowDown, Calendar, Delete, Document, Edit, Link, Plus, Position, Search, Switch, View, Wallet } from '@element-plus/icons-vue'
 import { fetchDanhMucLoaiQuayChup } from '@/api/danhMucLoaiQuayChup'
 import {
   deleteHopDongSuDungDichVu,
@@ -507,6 +512,7 @@ import HopDongSddvDoiTrangThaiModal from '@/views/van-hanh-cuoi/hop-dong-sddv/Ho
 import HopDongSddvDraftModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvDraftModal.vue'
 import HopDongSddvFormModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvFormModal.vue'
 import HopDongSddvLichQuayChupModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvLichQuayChupModal.vue'
+import HopDongSddvTaoLinkDanhGiaModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvTaoLinkDanhGiaModal.vue'
 import HopDongSddvThanhToanModal from '@/views/van-hanh-cuoi/hop-dong-sddv/HopDongSddvThanhToanModal.vue'
 import {
   SO_DIEM_CHUP_MAX,
@@ -675,6 +681,8 @@ const thanhToanModalVisible = ref(false)
 const thanhToanHopDong = ref(null)
 const doiTrangThaiModalVisible = ref(false)
 const doiTrangThaiHopDong = ref(null)
+const taoLinkDanhGiaModalVisible = ref(false)
+const taoLinkDanhGiaHopDong = ref(null)
 
 const { selectedCount, onSelectionChange, clearSelection, selectedIds } = useBulkSelection()
 
@@ -945,6 +953,12 @@ function getRowActions(row) {
       icon: Switch,
       disabled: !canDoiTrangThai(row),
     },
+    {
+      command: 'tao_link_danh_gia',
+      label: 'Tạo link đánh giá',
+      icon: Link,
+      type: 'info',
+    },
     { command: 'edit', label: 'Sửa', icon: Edit, type: 'primary' },
     { command: 'delete', label: 'Xóa', icon: Delete, type: 'danger', divided: true },
   ]
@@ -963,6 +977,9 @@ function onRowAction(command, row) {
       break
     case 'doi_trang_thai':
       openDoiTrangThai(row)
+      break
+    case 'tao_link_danh_gia':
+      openTaoLinkDanhGia(row)
       break
     case 'edit':
       openEdit(row)
@@ -1133,6 +1150,12 @@ async function openDoiTrangThai(row) {
 
 function onDoiTrangThaiSaved() {
   loadItems()
+}
+
+function openTaoLinkDanhGia(row) {
+  if (!row?.id) return
+  taoLinkDanhGiaHopDong.value = row
+  taoLinkDanhGiaModalVisible.value = true
 }
 
 async function openEdit(row) {

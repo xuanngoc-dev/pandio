@@ -20,6 +20,18 @@ export function getFormDanhGiaBySlug(slug) {
 }
 
 /**
+ * Khách hàng nộp đánh giá (công khai).
+ * @param {string} slug
+ * @param {{ hop_dong_danh_gia_id: number, noi_dung_danh_gia: Array }} payload
+ */
+export function nopFormDanhGia(slug, payload) {
+  return api.post(`/public/form-danh-gia/${encodeURIComponent(slug)}/nop`, payload, {
+    skipLoading: true,
+    silent401: true,
+  })
+}
+
+/**
  * Chi tiết form đánh giá mẫu.
  * @param {number|string} id
  */

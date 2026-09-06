@@ -89,7 +89,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getFormDanhGiaBySlug } from '@/api/formDanhGia'
+import { getFormDanhGiaBySlug, nopFormDanhGia } from '@/api/formDanhGia'
 import {
   CustomButton,
   CustomForm,
@@ -118,6 +118,12 @@ const answers = reactive({})
 const questions = computed(() =>
   Array.isArray(formDef.cau_hoi) ? formDef.cau_hoi : []
 )
+
+const hopDongDanhGiaId = computed(() => {
+  const raw = route.query.hop_dong_danh_gia_id
+  const id = Number(Array.isArray(raw) ? raw[0] : raw)
+  return Number.isFinite(id) && id > 0 ? id : null
+})
 
 function rulesFor(question) {
   if (!question.required) return []
@@ -187,30 +193,39 @@ async function onSubmit() {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
 
+  if (!hopDongDanhGiaId.value) {
+    ElMessage.error('Link đánh giá không hợp lệ (thiếu thông tin hợp đồng).')
+    return
+  }
+
+  if (!formDef.slug) {
+    ElMessage.error('Form đánh giá không hợp lệ.')
+    return
+  }
+
   submitting.value = true
   try {
-    // UI-only: chưa gửi BE — sẽ bổ sung API lưu câu trả lời sau
-    const payload = {
-      form_id: formDef.id,
-      slug: formDef.slug,
-      answers: questions.value.map((q, index) => ({
+    await nopFormDanhGia(formDef.slug, {
+      hop_dong_danh_gia_id: hopDongDanhGiaId.value,
+      noi_dung_danh_gia: questions.value.map((q, index) => ({
         cau_hoi: q.cau_hoi,
         loai_danh_gia: q.loai_danh_gia,
-        thong_tin_danh_gia: q.thong_tin_danh_gia,
+        thong_tin_danh_gia: q.thong_tin_danh_gia || null,
         gia_tri: answers[`q_${index}`],
       })),
-    }
-    console.debug('[Form đánh giá] payload (chưa gửi BE):', payload)
+    })
 
     submitted.value = true
     ElMessage.success('Cảm ơn bạn đã gửi đánh giá!')
+  } catch {
+    // Axios interceptor đã hiển thị lỗi
   } finally {
     submitting.value = false
   }
 }
 
 watch(
-  () => route.params.slug,
+  () => [route.params.slug, route.query.hop_dong_danh_gia_id],
   () => {
     loadForm()
   }

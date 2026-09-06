@@ -48,6 +48,7 @@ class QueryExceptionMapper
         'cau_hinh_tai_khoan_thanh_toan' => 'tài khoản thanh toán',
         'cau_hinh_thong_tin_studio' => 'thông tin studio',
         'cau_hinh_form_danh_gia_mau' => 'form đánh giá mẫu',
+        'hop_dong_su_dung_dich_vu_form_danh_gia' => 'link đánh giá hợp đồng',
         'cau_hinh_json' => 'cấu hình JSON',
         'dang_ky_ca_lam_viec' => 'đăng ký ca làm việc',
         'diem_danh' => 'điểm danh',

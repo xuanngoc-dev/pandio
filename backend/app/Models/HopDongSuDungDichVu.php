@@ -213,6 +213,11 @@ class HopDongSuDungDichVu extends Model
         return $this->hasMany(HopDongDongSddvTrangPhuc::class, 'ma_hop_dong_id');
     }
 
+    public function formDanhGias(): HasMany
+    {
+        return $this->hasMany(HopDongSuDungDichVuFormDanhGia::class, 'hop_dong_danh_gia_id');
+    }
+
     /**
      * Lấy danh sách buổi chụp từ thong_tin_dieu_phoi.danh_sach_buoi_chup.
      *
