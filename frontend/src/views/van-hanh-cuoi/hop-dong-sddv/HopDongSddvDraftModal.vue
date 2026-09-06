@@ -6,38 +6,45 @@
     class="hop-dong-sddv-draft-modal"
     @closed="onClosed"
   >
-    <div class="draft-toolbar">
-      <CustomInput
-        v-model="keyword"
-        placeholder="Tìm theo mã HĐ, khách hàng..."
-        clearable
-        style="max-width: 300px"
-        @clear="onSearch"
-        @keyup.enter="onSearch"
-      >
-        <template #prefix>
-          <CustomIcon><Search /></CustomIcon>
-        </template>
-      </CustomInput>
-      <el-date-picker
-        v-model="createdRange"
-        type="daterange"
-        range-separator="—"
-        start-placeholder="Từ ngày"
-        end-placeholder="Đến ngày"
-        format="DD/MM/YYYY"
-        value-format="YYYY-MM-DD"
-        clearable
-        style="width: 280px"
-        @change="onSearch"
-      />
-      <CustomButton type="primary" plain @click="onSearch">
-        <CustomIcon><Search /></CustomIcon>
-        Tìm kiếm
-      </CustomButton>
-      <div class="draft-toolbar__spacer" />
-      <BulkActionBar :actions="bulkActions" @action="onBulkAction" />
-    </div>
+    <CustomRow :gutter="12" class="toolbar draft-toolbar">
+      <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+        <CustomInput
+          v-model="keyword"
+          placeholder="Tìm theo mã HĐ, khách hàng..."
+          clearable
+          style="width: 100%"
+          @clear="onSearch"
+          @keyup.enter="onSearch"
+        >
+          <template #prefix>
+            <CustomIcon><Search /></CustomIcon>
+          </template>
+        </CustomInput>
+      </CustomCol>
+      <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+        <CustomDatePicker
+          v-model="createdRange"
+          type="daterange"
+          range-separator="—"
+          start-placeholder="Từ ngày"
+          end-placeholder="Đến ngày"
+          format="DD/MM/YYYY"
+          value-format="YYYY-MM-DD"
+          clearable
+          style="width: 100%"
+          @change="onSearch"
+        />
+      </CustomCol>
+      <CustomCol :xs="24" :sm="24" :md="12" :lg="12">
+        <div class="toolbar-actions">
+          <CustomButton type="primary" plain @click="onSearch">
+            <CustomIcon><Search /></CustomIcon>
+            Tìm kiếm
+          </CustomButton>
+          <BulkActionBar :actions="bulkActions" @action="onBulkAction" />
+        </div>
+      </CustomCol>
+    </CustomRow>
 
     <CustomTable
       v-loading="loading"
@@ -127,6 +134,7 @@ import Pagination from '@/components/Pagination.vue'
 import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
 import {
   CustomButton,
+  CustomDatePicker,
   CustomDialog,
   CustomIcon,
   CustomInput,
@@ -313,16 +321,7 @@ defineExpose({ reload: loadItems })
 
 <style scoped lang="scss">
 .draft-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
   margin-bottom: 16px;
-}
-
-.draft-toolbar__spacer {
-  flex: 1;
-  min-width: 8px;
 }
 
 .sub-text {

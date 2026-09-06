@@ -14,22 +14,28 @@
     </div>
 
     <div v-show="activeStep === 0" class="step-select">
-      <div class="step-select__toolbar">
-        <CustomInput
-          v-model="keyword"
-          placeholder="Tìm mã HĐ, tên KH, SĐT..."
-          clearable
-          style="max-width: 360px"
-          @keyup.enter="onSearch"
-          @clear="onSearch"
-        >
-          <template #prefix>
-            <el-icon><Search /></el-icon>
-          </template>
-        </CustomInput>
-        <CustomButton type="primary" @click="onSearch">Tìm</CustomButton>
-        <span class="step-select__count">{{ total }} hợp đồng</span>
-      </div>
+      <CustomRow :gutter="12" class="toolbar step-select__toolbar">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+          <CustomInput
+            v-model="keyword"
+            placeholder="Tìm mã HĐ, tên KH, SĐT..."
+            clearable
+            style="width: 100%"
+            @keyup.enter="onSearch"
+            @clear="onSearch"
+          >
+            <template #prefix>
+              <el-icon><Search /></el-icon>
+            </template>
+          </CustomInput>
+        </CustomCol>
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+          <div class="toolbar-actions">
+            <CustomButton type="primary" @click="onSearch">Tìm</CustomButton>
+            <span class="step-select__count">{{ total }} hợp đồng</span>
+          </div>
+        </CustomCol>
+      </CustomRow>
 
       <div v-loading="loadingList" class="hop-dong-card-grid">
         <el-empty
@@ -315,17 +321,13 @@ watch(visible, (isOpen) => {
 }
 
 .step-select__toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   margin-bottom: 14px;
-  flex-wrap: wrap;
 }
 
 .step-select__count {
-  margin-left: auto;
   font-size: 13px;
   color: var(--el-text-color-secondary);
+  white-space: nowrap;
 }
 
 .hop-dong-card-grid {

@@ -2,7 +2,7 @@
   <div class="cong-viec-ca-nhan page-list">
     <CustomCard shadow="hover" class="filter-card">
       <CustomRow :gutter="12" class="toolbar">
-        <CustomCol :xs="24" :sm="12" :md="8" :lg="8">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
           <CustomInput
             v-model="keyword"
             placeholder="Tìm theo tiêu đề, mô tả, ghi chú, liên kết..."
@@ -16,7 +16,7 @@
             </template>
           </CustomInput>
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="8" :lg="5">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
           <CustomSelect
             v-model="trangThaiFilter"
             placeholder="Trạng thái"
@@ -28,7 +28,7 @@
             <CustomOption label="Đã hoàn thành" value="da_hoan_thanh" />
           </CustomSelect>
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="8" :lg="5">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
           <CustomSelect
             v-model="mucDoUuTienFilter"
             placeholder="Mức ưu tiên"
@@ -39,7 +39,7 @@
             <CustomOption v-for="n in 5" :key="n" :label="`Mức ${n}`" :value="n" />
           </CustomSelect>
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="8" :lg="4">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
           <CustomButton type="primary" plain @click="onSearch">
             Tìm kiếm
           </CustomButton>

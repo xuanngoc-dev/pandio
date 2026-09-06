@@ -153,7 +153,7 @@
                 />
               </template>
               <template v-else-if="isDateLike(field.kieu)">
-                <el-date-picker
+                <CustomDatePicker
                   v-model="form.thong_tin_hop_dong[field.key]"
                   :type="datePickerType(field.kieu)"
                   :format="datePickerFormat(field.kieu)"
@@ -238,6 +238,7 @@ import { ref } from 'vue'
 import {
   CustomCard,
   CustomCol,
+  CustomDatePicker,
   CustomForm,
   CustomFormItem,
   CustomInput,

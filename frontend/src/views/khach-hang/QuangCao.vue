@@ -2,8 +2,8 @@
   <div class="quang-cao page-list">
     <CustomCard shadow="hover" class="filter-card">
       <CustomRow :gutter="12" class="toolbar" align="middle">
-        <CustomCol v-bind="fieldCol">
-          <el-date-picker
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+          <CustomDatePicker
             v-model="dateRange"
             type="daterange"
             range-separator="–"
@@ -16,7 +16,7 @@
             @change="onDateRangeChange"
           />
         </CustomCol>
-        <CustomCol v-bind="fieldCol">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
           <CustomInput
             v-model="keyword"
             placeholder="Tìm theo ghi chú..."
@@ -30,7 +30,7 @@
             </template>
           </CustomInput>
         </CustomCol>
-        <CustomCol :xs="24" :sm="24" :md="24" :lg="16">
+        <CustomCol :xs="24" :sm="24" :md="12" :lg="12">
           <div class="toolbar-actions">
             <CustomButton type="primary" plain @click="onSearch">
               Tìm kiếm
@@ -334,7 +334,7 @@
         <CustomRow :gutter="16">
           <CustomCol v-bind="fieldCol">
             <CustomFormItem label="Ngày" prop="ngay">
-              <el-date-picker
+              <CustomDatePicker
                 v-model="form.ngay"
                 type="date"
                 placeholder="Chọn ngày"
@@ -389,6 +389,7 @@ import {
   CustomButton,
   CustomCard,
   CustomCol,
+  CustomDatePicker,
   CustomDialog,
   CustomForm,
   CustomFormItem,
@@ -836,13 +837,6 @@ onMounted(loadItems)
 </script>
 
 <style scoped>
-.toolbar-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
 /* Daterange dễ tràn khỏi col và đè lên input kế bên — giữ trong cột để gutter hiện đúng */
 .quang-cao :deep(.toolbar .el-date-editor) {
   width: 100%;

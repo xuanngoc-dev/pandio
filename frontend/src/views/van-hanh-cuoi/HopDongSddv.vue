@@ -2,7 +2,7 @@
   <div class="hop-dong-sddv page-list">
     <CustomCard shadow="hover" class="filter-card">
       <CustomRow :gutter="12" class="toolbar">
-        <CustomCol :xs="6" :sm="6" :md="6" :lg="6">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
           <CustomInput
             v-model="keyword"
             placeholder="Tìm theo mã HĐ, thông tin khách hàng..."
@@ -16,7 +16,7 @@
             </template>
           </CustomInput>
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="8" :lg="5">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
           <CustomSelect
             v-model="filterLoaiHopDongId"
             placeholder="Loại hợp đồng"
@@ -33,7 +33,7 @@
             />
           </CustomSelect>
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
           <CustomSelect
             v-model="filterTrangThai"
             placeholder="Trạng thái"
@@ -49,7 +49,7 @@
             />
           </CustomSelect>
         </CustomCol>
-        <CustomCol :xs="24" :sm="24" :md="24" :lg="7">
+        <CustomCol :xs="24" :sm="24" :md="6" :lg="6">
           <div class="toolbar-actions">
             <CustomButton type="primary" plain @click="onSearch">
               Tìm kiếm
@@ -91,7 +91,7 @@
           </CustomButton>
         </div>
         <CustomRow :gutter="12" class="toolbar">
-          <CustomCol :xs="24" :sm="12" :md="8" :lg="6">
+          <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
             <CustomSelect
               v-model="filterLoaiQuayChupId"
               placeholder="Loại quay chụp"
@@ -108,7 +108,7 @@
               />
             </CustomSelect>
           </CustomCol>
-          <CustomCol :xs="24" :sm="12" :md="8" :lg="6">
+          <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
             <CustomDatePicker
               v-model="filterNgayChupRange"
               type="daterange"
@@ -124,7 +124,7 @@
               @change="onSearch"
             />
           </CustomCol>
-          <CustomCol :xs="24" :sm="12" :md="8" :lg="6">
+          <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
             <CustomSelect
               v-model="filterSoDiemChup"
               placeholder="Số điểm chụp"
@@ -140,7 +140,7 @@
               />
             </CustomSelect>
           </CustomCol>
-          <CustomCol :xs="24" :sm="12" :md="6" :lg="6">
+          <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
             <CustomSelect
               v-model="filterCoThoChup"
               placeholder="Thợ chụp"
@@ -157,7 +157,7 @@
             Chưa có thợ make: không buổi nào có cả hai
             (duyệt danh_sach_buoi_chup trong thong_tin_dieu_phoi; gia_tri null/rỗng = chưa có)
           -->
-          <CustomCol :xs="24" :sm="12" :md="6" :lg="6">
+          <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
             <CustomSelect
               v-model="filterCoThoMake"
               placeholder="Thợ make"
@@ -169,7 +169,7 @@
               <CustomOption label="Chưa có thợ make" value="0" />
             </CustomSelect>
           </CustomCol>
-          <CustomCol :xs="24" :sm="12" :md="6" :lg="6">
+          <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
             <CustomSelect
               v-model="filterCoQuayPhim"
               placeholder="Quay phim"
@@ -181,7 +181,7 @@
               <CustomOption label="Chưa có quay phim" value="0" />
             </CustomSelect>
           </CustomCol>
-          <CustomCol :xs="24" :sm="12" :md="6" :lg="6">
+          <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
             <CustomSelect
               v-model="filterCoThoEdit"
               placeholder="Thợ edit"
@@ -1261,13 +1261,6 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-.toolbar-actions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
 .advanced-toggle__badge {
   display: inline-flex;
   align-items: center;

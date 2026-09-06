@@ -2,7 +2,7 @@
   <div class="dieu-phoi-tu-dong">
     <div class="filter-bar">
       <CustomRow :gutter="12" class="toolbar">
-        <CustomCol :xs="12" :sm="12" :md="8" :lg="3">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
           <CustomInput
             v-model="filters.keyword"
             placeholder="Tìm theo mã HĐ, tên, SĐT khách hàng..."
@@ -16,7 +16,7 @@
             </template>
           </CustomInput>
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="8" :lg="3">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
           <CustomSelect
             v-model="filters.loai_hop_dong_id"
             placeholder="Loại hợp đồng"
@@ -33,8 +33,8 @@
             />
           </CustomSelect>
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="8" :lg="3">
-          <el-date-picker
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+          <CustomDatePicker
             v-model="filters.ngay_chup"
             type="date"
             placeholder="Ngày chụp"
@@ -44,8 +44,8 @@
             clearable
           />
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="8" :lg="3">
-          <el-date-picker
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+          <CustomDatePicker
             v-model="filters.ngay_tra_file_le"
             type="date"
             placeholder="Ngày trả file lẻ"
@@ -55,8 +55,8 @@
             clearable
           />
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="8" :lg="3">
-          <el-date-picker
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+          <CustomDatePicker
             v-model="filters.ngay_tra_file_in"
             type="date"
             placeholder="Ngày trả file in"
@@ -66,8 +66,8 @@
             clearable
           />
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="8" :lg="3">
-          <el-date-picker
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+          <CustomDatePicker
             v-model="filters.ngay_khach_hen_qua"
             type="date"
             placeholder="Ngày khách qua"
@@ -77,7 +77,7 @@
             clearable
           />
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="8" :lg="3">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
           <CustomButton type="primary" plain :loading="loading" @click="onSearch">
             Tìm kiếm
           </CustomButton>
@@ -229,6 +229,7 @@ import { NOTE_THO_SHOP_OPTIONS } from '@/utils/thongTinDieuPhoi'
 import {
   CustomButton,
   CustomCol,
+  CustomDatePicker,
   CustomIcon,
   CustomInput,
   CustomOption,

@@ -2,7 +2,7 @@
   <div class="nghi-phep page-list">
     <CustomCard shadow="hover" class="filter-card">
       <CustomRow :gutter="12" class="toolbar">
-        <CustomCol :xs="12" :sm="12" :md="6" :lg="7">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
           <CustomInput
             v-model="keyword"
             placeholder="Tìm theo tên nhân viên, lý do..."
@@ -16,7 +16,7 @@
             </template>
           </CustomInput>
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="6" :lg="5">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
           <CustomSelect
             v-model="loaiFilter"
             placeholder="Loại nghỉ phép"
@@ -32,7 +32,7 @@
             />
           </CustomSelect>
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="6" :lg="5">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
           <CustomSelect
             v-model="trangThaiFilter"
             placeholder="Trạng thái"
@@ -48,7 +48,7 @@
             />
           </CustomSelect>
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="6" :lg="4">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
           <CustomButton type="primary" plain @click="onSearch">
             Tìm kiếm
           </CustomButton>
@@ -235,7 +235,7 @@
           <!-- Đi muộn / Về sớm / Nghỉ 1 ngày: chỉ ngày nghỉ phép -->
           <CustomCol v-if="isNghiMotNgay" :xs="24" :sm="12">
             <CustomFormItem label="Ngày nghỉ phép" prop="ngay_bat_dau">
-              <el-date-picker
+              <CustomDatePicker
                 v-model="form.ngay_bat_dau"
                 type="date"
                 value-format="YYYY-MM-DD"
@@ -265,7 +265,7 @@
             </CustomCol>
             <CustomCol :xs="24" :sm="12">
               <CustomFormItem label="Ngày nghỉ phép" prop="ngay_bat_dau">
-                <el-date-picker
+                <CustomDatePicker
                   v-model="form.ngay_bat_dau"
                   type="date"
                   value-format="YYYY-MM-DD"
@@ -280,7 +280,7 @@
           <template v-if="isNghiNhieuNgay">
             <CustomCol :xs="24" :sm="12">
               <CustomFormItem label="Ngày bắt đầu" prop="ngay_bat_dau">
-                <el-date-picker
+                <CustomDatePicker
                   v-model="form.ngay_bat_dau"
                   type="date"
                   value-format="YYYY-MM-DD"
@@ -291,7 +291,7 @@
             </CustomCol>
             <CustomCol :xs="24" :sm="12">
               <CustomFormItem label="Ngày kết thúc" prop="ngay_ket_thuc">
-                <el-date-picker
+                <CustomDatePicker
                   v-model="form.ngay_ket_thuc"
                   type="date"
                   value-format="YYYY-MM-DD"
@@ -341,6 +341,7 @@ import {
   CustomButton,
   CustomCard,
   CustomCol,
+  CustomDatePicker,
   CustomDialog,
   CustomForm,
   CustomFormItem,

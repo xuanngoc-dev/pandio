@@ -32,7 +32,7 @@
             v-bind="sharedDateColProps"
           >
             <CustomFormItem :label="sharedLichQuayChupLabel(key)" :prop="key">
-              <el-date-picker
+              <CustomDatePicker
                 v-model="formModel[key]"
                 type="date"
                 format="DD/MM/YYYY"
@@ -156,7 +156,7 @@
           v-bind="sharedDateColProps"
         >
           <CustomFormItem :label="sharedLichQuayChupLabel(key)" :prop="key">
-            <el-date-picker
+            <CustomDatePicker
               v-model="formModel[key]"
               type="date"
               format="DD/MM/YYYY"
@@ -252,6 +252,7 @@ import { fetchUsers } from '@/api/users'
 import {
   CustomButton,
   CustomCol,
+  CustomDatePicker,
   CustomDialog,
   CustomForm,
   CustomFormItem,

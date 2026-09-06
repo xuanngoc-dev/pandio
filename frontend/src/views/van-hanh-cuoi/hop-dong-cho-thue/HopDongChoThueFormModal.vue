@@ -45,7 +45,7 @@
         </CustomCol>
         <CustomCol :xs="24" :sm="12" :md="6">
           <CustomFormItem label="Ngày thuê" prop="ngay_thue">
-            <el-date-picker
+            <CustomDatePicker
               v-model="form.ngay_thue"
               type="date"
               placeholder="Chọn ngày thuê"
@@ -59,7 +59,7 @@
         </CustomCol>
         <CustomCol :xs="24" :sm="12" :md="6">
           <CustomFormItem label="Ngày trả dự kiến" prop="ngay_tra_du_kien">
-            <el-date-picker
+            <CustomDatePicker
               v-model="form.ngay_tra_du_kien"
               type="date"
               placeholder="Chọn ngày trả dự kiến"
@@ -118,13 +118,14 @@
             </button>
 
             <div v-show="sanPhamExpanded" class="san-pham-picker__body">
-              <CustomRow :gutter="10" align="middle" class="san-pham-filter">
-                <CustomCol :xs="12" :sm="6" :md="9">
+              <CustomRow :gutter="12" class="toolbar san-pham-filter">
+                <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
                   <CustomInput
                     v-model="sanPhamKeyword"
                     placeholder="Tìm nhanh theo mã, tên trang phục..."
                     clearable
                     class="san-pham-filter__keyword"
+                    style="width: 100%"
                     @input="onSanPhamSearch"
                     @clear="onSanPhamSearch"
                   >
@@ -133,27 +134,29 @@
                     </template>
                   </CustomInput>
                 </CustomCol>
-                <CustomCol :xs="12" :sm="6" :md="4">
+                <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
                   <MoneyInput
                     v-model="sanPhamGiaTu"
                     placeholder="Giá từ"
                     clearable
                     class="san-pham-filter__price"
+                    style="width: 100%"
                     @update:model-value="onSanPhamSearch"
                     @clear="onSanPhamSearch"
                   />
                 </CustomCol>
-                <CustomCol :xs="12" :sm="6" :md="4">
+                <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
                   <MoneyInput
                     v-model="sanPhamGiaDen"
                     placeholder="Giá đến"
                     clearable
                     class="san-pham-filter__price"
+                    style="width: 100%"
                     @update:model-value="onSanPhamSearch"
                     @clear="onSanPhamSearch"
                   />
                 </CustomCol>
-                <CustomCol :xs="12" :sm="6" :md="7">
+                <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
                   <div class="san-pham-filter__busy">
                     <CustomSwitch
                       v-model="sanPhamBusyFilter"
@@ -411,6 +414,7 @@ import { fetchUsers } from '@/api/users'
 import {
   CustomButton,
   CustomCol,
+  CustomDatePicker,
   CustomDialog,
   CustomForm,
   CustomFormItem,

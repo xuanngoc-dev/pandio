@@ -37,6 +37,16 @@
   row-gap: 12px;
 }
 
+/* Filter fields: 2/row mobile (xs/sm:12), 4/row desktop (md/lg:6). Actions stay in one flex group. */
+.toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
 .action-btns {
   display: inline-flex;
   align-items: center;

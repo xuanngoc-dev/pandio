@@ -9,7 +9,7 @@
             v-bind="sharedDateColProps"
           >
             <CustomFormItem :label="sharedLichQuayChupLabel(key)" :prop="key">
-              <el-date-picker
+              <CustomDatePicker
                 v-model="formModel[key]"
                 type="date"
                 format="DD/MM/YYYY"
@@ -112,7 +112,7 @@ import { ElMessage } from 'element-plus'
 import { EditPen } from '@element-plus/icons-vue'
 import { fetchDanhMucLoaiQuayChup } from '@/api/danhMucLoaiQuayChup'
 import { getLoaiHopDong } from '@/api/loaiHopDong'
-import { CustomCard, CustomCol, CustomForm, CustomFormItem, CustomIcon, CustomRow } from '@/components/element'
+import { CustomCard, CustomCol, CustomDatePicker, CustomForm, CustomFormItem, CustomIcon, CustomRow } from '@/components/element'
 import {
   CONCEPT_FIELD_KEY,
   LICH_QUAY_CHUP_KEYS,

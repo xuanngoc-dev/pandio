@@ -12,31 +12,41 @@
               class="title-badge"
             />
           </span>
-          <div class="filter-toolbar">
-            <CustomInput
-              v-model="keyword"
-              class="filter-toolbar__search"
-              placeholder="Tìm lý do, ghi chú..."
-              clearable
-              @clear="onSearch"
-              @keyup.enter="onSearch"
-            >
-              <template #prefix>
-                <CustomIcon><Search /></CustomIcon>
-              </template>
-            </CustomInput>
-            <CustomSelect
-              v-model="filterLoai"
-              class="filter-toolbar__select"
-              placeholder="Loại"
-              clearable
-              @change="onSearch"
-            >
-              <CustomOption label="Thu" value="thu" />
-              <CustomOption label="Chi" value="chi" />
-            </CustomSelect>
-            <BulkActionBar class="filter-toolbar__actions" :actions="bulkActions" @action="onBulkAction" />
-          </div>
+          <CustomRow :gutter="12" class="toolbar filter-toolbar">
+            <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+              <CustomInput
+                v-model="keyword"
+                class="filter-toolbar__search"
+                placeholder="Tìm lý do, ghi chú..."
+                clearable
+                style="width: 100%"
+                @clear="onSearch"
+                @keyup.enter="onSearch"
+              >
+                <template #prefix>
+                  <CustomIcon><Search /></CustomIcon>
+                </template>
+              </CustomInput>
+            </CustomCol>
+            <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+              <CustomSelect
+                v-model="filterLoai"
+                class="filter-toolbar__select"
+                placeholder="Loại"
+                clearable
+                style="width: 100%"
+                @change="onSearch"
+              >
+                <CustomOption label="Thu" value="thu" />
+                <CustomOption label="Chi" value="chi" />
+              </CustomSelect>
+            </CustomCol>
+            <CustomCol :xs="24" :sm="24" :md="12" :lg="12">
+              <div class="toolbar-actions">
+                <BulkActionBar :actions="bulkActions" @action="onBulkAction" />
+              </div>
+            </CustomCol>
+          </CustomRow>
         </div>
       </template>
 
@@ -363,37 +373,6 @@ onMounted(loadItems)
 }
 
 .filter-toolbar {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 8px;
   width: 100%;
-  min-width: 0;
-
-  &__search {
-    flex: 1 1 auto;
-    min-width: 0;
-    width: auto !important;
-  }
-
-  &__select {
-    flex: 0 0 auto;
-    width: 100px !important;
-  }
-
-  &__actions {
-    flex: 0 0 auto;
-    flex-wrap: nowrap !important;
-  }
-
-  @media (min-width: 768px) {
-    justify-content: flex-end;
-
-    &__search {
-      flex: 0 0 240px;
-      width: 240px !important;
-      max-width: 240px;
-    }
-  }
 }
 </style>

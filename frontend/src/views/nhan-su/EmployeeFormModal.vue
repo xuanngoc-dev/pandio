@@ -135,7 +135,7 @@
                 </CustomCol>
                 <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
                   <CustomFormItem label="Ngày sinh" prop="ngay_sinh">
-                    <el-date-picker
+                    <CustomDatePicker
                       v-model="form.ngay_sinh"
                       type="date"
                       format="DD/MM/YYYY"
@@ -152,7 +152,7 @@
                 </CustomCol>
                 <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
                   <CustomFormItem label="Ngày vào công ty" prop="ngay_vao_cong_ty">
-                    <el-date-picker
+                    <CustomDatePicker
                       v-model="form.ngay_vao_cong_ty"
                       type="date"
                       format="DD/MM/YYYY"
@@ -164,7 +164,7 @@
                 </CustomCol>
                 <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
                   <CustomFormItem label="Ngày ký hợp đồng" prop="ngay_ky_hop_dong">
-                    <el-date-picker
+                    <CustomDatePicker
                       v-model="form.ngay_ky_hop_dong"
                       type="date"
                       format="DD/MM/YYYY"
@@ -301,14 +301,15 @@ import {
   CustomButton,
   CustomCard,
   CustomCol,
+  CustomDatePicker,
   CustomDialog,
   CustomForm,
   CustomFormItem,
   CustomInput,
   CustomOption,
   CustomRow,
-  MoneyInput,
   CustomSelect,
+  MoneyInput,
 } from '@/components/element'
 import EmployeeLuongDiemTheoLoai from './EmployeeLuongDiemTheoLoai.vue'
 import {

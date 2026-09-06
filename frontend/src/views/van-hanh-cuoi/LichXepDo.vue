@@ -2,7 +2,7 @@
   <div class="lich-xep-do page-list">
     <CustomCard shadow="hover" class="filter-card">
       <CustomRow :gutter="12" class="toolbar">
-        <CustomCol :xs="24" :sm="12" :md="8" :lg="4">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
           <CustomInput
             v-model="keyword"
             placeholder="Tìm theo tên, SĐT, mã HĐ..."
@@ -16,7 +16,7 @@
             </template>
           </CustomInput>
         </CustomCol>
-        <CustomCol :xs="24" :sm="12" :md="8" :lg="4">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
           <div class="filter-datepicker">
             <CustomDatePicker
               v-model="dateRange"
@@ -32,7 +32,7 @@
             />
           </div>
         </CustomCol>
-        <CustomCol :xs="24" :sm="12" :md="8" :lg="4">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
           <CustomSelect
             v-model="filterSapXepTrangPhuc"
             placeholder="Trạng thái xếp đồ"
@@ -48,7 +48,7 @@
             />
           </CustomSelect>
         </CustomCol>
-        <CustomCol :xs="24" :sm="24" :md="24" :lg="12">
+        <CustomCol :xs="24" :sm="24" :md="12" :lg="12">
           <div class="toolbar-actions">
             <CustomButton type="primary" plain @click="onSearch">
               Tìm kiếm
@@ -506,13 +506,6 @@ onMounted(() => {
     max-width: 100%;
     box-sizing: border-box;
   }
-}
-
-.toolbar-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
 }
 
 .detail-link {

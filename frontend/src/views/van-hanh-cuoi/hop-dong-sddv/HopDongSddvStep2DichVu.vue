@@ -14,28 +14,39 @@
       </button>
       <div v-show="comboExpanded" class="dich-vu-section__body">
         <div class="service-filter">
-          <CustomInput
-            v-model="comboFilter.keyword"
-            placeholder="Tìm theo tên combo..."
-            clearable
-            class="service-filter__keyword"
-          >
-            <template #prefix>
-              <CustomIcon><Search /></CustomIcon>
-            </template>
-          </CustomInput>
-          <MoneyInput
-            v-model="comboFilter.gia_tu"
-            placeholder="Giá từ"
-            clearable
-            class="service-filter__price"
-          />
-          <MoneyInput
-            v-model="comboFilter.gia_den"
-            placeholder="Giá đến"
-            clearable
-            class="service-filter__price"
-          />
+          <CustomRow :gutter="12" class="toolbar">
+            <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+              <CustomInput
+                v-model="comboFilter.keyword"
+                placeholder="Tìm theo tên combo..."
+                clearable
+                class="service-filter__keyword"
+                style="width: 100%"
+              >
+                <template #prefix>
+                  <CustomIcon><Search /></CustomIcon>
+                </template>
+              </CustomInput>
+            </CustomCol>
+            <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+              <MoneyInput
+                v-model="comboFilter.gia_tu"
+                placeholder="Giá từ"
+                clearable
+                class="service-filter__price"
+                style="width: 100%"
+              />
+            </CustomCol>
+            <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+              <MoneyInput
+                v-model="comboFilter.gia_den"
+                placeholder="Giá đến"
+                clearable
+                class="service-filter__price"
+                style="width: 100%"
+              />
+            </CustomCol>
+          </CustomRow>
         </div>
 
         <div class="service-card-grid">
@@ -144,28 +155,39 @@
       </button>
       <div v-show="dichVuLeExpanded" class="dich-vu-section__body">
         <div class="service-filter">
-          <CustomInput
-            v-model="dichVuLeFilter.keyword"
-            placeholder="Tìm theo tên dịch vụ..."
-            clearable
-            class="service-filter__keyword"
-          >
-            <template #prefix>
-              <CustomIcon><Search /></CustomIcon>
-            </template>
-          </CustomInput>
-          <MoneyInput
-            v-model="dichVuLeFilter.gia_tu"
-            placeholder="Giá từ"
-            clearable
-            class="service-filter__price"
-          />
-          <MoneyInput
-            v-model="dichVuLeFilter.gia_den"
-            placeholder="Giá đến"
-            clearable
-            class="service-filter__price"
-          />
+          <CustomRow :gutter="12" class="toolbar">
+            <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+              <CustomInput
+                v-model="dichVuLeFilter.keyword"
+                placeholder="Tìm theo tên dịch vụ..."
+                clearable
+                class="service-filter__keyword"
+                style="width: 100%"
+              >
+                <template #prefix>
+                  <CustomIcon><Search /></CustomIcon>
+                </template>
+              </CustomInput>
+            </CustomCol>
+            <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+              <MoneyInput
+                v-model="dichVuLeFilter.gia_tu"
+                placeholder="Giá từ"
+                clearable
+                class="service-filter__price"
+                style="width: 100%"
+              />
+            </CustomCol>
+            <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+              <MoneyInput
+                v-model="dichVuLeFilter.gia_den"
+                placeholder="Giá đến"
+                clearable
+                class="service-filter__price"
+                style="width: 100%"
+              />
+            </CustomCol>
+          </CustomRow>
         </div>
 
         <div class="service-card-grid">
@@ -677,20 +699,12 @@ defineExpose({
 }
 
 .service-filter {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
   margin-bottom: 12px;
 }
 
-.service-filter__keyword {
-  flex: 1 1 240px;
-  min-width: 200px;
-}
-
+.service-filter__keyword,
 .service-filter__price {
-  flex: 0 1 160px;
-  width: 160px;
+  width: 100%;
 }
 
 .service-card-grid {

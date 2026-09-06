@@ -2,7 +2,7 @@
   <div class="thong-bao-list page-list">
     <CustomCard shadow="hover" class="filter-card">
       <CustomRow :gutter="12" class="toolbar">
-        <CustomCol :xs="12" :sm="12" :md="8" :lg="8">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
           <CustomInput
             v-model="keyword"
             placeholder="Tìm theo tiêu đề, nội dung..."
@@ -16,7 +16,7 @@
             </template>
           </CustomInput>
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
           <CustomSelect
             v-model="loaiThongBaoFilter"
             placeholder="Loại thông báo"
@@ -33,7 +33,7 @@
             />
           </CustomSelect>
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="8" :lg="5">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
           <CustomSelect
             v-model="mauSacFilter"
             placeholder="Màu sắc"
@@ -49,7 +49,7 @@
             />
           </CustomSelect>
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="8" :lg="4">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
           <CustomButton type="primary" plain @click="onSearch">
             Tìm kiếm
           </CustomButton>

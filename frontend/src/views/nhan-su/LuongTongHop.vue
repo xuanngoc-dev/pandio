@@ -2,7 +2,7 @@
   <div class="luong-tong-hop page-list">
     <CustomCard shadow="hover" class="filter-card">
       <CustomRow :gutter="12" class="toolbar">
-        <CustomCol :xs="24" :sm="12" :md="8" :lg="5">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
           <CustomDatePicker
             v-model="selectedMonth"
             type="month"
@@ -14,7 +14,7 @@
             @change="onSearch"
           />
         </CustomCol>
-        <CustomCol :xs="24" :sm="12" :md="10" :lg="4">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
           <CustomInput
             v-model="keyword"
             placeholder="Tìm theo tên, email, SĐT..."
@@ -28,10 +28,11 @@
             </template>
           </CustomInput>
         </CustomCol>
-        <CustomCol :xs="24" :sm="12" :md="10" :lg="10">
-          <CustomButton type="primary" plain :loading="loading" @click="onSearch">
-            Tìm kiếm
-          </CustomButton>
+        <CustomCol :xs="24" :sm="24" :md="12" :lg="12">
+          <div class="toolbar-actions">
+            <CustomButton type="primary" plain :loading="loading" @click="onSearch">
+              Tìm kiếm
+            </CustomButton>
             <CustomButton
               :type="selectedMonth === previousMonthValue() ? 'primary' : 'default'"
               :plain="selectedMonth !== previousMonthValue()"
@@ -46,6 +47,7 @@
             >
               Tháng này
             </CustomButton>
+          </div>
         </CustomCol>
       </CustomRow>
     </CustomCard>

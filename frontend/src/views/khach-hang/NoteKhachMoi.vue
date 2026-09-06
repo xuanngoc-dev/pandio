@@ -16,10 +16,11 @@
             </template>
           </CustomInput>
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="6" :lg="5">
-          <el-date-picker
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+          <CustomDatePicker
             v-model="ngayHenTu"
             type="date"
+            size="small"
             placeholder="Hẹn từ ngày"
             format="DD/MM/YYYY"
             value-format="YYYY-MM-DD"
@@ -28,10 +29,11 @@
             @change="onSearch"
           />
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="6" :lg="5">
-          <el-date-picker
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+          <CustomDatePicker
             v-model="ngayHenDen"
             type="date"
+            size="small"
             placeholder="Hẹn đến ngày"
             format="DD/MM/YYYY"
             value-format="YYYY-MM-DD"
@@ -40,7 +42,7 @@
             @change="onSearch"
           />
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="6" :lg="4">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
           <CustomSelect
             v-model="filterTrangThai"
             placeholder="Trạng thái"
@@ -56,7 +58,7 @@
             />
           </CustomSelect>
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="6" :lg="4">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
           <CustomButton type="primary" plain @click="onSearch">
             Tìm kiếm
           </CustomButton>
@@ -239,7 +241,7 @@
           </CustomCol>
           <CustomCol :xs="24" :sm="12" :md="8">
             <CustomFormItem label="Ngày hẹn lịch" prop="ngay_hen_lich">
-              <el-date-picker
+              <CustomDatePicker
                 v-model="form.ngay_hen_lich"
                 type="date"
                 placeholder="Chọn ngày hẹn"
@@ -251,7 +253,7 @@
           </CustomCol>
           <CustomCol :xs="24" :sm="12" :md="8">
             <CustomFormItem label="Ngày đến thực tế" prop="ngay_den_thuc_te">
-              <el-date-picker
+              <CustomDatePicker
                 v-model="form.ngay_den_thuc_te"
                 type="date"
                 placeholder="Chọn ngày đến"
@@ -395,6 +397,7 @@ import {
   CustomButton,
   CustomCard,
   CustomCol,
+  CustomDatePicker,
   CustomDialog,
   CustomForm,
   CustomFormItem,

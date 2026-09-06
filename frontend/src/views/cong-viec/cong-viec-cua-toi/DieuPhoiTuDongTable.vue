@@ -284,7 +284,7 @@
     <CustomDialog v-model="sharedDateModalVisible" :title="sharedDateModalTitle" :width="420">
       <el-form label-position="top" @submit.prevent="saveSharedDate">
         <el-form-item :label="sharedDateField?.label || 'Ngày'">
-          <el-date-picker
+          <CustomDatePicker
             v-model="sharedDateInput"
             type="date"
             format="DD/MM/YYYY"
@@ -327,6 +327,7 @@ import {
 } from '@/api/hopDongSuDungDichVu'
 import {
   CustomButton,
+  CustomDatePicker,
   CustomDialog,
   CustomOption,
   CustomSelect,

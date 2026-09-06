@@ -14,20 +14,21 @@
       </button>
       <div v-show="conceptExpanded" class="dich-vu-section__body">
         <div class="service-filter">
-          <CustomRow :gutter="12">
-            <CustomCol :xs="12" :sm="16" :md="18">
+          <CustomRow :gutter="12" class="toolbar">
+            <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
               <CustomInput
                 v-model="conceptFilter.keyword"
                 placeholder="Tìm theo tên concept..."
                 clearable
                 class="service-filter__keyword"
+                style="width: 100%"
               >
                 <template #prefix>
                   <CustomIcon><Search /></CustomIcon>
                 </template>
               </CustomInput>
             </CustomCol>
-            <CustomCol :xs="12" :sm="8" :md="6">
+            <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
               <div class="service-filter__switch">
                 <CustomSwitch
                   v-model="conceptFilter.chi_da_chon"
@@ -95,37 +96,40 @@
       </button>
       <div v-show="trangPhucExpanded" class="dich-vu-section__body">
         <div class="service-filter">
-          <CustomRow :gutter="12">
-            <CustomCol :xs="12" :sm="12" :md="8">
+          <CustomRow :gutter="12" class="toolbar">
+            <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
               <CustomInput
                 v-model="trangPhucFilter.keyword"
                 placeholder="Tìm theo tên hoặc mã trang phục..."
                 clearable
                 class="service-filter__keyword"
+                style="width: 100%"
               >
                 <template #prefix>
                   <CustomIcon><Search /></CustomIcon>
                 </template>
               </CustomInput>
             </CustomCol>
-            <CustomCol :xs="12" :sm="6" :md="4">
+            <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
               <MoneyInput
                 v-model="trangPhucFilter.gia_tu"
                 placeholder="Giá từ"
                 clearable
                 class="service-filter__price"
+                style="width: 100%"
               />
             </CustomCol>
-            <CustomCol :xs="12" :sm="6" :md="4">
+            <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
               <MoneyInput
                 v-model="trangPhucFilter.gia_den"
                 placeholder="Giá đến"
                 clearable
                 class="service-filter__price"
+                style="width: 100%"
               />
             </CustomCol>
-            <CustomCol :xs="24" :sm="12" :md="8">
-              <div class="service-filter__switches">
+            <CustomCol :xs="24" :sm="24" :md="6" :lg="6">
+              <div class="toolbar-actions service-filter__switches">
                 <div class="service-filter__switch">
                   <CustomSwitch
                     v-model="trangPhucFilter.hien_san_pham_ban"

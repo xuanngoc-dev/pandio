@@ -3,7 +3,7 @@
     <div class="phong-ban page-list">
       <CustomCard shadow="hover" class="filter-card">
         <CustomRow :gutter="12" class="toolbar">
-          <CustomCol :xs="12" :sm="12" :md="12" :lg="16">
+          <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
             <CustomInput
               v-model="keyword"
               placeholder="Tìm theo mã, tên, trưởng phòng..."
@@ -17,7 +17,7 @@
               </template>
             </CustomInput>
           </CustomCol>
-          <CustomCol :xs="12" :sm="12" :md="6" :lg="4">
+          <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
             <CustomButton type="primary" plain @click="onSearch">
               Tìm kiếm
             </CustomButton>
@@ -209,24 +209,28 @@
         :width="1200"
         @closed="onEmployeesDialogClosed"
       >
-        <div class="employees-toolbar">
-          <CustomInput
-            v-model="employeeKeyword"
-            placeholder="Tìm theo tên, email, SĐT..."
-            clearable
-            style="max-width: 280px"
-            @clear="onEmployeeSearch"
-            @keyup.enter="onEmployeeSearch"
-          >
-            <template #prefix>
+        <CustomRow :gutter="12" class="toolbar employees-toolbar">
+          <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+            <CustomInput
+              v-model="employeeKeyword"
+              placeholder="Tìm theo tên, email, SĐT..."
+              clearable
+              style="width: 100%"
+              @clear="onEmployeeSearch"
+              @keyup.enter="onEmployeeSearch"
+            >
+              <template #prefix>
+                <CustomIcon><Search /></CustomIcon>
+              </template>
+            </CustomInput>
+          </CustomCol>
+          <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+            <CustomButton type="primary" plain @click="onEmployeeSearch">
               <CustomIcon><Search /></CustomIcon>
-            </template>
-          </CustomInput>
-          <CustomButton type="primary" plain @click="onEmployeeSearch">
-            <CustomIcon><Search /></CustomIcon>
-            Tìm kiếm
-          </CustomButton>
-        </div>
+              Tìm kiếm
+            </CustomButton>
+          </CustomCol>
+        </CustomRow>
 
         <CustomTable
           v-loading="employeesLoading"
@@ -643,9 +647,6 @@ onMounted(loadDepartments)
 
 <style scoped>
 .employees-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
   margin-bottom: 12px;
 }
 

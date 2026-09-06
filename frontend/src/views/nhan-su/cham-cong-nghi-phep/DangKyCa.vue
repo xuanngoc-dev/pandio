@@ -2,27 +2,26 @@
   <div class="dang-ky-ca page-list">
     <CustomCard shadow="hover" class="filter-card">
       <CustomRow :gutter="12" class="toolbar dang-ky-ca-toolbar" align="middle">
-        <CustomCol :xs="24" :sm="14" :md="14" :lg="14">
-          <div class="toolbar-group toolbar-group--left">
-            <CustomInput
-              v-model="keyword"
-              class="toolbar-search-input"
-              placeholder="Tìm nhân viên..."
-              clearable
-              @clear="onSearch"
-              @keyup.enter="onSearch"
-            >
-              <template #prefix>
-                <CustomIcon><Search /></CustomIcon>
-              </template>
-            </CustomInput>
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+          <CustomInput
+            v-model="keyword"
+            class="toolbar-search-input"
+            placeholder="Tìm nhân viên..."
+            clearable
+            style="width: 100%"
+            @clear="onSearch"
+            @keyup.enter="onSearch"
+          >
+            <template #prefix>
+              <CustomIcon><Search /></CustomIcon>
+            </template>
+          </CustomInput>
+        </CustomCol>
+        <CustomCol :xs="24" :sm="24" :md="12" :lg="12">
+          <div class="toolbar-actions">
             <CustomButton type="primary" plain @click="onSearch">
               Tìm kiếm
             </CustomButton>
-          </div>
-        </CustomCol>
-        <CustomCol :xs="24" :sm="10" :md="10" :lg="10">
-          <div class="toolbar-group toolbar-group--right">
             <CustomButton :type="isThisWeek ? 'primary' : 'default'" plain @click="goToThisWeek">
               Tuần này
             </CustomButton>
@@ -718,35 +717,8 @@ onBeforeUnmount(() => {
   width: 100%;
 }
 
-.toolbar-group {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-}
-
-.toolbar-group--left {
-  justify-content: flex-start;
-}
-
-.toolbar-group--right {
-  justify-content: flex-end;
-}
-
 .toolbar-search-input {
-  flex: 1 1 220px;
-  max-width: 320px;
-  min-width: 160px;
-}
-
-@media (max-width: 767px) {
-  .toolbar-group--right {
-    justify-content: flex-start;
-  }
-
-  .toolbar-search-input {
-    max-width: none;
-  }
+  width: 100%;
 }
 
 .week-label {

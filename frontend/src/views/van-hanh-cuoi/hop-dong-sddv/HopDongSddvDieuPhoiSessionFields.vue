@@ -69,7 +69,7 @@
           </template>
 
           <template v-else-if="field.loai_du_lieu === 'date'">
-            <el-date-picker
+            <CustomDatePicker
               v-model="values[field.key]"
               type="date"
               format="DD/MM/YYYY"
@@ -208,6 +208,7 @@ import {
 } from '@/utils/thongTinDieuPhoi'
 import {
   CustomCol,
+  CustomDatePicker,
   CustomFormItem,
   CustomInput,
   CustomOption,

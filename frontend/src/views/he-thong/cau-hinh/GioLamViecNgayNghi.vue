@@ -6,7 +6,7 @@
         <div class="tab-panel page-list">
           <CustomCard shadow="hover" class="filter-card">
             <CustomRow :gutter="12" class="toolbar">
-              <CustomCol :xs="12" :sm="12" :md="8" :lg="8">
+              <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
                 <CustomInput
                   v-model="gioLam.keyword"
                   placeholder="Tìm theo tên cấu hình..."
@@ -20,7 +20,7 @@
                   </template>
                 </CustomInput>
               </CustomCol>
-              <CustomCol :xs="12" :sm="12" :md="8" :lg="8">
+              <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
                 <CustomSelect
                   v-model="gioLam.suDungFilter"
                   placeholder="Sử dụng"
@@ -32,7 +32,7 @@
                   <CustomOption label="Không sử dụng" value="khong" />
                 </CustomSelect>
               </CustomCol>
-              <CustomCol :xs="12" :sm="12" :md="8" :lg="4">
+              <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
                 <CustomButton type="primary" plain @click="onSearchGioLam">
                   <CustomIcon><Search /></CustomIcon>
                   Tìm kiếm
@@ -167,7 +167,7 @@
         <div class="tab-panel page-list">
           <CustomCard shadow="hover" class="filter-card">
             <CustomRow :gutter="12" class="toolbar">
-              <CustomCol :xs="12" :sm="12" :md="8" :lg="8">
+              <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
                 <CustomInput
                   v-model="ngayNghi.keyword"
                   placeholder="Tìm theo tên kỳ nghỉ & ngày lễ..."
@@ -181,7 +181,7 @@
                   </template>
                 </CustomInput>
               </CustomCol>
-              <CustomCol :xs="12" :sm="12" :md="8" :lg="8">
+              <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
                 <CustomSelect
                   v-model="ngayNghi.trangThaiFilter"
                   placeholder="Trạng thái"
@@ -193,7 +193,7 @@
                   <CustomOption label="Không hoạt động" value="inactive" />
                 </CustomSelect>
               </CustomCol>
-              <CustomCol :xs="12" :sm="12" :md="8" :lg="4">
+              <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
                 <CustomButton type="primary" plain @click="onSearchNgayNghi">
                   <CustomIcon><Search /></CustomIcon>
                   Tìm kiếm
@@ -419,7 +419,7 @@
           </CustomCol>
           <CustomCol :xs="24" :sm="12">
             <CustomFormItem label="Ngày bắt đầu" prop="ngay_bat_dau">
-              <el-date-picker
+              <CustomDatePicker
                 v-model="ngayNghiForm.ngay_bat_dau"
                 type="date"
                 format="DD/MM/YYYY"
@@ -431,7 +431,7 @@
           </CustomCol>
           <CustomCol :xs="24" :sm="12">
             <CustomFormItem label="Ngày kết thúc" prop="ngay_ket_thuc">
-              <el-date-picker
+              <CustomDatePicker
                 v-model="ngayNghiForm.ngay_ket_thuc"
                 type="date"
                 format="DD/MM/YYYY"
@@ -481,6 +481,7 @@ import {
   CustomButton,
   CustomCard,
   CustomCol,
+  CustomDatePicker,
   CustomDialog,
   CustomForm,
   CustomFormItem,

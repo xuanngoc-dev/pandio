@@ -79,7 +79,7 @@
         <div class="tab-panel page-list">
           <CustomCard shadow="hover" class="filter-card">
             <CustomRow :gutter="12" class="toolbar">
-              <CustomCol :xs="12" :sm="12" :md="6" :lg="7">
+              <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
                 <CustomInput
                   v-model="payment.keyword"
                   placeholder="Tìm theo ngân hàng, số TK, chủ TK..."
@@ -93,7 +93,7 @@
                   </template>
                 </CustomInput>
               </CustomCol>
-              <CustomCol :xs="12" :sm="12" :md="6" :lg="5">
+              <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
                 <CustomSelect
                   v-model="payment.macDinhFilter"
                   placeholder="Mặc định"
@@ -105,7 +105,7 @@
                   <CustomOption label="Không" value="khong" />
                 </CustomSelect>
               </CustomCol>
-              <CustomCol :xs="12" :sm="12" :md="6" :lg="5">
+              <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
                 <CustomSelect
                   v-model="payment.trangThaiFilter"
                   placeholder="Trạng thái"
@@ -117,7 +117,7 @@
                   <CustomOption label="Ngưng hoạt động" value="ngung_hoat_dong" />
                 </CustomSelect>
               </CustomCol>
-              <CustomCol :xs="12" :sm="12" :md="6" :lg="4">
+              <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
                 <CustomButton type="primary" plain @click="onPaymentSearch">
                   <CustomIcon><Search /></CustomIcon>
                   Tìm kiếm
