@@ -205,6 +205,11 @@ async function createLink() {
     return
   }
 
+  if (props.hopDong?.trang_thai !== 'hoan_thanh') {
+    ElMessage.warning('Chỉ hợp đồng hoàn thành mới được tạo link đánh giá.')
+    return
+  }
+
   creating.value = true
   try {
     const { data } = await createHopDongSuDungDichVuFormDanhGia({

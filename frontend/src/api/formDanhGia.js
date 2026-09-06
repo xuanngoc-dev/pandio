@@ -11,9 +11,11 @@ export function fetchFormDanhGia(params = {}) {
 /**
  * Lấy form đánh giá theo slug (công khai, không cần đăng nhập).
  * @param {string} slug
+ * @param {{ hop_dong_danh_gia_id?: number }} [params]
  */
-export function getFormDanhGiaBySlug(slug) {
+export function getFormDanhGiaBySlug(slug, params = {}) {
   return api.get(`/public/form-danh-gia/${encodeURIComponent(slug)}`, {
+    params,
     skipLoading: true,
     silent401: true,
   })

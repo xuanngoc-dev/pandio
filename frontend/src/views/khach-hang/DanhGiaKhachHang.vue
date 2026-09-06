@@ -17,7 +17,10 @@
         <header class="danh-gia-header">
           <p class="eyebrow">Đánh giá dịch vụ</p>
           <h1>{{ formDef.ten_form }}</h1>
-          <p class="subtitle">Vui lòng dành ít phút chia sẻ trải nghiệm của bạn.</p>
+          <p v-if="alreadySubmitted" class="subtitle subtitle--done">
+            Bạn đã gửi đánh giá. Dưới đây là kết quả đã ghi nhận.
+          </p>
+          <p v-else class="subtitle">Vui lòng dành ít phút chia sẻ trải nghiệm của bạn.</p>
         </header>
 
         <CustomForm
@@ -38,7 +41,7 @@
                 {{ question.thong_tin_danh_gia }}
               </CustomTag>
               <CustomTag
-                v-if="question.required"
+                v-if="question.required && !alreadySubmitted"
                 type="danger"
                 effect="plain"
                 size="small"
@@ -50,7 +53,7 @@
             <CustomFormItem
               :label="question.cau_hoi"
               :prop="`q_${index}`"
-              :rules="rulesFor(question)"
+              :rules="alreadySubmitted ? [] : rulesFor(question)"
             >
               <el-rate
                 v-if="question.loai_danh_gia === 'diem'"
@@ -59,6 +62,7 @@
                 allow-half
                 show-score
                 score-template="{value} điểm"
+                :disabled="alreadySubmitted"
               />
               <CustomInput
                 v-else
@@ -66,11 +70,13 @@
                 type="textarea"
                 :rows="3"
                 placeholder="Nhập phản hồi của bạn..."
+                :disabled="alreadySubmitted"
               />
             </CustomFormItem>
           </div>
 
           <CustomButton
+            v-if="!alreadySubmitted"
             type="primary"
             size="large"
             class="submit-btn"
@@ -104,6 +110,7 @@ const loading = ref(true)
 const loadError = ref('')
 const submitting = ref(false)
 const submitted = ref(false)
+const alreadySubmitted = ref(false)
 const formRef = ref(null)
 
 const formDef = reactive({
@@ -145,10 +152,29 @@ function rulesFor(question) {
   return [{ required: true, message: 'Vui lòng nhập phản hồi', trigger: 'blur' }]
 }
 
-function initAnswers() {
+function questionKey(item) {
+  return [
+    String(item?.cau_hoi || '').trim().toLowerCase(),
+    String(item?.thong_tin_danh_gia || '').trim().toLowerCase(),
+    String(item?.loai_danh_gia || '').trim(),
+  ].join('||')
+}
+
+function initAnswers(noiDung = null) {
   Object.keys(answers).forEach((key) => delete answers[key])
+
+  const submittedList = Array.isArray(noiDung) ? noiDung : []
+  const byKey = new Map(submittedList.map((item) => [questionKey(item), item]))
+
   questions.value.forEach((q, index) => {
-    answers[`q_${index}`] = q.loai_danh_gia === 'diem' ? 0 : ''
+    const matched = byKey.get(questionKey(q)) || submittedList[index] || null
+    if (q.loai_danh_gia === 'diem') {
+      const raw = matched?.gia_tri
+      const num = Number(raw)
+      answers[`q_${index}`] = Number.isFinite(num) ? num : 0
+    } else {
+      answers[`q_${index}`] = matched?.gia_tri != null ? String(matched.gia_tri) : ''
+    }
   })
 }
 
@@ -156,6 +182,7 @@ async function loadForm() {
   loading.value = true
   loadError.value = ''
   submitted.value = false
+  alreadySubmitted.value = false
 
   const slug = String(route.params.slug || '').trim()
   if (!slug) {
@@ -165,7 +192,9 @@ async function loadForm() {
   }
 
   try {
-    const { data } = await getFormDanhGiaBySlug(slug)
+    const { data } = await getFormDanhGiaBySlug(slug, {
+      hop_dong_danh_gia_id: hopDongDanhGiaId.value || undefined,
+    })
     Object.assign(formDef, {
       id: data.id,
       ten_form: data.ten_form || '',
@@ -176,7 +205,9 @@ async function loadForm() {
     if (!formDef.cau_hoi.length) {
       loadError.value = 'Form này chưa có câu hỏi để đánh giá.'
     } else {
-      initAnswers()
+      const daNop = !!data.da_nop && Array.isArray(data.noi_dung_danh_gia)
+      alreadySubmitted.value = daNop
+      initAnswers(daNop ? data.noi_dung_danh_gia : null)
     }
   } catch (error) {
     const status = error?.response?.status
@@ -190,6 +221,8 @@ async function loadForm() {
 }
 
 async function onSubmit() {
+  if (alreadySubmitted.value) return
+
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
 
@@ -278,6 +311,10 @@ onMounted(loadForm)
   margin: 0;
   color: var(--el-text-color-secondary);
   font-size: 14px;
+}
+
+.subtitle--done {
+  color: var(--el-color-success);
 }
 
 .question-block {

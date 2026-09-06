@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'ten_form',
@@ -22,5 +23,10 @@ class CauHinhFormDanhGiaMau extends Model
         return [
             'cau_hoi' => 'array',
         ];
+    }
+
+    public function hopDongFormDanhGias(): HasMany
+    {
+        return $this->hasMany(HopDongSuDungDichVuFormDanhGia::class, 'form_danh_gia_id');
     }
 }

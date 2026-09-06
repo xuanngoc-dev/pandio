@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\CauHinhFormDanhGiaMau;
+use App\Models\HopDongSuDungDichVu;
 use App\Models\HopDongSuDungDichVuFormDanhGia;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -10,6 +11,54 @@ use Illuminate\Validation\Rule;
 
 class HopDongSuDungDichVuFormDanhGiaController extends BaseApiController
 {
+    /**
+     * Danh sách đánh giá đã nộp — lọc theo form (bắt buộc) + từ khoá.
+     *
+     * Query: form_danh_gia_id (required), keyword, page, per_page
+     */
+    public function index(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'form_danh_gia_id' => [
+                    'required',
+                    'integer',
+                    'exists:cau_hinh_form_danh_gia_mau,id',
+                ],
+                'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
+                'page' => ['sometimes', 'integer', 'min:1'],
+                'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            ]);
+
+            $perPage = $validated['per_page'] ?? 10;
+            $keyword = trim((string) ($validated['keyword'] ?? ''));
+
+            $query = HopDongSuDungDichVuFormDanhGia::query()
+                ->with([
+                    'formDanhGia:id,ten_form,slug',
+                    'hopDong:id,ma_hop_dong,ten_khach_hang,sdt_khach_hang',
+                ])
+                ->where('form_danh_gia_id', $validated['form_danh_gia_id'])
+                ->whereNotNull('noi_dung_danh_gia')
+                ->when($keyword !== '', function ($q) use ($keyword) {
+                    $q->where(function ($inner) use ($keyword) {
+                        $inner->where('noi_dung_danh_gia', 'like', "%{$keyword}%")
+                            ->orWhereHas('hopDong', function ($hopDong) use ($keyword) {
+                                $hopDong->where('ma_hop_dong', 'like', "%{$keyword}%")
+                                    ->orWhere('ten_khach_hang', 'like', "%{$keyword}%")
+                                    ->orWhere('sdt_khach_hang', 'like', "%{$keyword}%");
+                            })
+                            ->orWhereHas('formDanhGia', function ($form) use ($keyword) {
+                                $form->where('ten_form', 'like', "%{$keyword}%");
+                            });
+                    });
+                })
+                ->orderByDesc('updated_at');
+
+            return response()->json($query->paginate($perPage));
+        }, 'lấy danh sách đánh giá hợp đồng');
+    }
+
     /**
      * Tạo link đánh giá cho hợp đồng + form mẫu.
      * Không cho trùng cùng cặp hop_dong_danh_gia_id + form_danh_gia_id.
@@ -42,6 +91,11 @@ class HopDongSuDungDichVuFormDanhGiaController extends BaseApiController
                 ]
             );
 
+            $hopDong = HopDongSuDungDichVu::query()->findOrFail($validated['hop_dong_danh_gia_id']);
+            if ($hopDong->trang_thai !== 'hoan_thanh') {
+                abort(422, 'Chỉ hợp đồng ở trạng thái hoàn thành mới được tạo link đánh giá.');
+            }
+
             $item = HopDongSuDungDichVuFormDanhGia::create([
                 'hop_dong_danh_gia_id' => $validated['hop_dong_danh_gia_id'],
                 'form_danh_gia_id' => $validated['form_danh_gia_id'],
@@ -52,6 +106,27 @@ class HopDongSuDungDichVuFormDanhGiaController extends BaseApiController
 
             return response()->json($item, 201);
         }, 'tạo link đánh giá hợp đồng');
+    }
+
+    /**
+     * Xóa nội dung đánh giá đã nộp (giữ nguyên bản ghi link).
+     */
+    public function xoaNoiDung(HopDongSuDungDichVuFormDanhGia $hop_dong_su_dung_dich_vu_form_danh_gia): JsonResponse
+    {
+        return $this->handleApi(function () use ($hop_dong_su_dung_dich_vu_form_danh_gia) {
+            if ($hop_dong_su_dung_dich_vu_form_danh_gia->noi_dung_danh_gia === null) {
+                abort(422, 'Đánh giá này chưa có nội dung để xóa.');
+            }
+
+            $hop_dong_su_dung_dich_vu_form_danh_gia->update([
+                'noi_dung_danh_gia' => null,
+            ]);
+
+            return response()->json([
+                'message' => 'Đã xóa nội dung đánh giá.',
+                'id' => $hop_dong_su_dung_dich_vu_form_danh_gia->id,
+            ]);
+        }, 'xóa nội dung đánh giá hợp đồng');
     }
 
     /**

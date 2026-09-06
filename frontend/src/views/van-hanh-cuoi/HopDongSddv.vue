@@ -957,7 +957,8 @@ function getRowActions(row) {
       command: 'tao_link_danh_gia',
       label: 'Tạo link đánh giá',
       icon: Link,
-      type: 'info',
+      type: 'warning',
+      disabled: !canTaoLinkDanhGia(row),
     },
     { command: 'edit', label: 'Sửa', icon: Edit, type: 'primary' },
     { command: 'delete', label: 'Xóa', icon: Delete, type: 'danger', divided: true },
@@ -1071,6 +1072,10 @@ function canOpenThanhToan(row) {
   return canThanhToan(row) || canViewLichSuThanhToan(row)
 }
 
+function canTaoLinkDanhGia(row) {
+  return row?.trang_thai === 'hoan_thanh'
+}
+
 function thanhToanDisabledReason(row) {
   if (row?.trang_thai === 'da_huy') return 'Hợp đồng đã hủy'
   if (row?.trang_thai === 'nhap' || row?.trang_thai === 'moi_tao') {
@@ -1154,6 +1159,10 @@ function onDoiTrangThaiSaved() {
 
 function openTaoLinkDanhGia(row) {
   if (!row?.id) return
+  if (!canTaoLinkDanhGia(row)) {
+    ElMessage.warning('Chỉ hợp đồng hoàn thành mới được tạo link đánh giá.')
+    return
+  }
   taoLinkDanhGiaHopDong.value = row
   taoLinkDanhGiaModalVisible.value = true
 }

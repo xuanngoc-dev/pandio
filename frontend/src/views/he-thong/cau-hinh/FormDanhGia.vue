@@ -87,14 +87,42 @@
               {{ countQuestions(row.cau_hoi) }}
             </template>
           </CustomTableColumn>
+          <CustomTableColumn
+            v-if="columnSettings.isColumnVisible('so_danh_gia')"
+            label="Số đánh giá"
+            width="120"
+            align="center"
+          >
+            <template #default="{ row }">
+              {{ Number(row.so_danh_gia) || 0 }}
+            </template>
+          </CustomTableColumn>
           <CustomTableColumn label="Thao tác" width="100" fixed="right" align="center">
             <template #default="{ row }">
               <div class="action-btns">
-                <CustomTooltip content="Sửa" placement="top">
-                  <CustomButton type="primary" link :icon="Edit" @click="openEdit(row)" />
+                <CustomTooltip
+                  :content="hasDanhGia(row) ? 'Form đã có đánh giá, không thể sửa' : 'Sửa'"
+                  placement="top"
+                >
+                  <CustomButton
+                    type="primary"
+                    link
+                    :icon="Edit"
+                    :disabled="hasDanhGia(row)"
+                    @click="openEdit(row)"
+                  />
                 </CustomTooltip>
-                <CustomTooltip content="Xóa" placement="top">
-                  <CustomButton type="danger" link :icon="Delete" @click="remove(row)" />
+                <CustomTooltip
+                  :content="hasDanhGia(row) ? 'Form đã có đánh giá, không thể xóa' : 'Xóa'"
+                  placement="top"
+                >
+                  <CustomButton
+                    type="danger"
+                    link
+                    :icon="Delete"
+                    :disabled="hasDanhGia(row)"
+                    @click="remove(row)"
+                  />
                 </CustomTooltip>
               </div>
             </template>
@@ -272,6 +300,7 @@ const tableColumns = [
   { key: 'ten_form', label: 'Tên form' },
   { key: 'slug', label: 'Slug' },
   { key: 'so_cau_hoi', label: 'Số câu hỏi' },
+  { key: 'so_danh_gia', label: 'Số đánh giá' },
 ]
 const columnSettings = useTableColumns('he-thong.form-danh-gia', tableColumns)
 
@@ -406,6 +435,10 @@ function countQuestions(value) {
   return Array.isArray(value) ? value.length : 0
 }
 
+function hasDanhGia(row) {
+  return Number(row?.so_danh_gia) > 0
+}
+
 function openCustomerForm(row) {
   if (!row?.slug) return
   const resolved = router.resolve({
@@ -475,6 +508,11 @@ function openCreate() {
 }
 
 function openEdit(row) {
+  if (hasDanhGia(row)) {
+    ElMessage.warning('Form này đã có đánh giá, không thể sửa.')
+    return
+  }
+
   editingId.value = row.id
   const questions = (row.cau_hoi || []).map((q) => ({
     _key: ++questionKey,
@@ -537,6 +575,14 @@ async function bulkRemove() {
   const ids = selectedIds.value
   if (!ids.length) return
 
+  const locked = items.value.filter((item) => ids.includes(item.id) && hasDanhGia(item))
+  if (locked.length) {
+    ElMessage.warning(
+      `Có ${locked.length} form đã có đánh giá, không thể xóa. Vui lòng bỏ chọn các form này.`
+    )
+    return
+  }
+
   await ElMessageBox.confirm(`Xóa ${ids.length} form đã chọn?`, 'Xác nhận', {
     type: 'warning',
     confirmButtonText: 'Xóa',
@@ -556,6 +602,11 @@ async function bulkRemove() {
 }
 
 async function remove(row) {
+  if (hasDanhGia(row)) {
+    ElMessage.warning('Form này đã có đánh giá, không thể xóa.')
+    return
+  }
+
   await ElMessageBox.confirm(`Xóa form "${row.ten_form}"?`, 'Xác nhận', {
     type: 'warning',
     confirmButtonText: 'Xóa',

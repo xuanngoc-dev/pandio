@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\CauHinhFormDanhGiaMau;
+use App\Models\HopDongSuDungDichVuFormDanhGia;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -28,6 +29,11 @@ class CauHinhFormDanhGiaMauController extends BaseApiController
             $keyword = trim((string) ($validated['keyword'] ?? ''));
 
             $query = CauHinhFormDanhGiaMau::query()
+                ->withCount([
+                    'hopDongFormDanhGias as so_danh_gia' => function ($q) {
+                        $q->whereNotNull('noi_dung_danh_gia');
+                    },
+                ])
                 ->when($keyword !== '', function ($q) use ($keyword) {
                     $q->where(function ($inner) use ($keyword) {
                         $inner->where('ten_form', 'like', "%{$keyword}%")
@@ -47,6 +53,12 @@ class CauHinhFormDanhGiaMauController extends BaseApiController
     public function show(CauHinhFormDanhGiaMau $cau_hinh_form_danh_gia_mau): JsonResponse
     {
         return $this->handleApi(function () use ($cau_hinh_form_danh_gia_mau) {
+            $cau_hinh_form_danh_gia_mau->loadCount([
+                'hopDongFormDanhGias as so_danh_gia' => function ($q) {
+                    $q->whereNotNull('noi_dung_danh_gia');
+                },
+            ]);
+
             return response()->json($cau_hinh_form_danh_gia_mau);
 
         }, 'lấy chi tiết form đánh giá mẫu');
@@ -54,20 +66,47 @@ class CauHinhFormDanhGiaMauController extends BaseApiController
 
     /**
      * Lấy form đánh giá mẫu theo slug (công khai — cho khách hàng điền).
+     * Query tuỳ chọn: hop_dong_danh_gia_id — nếu có thì kèm nội dung đã nộp (nếu có).
      */
-    public function showBySlug(string $slug): JsonResponse
+    public function showBySlug(Request $request, string $slug): JsonResponse
     {
-        return $this->handleApi(function () use ($slug) {
+        return $this->handleApi(function () use ($request, $slug) {
+            $validated = $request->validate([
+                'hop_dong_danh_gia_id' => [
+                    'sometimes',
+                    'nullable',
+                    'integer',
+                    'exists:hop_dong_su_dung_dich_vu,id',
+                ],
+            ]);
+
             $item = CauHinhFormDanhGiaMau::query()
                 ->where('slug', $slug)
                 ->firstOrFail();
 
-            return response()->json([
+            $payload = [
                 'id' => $item->id,
                 'ten_form' => $item->ten_form,
                 'slug' => $item->slug,
                 'cau_hoi' => $item->cau_hoi ?? [],
-            ]);
+                'noi_dung_danh_gia' => null,
+                'da_nop' => false,
+            ];
+
+            $hopDongId = $validated['hop_dong_danh_gia_id'] ?? null;
+            if ($hopDongId) {
+                $link = HopDongSuDungDichVuFormDanhGia::query()
+                    ->where('hop_dong_danh_gia_id', $hopDongId)
+                    ->where('form_danh_gia_id', $item->id)
+                    ->first();
+
+                if ($link && ! empty($link->noi_dung_danh_gia)) {
+                    $payload['noi_dung_danh_gia'] = $link->noi_dung_danh_gia;
+                    $payload['da_nop'] = true;
+                }
+            }
+
+            return response()->json($payload);
 
         }, 'lấy form đánh giá mẫu theo slug');
     }
@@ -94,6 +133,8 @@ class CauHinhFormDanhGiaMauController extends BaseApiController
     public function update(Request $request, CauHinhFormDanhGiaMau $cau_hinh_form_danh_gia_mau): JsonResponse
     {
         return $this->handleApi(function () use ($request, $cau_hinh_form_danh_gia_mau) {
+            $this->assertChuaCoDanhGia($cau_hinh_form_danh_gia_mau);
+
             $validated = $this->validatePayload($request);
             $validated['slug'] = $this->uniqueSlugFromTenForm(
                 $validated['ten_form'],
@@ -113,6 +154,8 @@ class CauHinhFormDanhGiaMauController extends BaseApiController
     public function destroy(CauHinhFormDanhGiaMau $cau_hinh_form_danh_gia_mau): JsonResponse
     {
         return $this->handleApi(function () use ($cau_hinh_form_danh_gia_mau) {
+            $this->assertChuaCoDanhGia($cau_hinh_form_danh_gia_mau);
+
             $cau_hinh_form_danh_gia_mau->delete();
 
             return response()->json(['message' => 'Đã xóa form đánh giá mẫu.']);
@@ -133,6 +176,18 @@ class CauHinhFormDanhGiaMauController extends BaseApiController
             'cau_hoi.*.thong_tin_danh_gia' => ['required', 'string', 'max:255'],
             'cau_hoi.*.required' => ['required', 'boolean'],
         ]);
+    }
+
+    private function assertChuaCoDanhGia(CauHinhFormDanhGiaMau $form): void
+    {
+        $hasDanhGia = HopDongSuDungDichVuFormDanhGia::query()
+            ->where('form_danh_gia_id', $form->id)
+            ->whereNotNull('noi_dung_danh_gia')
+            ->exists();
+
+        if ($hasDanhGia) {
+            abort(422, 'Form này đã có đánh giá, không thể sửa hoặc xóa.');
+        }
     }
 
     private function uniqueSlugFromTenForm(string $tenForm, ?int $ignoreId = null): string

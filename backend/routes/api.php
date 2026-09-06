@@ -156,10 +156,18 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
 
     // --- Form đánh giá mẫu ---
     Route::apiResource('cau-hinh-form-danh-gia-mau', CauHinhFormDanhGiaMauController::class); // CRUD form đánh giá (admin)
+    Route::get(
+        'hop-dong-su-dung-dich-vu-form-danh-gia',
+        [HopDongSuDungDichVuFormDanhGiaController::class, 'index']
+    ); // Danh sách đánh giá đã nộp (lọc theo form)
     Route::post(
         'hop-dong-su-dung-dich-vu-form-danh-gia',
         [HopDongSuDungDichVuFormDanhGiaController::class, 'store']
     ); // Tạo link đánh giá theo HĐ + form
+    Route::post(
+        'hop-dong-su-dung-dich-vu-form-danh-gia/{hop_dong_su_dung_dich_vu_form_danh_gia}/xoa-noi-dung',
+        [HopDongSuDungDichVuFormDanhGiaController::class, 'xoaNoiDung']
+    ); // Xóa nội dung đánh giá (giữ bản ghi link)
 
     // --- Danh mục nguồn khách ---
     Route::apiResource('danh-muc-nguon-khach', DanhMucNguonKhachController::class); // CRUD nguồn khách (Facebook, giới thiệu…)
