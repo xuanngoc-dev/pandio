@@ -210,11 +210,10 @@
                   label="Bắt buộc"
                   :prop="`cau_hoi.${index}.required`"
                 >
-                  <el-switch
+                  <CustomSwitch
                     v-model="item.required"
-                    inline-prompt
-                    active-text="Có"
-                    inactive-text="Không"
+                    active-text="Bắt buộc"
+                    inactive-text="Không bắt buộc"
                   />
                 </CustomFormItem>
               </CustomCol>

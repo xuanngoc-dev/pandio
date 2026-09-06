@@ -107,20 +107,16 @@
           >
             <template #default="{ row }">
               <div class="status-cell">
-                <el-switch
+                <CustomSwitch
                   :model-value="row.trang_thai"
                   active-value="hoat_dong"
                   inactive-value="ngung_hoat_dong"
+                  active-text="Đang hoạt động"
+                  inactive-text="Ngừng hoạt động"
                   :loading="togglingId === row.id"
                   :disabled="togglingId === row.id"
                   :before-change="() => toggleStatus(row)"
                 />
-                <span
-                  class="status-label"
-                  :class="row.trang_thai === 'hoat_dong' ? 'is-active' : 'is-inactive'"
-                >
-                  {{ row.trang_thai === 'hoat_dong' ? 'Đang hoạt động' : 'Ngừng hoạt động' }}
-                </span>
               </div>
             </template>
           </CustomTableColumn>
@@ -273,11 +269,10 @@
                   <CustomCol :xs="24" :sm="6">
                     <CustomFormItem label="Bắt buộc">
                       <div class="field-required-row">
-                        <el-switch
+                        <CustomSwitch
                           v-model="item.bat_buoc"
-                          inline-prompt
-                          active-text="Có"
-                          inactive-text="Không"
+                          active-text="Bắt buộc"
+                          inactive-text="Không bắt buộc"
                         />
                         <CustomButton type="danger" link :icon="Delete" @click="removeField(index)">
                           Xóa
@@ -362,7 +357,7 @@
                   :xl="4"
                 >
                   <div class="dieu-phoi-item" :class="{ 'is-off': !item.su_dung }">
-                    <el-switch v-model="item.su_dung" />
+                    <CustomSwitch v-model="item.su_dung" />
                     <span class="dieu-phoi-item__label" :title="item.ten_thong_tin">
                       {{ item.ten_thong_tin }}
                     </span>

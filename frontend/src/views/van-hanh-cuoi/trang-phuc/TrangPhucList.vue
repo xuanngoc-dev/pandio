@@ -224,20 +224,16 @@
         >
           <template #default="{ row }">
             <div class="status-cell">
-              <el-switch
+              <CustomSwitch
                 :model-value="row.trang_thai"
                 :active-value="1"
                 :inactive-value="0"
+                active-text="Hoạt động"
+                inactive-text="Ngừng"
                 :loading="togglingId === row.id"
                 :disabled="togglingId === row.id"
                 :before-change="() => toggleStatus(row)"
               />
-              <span
-                class="status-label"
-                :class="row.trang_thai === 1 ? 'is-active' : 'is-inactive'"
-              >
-                {{ row.trang_thai === 1 ? 'Hoạt động' : 'Ngừng' }}
-              </span>
             </div>
           </template>
         </CustomTableColumn>

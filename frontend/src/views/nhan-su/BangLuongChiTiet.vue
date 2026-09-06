@@ -23,13 +23,11 @@
                 Chi tiết theo ngày · tháng {{ formatMonthLabel(month) }}
               </span>
               <div class="daily-toolbar" @click.stop>
-                <el-switch
+                <CustomSwitch
                   v-model="showFutureDays"
-                  inline-prompt
-                  active-text="Hiện"
-                  inactive-text="Ẩn"
+                  active-text="Hiển thị ngày chưa đến"
+                  inactive-text="Ẩn ngày chưa đến"
                 />
-                <span class="daily-toolbar__label">Hiển thị ngày chưa đến</span>
               </div>
             </div>
           </template>

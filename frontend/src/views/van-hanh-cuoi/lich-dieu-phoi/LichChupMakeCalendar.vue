@@ -230,10 +230,9 @@
             class="loai-config-item"
             :class="{ 'is-hidden': !loaiVisibleMap[item.loai_hop_dong_id] }"
           >
-            <el-switch
+            <CustomSwitch
               :model-value="loaiVisibleMap[item.loai_hop_dong_id]"
               size="small"
-              inline-prompt
               active-text="Hiện"
               inactive-text="Ẩn"
               @change="(visible) => setLoaiVisible(item.loai_hop_dong_id, visible)"

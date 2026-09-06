@@ -33,6 +33,7 @@ declare module 'vue' {
     CustomOption: typeof import('./components/element/CustomOption.vue')['default']
     CustomRow: typeof import('./components/element/CustomRow.vue')['default']
     CustomSelect: typeof import('./components/element/CustomSelect.vue')['default']
+    CustomSwitch: typeof import('./components/element/CustomSwitch.vue')['default']
     CustomTable: typeof import('./components/element/CustomTable.vue')['default']
     CustomTableColumn: typeof import('./components/element/CustomTableColumn.vue')['default']
     CustomTag: typeof import('./components/element/CustomTag.vue')['default']

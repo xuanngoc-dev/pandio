@@ -202,20 +202,16 @@
               >
                 <template #default="{ row }">
                   <div class="status-cell">
-                    <el-switch
+                    <CustomSwitch
                       :model-value="row.mac_dinh"
                       active-value="co"
                       inactive-value="khong"
+                      active-text="Mặc định"
+                      inactive-text="Không mặc định"
                       :loading="payment.togglingId === row.id && payment.togglingField === 'mac_dinh'"
                       :disabled="payment.togglingId === row.id"
                       :before-change="() => togglePaymentMacDinh(row)"
                     />
-                    <span
-                      class="status-label"
-                      :class="row.mac_dinh === 'co' ? 'is-active' : 'is-inactive'"
-                    >
-                      {{ row.mac_dinh === 'co' ? 'Có' : 'Không' }}
-                    </span>
                   </div>
                 </template>
               </CustomTableColumn>
@@ -228,20 +224,16 @@
               >
                 <template #default="{ row }">
                   <div class="status-cell">
-                    <el-switch
+                    <CustomSwitch
                       :model-value="row.trang_thai"
                       active-value="dang_hoat_dong"
                       inactive-value="ngung_hoat_dong"
+                      active-text="Đang hoạt động"
+                      inactive-text="Ngưng hoạt động"
                       :loading="payment.togglingId === row.id && payment.togglingField === 'trang_thai'"
                       :disabled="payment.togglingId === row.id"
                       :before-change="() => togglePaymentTrangThai(row)"
                     />
-                    <span
-                      class="status-label"
-                      :class="row.trang_thai === 'dang_hoat_dong' ? 'is-active' : 'is-inactive'"
-                    >
-                      {{ row.trang_thai === 'dang_hoat_dong' ? 'Đang hoạt động' : 'Ngưng hoạt động' }}
-                    </span>
                   </div>
                 </template>
               </CustomTableColumn>

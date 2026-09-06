@@ -146,7 +146,11 @@
                 </el-checkbox-group>
               </template>
               <template v-else-if="field.kieu === 'switch'">
-                <el-switch v-model="form.thong_tin_hop_dong[field.key]" />
+                <CustomSwitch
+                  v-model="form.thong_tin_hop_dong[field.key]"
+                  :active-text="field.ten_truong"
+                  :inactive-text="field.ten_truong"
+                />
               </template>
               <template v-else-if="isDateLike(field.kieu)">
                 <el-date-picker

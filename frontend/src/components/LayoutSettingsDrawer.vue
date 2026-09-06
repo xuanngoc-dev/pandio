@@ -17,7 +17,7 @@
               Cho phép mở rộng / thu gọn từng nhóm menu
             </span>
           </div>
-          <el-switch v-model="layoutStore.menuGroupCollapsible" />
+          <CustomSwitch v-model="layoutStore.menuGroupCollapsible" />
         </div>
 
         <div class="settings-row" :class="{ 'is-disabled': !layoutStore.menuGroupCollapsible }">
@@ -27,7 +27,7 @@
               Đóng các nhóm khác khi mở một nhóm mới
             </span>
           </div>
-          <el-switch
+          <CustomSwitch
             v-model="layoutStore.menuUniqueOpened"
             :disabled="!layoutStore.menuGroupCollapsible"
           />
@@ -40,7 +40,7 @@
               Hiện tiêu đề nhóm; khi thu gọn hiện viết tắt (vd: KH)
             </span>
           </div>
-          <el-switch v-model="layoutStore.menuGroupHeaderVisible" />
+          <CustomSwitch v-model="layoutStore.menuGroupHeaderVisible" />
         </div>
 
         <div class="settings-row">
@@ -50,7 +50,7 @@
               Bật: thu hẹp phần nội dung. Tắt: menu phủ lên như drawer
             </span>
           </div>
-          <el-switch
+          <CustomSwitch
             :model-value="layoutStore.sidebarPushContent"
             @change="onSidebarPushContentChange"
           />
@@ -81,7 +81,7 @@
               Giữ menu bên trái cố định khi cuộn trang
             </span>
           </div>
-          <el-switch v-model="layoutStore.sidebarFixed" />
+          <CustomSwitch v-model="layoutStore.sidebarFixed" />
         </div>
       </section>
 
@@ -93,7 +93,7 @@
             <span class="settings-row__label">Chế độ tối</span>
             <span class="settings-row__desc">Bật / tắt giao diện tối</span>
           </div>
-          <el-switch v-model="isDark" @change="onDarkChange" />
+          <CustomSwitch v-model="isDark" @change="onDarkChange" />
         </div>
       </section>
     </div>

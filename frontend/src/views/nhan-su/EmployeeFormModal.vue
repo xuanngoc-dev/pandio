@@ -110,11 +110,10 @@
                 <CustomCol :xs="12" :sm="12" :md="8" :lg="6">
                   <CustomFormItem label="Điều phối" prop="is_dieu_phoi">
                     <div class="dieu-phoi-field">
-                      <el-switch
+                      <CustomSwitch
                         v-model="form.is_dieu_phoi"
-                        inline-prompt
-                        active-text="Bật"
-                        inactive-text="Tắt"
+                        active-text="Điều phối"
+                        inactive-text="Không điều phối"
                       />
                       <span class="dieu-phoi-hint">Bật → gán vai trò điều phối</span>
                     </div>

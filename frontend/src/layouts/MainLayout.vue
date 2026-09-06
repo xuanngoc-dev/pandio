@@ -72,18 +72,19 @@
         :class="{ 'is-fixed': navbarFixed }"
       >
         <div class="header-left">
-          <el-button
+          <el-icon
             v-if="isMobile"
-            text
             class="mobile-menu-btn"
+            :size="24"
+            role="button"
+            tabindex="0"
             :aria-label="mobileMenuOpen ? 'Ẩn menu' : 'Hiện menu'"
             @click="toggleMobileMenu"
+            @keydown.enter.space.prevent="toggleMobileMenu"
           >
-            <el-icon :size="20">
-              <Fold v-if="mobileMenuOpen" />
-              <Expand v-else />
-            </el-icon>
-          </el-button>
+            <Fold v-if="mobileMenuOpen" />
+            <Expand v-else />
+          </el-icon>
           <div v-if="isMobile" class="header-brand">
             <el-avatar
               v-if="brandLogoUrl"
@@ -122,9 +123,8 @@
             <kbd class="header-search__kbd">{{ searchShortcutLabel }}</kbd>
           </button>
 
-          <el-switch
+          <CustomSwitch
             v-model="isDark"
-            inline-prompt
             active-text="🌙"
             inactive-text="☀️"
             @change="toggleDark"
@@ -801,6 +801,15 @@ onUnmounted(() => {
 
 .mobile-menu-btn {
   flex-shrink: 0;
+  cursor: pointer;
+  color: var(--el-text-color-regular);
+  outline: none;
+  transition: color 0.15s ease;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--el-color-primary);
+  }
 }
 
 .header-brand {

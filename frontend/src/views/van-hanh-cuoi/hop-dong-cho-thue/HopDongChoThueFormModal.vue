@@ -155,8 +155,12 @@
                 </CustomCol>
                 <CustomCol :xs="12" :sm="6" :md="7">
                   <div class="san-pham-filter__busy">
-                    <el-switch v-model="sanPhamBusyFilter" size="small" />
-                    <span class="san-pham-filter__busy-label">Hiện sản phẩm bận</span>
+                    <CustomSwitch
+                      v-model="sanPhamBusyFilter"
+                      size="small"
+                      active-text="Hiện sản phẩm bận"
+                      inactive-text="Ẩn sản phẩm bận"
+                    />
                   </div>
                 </CustomCol>
               </CustomRow>

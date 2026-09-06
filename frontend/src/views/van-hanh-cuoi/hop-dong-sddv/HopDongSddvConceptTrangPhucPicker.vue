@@ -29,8 +29,12 @@
             </CustomCol>
             <CustomCol :xs="12" :sm="8" :md="6">
               <div class="service-filter__switch">
-                <el-switch v-model="conceptFilter.chi_da_chon" size="small" />
-                <span class="service-filter__switch-label">Đã chọn</span>
+                <CustomSwitch
+                  v-model="conceptFilter.chi_da_chon"
+                  size="small"
+                  active-text="Đã chọn"
+                  inactive-text="Tất cả"
+                />
               </div>
             </CustomCol>
           </CustomRow>
@@ -123,12 +127,20 @@
             <CustomCol :xs="24" :sm="12" :md="8">
               <div class="service-filter__switches">
                 <div class="service-filter__switch">
-                  <el-switch v-model="trangPhucFilter.hien_san_pham_ban" size="small" />
-                  <span class="service-filter__switch-label">Hiện sản phẩm bận</span>
+                  <CustomSwitch
+                    v-model="trangPhucFilter.hien_san_pham_ban"
+                    size="small"
+                    active-text="Hiện sản phẩm bận"
+                    inactive-text="Ẩn sản phẩm bận"
+                  />
                 </div>
                 <div class="service-filter__switch">
-                  <el-switch v-model="trangPhucFilter.chi_da_chon" size="small" />
-                  <span class="service-filter__switch-label">Đã chọn</span>
+                  <CustomSwitch
+                    v-model="trangPhucFilter.chi_da_chon"
+                    size="small"
+                    active-text="Đã chọn"
+                    inactive-text="Tất cả"
+                  />
                 </div>
               </div>
             </CustomCol>

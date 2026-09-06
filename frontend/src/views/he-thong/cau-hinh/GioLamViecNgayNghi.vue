@@ -124,20 +124,16 @@
               >
                 <template #default="{ row }">
                   <div class="status-cell">
-                    <el-switch
+                    <CustomSwitch
                       :model-value="row.su_dung"
                       active-value="co"
                       inactive-value="khong"
+                      active-text="Đang sử dụng"
+                      inactive-text="Không sử dụng"
                       :loading="gioLam.togglingId === row.id"
                       :disabled="gioLam.togglingId === row.id || row.su_dung === 'co'"
                       @change="(val) => toggleSuDung(row, val)"
                     />
-                    <span
-                      class="status-label"
-                      :class="row.su_dung === 'co' ? 'is-active' : 'is-inactive'"
-                    >
-                      {{ row.su_dung === 'co' ? 'Đang sử dụng' : 'Không' }}
-                    </span>
                   </div>
                 </template>
               </CustomTableColumn>
@@ -279,20 +275,16 @@
               >
                 <template #default="{ row }">
                   <div class="status-cell">
-                    <el-switch
+                    <CustomSwitch
                       :model-value="row.trang_thai"
                       active-value="active"
                       inactive-value="inactive"
+                      active-text="Đang hoạt động"
+                      inactive-text="Không hoạt động"
                       :loading="ngayNghi.togglingId === row.id"
                       :disabled="ngayNghi.togglingId === row.id"
                       :before-change="() => toggleTrangThai(row)"
                     />
-                    <span
-                      class="status-label"
-                      :class="row.trang_thai === 'active' ? 'is-active' : 'is-inactive'"
-                    >
-                      {{ row.trang_thai === 'active' ? 'Đang hoạt động' : 'Không hoạt động' }}
-                    </span>
                   </div>
                 </template>
               </CustomTableColumn>
