@@ -152,31 +152,15 @@
                 <CustomFormItem
                   :label="'Nội dung câu hỏi'"
                   :prop="`cau_hoi.${index}.cau_hoi`"
-                  :rules="questionRules.cau_hoi"
+                  :rules="questionRules.cau_hoi(index)"
                 >
                   <CustomInput
                     v-model="item.cau_hoi"
                     type="textarea"
                     :rows="2"
                     placeholder="Nhập nội dung câu hỏi"
+                    @blur="() => revalidateQuestionDuplicate(index)"
                   />
-                </CustomFormItem>
-              </CustomCol>
-
-              <CustomCol :xs="24" :sm="8">
-                <CustomFormItem
-                  label="Loại đánh giá"
-                  :prop="`cau_hoi.${index}.loai_danh_gia`"
-                  :rules="questionRules.loai_danh_gia"
-                >
-                  <CustomSelect
-                    v-model="item.loai_danh_gia"
-                    placeholder="Chọn loại"
-                    style="width: 100%"
-                  >
-                    <CustomOption label="Điểm" value="diem" />
-                    <CustomOption label="Văn bản" value="van_ban" />
-                  </CustomSelect>
                 </CustomFormItem>
               </CustomCol>
 
@@ -184,7 +168,7 @@
                 <CustomFormItem
                   label="Thông tin đánh giá"
                   :prop="`cau_hoi.${index}.thong_tin_danh_gia`"
-                  :rules="questionRules.thong_tin_danh_gia"
+                  :rules="questionRules.thong_tin_danh_gia(index)"
                 >
                   <CustomSelect
                     v-model="item.thong_tin_danh_gia"
@@ -193,7 +177,7 @@
                     default-first-option
                     placeholder="Chọn hoặc tạo mới"
                     style="width: 100%"
-                    @change="(val) => onThongTinChange(val)"
+                    @change="(val) => onThongTinChange(val, index)"
                   >
                     <CustomOption
                       v-for="opt in thongTinOptions"
@@ -201,6 +185,24 @@
                       :label="opt"
                       :value="opt"
                     />
+                  </CustomSelect>
+                </CustomFormItem>
+              </CustomCol>
+
+              <CustomCol :xs="24" :sm="8">
+                <CustomFormItem
+                  label="Loại đánh giá"
+                  :prop="`cau_hoi.${index}.loai_danh_gia`"
+                  :rules="questionRules.loai_danh_gia(index)"
+                >
+                  <CustomSelect
+                    v-model="item.loai_danh_gia"
+                    placeholder="Chọn loại"
+                    style="width: 100%"
+                    @change="() => revalidateQuestionDuplicate(index)"
+                  >
+                    <CustomOption label="Điểm" value="diem" />
+                    <CustomOption label="Văn bản" value="van_ban" />
                   </CustomSelect>
                 </CustomFormItem>
               </CustomCol>
@@ -335,11 +337,68 @@ const rules = {
   ten_form: [{ required: true, message: 'Vui lòng nhập tên form', trigger: 'blur' }],
 }
 
+function questionFingerprint(q) {
+  return [
+    (q?.cau_hoi || '').trim().toLowerCase(),
+    (q?.thong_tin_danh_gia || '').trim().toLowerCase(),
+    (q?.loai_danh_gia || '').trim(),
+  ].join('||')
+}
+
+function isDuplicateQuestion(index) {
+  const current = form.cau_hoi[index]
+  if (!current) return false
+  const cauHoi = (current.cau_hoi || '').trim()
+  const thongTin = (current.thong_tin_danh_gia || '').trim()
+  const loai = (current.loai_danh_gia || '').trim()
+  if (!cauHoi || !thongTin || !loai) return false
+
+  const fingerprint = questionFingerprint(current)
+  return form.cau_hoi.some((q, i) => i !== index && questionFingerprint(q) === fingerprint)
+}
+
+function validateQuestionUnique(index) {
+  return (_rule, _value, callback) => {
+    if (isDuplicateQuestion(index)) {
+      callback(new Error('Câu hỏi trùng nội dung, thông tin đánh giá và loại đánh giá'))
+      return
+    }
+    callback()
+  }
+}
+
+function revalidateQuestionDuplicate(index) {
+  const fields = [
+    `cau_hoi.${index}.cau_hoi`,
+    `cau_hoi.${index}.thong_tin_danh_gia`,
+    `cau_hoi.${index}.loai_danh_gia`,
+  ]
+  formRef.value?.validateField(fields).catch(() => {})
+
+  form.cau_hoi.forEach((_, i) => {
+    if (i === index) return
+    formRef.value
+      ?.validateField([
+        `cau_hoi.${i}.cau_hoi`,
+        `cau_hoi.${i}.thong_tin_danh_gia`,
+        `cau_hoi.${i}.loai_danh_gia`,
+      ])
+      .catch(() => {})
+  })
+}
+
 const questionRules = {
-  cau_hoi: [{ required: true, message: 'Vui lòng nhập nội dung câu hỏi', trigger: 'blur' }],
-  loai_danh_gia: [{ required: true, message: 'Vui lòng chọn loại đánh giá', trigger: 'change' }],
-  thong_tin_danh_gia: [
+  cau_hoi: (index) => [
+    { required: true, message: 'Vui lòng nhập nội dung câu hỏi', trigger: 'blur' },
+    { validator: validateQuestionUnique(index), trigger: 'blur' },
+  ],
+  loai_danh_gia: (index) => [
+    { required: true, message: 'Vui lòng chọn loại đánh giá', trigger: 'change' },
+    { validator: validateQuestionUnique(index), trigger: 'change' },
+  ],
+  thong_tin_danh_gia: (index) => [
     { required: true, message: 'Vui lòng chọn thông tin đánh giá', trigger: 'change' },
+    { validator: validateQuestionUnique(index), trigger: 'change' },
   ],
 }
 
@@ -367,11 +426,12 @@ function resetThongTinOptions(extraValues = []) {
   thongTinOptions.value = merged
 }
 
-function onThongTinChange(value) {
+function onThongTinChange(value, index) {
   const trimmed = (value || '').trim()
   if (trimmed && !thongTinOptions.value.includes(trimmed)) {
     thongTinOptions.value = [...thongTinOptions.value, trimmed]
   }
+  if (index != null) revalidateQuestionDuplicate(index)
 }
 
 function addQuestion() {
