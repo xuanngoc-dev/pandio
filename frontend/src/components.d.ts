@@ -26,6 +26,7 @@ declare module 'vue' {
     CustomCol: typeof import('./components/element/CustomCol.vue')['default']
     CustomDatePicker: typeof import('./components/element/CustomDatePicker.vue')['default']
     CustomDialog: typeof import('./components/element/CustomDialog.vue')['default']
+    CustomDropdown: typeof import('./components/element/CustomDropdown.vue')['default']
     CustomForm: typeof import('./components/element/CustomForm.vue')['default']
     CustomFormItem: typeof import('./components/element/CustomFormItem.vue')['default']
     CustomIcon: typeof import('./components/element/CustomIcon.vue')['default']

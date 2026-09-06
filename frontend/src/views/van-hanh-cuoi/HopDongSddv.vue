@@ -402,51 +402,14 @@
             {{ formatDate(row.created_at) }}
           </template>
         </CustomTableColumn>
-        <CustomTableColumn label="Thao tác" width="230" fixed="right" align="center">
+        <CustomTableColumn label="Thao tác" width="110" fixed="right" align="center">
           <template #default="{ row }">
-            <div class="action-btns">
-              <CustomTooltip content="Xem hợp đồng" placement="top">
-                <CustomButton type="info" link :icon="View" @click="openDetail(row)" />
-              </CustomTooltip>
-              <CustomTooltip
-                :content="canDieuPhoi(row) ? 'Điều phối' : dieuPhoiDisabledReason(row)"
-                placement="top"
-              >
-                <CustomButton
-                  type="warning"
-                  link
-                  :icon="Position"
-                  :disabled="!canDieuPhoi(row)"
-                  @click="openDieuPhoi(row)"
-                />
-              </CustomTooltip>
-              <CustomTooltip :content="thanhToanTooltip(row)" placement="top">
-                <CustomButton
-                  type="success"
-                  link
-                  :icon="Wallet"
-                  :disabled="!canOpenThanhToan(row)"
-                  @click="openThanhToan(row)"
-                />
-              </CustomTooltip>
-              <CustomTooltip
-                :content="canDoiTrangThai(row) ? 'Thay đổi trạng thái' : doiTrangThaiDisabledReason(row)"
-                placement="top"
-              >
-                <CustomButton
-                  link
-                  :icon="Switch"
-                  :disabled="!canDoiTrangThai(row)"
-                  @click="openDoiTrangThai(row)"
-                />
-              </CustomTooltip>
-              <CustomTooltip content="Sửa" placement="top">
-                <CustomButton type="primary" link :icon="Edit" @click="openEdit(row)" />
-              </CustomTooltip>
-              <CustomTooltip content="Xóa" placement="top">
-                <CustomButton type="danger" link :icon="Delete" @click="remove(row)" />
-              </CustomTooltip>
-            </div>
+            <CustomDropdown
+              trigger="click"
+              placement="bottom-end"
+              :items="getRowActions(row)"
+              @command="(command) => onRowAction(command, row)"
+            />
           </template>
         </CustomTableColumn>
       </CustomTable>
@@ -526,6 +489,7 @@ import {
   CustomCard,
   CustomCol,
   CustomDatePicker,
+  CustomDropdown,
   CustomIcon,
   CustomInput,
   CustomOption,
@@ -952,6 +916,65 @@ function openDrafts() {
   draftModalVisible.value = true
 }
 
+function thanhToanActionLabel(row) {
+  if (canThanhToan(row)) return 'Thanh toán'
+  if (canViewLichSuThanhToan(row)) return 'Xem lịch sử thanh toán'
+  return 'Thanh toán'
+}
+
+function getRowActions(row) {
+  return [
+    { command: 'view', label: 'Xem hợp đồng', icon: View, type: 'info' },
+    {
+      command: 'dieu_phoi',
+      label: 'Điều phối',
+      icon: Position,
+      type: 'warning',
+      disabled: !canDieuPhoi(row),
+    },
+    {
+      command: 'thanh_toan',
+      label: thanhToanActionLabel(row),
+      icon: Wallet,
+      type: 'success',
+      disabled: !canOpenThanhToan(row),
+    },
+    {
+      command: 'doi_trang_thai',
+      label: 'Thay đổi trạng thái',
+      icon: Switch,
+      disabled: !canDoiTrangThai(row),
+    },
+    { command: 'edit', label: 'Sửa', icon: Edit, type: 'primary' },
+    { command: 'delete', label: 'Xóa', icon: Delete, type: 'danger', divided: true },
+  ]
+}
+
+function onRowAction(command, row) {
+  switch (command) {
+    case 'view':
+      openDetail(row)
+      break
+    case 'dieu_phoi':
+      openDieuPhoi(row)
+      break
+    case 'thanh_toan':
+      openThanhToan(row)
+      break
+    case 'doi_trang_thai':
+      openDoiTrangThai(row)
+      break
+    case 'edit':
+      openEdit(row)
+      break
+    case 'delete':
+      remove(row)
+      break
+    default:
+      break
+  }
+}
+
 function openDetail(row) {
   detailHopDongId.value = row.id
   detailModalVisible.value = true
@@ -1029,12 +1052,6 @@ function canViewLichSuThanhToan(row) {
 
 function canOpenThanhToan(row) {
   return canThanhToan(row) || canViewLichSuThanhToan(row)
-}
-
-function thanhToanTooltip(row) {
-  if (canThanhToan(row)) return 'Thanh toán'
-  if (canViewLichSuThanhToan(row)) return 'Xem lịch sử thanh toán'
-  return thanhToanDisabledReason(row)
 }
 
 function thanhToanDisabledReason(row) {
