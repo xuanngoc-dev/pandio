@@ -111,20 +111,22 @@ class HopDongSuDungDichVuFormDanhGiaController extends BaseApiController
     /**
      * Xóa nội dung đánh giá đã nộp (giữ nguyên bản ghi link).
      */
-    public function xoaNoiDung(HopDongSuDungDichVuFormDanhGia $hop_dong_su_dung_dich_vu_form_danh_gia): JsonResponse
+    public function xoaNoiDung(int $id): JsonResponse
     {
-        return $this->handleApi(function () use ($hop_dong_su_dung_dich_vu_form_danh_gia) {
-            if ($hop_dong_su_dung_dich_vu_form_danh_gia->noi_dung_danh_gia === null) {
+        return $this->handleApi(function () use ($id) {
+            $item = HopDongSuDungDichVuFormDanhGia::query()->findOrFail($id);
+
+            if ($item->noi_dung_danh_gia === null) {
                 abort(422, 'Đánh giá này chưa có nội dung để xóa.');
             }
 
-            $hop_dong_su_dung_dich_vu_form_danh_gia->update([
+            $item->update([
                 'noi_dung_danh_gia' => null,
             ]);
 
             return response()->json([
                 'message' => 'Đã xóa nội dung đánh giá.',
-                'id' => $hop_dong_su_dung_dich_vu_form_danh_gia->id,
+                'id' => $item->id,
             ]);
         }, 'xóa nội dung đánh giá hợp đồng');
     }

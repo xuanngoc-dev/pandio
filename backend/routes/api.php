@@ -165,7 +165,7 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
         [HopDongSuDungDichVuFormDanhGiaController::class, 'store']
     ); // Tạo link đánh giá theo HĐ + form
     Route::post(
-        'hop-dong-su-dung-dich-vu-form-danh-gia/{hop_dong_su_dung_dich_vu_form_danh_gia}/xoa-noi-dung',
+        'hop-dong-su-dung-dich-vu-form-danh-gia/{id}/xoa-noi-dung',
         [HopDongSuDungDichVuFormDanhGiaController::class, 'xoaNoiDung']
     ); // Xóa nội dung đánh giá (giữ bản ghi link)
 
