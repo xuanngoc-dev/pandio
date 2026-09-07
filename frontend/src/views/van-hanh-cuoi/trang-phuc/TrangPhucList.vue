@@ -2,7 +2,7 @@
   <div class="trang-phuc-list page-list">
     <CustomCard shadow="hover" class="filter-card">
       <CustomRow :gutter="12" class="toolbar">
-        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+        <CustomCol :xs="12" :sm="12" :md="4" :lg="4">
           <CustomInput
             v-model="keyword"
             placeholder="Tìm theo mã, tên sản phẩm..."
@@ -16,7 +16,7 @@
             </template>
           </CustomInput>
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+        <CustomCol :xs="12" :sm="12" :md="4" :lg="4">
           <CustomSelect
             v-model="danhMucFilter"
             placeholder="Danh mục"
@@ -33,7 +33,7 @@
             />
           </CustomSelect>
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+        <CustomCol :xs="12" :sm="12" :md="4" :lg="4">
           <CustomSelect
             v-model="chiNhanhFilter"
             placeholder="Chi nhánh"
@@ -50,7 +50,7 @@
             />
           </CustomSelect>
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+        <CustomCol :xs="12" :sm="12" :md="4" :lg="4">
           <CustomSelect
             v-model="trangThaiFilter"
             placeholder="Trạng thái"
@@ -62,7 +62,7 @@
             <CustomOption label="Ngừng hoạt động" :value="0" />
           </CustomSelect>
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+        <CustomCol :xs="12" :sm="12" :md="4" :lg="4">
           <CustomButton type="primary" plain @click="onSearch">
             Tìm kiếm
           </CustomButton>

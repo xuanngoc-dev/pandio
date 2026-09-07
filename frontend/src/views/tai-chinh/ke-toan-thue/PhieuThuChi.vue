@@ -2,7 +2,7 @@
   <div class="phieu-thu-chi page-list">
     <CustomCard shadow="hover" class="filter-card">
       <CustomRow :gutter="12" class="toolbar">
-        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+        <CustomCol :xs="12" :sm="12" :md="4" :lg="4">
           <CustomInput
             v-model="keyword"
             placeholder="Tìm theo lý do, ghi chú..."
@@ -16,7 +16,7 @@
             </template>
           </CustomInput>
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+        <CustomCol :xs="12" :sm="12" :md="4" :lg="4">
           <CustomSelect
             v-model="filterLoai"
             placeholder="Loại"
@@ -28,7 +28,7 @@
             <CustomOption label="Chi" value="chi" />
           </CustomSelect>
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+        <CustomCol :xs="12" :sm="12" :md="4" :lg="4">
           <CustomSelect
             v-model="filterTrangThai"
             placeholder="Trạng thái"
@@ -44,7 +44,7 @@
             />
           </CustomSelect>
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+        <CustomCol :xs="12" :sm="12" :md="4" :lg="4">
           <CustomSelect
             v-model="filterHangMucId"
             placeholder="Hạng mục"
@@ -61,7 +61,7 @@
             />
           </CustomSelect>
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+        <CustomCol :xs="12" :sm="12" :md="4" :lg="4">
           <CustomButton type="primary" plain @click="onSearch">
             Tìm kiếm
           </CustomButton>

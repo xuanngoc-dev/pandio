@@ -2,7 +2,7 @@
   <div class="note-khach-moi page-list">
     <CustomCard shadow="hover" class="filter-card">
       <CustomRow :gutter="12" class="toolbar">
-        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+        <CustomCol :xs="12" :sm="12" :md="4" :lg="4">
           <CustomInput
             v-model="keyword"
             placeholder="Tìm theo tên, SĐT, ghi chú, tra cứu HĐ..."
@@ -16,11 +16,10 @@
             </template>
           </CustomInput>
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+        <CustomCol :xs="12" :sm="12" :md="4" :lg="4">
           <CustomDatePicker
             v-model="ngayHenTu"
             type="date"
-            size="small"
             placeholder="Hẹn từ ngày"
             format="DD/MM/YYYY"
             value-format="YYYY-MM-DD"
@@ -29,11 +28,10 @@
             @change="onSearch"
           />
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+        <CustomCol :xs="12" :sm="12" :md="4" :lg="4">
           <CustomDatePicker
             v-model="ngayHenDen"
             type="date"
-            size="small"
             placeholder="Hẹn đến ngày"
             format="DD/MM/YYYY"
             value-format="YYYY-MM-DD"
@@ -42,7 +40,7 @@
             @change="onSearch"
           />
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+        <CustomCol :xs="12" :sm="12" :md="4" :lg="4">
           <CustomSelect
             v-model="filterTrangThai"
             placeholder="Trạng thái"
@@ -58,7 +56,7 @@
             />
           </CustomSelect>
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+        <CustomCol :xs="12" :sm="12" :md="4" :lg="4">
           <CustomButton type="primary" plain @click="onSearch">
             Tìm kiếm
           </CustomButton>

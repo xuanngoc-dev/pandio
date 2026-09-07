@@ -49,7 +49,7 @@
             />
           </CustomSelect>
         </CustomCol>
-        <CustomCol :xs="24" :sm="24" :md="6" :lg="6">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
           <div class="toolbar-actions">
             <CustomButton type="primary" plain @click="onSearch">
               Tìm kiếm
@@ -59,7 +59,7 @@
               :type="advancedFilterVisible || advancedFilterCount ? 'primary' : 'default'"
               @click="advancedFilterVisible = !advancedFilterVisible"
             >
-              Lọc nâng cao
+              Nâng cao
               <span
                 v-if="advancedFilterCount"
                 class="advanced-toggle__badge"
