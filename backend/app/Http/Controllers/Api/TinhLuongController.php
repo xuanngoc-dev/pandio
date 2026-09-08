@@ -173,6 +173,58 @@ class TinhLuongController extends BaseApiController
     }
 
     /**
+     * Tổng quỹ lương kỳ = SUM(thuc_nhan) toàn nhân viên active có hồ sơ.
+     * Ưu tiên snapshot đã chốt; tháng hiện tại / tháng trước chưa chốt thì tính realtime.
+     *
+     * @return array{quy_luong: int, so_nhan_vien: int, da_chot: bool, nguon: string}
+     */
+    public function tongQuyLuong(string $thang): array
+    {
+        $locked = $this->tongHopTuDuLieuChot($thang, '', 1, PHP_INT_MAX);
+        if ($locked !== null) {
+            $items = collect($locked['data'] ?? []);
+            $sum = (int) $items->sum(fn ($row) => (int) (is_array($row) ? ($row['thuc_nhan'] ?? 0) : 0));
+
+            return [
+                'quy_luong' => $sum,
+                'so_nhan_vien' => $items->count(),
+                'da_chot' => true,
+                'nguon' => 'chot',
+            ];
+        }
+
+        if ($this->isThangCuHonThangTruoc($thang)) {
+            return [
+                'quy_luong' => 0,
+                'so_nhan_vien' => 0,
+                'da_chot' => false,
+                'nguon' => 'khong_co_chot',
+            ];
+        }
+
+        $users = User::query()
+            ->with([$this->nhanVienTongHopWith()])
+            ->select(['id', 'name', 'email', 'phone', 'status'])
+            ->where('status', 'active')
+            ->whereHas('nhanVien')
+            ->orderBy('name')
+            ->get();
+
+        $sum = 0;
+        foreach ($users as $user) {
+            $row = $this->mapTongHopRow($user, $thang);
+            $sum += (int) ($row['thuc_nhan'] ?? 0);
+        }
+
+        return [
+            'quy_luong' => $sum,
+            'so_nhan_vien' => $users->count(),
+            'da_chot' => false,
+            'nguon' => 'tinh_toan',
+        ];
+    }
+
+    /**
      * Trạng thái chốt lương theo tháng + quyền chốt theo kỳ cấu hình.
      *
      * Query: thang (YYYY-MM, required)

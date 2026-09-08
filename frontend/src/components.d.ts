@@ -15,6 +15,7 @@ declare module 'vue' {
     ChartArea: typeof import('./components/charts/ChartArea.vue')['default']
     ChartBar: typeof import('./components/charts/ChartBar.vue')['default']
     ChartColumn: typeof import('./components/charts/ChartColumn.vue')['default']
+    ChartCombo: typeof import('./components/charts/ChartCombo.vue')['default']
     ChartDonut: typeof import('./components/charts/ChartDonut.vue')['default']
     ChartHScroll: typeof import('./components/charts/ChartHScroll.vue')['default']
     ChartLine: typeof import('./components/charts/ChartLine.vue')['default']

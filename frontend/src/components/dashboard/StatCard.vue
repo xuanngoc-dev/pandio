@@ -41,6 +41,7 @@ const changeText = computed(() => {
       <div class="stat-card__meta">
         <p class="stat-card__title">{{ title }}</p>
         <p class="stat-card__value">{{ value }}</p>
+        <p v-if="hint && change == null" class="stat-card__hint">{{ hint }}</p>
       </div>
       <CustomTooltip v-if="change != null" :content="hint || changeLabel" placement="top">
         <span class="stat-card__change" :class="`is-${changeKind}`">
@@ -132,6 +133,17 @@ const changeText = computed(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.stat-card__hint {
+  margin: 3px 0 0;
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--el-text-color-placeholder);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .stat-card__change {

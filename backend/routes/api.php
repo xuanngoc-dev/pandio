@@ -36,6 +36,7 @@ use App\Http\Controllers\Api\DiemDanhController;
 use App\Http\Controllers\Api\IpDiemDanhController;
 use App\Http\Controllers\Api\LoaiHopDongController;
 use App\Http\Controllers\Api\TinhLuongController;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\PhongBanController;
 use App\Http\Controllers\Api\ReportQuangCaoController;
 use App\Http\Controllers\Api\UserController;
@@ -233,6 +234,9 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
 
     // --- Công việc cá nhân ---
     Route::apiResource('cong-viec-ca-nhan', CongViecCaNhanController::class); // CRUD việc nội bộ (giao / phụ trách)
+
+    // --- Tổng quan (dashboard) ---
+    Route::get('/tong-quan/ceo-admin', [DashboardController::class, 'ceoAdmin']); // KPI cards CEO & Admin theo tháng
 
     // --- Report quảng cáo ---
     Route::apiResource('report-quang-cao', ReportQuangCaoController::class); // CRUD báo cáo chi phí / hiệu quả quảng cáo

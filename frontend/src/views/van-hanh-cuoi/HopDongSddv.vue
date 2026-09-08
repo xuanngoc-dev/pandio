@@ -2,7 +2,7 @@
   <div class="hop-dong-sddv page-list">
     <CustomCard shadow="hover" class="filter-card">
       <CustomRow :gutter="12" class="toolbar">
-        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="5">
           <CustomInput
             v-model="keyword"
             placeholder="Tìm theo mã HĐ, thông tin khách hàng..."
@@ -16,7 +16,7 @@
             </template>
           </CustomInput>
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="4">
           <CustomSelect
             v-model="filterLoaiHopDongId"
             placeholder="Loại hợp đồng"
@@ -33,7 +33,7 @@
             />
           </CustomSelect>
         </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="4">
           <CustomSelect
             v-model="filterTrangThai"
             placeholder="Trạng thái"
@@ -50,6 +50,22 @@
           </CustomSelect>
         </CustomCol>
         <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+          <CustomDatePicker
+            v-model="filterCreatedRange"
+            type="daterange"
+            range-separator="—"
+            start-placeholder="Từ ngày"
+            end-placeholder="Đến ngày"
+            format="DD/MM/YYYY"
+            value-format="YYYY-MM-DD"
+            unlink-panels
+            clearable
+            class="filter-created-range"
+            style="width: 100%"
+            @change="onSearch"
+          />
+        </CustomCol>
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="5">
           <div class="toolbar-actions">
             <CustomButton type="primary" plain @click="onSearch">
               Tìm kiếm
@@ -651,6 +667,7 @@ const route = useRoute()
 const keyword = ref(String(route.query.keyword || ''))
 const filterLoaiHopDongId = ref(null)
 const filterTrangThai = ref('')
+const filterCreatedRange = ref(null)
 const advancedFilterVisible = ref(false)
 const filterLoaiQuayChupId = ref(null)
 const filterNgayChupRange = ref(null)
@@ -879,6 +896,8 @@ async function loadItems() {
       keyword: keyword.value.trim() || undefined,
       loai_hop_dong_id: filterLoaiHopDongId.value || undefined,
       trang_thai: filterTrangThai.value || undefined,
+      tu_ngay: filterCreatedRange.value?.[0] || undefined,
+      den_ngay: filterCreatedRange.value?.[1] || undefined,
       loai_quay_chup_id: filterLoaiQuayChupId.value || undefined,
       ngay_chup_tu: filterNgayChupRange.value?.[0] || undefined,
       ngay_chup_den: filterNgayChupRange.value?.[1] || undefined,
@@ -1261,6 +1280,33 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
+.filter-card {
+  .toolbar {
+    :deep(> .el-col) {
+      min-width: 0;
+    }
+
+    :deep(.el-date-editor),
+    :deep(.el-date-editor.el-date-editor--daterange),
+    :deep(.el-date-editor.el-date-editor--timerange) {
+      width: 100% !important;
+      max-width: 100%;
+      min-width: 0 !important;
+      box-sizing: border-box;
+    }
+
+    :deep(.el-date-editor .el-range-input) {
+      min-width: 0;
+      width: 40%;
+    }
+
+    :deep(.el-date-editor .el-range-separator) {
+      flex-shrink: 0;
+      padding: 0 2px;
+    }
+  }
+}
+
 .advanced-toggle__badge {
   display: inline-flex;
   align-items: center;

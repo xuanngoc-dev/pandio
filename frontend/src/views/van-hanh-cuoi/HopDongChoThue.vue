@@ -33,6 +33,21 @@
           </CustomSelect>
         </CustomCol>
         <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
+          <CustomDatePicker
+            v-model="filterCreatedRange"
+            type="daterange"
+            range-separator="—"
+            start-placeholder="Từ ngày"
+            end-placeholder="Đến ngày"
+            format="DD/MM/YYYY"
+            value-format="YYYY-MM-DD"
+            unlink-panels
+            clearable
+            style="width: 100%"
+            @change="onSearch"
+          />
+        </CustomCol>
+        <CustomCol :xs="12" :sm="12" :md="6" :lg="6">
           <CustomButton type="primary" plain @click="onSearch">
             Tìm kiếm
           </CustomButton>
@@ -353,6 +368,7 @@ const total = ref(0)
 const route = useRoute()
 const keyword = ref(String(route.query.keyword || ''))
 const filterTrangThai = ref('')
+const filterCreatedRange = ref(null)
 const bulkDeleting = ref(false)
 const formModalVisible = ref(false)
 const draftModalVisible = ref(false)
@@ -525,6 +541,8 @@ async function loadItems() {
       per_page: perPage.value,
       keyword: keyword.value.trim() || undefined,
       trang_thai: filterTrangThai.value || undefined,
+      tu_ngay: filterCreatedRange.value?.[0] || undefined,
+      den_ngay: filterCreatedRange.value?.[1] || undefined,
     })
     items.value = data.data || []
     total.value = data.total || 0
@@ -670,6 +688,32 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
+.filter-card {
+  .toolbar {
+    :deep(> .el-col) {
+      min-width: 0;
+    }
+
+    :deep(.el-date-editor),
+    :deep(.el-date-editor.el-date-editor--daterange) {
+      width: 100% !important;
+      max-width: 100%;
+      min-width: 0 !important;
+      box-sizing: border-box;
+    }
+
+    :deep(.el-date-editor .el-range-input) {
+      min-width: 0;
+      width: 40%;
+    }
+
+    :deep(.el-date-editor .el-range-separator) {
+      flex-shrink: 0;
+      padding: 0 2px;
+    }
+  }
+}
+
 .sub-text {
   font-size: 12px;
   color: var(--el-text-color-secondary);
