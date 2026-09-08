@@ -1,22 +1,24 @@
 <template>
   <div class="tong-quan">
-    <el-tabs v-model="activeTab" class="page-tabs">
-      <el-tab-pane label="CEO & Admin" name="ceo-admin">
+    <el-empty v-if="!visibleTabs.length" description="Bạn chưa được phân quyền tab nào trên màn này." />
+
+    <el-tabs v-else v-model="activeTab" class="page-tabs">
+      <el-tab-pane v-if="hasTab('ceo-admin')" label="CEO & Admin" name="ceo-admin">
         <CeoAdmin />
       </el-tab-pane>
-      <el-tab-pane label="Kinh doanh" name="kinh-doanh">
+      <el-tab-pane v-if="hasTab('kinh-doanh')" label="Kinh doanh" name="kinh-doanh">
         <KinhDoanh />
       </el-tab-pane>
-      <el-tab-pane label="Marketing" name="marketing">
+      <el-tab-pane v-if="hasTab('marketing')" label="Marketing" name="marketing">
         <Marketing />
       </el-tab-pane>
-      <el-tab-pane label="Sản xuất & điều phối" name="san-xuat-dieu-phoi">
+      <el-tab-pane v-if="hasTab('san-xuat-dieu-phoi')" label="Sản xuất & điều phối" name="san-xuat-dieu-phoi">
         <SanXuatDieuPhoi />
       </el-tab-pane>
-      <el-tab-pane label="Trang phục" name="trang-phuc">
+      <el-tab-pane v-if="hasTab('trang-phuc')" label="Trang phục" name="trang-phuc">
         <TrangPhuc />
       </el-tab-pane>
-      <el-tab-pane label="Tài chính & nhân sự" name="tai-chinh-nhan-su">
+      <el-tab-pane v-if="hasTab('tai-chinh-nhan-su')" label="Tài chính & nhân sự" name="tai-chinh-nhan-su">
         <TaiChinhNhanSu />
       </el-tab-pane>
     </el-tabs>
@@ -24,15 +26,15 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
 import CeoAdmin from './tabs/CeoAdmin.vue'
 import KinhDoanh from './tabs/KinhDoanh.vue'
 import Marketing from './tabs/Marketing.vue'
 import SanXuatDieuPhoi from './tabs/SanXuatDieuPhoi.vue'
 import TrangPhuc from './tabs/TrangPhuc.vue'
 import TaiChinhNhanSu from './tabs/TaiChinhNhanSu.vue'
+import { usePageTabs } from '@/composables/usePageTabs'
 
-const activeTab = ref('ceo-admin')
+const { activeTab, visibleTabs, hasTab } = usePageTabs('/tong-quan')
 </script>
 
 <style scoped lang="scss">
@@ -40,28 +42,6 @@ const activeTab = ref('ceo-admin')
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-
-.page-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.page-head__title {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  line-height: 1.3;
-  color: var(--el-text-color-primary);
-}
-
-.page-head__sub {
-  margin: 2px 0 0;
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
 }
 
 .page-tabs {

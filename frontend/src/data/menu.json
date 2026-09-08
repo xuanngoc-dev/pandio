@@ -5,7 +5,15 @@
         "index": "/tong-quan",
         "title": "Tổng quan",
         "icon": "Odometer",
-        "component": "tong-quan/TongQuan"
+        "component": "tong-quan/TongQuan",
+        "tabs": [
+          { "key": "ceo-admin", "label": "CEO & Admin" },
+          { "key": "kinh-doanh", "label": "Kinh doanh" },
+          { "key": "marketing", "label": "Marketing" },
+          { "key": "san-xuat-dieu-phoi", "label": "Sản xuất & điều phối" },
+          { "key": "trang-phuc", "label": "Trang phục" },
+          { "key": "tai-chinh-nhan-su", "label": "Tài chính & nhân sự" }
+        ]
       },
       {
         "index": "/cong-viec-cua-toi",
