@@ -33,7 +33,7 @@ const changeText = computed(() => {
 </script>
 
 <template>
-  <CustomCard shadow="hover" class="stat-card" :class="`is-${tone}`">
+  <CustomCard shadow="never" class="stat-card" :class="`is-${tone}`">
     <div class="stat-card__top">
       <div class="stat-card__icon">
         <slot name="icon" />
@@ -63,6 +63,13 @@ const changeText = computed(() => {
   --stat-tone: var(--el-color-primary);
   --stat-tone-bg: var(--el-color-primary-light-9);
   width: 100%;
+  border: 1px solid var(--el-border-color-lighter);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.2s ease;
+
+  &:hover {
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.09);
+  }
 
   &.is-success {
     --stat-tone: var(--el-color-success);
