@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Models\DanhMucNguonKhach;
 use App\Models\HopDongChoThueTrangPhuc;
+use App\Models\HopDongChoThueTrangPhucSanPhamChoThue;
 use App\Models\HopDongSuDungDichVu;
 use App\Models\KhachHangNoteKhachMoi;
 use App\Models\PhieuThuChi;
 use App\Models\ReportQuangCao;
+use App\Models\TrangPhuc;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -166,6 +168,59 @@ class DashboardController extends BaseApiController
     }
 
     /**
+     * KPI cards tab Sản xuất & điều phối theo khoảng ngày.
+     *
+     * Query: tu_ngay, den_ngay (YYYY-MM-DD; mặc định tháng hiện tại)
+     * Tương thích cũ: thang (YYYY-MM) nếu không truyền khoảng ngày
+     */
+    public function sanXuatDieuPhoi(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'tu_ngay' => ['sometimes', 'nullable', 'date'],
+                'den_ngay' => ['sometimes', 'nullable', 'date', 'after_or_equal:tu_ngay'],
+                'thang' => ['sometimes', 'nullable', 'string', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/'],
+            ]);
+
+            [$start, $end] = $this->resolvePeriodBounds($validated);
+            $stats = $this->sanXuatDieuPhoiTrongKy($start, $end);
+
+            return response()->json(array_merge([
+                'tu_ngay' => $start->toDateString(),
+                'den_ngay' => $end->toDateString(),
+            ], $stats));
+        }, 'lấy thống kê Sản xuất & điều phối');
+    }
+
+    /**
+     * KPI + bảng tab Trang phục theo khoảng ngày.
+     *
+     * Snapshot (không phụ thuộc kỳ): tổng SP, đang hoạt động, đang cho thuê, HĐ đang thuê.
+     * Theo kỳ (created_at / ngày trả / lượt thuê): doanh thu, trả sớm/đúng hạn/quá hạn,
+     * top 5 SP, 5 HĐ mới nhất.
+     *
+     * Query: tu_ngay, den_ngay (YYYY-MM-DD; mặc định tháng hiện tại)
+     */
+    public function trangPhuc(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'tu_ngay' => ['sometimes', 'nullable', 'date'],
+                'den_ngay' => ['sometimes', 'nullable', 'date', 'after_or_equal:tu_ngay'],
+                'thang' => ['sometimes', 'nullable', 'string', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/'],
+            ]);
+
+            [$start, $end] = $this->resolvePeriodBounds($validated);
+            $stats = $this->trangPhucTrongKy($start, $end);
+
+            return response()->json(array_merge([
+                'tu_ngay' => $start->toDateString(),
+                'den_ngay' => $end->toDateString(),
+            ], $stats));
+        }, 'lấy thống kê Trang phục');
+    }
+
+    /**
      * @param  array{tu_ngay?: ?string, den_ngay?: ?string, thang?: ?string}  $validated
      * @return array{0: Carbon, 1: Carbon}
      */
@@ -311,6 +366,287 @@ class DashboardController extends BaseApiController
             'so_hop_dong_sddv_ky' => $sddv,
             'so_hop_dong_cho_thue_ky' => $choThue,
         ];
+    }
+
+    /**
+     * KPI Sản xuất & điều phối: HĐ SDDV ký trong kỳ + buổi chụp + phân loại theo
+     * thong_tin_dieu_phoi.trang_thai_dieu_phoi (fallback ket_qua_hop_dong.trang_thai).
+     *
+     * @return array{
+     *   so_hop_dong_sddv_ky: int,
+     *   so_buoi_chup: int,
+     *   so_hd_tien_ky: int,
+     *   so_hd_hau_ky: int,
+     *   so_hd_gui_in: int,
+     *   so_hd_hoan_tat_san_xuat: int
+     * }
+     */
+    private function sanXuatDieuPhoiTrongKy(Carbon $start, Carbon $end): array
+    {
+        $rows = HopDongSuDungDichVu::query()
+            ->whereNotIn('trang_thai', self::HD_EXCLUDED_STATUSES)
+            ->whereBetween('created_at', [$start, $end])
+            ->get(['id', 'thong_tin_dieu_phoi', 'ket_qua_hop_dong']);
+
+        $soBuoiChup = 0;
+        $soHdTienKy = 0;
+        $soHdHauKy = 0;
+        $soHdGuiIn = 0;
+        $soHdHoanTat = 0;
+
+        foreach ($rows as $row) {
+            $soBuoiChup += count(HopDongSuDungDichVu::normalizeDieuPhoiSessions($row->thong_tin_dieu_phoi));
+
+            $status = HopDongSuDungDichVu::trangThaiDieuPhoi($row->thong_tin_dieu_phoi);
+            if ($status === null) {
+                $ketQua = is_array($row->ket_qua_hop_dong) ? $row->ket_qua_hop_dong : [];
+                $fromKetQua = $ketQua['trang_thai']['gia_tri'] ?? null;
+                $status = ($fromKetQua === null || $fromKetQua === '')
+                    ? null
+                    : (string) $fromKetQua;
+            }
+
+            match ($status) {
+                HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_TIEN_KY => $soHdTienKy++,
+                HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_HAU_KY => $soHdHauKy++,
+                HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_GUI_IN => $soHdGuiIn++,
+                HopDongSuDungDichVu::TRANG_THAI_DIEU_PHOI_HOAN_TAT_SAN_XUAT => $soHdHoanTat++,
+                default => null,
+            };
+        }
+
+        return [
+            'so_hop_dong_sddv_ky' => $rows->count(),
+            'so_buoi_chup' => $soBuoiChup,
+            'so_hd_tien_ky' => $soHdTienKy,
+            'so_hd_hau_ky' => $soHdHauKy,
+            'so_hd_gui_in' => $soHdGuiIn,
+            'so_hd_hoan_tat_san_xuat' => $soHdHoanTat,
+        ];
+    }
+
+    /**
+     * KPI + bảng Trang phục.
+     *
+     * @return array{
+     *   tong_trang_phuc: int,
+     *   so_dang_hoat_dong: int,
+     *   so_dang_cho_thue: int,
+     *   so_hd_dang_cho_thue: int,
+     *   doanh_thu_hd: int,
+     *   so_hd_tra_som: int,
+     *   so_hd_dung_han: int,
+     *   so_hd_qua_han: int,
+     *   top_san_pham: list<array{id: int, ma_san_pham: ?string, name: string, value: int}>,
+     *   hop_dong_moi_nhat: list<array{
+     *     id: int,
+     *     ma_hop_dong: ?string,
+     *     ten_khach_hang: ?string,
+     *     ngay_thue: ?string,
+     *     ngay_tra_du_kien: ?string,
+     *     ngay_tra_chinh_thuc: ?string,
+     *     tong_tien: int,
+     *     trang_thai: ?string,
+     *     hoan_tra_type: string,
+     *     hoan_tra_label: string
+     *   }>
+     * }
+     */
+    private function trangPhucTrongKy(Carbon $start, Carbon $end): array
+    {
+        $tongTrangPhuc = (int) TrangPhuc::query()->count();
+        $soDangHoatDong = (int) TrangPhuc::query()->where('trang_thai', 1)->count();
+        $soDangChoThue = (int) TrangPhuc::query()->where('tinh_trang', 'dang_cho_thue')->count();
+
+        $soHdDangChoThue = (int) HopDongChoThueTrangPhuc::query()
+            ->whereIn('trang_thai', ['dang_thue', 'qua_han'])
+            ->count();
+
+        $doanhThuHd = $this->doanhThuChoThueTrongKy($start, $end);
+
+        $hoanTra = $this->trangPhucHoanTraTrongKy($start, $end);
+        $topSanPham = $this->trangPhucTopSanPhamTrongKy($start, $end);
+        $hopDongMoiNhat = $this->trangPhucHopDongMoiNhatTrongKy($start, $end);
+
+        return [
+            'tong_trang_phuc' => $tongTrangPhuc,
+            'so_dang_hoat_dong' => $soDangHoatDong,
+            'so_dang_cho_thue' => $soDangChoThue,
+            'so_hd_dang_cho_thue' => $soHdDangChoThue,
+            'doanh_thu_hd' => $doanhThuHd,
+            'so_hd_tra_som' => $hoanTra['tra_som'],
+            'so_hd_dung_han' => $hoanTra['dung_han'],
+            'so_hd_qua_han' => $hoanTra['qua_han'],
+            'top_san_pham' => $topSanPham,
+            'hop_dong_moi_nhat' => $hopDongMoiNhat,
+        ];
+    }
+
+    /**
+     * Phân loại hoàn trả theo ngày trả chính thức trong kỳ.
+     * Quá hạn = trả muộn (đã trả) + đang quá hạn (chưa trả, hạn trong kỳ).
+     *
+     * @return array{tra_som: int, dung_han: int, qua_han: int}
+     */
+    private function trangPhucHoanTraTrongKy(Carbon $start, Carbon $end): array
+    {
+        $traSom = 0;
+        $dungHan = 0;
+        $traMuon = 0;
+
+        $returned = HopDongChoThueTrangPhuc::query()
+            ->whereNotIn('trang_thai', self::HD_EXCLUDED_STATUSES)
+            ->whereNotNull('ngay_tra_chinh_thuc')
+            ->whereNotNull('ngay_tra_du_kien')
+            ->whereBetween('ngay_tra_chinh_thuc', [$start->toDateString(), $end->toDateString()])
+            ->get(['ngay_tra_du_kien', 'ngay_tra_chinh_thuc']);
+
+        foreach ($returned as $row) {
+            $duKien = $row->ngay_tra_du_kien?->toDateString();
+            $chinhThuc = $row->ngay_tra_chinh_thuc?->toDateString();
+            if ($duKien === null || $chinhThuc === null) {
+                continue;
+            }
+            if ($chinhThuc < $duKien) {
+                $traSom++;
+            } elseif ($chinhThuc > $duKien) {
+                $traMuon++;
+            } else {
+                $dungHan++;
+            }
+        }
+
+        $today = Carbon::now(self::TIMEZONE)->toDateString();
+        $dangQuaHan = (int) HopDongChoThueTrangPhuc::query()
+            ->whereNotIn('trang_thai', array_merge(self::HD_EXCLUDED_STATUSES, ['hoan_thanh', 'da_tra']))
+            ->whereNull('ngay_tra_chinh_thuc')
+            ->whereNotNull('ngay_tra_du_kien')
+            ->where('ngay_tra_du_kien', '<', $today)
+            ->whereBetween('ngay_tra_du_kien', [$start->toDateString(), $end->toDateString()])
+            ->count();
+
+        return [
+            'tra_som' => $traSom,
+            'dung_han' => $dungHan,
+            'qua_han' => $traMuon + $dangQuaHan,
+        ];
+    }
+
+    /**
+     * Top 5 sản phẩm theo số lượt cho thuê trong kỳ (pivot.ngay_bat_dau).
+     *
+     * @return list<array{id: int, ma_san_pham: ?string, name: string, value: int}>
+     */
+    private function trangPhucTopSanPhamTrongKy(Carbon $start, Carbon $end): array
+    {
+        $rows = HopDongChoThueTrangPhucSanPhamChoThue::query()
+            ->from('hop_dong_cho_thue_trang_phuc_san_pham_cho_thue as sp')
+            ->join('hop_dong_cho_thue_trang_phuc as hd', 'hd.id', '=', 'sp.hop_dong_id')
+            ->leftJoin('trang_phuc as tp', 'tp.id', '=', 'sp.san_pham_id')
+            ->whereNotIn('hd.trang_thai', self::HD_EXCLUDED_STATUSES)
+            ->whereBetween('sp.ngay_bat_dau', [$start->toDateString(), $end->toDateString()])
+            ->whereNotNull('sp.san_pham_id')
+            ->selectRaw('sp.san_pham_id as id, tp.ma_san_pham, tp.ten_san_pham, COUNT(*) as luot_thue')
+            ->groupBy('sp.san_pham_id', 'tp.ma_san_pham', 'tp.ten_san_pham')
+            ->orderByDesc('luot_thue')
+            ->limit(5)
+            ->get();
+
+        return $rows->map(fn ($row) => [
+            'id' => (int) $row->id,
+            'ma_san_pham' => $row->ma_san_pham,
+            'name' => $row->ten_san_pham ?: ($row->ma_san_pham ?: ('SP #'.$row->id)),
+            'value' => (int) $row->luot_thue,
+        ])->all();
+    }
+
+    /**
+     * 5 hợp đồng mới nhất trong kỳ (theo created_at).
+     *
+     * @return list<array{
+     *   id: int,
+     *   ma_hop_dong: ?string,
+     *   ten_khach_hang: ?string,
+     *   ngay_thue: ?string,
+     *   ngay_tra_du_kien: ?string,
+     *   ngay_tra_chinh_thuc: ?string,
+     *   tong_tien: int,
+     *   trang_thai: ?string,
+     *   hoan_tra_type: string,
+     *   hoan_tra_label: string
+     * }>
+     */
+    private function trangPhucHopDongMoiNhatTrongKy(Carbon $start, Carbon $end): array
+    {
+        $rows = HopDongChoThueTrangPhuc::query()
+            ->whereNotIn('trang_thai', self::HD_EXCLUDED_STATUSES)
+            ->whereBetween('created_at', [$start, $end])
+            ->orderByDesc('created_at')
+            ->limit(5)
+            ->get([
+                'id',
+                'ma_hop_dong',
+                'ten_khach_hang',
+                'ngay_thue',
+                'ngay_tra_du_kien',
+                'ngay_tra_chinh_thuc',
+                'tong_tien',
+                'trang_thai',
+                'created_at',
+            ]);
+
+        $today = Carbon::now(self::TIMEZONE)->toDateString();
+
+        return $rows->map(function ($row) use ($today) {
+            [$type, $label] = $this->classifyHoanTraStatus(
+                $row->ngay_tra_du_kien?->toDateString(),
+                $row->ngay_tra_chinh_thuc?->toDateString(),
+                $today,
+            );
+
+            return [
+                'id' => (int) $row->id,
+                'ma_hop_dong' => $row->ma_hop_dong,
+                'ten_khach_hang' => $row->ten_khach_hang,
+                'ngay_thue' => $row->ngay_thue?->toDateString(),
+                'ngay_tra_du_kien' => $row->ngay_tra_du_kien?->toDateString(),
+                'ngay_tra_chinh_thuc' => $row->ngay_tra_chinh_thuc?->toDateString(),
+                'tong_tien' => (int) ($row->tong_tien ?? 0),
+                'trang_thai' => $row->trang_thai,
+                'hoan_tra_type' => $type,
+                'hoan_tra_label' => $label,
+            ];
+        })->all();
+    }
+
+    /**
+     * @return array{0: string, 1: string}
+     */
+    private function classifyHoanTraStatus(?string $duKien, ?string $chinhThuc, string $today): array
+    {
+        if ($duKien === null || $duKien === '') {
+            return ['muted', '—'];
+        }
+
+        if ($chinhThuc !== null && $chinhThuc !== '') {
+            if ($chinhThuc < $duKien) {
+                return ['early', 'Trả sớm'];
+            }
+            if ($chinhThuc > $duKien) {
+                return ['late', 'Trả muộn'];
+            }
+
+            return ['ontime', 'Trả đúng hạn'];
+        }
+
+        if ($duKien < $today) {
+            return ['overdue', 'Quá hạn'];
+        }
+        if ($duKien > $today) {
+            return ['remaining', 'Còn hạn'];
+        }
+
+        return ['today', 'Hôm nay hoàn trả'];
     }
 
     /**

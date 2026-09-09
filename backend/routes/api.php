@@ -239,6 +239,8 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
     Route::get('/tong-quan/ceo-admin', [DashboardController::class, 'ceoAdmin']); // KPI cards CEO & Admin theo tháng
     Route::get('/tong-quan/kinh-doanh', [DashboardController::class, 'kinhDoanh']); // KPI / biểu đồ tab Kinh doanh
     Route::get('/tong-quan/marketing', [DashboardController::class, 'marketing']); // KPI cards tab Marketing (report QC)
+    Route::get('/tong-quan/san-xuat-dieu-phoi', [DashboardController::class, 'sanXuatDieuPhoi']); // KPI cards tab Sản xuất & điều phối
+    Route::get('/tong-quan/trang-phuc', [DashboardController::class, 'trangPhuc']); // KPI / bảng tab Trang phục
 
     // --- Report quảng cáo ---
     Route::apiResource('report-quang-cao', ReportQuangCaoController::class); // CRUD báo cáo chi phí / hiệu quả quảng cáo
