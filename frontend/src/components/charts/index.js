@@ -1,6 +1,8 @@
 export { default as ChartArea } from './ChartArea.vue'
 export { default as ChartBar } from './ChartBar.vue'
+export { default as ChartBarBasic } from './ChartBarBasic.vue'
 export { default as ChartColumn } from './ChartColumn.vue'
+export { default as ChartColumnBasic } from './ChartColumnBasic.vue'
 export { default as ChartCombo } from './ChartCombo.vue'
 export { default as ChartDonut } from './ChartDonut.vue'
 export { default as ChartLine } from './ChartLine.vue'

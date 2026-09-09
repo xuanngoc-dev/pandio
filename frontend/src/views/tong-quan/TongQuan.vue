@@ -3,22 +3,22 @@
     <el-empty v-if="!visibleTabs.length" description="Bạn chưa được phân quyền tab nào trên màn này." />
 
     <el-tabs v-else v-model="activeTab" class="page-tabs">
-      <el-tab-pane v-if="hasTab('ceo-admin')" label="CEO & Admin" name="ceo-admin">
+      <el-tab-pane v-if="hasTab('ceo-admin')" label="CEO & Admin" name="ceo-admin" lazy>
         <CeoAdmin />
       </el-tab-pane>
-      <el-tab-pane v-if="hasTab('kinh-doanh')" label="Kinh doanh" name="kinh-doanh">
+      <el-tab-pane v-if="hasTab('kinh-doanh')" label="Kinh doanh" name="kinh-doanh" lazy>
         <KinhDoanh />
       </el-tab-pane>
-      <el-tab-pane v-if="hasTab('marketing')" label="Marketing" name="marketing">
+      <el-tab-pane v-if="hasTab('marketing')" label="Marketing" name="marketing" lazy>
         <Marketing />
       </el-tab-pane>
-      <el-tab-pane v-if="hasTab('san-xuat-dieu-phoi')" label="Sản xuất & điều phối" name="san-xuat-dieu-phoi">
+      <el-tab-pane v-if="hasTab('san-xuat-dieu-phoi')" label="Sản xuất & điều phối" name="san-xuat-dieu-phoi" lazy>
         <SanXuatDieuPhoi />
       </el-tab-pane>
-      <el-tab-pane v-if="hasTab('trang-phuc')" label="Trang phục" name="trang-phuc">
+      <el-tab-pane v-if="hasTab('trang-phuc')" label="Trang phục" name="trang-phuc" lazy>
         <TrangPhuc />
       </el-tab-pane>
-      <el-tab-pane v-if="hasTab('tai-chinh-nhan-su')" label="Tài chính & nhân sự" name="tai-chinh-nhan-su">
+      <el-tab-pane v-if="hasTab('tai-chinh-nhan-su')" label="Tài chính & nhân sự" name="tai-chinh-nhan-su" lazy>
         <TaiChinhNhanSu />
       </el-tab-pane>
     </el-tabs>

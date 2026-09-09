@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Models\DanhMucNguonKhach;
 use App\Models\HopDongChoThueTrangPhuc;
 use App\Models\HopDongSuDungDichVu;
 use App\Models\KhachHangNoteKhachMoi;
@@ -88,6 +89,53 @@ class DashboardController extends BaseApiController
                 'bieu_do_12_thang' => $bieuDo12Thang,
             ]);
         }, 'lấy thống kê CEO & Admin');
+    }
+
+    /**
+     * KPI + biểu đồ tab Kinh doanh theo khoảng ngày.
+     *
+     * Query: tu_ngay, den_ngay (YYYY-MM-DD; mặc định tháng hiện tại)
+     * Tương thích cũ: thang (YYYY-MM) nếu không truyền khoảng ngày
+     */
+    public function kinhDoanh(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'tu_ngay' => ['sometimes', 'nullable', 'date'],
+                'den_ngay' => ['sometimes', 'nullable', 'date', 'after_or_equal:tu_ngay'],
+                'thang' => ['sometimes', 'nullable', 'string', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/'],
+            ]);
+
+            [$start, $end] = $this->resolvePeriodBounds($validated);
+
+            $doanhThuSddv = $this->doanhThuSddvTrongKy($start, $end);
+            $doanhThuTp = $this->doanhThuChoThueTrongKy($start, $end);
+            $hopDong = $this->hopDongKyTrongKy($start, $end);
+            $noteKhachMoi = $this->noteKhachMoiTrongKy($start, $end, $hopDong['so_hop_dong_sddv_ky']);
+            $tyLeDen = $this->tyLeDenTrongKy($start, $end, $noteKhachMoi['tong_note_khach_moi']);
+            $trangThaiNote = $this->bieuDoTrangThaiNoteTrongKy($start, $end);
+            $nguonKhach = $this->bieuDoNguonKhachTrongKy($start, $end);
+            $xepHang = $this->xepHangSaleTrongKy($start, $end);
+
+            return response()->json([
+                'tu_ngay' => $start->toDateString(),
+                'den_ngay' => $end->toDateString(),
+                'doanh_thu_sddv' => $doanhThuSddv,
+                'doanh_thu_tp' => $doanhThuTp,
+                'so_hop_dong' => $hopDong['so_hop_dong_ky'],
+                'so_hop_dong_sddv_ky' => $hopDong['so_hop_dong_sddv_ky'],
+                'so_hop_dong_cho_thue_ky' => $hopDong['so_hop_dong_cho_thue_ky'],
+                'ty_le_chot' => $noteKhachMoi['ty_le_chot'],
+                'so_note_da_den' => $noteKhachMoi['so_note_da_den'],
+                'tong_note_khach_moi' => $noteKhachMoi['tong_note_khach_moi'],
+                'ty_le_den' => $tyLeDen['ty_le_den'],
+                'so_note_den_theo_tao' => $tyLeDen['so_note_den_theo_tao'],
+                'bieu_do_trang_thai_note' => $trangThaiNote,
+                'bieu_do_nguon_khach' => $nguonKhach,
+                'top_sale_so_hd' => $xepHang['top_sale_so_hd'],
+                'top_sale_doanh_thu' => $xepHang['top_sale_doanh_thu'],
+            ]);
+        }, 'lấy thống kê Kinh doanh');
     }
 
     /**
@@ -486,6 +534,319 @@ class DashboardController extends BaseApiController
         return [
             'tong_nhan_su' => (int) (clone $base)->count(),
             'nhan_su_active' => (int) (clone $base)->where('status', 'active')->count(),
+        ];
+    }
+
+    /**
+     * Tỷ lệ đến = note tạo trong kỳ có trạng thái đã đến / đã ký HĐ ÷ tổng note tạo trong kỳ.
+     *
+     * @return array{ty_le_den: float, so_note_den_theo_tao: int}
+     */
+    private function tyLeDenTrongKy(Carbon $start, Carbon $end, int $tongNote): array
+    {
+        $soDen = (int) KhachHangNoteKhachMoi::query()
+            ->whereBetween('created_at', [$start, $end])
+            ->whereIn('trang_thai', ['da_den', 'da_ky_hd'])
+            ->count();
+
+        $tyLe = $tongNote > 0 ? round(($soDen / $tongNote) * 100, 1) : 0.0;
+
+        return [
+            'ty_le_den' => $tyLe,
+            'so_note_den_theo_tao' => $soDen,
+        ];
+    }
+
+    /**
+     * Biểu đồ cột theo trạng thái note khách mới tạo trong kỳ.
+     *
+     * @return array{categories: list<string>, data: list<int>, keys: list<string>}
+     */
+    private function bieuDoTrangThaiNoteTrongKy(Carbon $start, Carbon $end): array
+    {
+        $labels = [
+            'cho_hen' => 'Chờ hẹn',
+            'da_den' => 'Đã đến',
+            'khong_den' => 'Không đến',
+            'da_ky_hd' => 'Đã ký HĐ',
+            'da_huy' => 'Đã hủy',
+        ];
+
+        $rows = KhachHangNoteKhachMoi::query()
+            ->whereBetween('created_at', [$start, $end])
+            ->toBase()
+            ->selectRaw('trang_thai, COUNT(*) as so_luong')
+            ->groupBy('trang_thai')
+            ->pluck('so_luong', 'trang_thai');
+
+        $categories = [];
+        $data = [];
+        $keys = [];
+
+        foreach ($labels as $key => $label) {
+            $categories[] = $label;
+            $data[] = (int) ($rows[$key] ?? 0);
+            $keys[] = $key;
+        }
+
+        foreach ($rows as $key => $count) {
+            if (isset($labels[$key])) {
+                continue;
+            }
+            $categories[] = (string) $key;
+            $data[] = (int) $count;
+            $keys[] = (string) $key;
+        }
+
+        return [
+            'categories' => $categories,
+            'data' => $data,
+            'keys' => $keys,
+        ];
+    }
+
+    /**
+     * Nguồn khách: đủ các bản ghi active trong danh_muc_nguon_khach.
+     * Series: note (nguon_khach) + HĐ SDDV (kenh_tiep_can). HĐ TP không còn trong chart.
+     *
+     * @return array{
+     *   categories: list<string>,
+     *   note_khach_moi: list<int>,
+     *   hop_dong_sddv: list<int>,
+     *   hop_dong_tp: list<int>
+     * }
+     */
+    private function bieuDoNguonKhachTrongKy(Carbon $start, Carbon $end): array
+    {
+        $catalog = DanhMucNguonKhach::query()
+            ->where('trang_thai', 'active')
+            ->orderBy('ten_nguon_khach')
+            ->pluck('ten_nguon_khach')
+            ->map(fn ($ten) => trim((string) $ten))
+            ->filter()
+            ->values()
+            ->all();
+
+        $noteRows = KhachHangNoteKhachMoi::query()
+            ->whereBetween('created_at', [$start, $end])
+            ->toBase()
+            ->selectRaw('nguon_khach, COUNT(*) as so_luong')
+            ->groupBy('nguon_khach')
+            ->get();
+
+        $sddvRows = HopDongSuDungDichVu::query()
+            ->whereNotIn('trang_thai', self::HD_EXCLUDED_STATUSES)
+            ->whereBetween('created_at', [$start, $end])
+            ->toBase()
+            ->selectRaw('kenh_tiep_can, COUNT(*) as so_luong')
+            ->groupBy('kenh_tiep_can')
+            ->get();
+
+        $noteByCatalog = array_fill_keys($catalog, 0);
+        $sddvByCatalog = array_fill_keys($catalog, 0);
+
+        foreach ($noteRows as $row) {
+            $matched = $this->matchNguonKhachToCatalog($row->nguon_khach ?? null, $catalog);
+            if ($matched === null) {
+                continue;
+            }
+            $noteByCatalog[$matched] += (int) $row->so_luong;
+        }
+
+        foreach ($sddvRows as $row) {
+            $matched = $this->matchNguonKhachToCatalog($row->kenh_tiep_can ?? null, $catalog);
+            if ($matched === null) {
+                continue;
+            }
+            $sddvByCatalog[$matched] += (int) $row->so_luong;
+        }
+
+        $categories = $catalog;
+        // Không có danh mục active → vẫn trả 1 cột trống để FE không lỗi
+        if ($categories === []) {
+            $categories = ['Không có nguồn'];
+            $noteByCatalog = ['Không có nguồn' => 0];
+            $sddvByCatalog = ['Không có nguồn' => 0];
+        }
+
+        return [
+            'categories' => $categories,
+            'note_khach_moi' => array_map(fn ($ten) => (int) ($noteByCatalog[$ten] ?? 0), $categories),
+            'hop_dong_sddv' => array_map(fn ($ten) => (int) ($sddvByCatalog[$ten] ?? 0), $categories),
+            'hop_dong_tp' => array_fill(0, count($categories), 0),
+        ];
+    }
+
+    /**
+     * Map giá trị lưu trên note/HĐ về đúng tên trong danh mục (ưu tiên khớp exact, rồi alias slug).
+     *
+     * @param  list<string>  $catalog
+     */
+    private function matchNguonKhachToCatalog(mixed $value, array $catalog): ?string
+    {
+        $raw = trim((string) ($value ?? ''));
+        if ($raw === '' || $catalog === []) {
+            return null;
+        }
+
+        foreach ($catalog as $ten) {
+            if (mb_strtolower($ten) === mb_strtolower($raw)) {
+                return $ten;
+            }
+        }
+
+        $normalized = $this->normalizeNguonKhachLabel($raw);
+        foreach ($catalog as $ten) {
+            if (mb_strtolower($ten) === mb_strtolower($normalized)) {
+                return $ten;
+            }
+        }
+
+        // Alias gần đúng: "Facebook" → "Facebook Ads" / "Facebook Page" (cộng vào mục đầu khớp prefix)
+        foreach ($catalog as $ten) {
+            $tenLower = mb_strtolower($ten);
+            $normLower = mb_strtolower($normalized);
+            if (str_starts_with($tenLower, $normLower) || str_starts_with($normLower, $tenLower)) {
+                return $ten;
+            }
+        }
+
+        return null;
+    }
+
+    private function normalizeNguonKhachLabel(mixed $value): string
+    {
+        $raw = trim((string) ($value ?? ''));
+        if ($raw === '') {
+            return 'Không xác định';
+        }
+
+        $map = [
+            'tiktok' => 'TikTok',
+            'facebook' => 'Facebook',
+            'google' => 'Google',
+            'gioi_thieu' => 'Giới thiệu',
+            'walk_in' => 'Walk-in',
+            'khac' => 'Khác',
+            'instagram' => 'Instagram',
+            'zalo' => 'Zalo',
+            'youtube' => 'YouTube',
+            'hotline' => 'Hotline',
+            'website' => 'Website',
+        ];
+
+        $key = mb_strtolower($raw);
+
+        return $map[$key] ?? $raw;
+    }
+
+    /**
+     * Top 5 sale theo số HĐ ký và theo doanh thu HĐ ký trong kỳ.
+     * SDDV: nguoi_tao_id · TP: nguoi_cho_thue.
+     *
+     * @return array{
+     *   top_sale_so_hd: list<array{id: int, name: string, value: int, so_hd_sddv: int, so_hd_tp: int, doanh_thu: int}>,
+     *   top_sale_doanh_thu: list<array{id: int, name: string, value: int, so_hd: int, doanh_thu_sddv: int, doanh_thu_tp: int}>
+     * }
+     */
+    private function xepHangSaleTrongKy(Carbon $start, Carbon $end): array
+    {
+        $sddvRows = HopDongSuDungDichVu::query()
+            ->whereNotIn('trang_thai', self::HD_EXCLUDED_STATUSES)
+            ->whereBetween('created_at', [$start, $end])
+            ->whereNotNull('nguoi_tao_id')
+            ->toBase()
+            ->selectRaw('nguoi_tao_id as user_id, COUNT(*) as so_hd, COALESCE(SUM(tong_tien), 0) as doanh_thu')
+            ->groupBy('nguoi_tao_id')
+            ->get()
+            ->keyBy('user_id');
+
+        $tpRows = HopDongChoThueTrangPhuc::query()
+            ->whereNotIn('trang_thai', self::HD_EXCLUDED_STATUSES)
+            ->whereBetween('created_at', [$start, $end])
+            ->whereNotNull('nguoi_cho_thue')
+            ->toBase()
+            ->selectRaw('nguoi_cho_thue as user_id, COUNT(*) as so_hd, COALESCE(SUM(tong_tien), 0) as doanh_thu')
+            ->groupBy('nguoi_cho_thue')
+            ->get()
+            ->keyBy('user_id');
+
+        $userIds = collect($sddvRows->keys())
+            ->merge($tpRows->keys())
+            ->unique()
+            ->filter()
+            ->values()
+            ->all();
+
+        $users = User::query()
+            ->whereIn('id', $userIds)
+            ->get(['id', 'name'])
+            ->keyBy('id');
+
+        $merged = collect($userIds)->map(function ($userId) use ($sddvRows, $tpRows, $users) {
+            $sddv = $sddvRows->get($userId);
+            $tp = $tpRows->get($userId);
+            $soHdSddv = (int) ($sddv->so_hd ?? 0);
+            $soHdTp = (int) ($tp->so_hd ?? 0);
+            $dtSddv = (int) ($sddv->doanh_thu ?? 0);
+            $dtTp = (int) ($tp->doanh_thu ?? 0);
+            $user = $users->get($userId);
+
+            return [
+                'id' => (int) $userId,
+                'name' => $user?->name ?: ('User #'.$userId),
+                'so_hd' => $soHdSddv + $soHdTp,
+                'so_hd_sddv' => $soHdSddv,
+                'so_hd_tp' => $soHdTp,
+                'doanh_thu' => $dtSddv + $dtTp,
+                'doanh_thu_sddv' => $dtSddv,
+                'doanh_thu_tp' => $dtTp,
+            ];
+        });
+
+        $topSoHd = $merged
+            ->sort(function ($a, $b) {
+                if ($a['so_hd'] === $b['so_hd']) {
+                    return $b['doanh_thu'] <=> $a['doanh_thu'];
+                }
+
+                return $b['so_hd'] <=> $a['so_hd'];
+            })
+            ->take(5)
+            ->values()
+            ->map(fn ($row) => [
+                'id' => $row['id'],
+                'name' => $row['name'],
+                'value' => $row['so_hd'],
+                'so_hd_sddv' => $row['so_hd_sddv'],
+                'so_hd_tp' => $row['so_hd_tp'],
+                'doanh_thu' => $row['doanh_thu'],
+            ])
+            ->all();
+
+        $topDoanhThu = $merged
+            ->sort(function ($a, $b) {
+                if ($a['doanh_thu'] === $b['doanh_thu']) {
+                    return $b['so_hd'] <=> $a['so_hd'];
+                }
+
+                return $b['doanh_thu'] <=> $a['doanh_thu'];
+            })
+            ->take(5)
+            ->values()
+            ->map(fn ($row) => [
+                'id' => $row['id'],
+                'name' => $row['name'],
+                'value' => $row['doanh_thu'],
+                'so_hd' => $row['so_hd'],
+                'doanh_thu_sddv' => $row['doanh_thu_sddv'],
+                'doanh_thu_tp' => $row['doanh_thu_tp'],
+            ])
+            ->all();
+
+        return [
+            'top_sale_so_hd' => $topSoHd,
+            'top_sale_doanh_thu' => $topDoanhThu,
         ];
     }
 }
