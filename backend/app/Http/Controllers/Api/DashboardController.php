@@ -7,7 +7,9 @@ use App\Models\HopDongChoThueTrangPhuc;
 use App\Models\HopDongChoThueTrangPhucSanPhamChoThue;
 use App\Models\HopDongSuDungDichVu;
 use App\Models\KhachHangNoteKhachMoi;
+use App\Models\NhanVien;
 use App\Models\PhieuThuChi;
+use App\Models\PhongBan;
 use App\Models\ReportQuangCao;
 use App\Models\TrangPhuc;
 use App\Models\User;
@@ -193,6 +195,37 @@ class DashboardController extends BaseApiController
     }
 
     /**
+     * KPI cards tab Tài chính & nhân sự theo tháng.
+     *
+     * Query: thang (YYYY-MM; mặc định tháng hiện tại)
+     */
+    public function taiChinhNhanSu(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'thang' => ['sometimes', 'nullable', 'string', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/'],
+            ]);
+
+            $thang = $validated['thang'] ?? Carbon::now(self::TIMEZONE)->format('Y-m');
+            [$start, $end] = $this->monthBounds($thang);
+            $stats = $this->taiChinhNhanSuTrongThang($start, $end, $thang);
+            $nhanSu = $this->tongNhanSu();
+            $bieuDoPhongBan = $this->bieuDoNhanSuTheoPhongBan();
+            $bieuDoThuChi = $this->bieuDoThuChi12Thang();
+
+            return response()->json(array_merge([
+                'thang' => $thang,
+                'tu_ngay' => $start->toDateString(),
+                'den_ngay' => $end->toDateString(),
+                'tong_nhan_su' => $nhanSu['tong_nhan_su'],
+                'nhan_su_active' => $nhanSu['nhan_su_active'],
+                'bieu_do_nhan_su_theo_phong_ban' => $bieuDoPhongBan,
+                'bieu_do_thu_chi_12_thang' => $bieuDoThuChi,
+            ], $stats));
+        }, 'lấy thống kê Tài chính & nhân sự');
+    }
+
+    /**
      * KPI + bảng tab Trang phục theo khoảng ngày.
      *
      * Snapshot (không phụ thuộc kỳ): tổng SP, đang hoạt động, đang cho thuê, HĐ đang thuê.
@@ -343,6 +376,199 @@ class DashboardController extends BaseApiController
             'loi_nhuan_truoc_thue' => $tongThu - $tongChi,
             'tong_thu_da_duyet' => $tongThu,
             'tong_chi_da_duyet' => $tongChi,
+        ];
+    }
+
+    /**
+     * KPI Tài chính & nhân sự theo tháng:
+     * - Tổng thu / tổng chi: phiếu thu-chi đã duyệt trong tháng
+     * - Lợi nhuận trước thuế = SUM(tong_tien_khach_phai_thanh_toan HĐ SDDV)
+     *   + SUM(thanh_tien HĐ thuê TP) − quỹ lương thực nhận
+     *
+     * @return array{
+     *   tong_thu: int,
+     *   tong_chi: int,
+     *   loi_nhuan_truoc_thue: int,
+     *   doanh_thu_sddv: int,
+     *   doanh_thu_tp: int,
+     *   quy_luong: int,
+     *   quy_luong_meta: array{so_nhan_vien: int, da_chot: bool, nguon: string}
+     * }
+     */
+    private function taiChinhNhanSuTrongThang(Carbon $start, Carbon $end, string $thang): array
+    {
+        $thuChi = $this->loiNhuanTruocThue($start, $end);
+
+        $doanhThuSddv = (int) HopDongSuDungDichVu::query()
+            ->whereNotIn('trang_thai', self::HD_EXCLUDED_STATUSES)
+            ->whereBetween('created_at', [$start, $end])
+            ->sum('tong_tien_khach_phai_thanh_toan');
+
+        $doanhThuTp = (int) HopDongChoThueTrangPhuc::query()
+            ->whereNotIn('trang_thai', self::HD_EXCLUDED_STATUSES)
+            ->whereBetween('created_at', [$start, $end])
+            ->sum('thanh_tien');
+
+        /** @var TinhLuongController $tinhLuong */
+        $tinhLuong = app(TinhLuongController::class);
+        $quyLuong = $tinhLuong->tongQuyLuong($thang);
+
+        $quyLuongValue = (int) ($quyLuong['quy_luong'] ?? 0);
+
+        return [
+            'tong_thu' => $thuChi['tong_thu_da_duyet'],
+            'tong_chi' => $thuChi['tong_chi_da_duyet'],
+            'doanh_thu_sddv' => $doanhThuSddv,
+            'doanh_thu_tp' => $doanhThuTp,
+            'quy_luong' => $quyLuongValue,
+            'quy_luong_meta' => [
+                'so_nhan_vien' => (int) ($quyLuong['so_nhan_vien'] ?? 0),
+                'da_chot' => ! empty($quyLuong['da_chot']),
+                'nguon' => (string) ($quyLuong['nguon'] ?? ''),
+            ],
+            'loi_nhuan_truoc_thue' => $doanhThuSddv + $doanhThuTp - $quyLuongValue,
+        ];
+    }
+
+    /**
+     * Phân bổ nhân sự active theo phòng ban × loại NV (full_time / part_time / chưa phân công).
+     * Một NV có thể thuộc nhiều phòng ban.
+     *
+     * @return array{
+     *   categories: list<string>,
+     *   ids: list<?int>,
+     *   full_time: list<int>,
+     *   part_time: list<int>,
+     *   chua_phan_cong: list<int>
+     * }
+     */
+    private function bieuDoNhanSuTheoPhongBan(): array
+    {
+        $phongBans = PhongBan::query()
+            ->orderBy('ten_phong_ban')
+            ->get(['id', 'ten_phong_ban']);
+
+        $emptyBucket = ['full_time' => 0, 'part_time' => 0, 'chua_phan_cong' => 0];
+        $countMap = [];
+        foreach ($phongBans as $pb) {
+            $countMap[(int) $pb->id] = $emptyBucket;
+        }
+        $chuaPhanPhong = $emptyBucket;
+
+        $nhanViens = NhanVien::query()
+            ->whereHas('user', fn ($q) => $q->where('status', 'active'))
+            ->get(['id', 'phong_ban_ids', 'loai_nhan_vien']);
+
+        foreach ($nhanViens as $nv) {
+            $loai = match ($nv->loai_nhan_vien) {
+                'full_time' => 'full_time',
+                'part_time' => 'part_time',
+                default => 'chua_phan_cong',
+            };
+
+            $ids = $nv->phong_ban_ids ?? [];
+            if (! is_array($ids) || $ids === []) {
+                $chuaPhanPhong[$loai]++;
+                continue;
+            }
+
+            $matched = false;
+            foreach ($ids as $pbId) {
+                $pbId = (int) $pbId;
+                if (array_key_exists($pbId, $countMap)) {
+                    $countMap[$pbId][$loai]++;
+                    $matched = true;
+                }
+            }
+            if (! $matched) {
+                $chuaPhanPhong[$loai]++;
+            }
+        }
+
+        $categories = [];
+        $ids = [];
+        $fullTime = [];
+        $partTime = [];
+        $chuaPhanCong = [];
+
+        foreach ($phongBans as $pb) {
+            $id = (int) $pb->id;
+            $bucket = $countMap[$id] ?? $emptyBucket;
+            $categories[] = $pb->ten_phong_ban ?: ('PB #'.$id);
+            $ids[] = $id;
+            $fullTime[] = $bucket['full_time'];
+            $partTime[] = $bucket['part_time'];
+            $chuaPhanCong[] = $bucket['chua_phan_cong'];
+        }
+
+        $hasChuaPhanPhong = array_sum($chuaPhanPhong) > 0;
+        if ($hasChuaPhanPhong || $categories === []) {
+            $categories[] = 'Chưa phân phòng';
+            $ids[] = null;
+            $fullTime[] = $chuaPhanPhong['full_time'];
+            $partTime[] = $chuaPhanPhong['part_time'];
+            $chuaPhanCong[] = $chuaPhanPhong['chua_phan_cong'];
+        }
+
+        return [
+            'categories' => $categories,
+            'ids' => $ids,
+            'full_time' => $fullTime,
+            'part_time' => $partTime,
+            'chua_phan_cong' => $chuaPhanCong,
+        ];
+    }
+
+    /**
+     * Thu / chi đã duyệt theo 12 tháng gần nhất (ngay_cap_nhat_trang_thai).
+     *
+     * @return array{categories: list<string>, tong_thu: list<int>, tong_chi: list<int>}
+     */
+    private function bieuDoThuChi12Thang(): array
+    {
+        $end = Carbon::now(self::TIMEZONE)->endOfMonth();
+        $start = $end->copy()->subMonths(11)->startOfMonth();
+
+        $rows = PhieuThuChi::query()
+            ->where('trang_thai', 'da_duyet')
+            ->whereBetween('ngay_cap_nhat_trang_thai', [$start, $end])
+            ->toBase()
+            ->selectRaw(
+                "DATE_FORMAT(ngay_cap_nhat_trang_thai, '%Y-%m') as thang,
+                 loai,
+                 COALESCE(SUM(so_tien), 0) as tong"
+            )
+            ->groupBy('thang', 'loai')
+            ->get();
+
+        $thuByMonth = [];
+        $chiByMonth = [];
+        foreach ($rows as $row) {
+            $key = (string) $row->thang;
+            if ($row->loai === 'thu') {
+                $thuByMonth[$key] = (int) $row->tong;
+            } elseif ($row->loai === 'chi') {
+                $chiByMonth[$key] = (int) $row->tong;
+            }
+        }
+
+        $categories = [];
+        $tongThu = [];
+        $tongChi = [];
+
+        $cursor = $start->copy();
+        while ($cursor->lte($end)) {
+            $key = $cursor->format('Y-m');
+            $categories[] = $cursor->format('m/Y');
+            $tongThu[] = $thuByMonth[$key] ?? 0;
+            $tongChi[] = $chiByMonth[$key] ?? 0;
+            $cursor->addMonth();
+        }
+
+        return [
+            'categories' => $categories,
+            'tong_thu' => $tongThu,
+            'tong_chi' => $tongChi,
         ];
     }
 

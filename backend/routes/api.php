@@ -241,6 +241,7 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
     Route::get('/tong-quan/marketing', [DashboardController::class, 'marketing']); // KPI cards tab Marketing (report QC)
     Route::get('/tong-quan/san-xuat-dieu-phoi', [DashboardController::class, 'sanXuatDieuPhoi']); // KPI cards tab Sản xuất & điều phối
     Route::get('/tong-quan/trang-phuc', [DashboardController::class, 'trangPhuc']); // KPI / bảng tab Trang phục
+    Route::get('/tong-quan/tai-chinh-nhan-su', [DashboardController::class, 'taiChinhNhanSu']); // KPI cards tab Tài chính & nhân sự
 
     // --- Report quảng cáo ---
     Route::apiResource('report-quang-cao', ReportQuangCaoController::class); // CRUD báo cáo chi phí / hiệu quả quảng cáo
