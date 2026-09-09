@@ -155,10 +155,12 @@ class DashboardController extends BaseApiController
 
             [$start, $end] = $this->resolvePeriodBounds($validated);
             $stats = $this->marketingQuangCaoTrongKy($start, $end);
+            $bieuDoTheoNgay = $this->marketingBieuDoTheoNgay($start, $end);
 
             return response()->json(array_merge([
                 'tu_ngay' => $start->toDateString(),
                 'den_ngay' => $end->toDateString(),
+                'bieu_do_theo_ngay' => $bieuDoTheoNgay,
             ], $stats));
         }, 'lấy thống kê Marketing');
     }
@@ -546,6 +548,84 @@ class DashboardController extends BaseApiController
             'ty_le_khach_den_hen' => $lichHen > 0
                 ? round($khachDen * 100 / $lichHen, 1)
                 : 0.0,
+        ];
+    }
+
+    /**
+     * Series theo ngày trong kỳ — Chi phí / CPL / CPI theo kênh FB, TikTok, Google.
+     * CPI Google = 0 (không có inbox_google). CPL/CPI tính lại từ CPQC ÷ KH/inbox trong ngày.
+     *
+     * @return array{
+     *   categories: list<string>,
+     *   chi_phi: array{facebook: list<int>, tiktok: list<int>, google: list<int>},
+     *   cpl: array{facebook: list<int>, tiktok: list<int>, google: list<int>},
+     *   cpi: array{facebook: list<int>, tiktok: list<int>, google: list<int>}
+     * }
+     */
+    private function marketingBieuDoTheoNgay(Carbon $start, Carbon $end): array
+    {
+        $tuNgay = $start->toDateString();
+        $denNgay = $end->toDateString();
+
+        $rows = ReportQuangCao::query()
+            ->whereBetween('ngay', [$tuNgay, $denNgay])
+            ->toBase()
+            ->selectRaw(implode(', ', [
+                'ngay',
+                'COALESCE(SUM(cpqc_fb), 0) as cpqc_fb',
+                'COALESCE(SUM(cpqc_tiktok), 0) as cpqc_tiktok',
+                'COALESCE(SUM(cpqc_google), 0) as cpqc_google',
+                'COALESCE(SUM(inbox_fb), 0) as inbox_fb',
+                'COALESCE(SUM(inbox_tiktok), 0) as inbox_tiktok',
+                'COALESCE(SUM(kh_fb), 0) as kh_fb',
+                'COALESCE(SUM(kh_tiktok), 0) as kh_tiktok',
+                'COALESCE(SUM(kh_google), 0) as kh_google',
+            ]))
+            ->groupBy('ngay')
+            ->orderBy('ngay')
+            ->get()
+            ->keyBy(fn ($row) => Carbon::parse($row->ngay)->toDateString());
+
+        $categories = [];
+        $chiPhi = ['facebook' => [], 'tiktok' => [], 'google' => []];
+        $cpl = ['facebook' => [], 'tiktok' => [], 'google' => []];
+        $cpi = ['facebook' => [], 'tiktok' => [], 'google' => []];
+
+        $cursor = $start->copy()->startOfDay();
+        $last = $end->copy()->startOfDay();
+
+        while ($cursor->lte($last)) {
+            $key = $cursor->toDateString();
+            $row = $rows->get($key);
+
+            $cpFb = (int) ($row->cpqc_fb ?? 0);
+            $cpTt = (int) ($row->cpqc_tiktok ?? 0);
+            $cpGg = (int) ($row->cpqc_google ?? 0);
+            $inboxFb = (int) ($row->inbox_fb ?? 0);
+            $inboxTt = (int) ($row->inbox_tiktok ?? 0);
+            $khFb = (int) ($row->kh_fb ?? 0);
+            $khTt = (int) ($row->kh_tiktok ?? 0);
+            $khGg = (int) ($row->kh_google ?? 0);
+
+            $categories[] = $cursor->format('d/m');
+            $chiPhi['facebook'][] = $cpFb;
+            $chiPhi['tiktok'][] = $cpTt;
+            $chiPhi['google'][] = $cpGg;
+            $cpl['facebook'][] = $khFb > 0 ? (int) round($cpFb / $khFb) : 0;
+            $cpl['tiktok'][] = $khTt > 0 ? (int) round($cpTt / $khTt) : 0;
+            $cpl['google'][] = $khGg > 0 ? (int) round($cpGg / $khGg) : 0;
+            $cpi['facebook'][] = $inboxFb > 0 ? (int) round($cpFb / $inboxFb) : 0;
+            $cpi['tiktok'][] = $inboxTt > 0 ? (int) round($cpTt / $inboxTt) : 0;
+            $cpi['google'][] = 0;
+
+            $cursor->addDay();
+        }
+
+        return [
+            'categories' => $categories,
+            'chi_phi' => $chiPhi,
+            'cpl' => $cpl,
+            'cpi' => $cpi,
         ];
     }
 

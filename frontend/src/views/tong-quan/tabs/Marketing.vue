@@ -57,6 +57,41 @@
       </CustomCol>
     </CustomRow>
 
+    <CustomRow :gutter="12" class="dash-row">
+      <CustomCol :xs="24">
+        <CustomCard shadow="hover" class="chart-card">
+          <template #header>
+            <div class="card-header">
+              <div>
+                <div class="card-title">{{ chartMetricMeta.title }} theo ngày</div>
+                <p class="card-sub">{{ chartMetricMeta.sub }}</p>
+              </div>
+              <el-radio-group v-model="chartMetric" size="small">
+                <el-radio-button
+                  v-for="opt in chartMetricOptions"
+                  :key="opt.key"
+                  :value="opt.key"
+                >
+                  {{ opt.label }}
+                </el-radio-button>
+              </el-radio-group>
+            </div>
+          </template>
+          <ChartLineBasic
+            v-if="chartCategories.length"
+            :series="chartSeries"
+            :categories="chartCategories"
+            :colors="channelColors"
+            :height="350"
+            :y-formatter="formatCompactMoney"
+            :tooltip-formatter="formatMoney"
+            :min-category-width="48"
+          />
+          <el-empty v-else description="Chưa có dữ liệu trong kỳ" :image-size="72" />
+        </CustomCard>
+      </CustomCol>
+    </CustomRow>
+
     <el-empty
       v-if="!loading && isEmptyPeriod"
       description="Không có report quảng cáo trong khoảng ngày đã chọn (lọc theo cột ngày)."
@@ -77,6 +112,7 @@ import {
   Wallet,
 } from '@element-plus/icons-vue'
 import { fetchTongQuanMarketing } from '@/api/tongQuanMarketing'
+import { ChartLineBasic } from '@/components/charts'
 import StatCard from '@/components/dashboard/StatCard.vue'
 
 defineOptions({ name: 'Marketing' })
@@ -88,11 +124,20 @@ const datePresets = [
   { key: 'last_month', label: 'Tháng trước' },
 ]
 
+const chartMetricOptions = [
+  { key: 'chi_phi', label: 'Chi phí' },
+  { key: 'cpl', label: 'CPL' },
+  { key: 'cpi', label: 'CPI' },
+]
+
+const channelColors = ['#409eff', '#36cfc9', '#e6a23c']
+
 /** Mặc định: 3 tháng gần nhất (bao gồm tháng hiện tại) — report QC thường lệch tháng */
 const dateRange = ref(getDefaultRange())
 const appliedRange = ref(getDefaultRange())
 const loading = ref(false)
 const stats = ref(null)
+const chartMetric = ref('chi_phi')
 
 const activePreset = computed(() => {
   const range = dateRange.value
@@ -116,6 +161,46 @@ const isEmptyPeriod = computed(() => {
     !Number(s.lich_hen) &&
     !Number(s.khach_den_tu_hen)
   )
+})
+
+const chartMetricMeta = computed(() => {
+  if (chartMetric.value === 'cpl') {
+    return {
+      title: 'CPL',
+      sub: 'CPQC / lead theo ngày · Facebook · TikTok · Google',
+    }
+  }
+  if (chartMetric.value === 'cpi') {
+    return {
+      title: 'CPI',
+      sub: 'CPQC / inbox theo ngày · Facebook · TikTok (Google không có inbox)',
+    }
+  }
+  return {
+    title: 'Chi phí QC',
+    sub: 'CPQC theo ngày · Facebook · TikTok · Google',
+  }
+})
+
+const chartCategories = computed(
+  () => stats.value?.bieu_do_theo_ngay?.categories || [],
+)
+
+const chartSeries = computed(() => {
+  const chart = stats.value?.bieu_do_theo_ngay
+  const metric = chart?.[chartMetric.value]
+  if (!metric) {
+    return [
+      { name: 'Facebook', data: [] },
+      { name: 'TikTok', data: [] },
+      { name: 'Google', data: [] },
+    ]
+  }
+  return [
+    { name: 'Facebook', data: metric.facebook || [] },
+    { name: 'TikTok', data: metric.tiktok || [] },
+    { name: 'Google', data: metric.google || [] },
+  ]
 })
 
 const statCards = computed(() => {
@@ -282,6 +367,12 @@ function emptyStats() {
     khach_den_tu_hen: 0,
     lich_hen: 0,
     ty_le_khach_den_hen: 0,
+    bieu_do_theo_ngay: {
+      categories: [],
+      chi_phi: { facebook: [], tiktok: [], google: [] },
+      cpl: { facebook: [], tiktok: [], google: [] },
+      cpi: { facebook: [], tiktok: [], google: [] },
+    },
   }
 }
 
@@ -345,6 +436,17 @@ function formatMoney(val) {
   return `${Number(val || 0).toLocaleString('vi-VN')} ₫`
 }
 
+function formatCompactMoney(val) {
+  const n = Number(val || 0)
+  if (Math.abs(n) >= 1_000_000) {
+    return `${(n / 1_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}tr`
+  }
+  if (Math.abs(n) >= 1_000) {
+    return `${(n / 1_000).toLocaleString('vi-VN', { maximumFractionDigits: 0 })}k`
+  }
+  return n.toLocaleString('vi-VN')
+}
+
 function formatPercent(val) {
   return `${Number(val || 0).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}%`
 }
@@ -383,10 +485,45 @@ function formatCount(val) {
     min-width: 0;
   }
 
-  :deep(> .el-col > .stat-card) {
+  :deep(> .el-col > .stat-card),
+  :deep(> .el-col > .chart-card) {
     width: 100%;
     flex: 1;
     min-width: 0;
   }
+}
+
+.chart-card {
+  min-width: 0;
+
+  :deep(.el-card__header) {
+    padding: 10px 12px 4px;
+    border-bottom: none;
+  }
+
+  :deep(.el-card__body) {
+    padding: 4px 12px 12px;
+  }
+}
+
+.card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.card-sub {
+  margin: 1px 0 0;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--el-text-color-placeholder);
 }
 </style>
