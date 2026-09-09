@@ -139,6 +139,31 @@ class DashboardController extends BaseApiController
     }
 
     /**
+     * KPI cards tab Marketing theo khoảng ngày (nguồn: report_quang_cao).
+     *
+     * Query: tu_ngay, den_ngay (YYYY-MM-DD; mặc định tháng hiện tại)
+     * Tương thích cũ: thang (YYYY-MM) nếu không truyền khoảng ngày
+     */
+    public function marketing(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'tu_ngay' => ['sometimes', 'nullable', 'date'],
+                'den_ngay' => ['sometimes', 'nullable', 'date', 'after_or_equal:tu_ngay'],
+                'thang' => ['sometimes', 'nullable', 'string', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/'],
+            ]);
+
+            [$start, $end] = $this->resolvePeriodBounds($validated);
+            $stats = $this->marketingQuangCaoTrongKy($start, $end);
+
+            return response()->json(array_merge([
+                'tu_ngay' => $start->toDateString(),
+                'den_ngay' => $end->toDateString(),
+            ], $stats));
+        }, 'lấy thống kê Marketing');
+    }
+
+    /**
      * @param  array{tu_ngay?: ?string, den_ngay?: ?string, thang?: ?string}  $validated
      * @return array{0: Carbon, 1: Carbon}
      */
@@ -432,6 +457,95 @@ class DashboardController extends BaseApiController
             'tong_cp_quang_cao' => $tongCp,
             'tong_lead_quang_cao' => $tongKh,
             'cpl_trung_binh' => $cpl,
+        ];
+    }
+
+    /**
+     * KPI Marketing — cộng dồn report_quang_cao; CPI/CPL tính lại từ tổng (weighted).
+     *
+     * @return array{
+     *   tong_chi_phi_qc: int,
+     *   chi_phi_facebook: int,
+     *   chi_phi_tiktok: int,
+     *   chi_phi_google: int,
+     *   tong_inbox: int,
+     *   inbox_facebook: int,
+     *   inbox_tiktok: int,
+     *   cpi_trung_binh: int,
+     *   cpl_trung_binh: int,
+     *   cpl_facebook: int,
+     *   cpl_tiktok: int,
+     *   cpl_google: int,
+     *   tong_lead: int,
+     *   lead_facebook: int,
+     *   lead_tiktok: int,
+     *   lead_google: int,
+     *   khach_den_tu_hen: int,
+     *   lich_hen: int,
+     *   ty_le_khach_den_hen: float
+     * }
+     */
+    private function marketingQuangCaoTrongKy(Carbon $start, Carbon $end): array
+    {
+        // Lọc theo cột `ngay` (DATE) của report_quang_cao — khoảng [tu_ngay, den_ngay]
+        $tuNgay = $start->toDateString();
+        $denNgay = $end->toDateString();
+
+        $row = ReportQuangCao::query()
+            ->whereBetween('ngay', [$tuNgay, $denNgay])
+            ->toBase()
+            ->selectRaw(implode(', ', [
+                'COALESCE(SUM(cpqc_fb), 0) as cpqc_fb',
+                'COALESCE(SUM(cpqc_tiktok), 0) as cpqc_tiktok',
+                'COALESCE(SUM(cpqc_google), 0) as cpqc_google',
+                'COALESCE(SUM(inbox_fb), 0) as inbox_fb',
+                'COALESCE(SUM(inbox_tiktok), 0) as inbox_tiktok',
+                'COALESCE(SUM(kh_fb), 0) as kh_fb',
+                'COALESCE(SUM(kh_tiktok), 0) as kh_tiktok',
+                'COALESCE(SUM(kh_google), 0) as kh_google',
+                'COALESCE(SUM(lich_hen), 0) as lich_hen',
+                'COALESCE(SUM(khach_den_tu_hen), 0) as khach_den_tu_hen',
+            ]))
+            ->first();
+
+        $cpFb = (int) ($row->cpqc_fb ?? 0);
+        $cpTt = (int) ($row->cpqc_tiktok ?? 0);
+        $cpGg = (int) ($row->cpqc_google ?? 0);
+        $inboxFb = (int) ($row->inbox_fb ?? 0);
+        $inboxTt = (int) ($row->inbox_tiktok ?? 0);
+        $khFb = (int) ($row->kh_fb ?? 0);
+        $khTt = (int) ($row->kh_tiktok ?? 0);
+        $khGg = (int) ($row->kh_google ?? 0);
+        $lichHen = (int) ($row->lich_hen ?? 0);
+        $khachDen = (int) ($row->khach_den_tu_hen ?? 0);
+
+        $tongCp = $cpFb + $cpTt + $cpGg;
+        $tongInbox = $inboxFb + $inboxTt;
+        $tongLead = $khFb + $khTt + $khGg;
+        $cpInbox = $cpFb + $cpTt;
+
+        return [
+            'tong_chi_phi_qc' => $tongCp,
+            'chi_phi_facebook' => $cpFb,
+            'chi_phi_tiktok' => $cpTt,
+            'chi_phi_google' => $cpGg,
+            'tong_inbox' => $tongInbox,
+            'inbox_facebook' => $inboxFb,
+            'inbox_tiktok' => $inboxTt,
+            'cpi_trung_binh' => $tongInbox > 0 ? (int) round($cpInbox / $tongInbox) : 0,
+            'cpl_trung_binh' => $tongLead > 0 ? (int) round($tongCp / $tongLead) : 0,
+            'cpl_facebook' => $khFb > 0 ? (int) round($cpFb / $khFb) : 0,
+            'cpl_tiktok' => $khTt > 0 ? (int) round($cpTt / $khTt) : 0,
+            'cpl_google' => $khGg > 0 ? (int) round($cpGg / $khGg) : 0,
+            'tong_lead' => $tongLead,
+            'lead_facebook' => $khFb,
+            'lead_tiktok' => $khTt,
+            'lead_google' => $khGg,
+            'khach_den_tu_hen' => $khachDen,
+            'lich_hen' => $lichHen,
+            'ty_le_khach_den_hen' => $lichHen > 0
+                ? round($khachDen * 100 / $lichHen, 1)
+                : 0.0,
         ];
     }
 
