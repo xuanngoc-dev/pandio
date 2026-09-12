@@ -139,6 +139,16 @@
             </el-tag>
           </template>
         </CustomTableColumn>
+        <CustomTableColumn
+          v-if="columnSettings.isColumnVisible('created_at')"
+          label="Ngày tạo"
+          width="120"
+          align="center"
+        >
+          <template #default="{ row }">
+            {{ formatDate(row.created_at) }}
+          </template>
+        </CustomTableColumn>
         <CustomTableColumn label="Thao tác" width="100" fixed="right" align="center">
           <template #default="{ row }">
             <div class="action-btns">
@@ -384,6 +394,7 @@ const tableColumns = [
   { key: 'tong_tien_hang', label: 'Tổng tiền hàng' },
   { key: 'du_no', label: 'Dư nợ' },
   { key: 'trang_thai', label: 'Trạng thái' },
+  { key: 'created_at', label: 'Ngày tạo' },
 ]
 const columnSettings = useTableColumns('van-hanh-cuoi.dat-mua-trang-phuc', tableColumns)
 

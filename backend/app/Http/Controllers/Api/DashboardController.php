@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Models\ChotLuongThang;
 use App\Models\DanhMucNguonKhach;
+use App\Models\DatMuaTrangPhuc;
 use App\Models\HopDongChoThueTrangPhuc;
 use App\Models\HopDongChoThueTrangPhucSanPhamChoThue;
 use App\Models\HopDongSuDungDichVu;
@@ -315,7 +316,7 @@ class DashboardController extends BaseApiController
      * KPI + bảng tab Trang phục theo khoảng ngày.
      *
      * Snapshot (không phụ thuộc kỳ): tổng SP, đang hoạt động, đang cho thuê, HĐ đang thuê.
-     * Theo kỳ (created_at / ngày trả / lượt thuê): doanh thu, trả sớm/đúng hạn/quá hạn,
+     * Theo kỳ (created_at / ngày trả / lượt thuê): doanh thu, đơn đặt mua, trả sớm/đúng hạn/quá hạn,
      * top 5 SP, 5 HĐ mới nhất.
      *
      * Query: tu_ngay, den_ngay (YYYY-MM-DD; mặc định tháng hiện tại)
@@ -798,6 +799,7 @@ class DashboardController extends BaseApiController
      *   so_dang_cho_thue: int,
      *   so_hd_dang_cho_thue: int,
      *   doanh_thu_hd: int,
+     *   so_don_dat_mua_ky: int,
      *   so_hd_tra_som: int,
      *   so_hd_dung_han: int,
      *   so_hd_qua_han: int,
@@ -827,6 +829,9 @@ class DashboardController extends BaseApiController
             ->count();
 
         $doanhThuHd = $this->doanhThuChoThueTrongKy($start, $end);
+        $soDonDatMuaKy = (int) DatMuaTrangPhuc::query()
+            ->whereBetween('created_at', [$start, $end])
+            ->count();
 
         $hoanTra = $this->trangPhucHoanTraTrongKy($start, $end);
         $topSanPham = $this->trangPhucTopSanPhamTrongKy($start, $end);
@@ -838,6 +843,7 @@ class DashboardController extends BaseApiController
             'so_dang_cho_thue' => $soDangChoThue,
             'so_hd_dang_cho_thue' => $soHdDangChoThue,
             'doanh_thu_hd' => $doanhThuHd,
+            'so_don_dat_mua_ky' => $soDonDatMuaKy,
             'so_hd_tra_som' => $hoanTra['tra_som'],
             'so_hd_dung_han' => $hoanTra['dung_han'],
             'so_hd_qua_han' => $hoanTra['qua_han'],

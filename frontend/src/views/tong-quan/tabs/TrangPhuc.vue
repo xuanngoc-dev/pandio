@@ -141,6 +141,7 @@ import {
   Clock,
   Goods,
   Money,
+  ShoppingCart,
   WarningFilled,
 } from '@element-plus/icons-vue'
 import { fetchTongQuanTrangPhuc } from '@/api/tongQuanTrangPhuc'
@@ -231,6 +232,14 @@ const statCards = computed(() => {
       icon: Money,
     },
     {
+      key: 'so_don_dat_mua_ky',
+      title: 'Đơn đặt mua kỳ',
+      value: formatCount(s.so_don_dat_mua_ky),
+      hint: 'Số đơn đặt mua tạo trong kỳ',
+      tone: 'warning',
+      icon: ShoppingCart,
+    },
+    {
       key: 'so_hd_tra_som',
       title: 'Trả sớm',
       value: formatCount(s.so_hd_tra_som),
@@ -318,6 +327,7 @@ function emptyStats() {
     so_dang_cho_thue: 0,
     so_hd_dang_cho_thue: 0,
     doanh_thu_hd: 0,
+    so_don_dat_mua_ky: 0,
     so_hd_tra_som: 0,
     so_hd_dung_han: 0,
     so_hd_qua_han: 0,
