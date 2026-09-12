@@ -495,13 +495,14 @@ class DashboardController extends BaseApiController
     /**
      * KPI Tài chính & nhân sự theo tháng:
      * - Tổng thu / tổng chi: phiếu thu-chi đã duyệt trong tháng
-     * - Lợi nhuận trước thuế = SUM(tong_tien_khach_phai_thanh_toan HĐ SDDV)
-     *   + SUM(thanh_tien HĐ thuê TP) − quỹ lương thực nhận
+     * - Lợi nhuận trước thuế chỉ tính khi đã chốt lương:
+     *   (DT SDDV + DT TP) − (chi đã duyệt + quỹ lương)
      *
      * @return array{
      *   tong_thu: int,
      *   tong_chi: int,
-     *   loi_nhuan_truoc_thue: int,
+     *   da_chot_luong: bool,
+     *   loi_nhuan_truoc_thue: ?int,
      *   doanh_thu_sddv: int,
      *   doanh_thu_tp: int,
      *   quy_luong: int,
@@ -527,10 +528,13 @@ class DashboardController extends BaseApiController
         $quyLuong = $tinhLuong->tongQuyLuong($thang);
 
         $quyLuongValue = (int) ($quyLuong['quy_luong'] ?? 0);
+        $tongChiDaDuyet = (int) ($thuChi['tong_chi_da_duyet'] ?? 0);
+        $daChotLuong = $this->daChotLuongTrongKy($start, $end);
+        $tongDoanhThu = $doanhThuSddv + $doanhThuTp;
 
         return [
             'tong_thu' => $thuChi['tong_thu_da_duyet'],
-            'tong_chi' => $thuChi['tong_chi_da_duyet'],
+            'tong_chi' => $tongChiDaDuyet,
             'doanh_thu_sddv' => $doanhThuSddv,
             'doanh_thu_tp' => $doanhThuTp,
             'quy_luong' => $quyLuongValue,
@@ -539,7 +543,10 @@ class DashboardController extends BaseApiController
                 'da_chot' => ! empty($quyLuong['da_chot']),
                 'nguon' => (string) ($quyLuong['nguon'] ?? ''),
             ],
-            'loi_nhuan_truoc_thue' => $doanhThuSddv + $doanhThuTp - $quyLuongValue,
+            'da_chot_luong' => $daChotLuong,
+            'loi_nhuan_truoc_thue' => $daChotLuong
+                ? $tongDoanhThu - ($tongChiDaDuyet + $quyLuongValue)
+                : null,
         ];
     }
 

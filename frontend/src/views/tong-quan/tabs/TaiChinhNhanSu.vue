@@ -46,6 +46,8 @@
           :value="card.value"
           :hint="card.hint"
           :tone="card.tone"
+          :pending="card.pending"
+          :pending-text="card.pendingText"
         >
           <template #icon>
             <component :is="card.icon" />
@@ -135,6 +137,8 @@ const activePreset = computed(() => {
 
 const statCards = computed(() => {
   const s = stats.value || emptyStats()
+  const daChotLuong = s.da_chot_luong === true
+  const tongDoanhThu = Number(s.doanh_thu_sddv || 0) + Number(s.doanh_thu_tp || 0)
 
   return [
     {
@@ -156,9 +160,13 @@ const statCards = computed(() => {
     {
       key: 'loi_nhuan_truoc_thue',
       title: 'Lợi nhuận trước thuế',
-      value: formatMoney(s.loi_nhuan_truoc_thue),
-      hint: 'Tổng doanh thu - quỹ lương',
-      tone: 'primary',
+      value: daChotLuong ? formatMoney(s.loi_nhuan_truoc_thue) : '',
+      hint: daChotLuong
+        ? `DT ${formatMoney(tongDoanhThu)} − (Chi ${formatMoney(s.tong_chi)} + Quỹ lương ${formatMoney(s.quy_luong)})`
+        : '',
+      pending: !daChotLuong,
+      pendingText: 'Đợi chốt lương...',
+      tone: daChotLuong ? 'success' : 'warning',
       icon: TrendCharts,
     },
     {
@@ -259,7 +267,8 @@ function emptyStats() {
   return {
     tong_thu: 0,
     tong_chi: 0,
-    loi_nhuan_truoc_thue: 0,
+    da_chot_luong: false,
+    loi_nhuan_truoc_thue: null,
     doanh_thu_sddv: 0,
     doanh_thu_tp: 0,
     quy_luong: 0,
