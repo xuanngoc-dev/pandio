@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Models\ChotLuongThang;
 use App\Models\DanhMucNguonKhach;
 use App\Models\HopDongChoThueTrangPhuc;
 use App\Models\HopDongChoThueTrangPhucSanPhamChoThue;
@@ -52,31 +53,55 @@ class DashboardController extends BaseApiController
 
             $loiNhuan = $this->loiNhuanTruocThue($start, $end);
             $hopDong = $this->hopDongKyTrongKy($start, $end);
-            $khachHang = $this->tongKhachHang();
+            $hopDongDangXuLy = $this->hopDongDangXuLy();
             $noteKhachMoi = $this->noteKhachMoiTrongKy($start, $end, $hopDong['so_hop_dong_sddv_ky']);
+            $khachDen = $this->khachDenTrongKy($start, $end);
             $quangCao = $this->quangCaoTrongKy($start, $end);
             $nhanSu = $this->tongNhanSu();
             $quyLuong = $this->quyLuongTrongKy($start, $end);
             $coCauDoanhThu = $this->coCauDoanhThuTheoCreatedAt($start, $end);
             $bieuDo12Thang = $this->bieuDoDoanhThu12Thang();
+            $daChotLuong = $this->daChotLuongTrongKy($start, $end);
+            $quyLuongValue = (int) ($quyLuong['quy_luong'] ?? 0);
+            $tongChiDaDuyet = (int) ($loiNhuan['tong_chi_da_duyet'] ?? 0);
+            $loiNhuanTruocThue = $daChotLuong
+                ? $tongDoanhThu - ($tongChiDaDuyet + $quyLuongValue)
+                : null;
+            $bienLoiNhuanGop = ($daChotLuong && $tongDoanhThu > 0)
+                ? round($loiNhuanTruocThue / $tongDoanhThu * 100, 1)
+                : ($daChotLuong ? 0.0 : null);
+            $soHopDongSddvKy = (int) ($hopDong['so_hop_dong_sddv_ky'] ?? 0);
+            $doanhThuTrungBinh = $soHopDongSddvKy > 0
+                ? (int) round($doanhThuSddv / $soHopDongSddvKy)
+                : 0;
 
             return response()->json([
                 'tu_ngay' => $start->toDateString(),
                 'den_ngay' => $end->toDateString(),
                 'tong_doanh_thu' => $tongDoanhThu,
                 'doanh_thu_sddv' => $doanhThuSddv,
+                'doanh_thu_trung_binh' => $doanhThuTrungBinh,
                 'doanh_thu_cho_thue' => $doanhThuChoThue,
-                'loi_nhuan_truoc_thue' => $loiNhuan['loi_nhuan_truoc_thue'],
+                'da_chot_luong' => $daChotLuong,
+                'loi_nhuan_truoc_thue' => $loiNhuanTruocThue,
+                'bien_loi_nhuan_gop' => $bienLoiNhuanGop,
                 'tong_thu_da_duyet' => $loiNhuan['tong_thu_da_duyet'],
-                'tong_chi_da_duyet' => $loiNhuan['tong_chi_da_duyet'],
+                'tong_chi_da_duyet' => $tongChiDaDuyet,
                 'so_hop_dong_ky' => $hopDong['so_hop_dong_ky'],
                 'so_hop_dong_sddv_ky' => $hopDong['so_hop_dong_sddv_ky'],
                 'so_hop_dong_cho_thue_ky' => $hopDong['so_hop_dong_cho_thue_ky'],
-                'tong_khach_hang' => $khachHang['tong_khach_hang'],
-                'khach_hang' => $khachHang,
+                'hd_dang_xu_ly' => $hopDongDangXuLy['hd_dang_xu_ly'],
+                'hd_sddv_dang_thuc_hien' => $hopDongDangXuLy['hd_sddv_dang_thuc_hien'],
+                'hd_cho_thue_dang_thue' => $hopDongDangXuLy['hd_cho_thue_dang_thue'],
+                'so_khach_den' => $khachDen['so_khach_den'],
+                'so_khach_den_co_tra_cuu_hd' => $khachDen['so_khach_den_co_tra_cuu_hd'],
+                'tlc_khach_den' => $khachDen['tlc_khach_den'],
                 'tong_note_khach_moi' => $noteKhachMoi['tong_note_khach_moi'],
                 'so_note_da_den' => $noteKhachMoi['so_note_da_den'],
                 'ty_le_chot' => $noteKhachMoi['ty_le_chot'],
+                'tong_inbox' => $quangCao['tong_inbox'],
+                'inbox_facebook' => $quangCao['inbox_facebook'],
+                'inbox_tiktok' => $quangCao['inbox_tiktok'],
                 'tong_cp_quang_cao' => $quangCao['tong_cp_quang_cao'],
                 'tong_lead_quang_cao' => $quangCao['tong_lead_quang_cao'],
                 'cpl_trung_binh' => $quangCao['cpl_trung_binh'],
@@ -283,6 +308,32 @@ class DashboardController extends BaseApiController
         $end = $start->copy()->endOfMonth();
 
         return [$start, $end];
+    }
+
+    /**
+     * Kỳ lọc đã chốt lương khi mọi tháng giao với khoảng ngày
+     * đều có bản ghi da_chot trong chot_luong_thang.
+     */
+    private function daChotLuongTrongKy(Carbon $start, Carbon $end): bool
+    {
+        $cursor = $start->copy()->startOfMonth();
+        $last = $end->copy()->startOfMonth();
+
+        while ($cursor->lte($last)) {
+            $exists = ChotLuongThang::query()
+                ->where('thang', (int) $cursor->month)
+                ->where('nam', (int) $cursor->year)
+                ->where('trang_thai', ChotLuongThang::TRANG_THAI_DA_CHOT)
+                ->exists();
+
+            if (! $exists) {
+                return false;
+            }
+
+            $cursor->addMonth();
+        }
+
+        return true;
     }
 
     /**
@@ -591,6 +642,28 @@ class DashboardController extends BaseApiController
             'so_hop_dong_ky' => $sddv + $choThue,
             'so_hop_dong_sddv_ky' => $sddv,
             'so_hop_dong_cho_thue_ky' => $choThue,
+        ];
+    }
+
+    /**
+     * Snapshot HĐ đang xử lý: SDDV đang thực hiện + thuê TP đang thuê.
+     *
+     * @return array{hd_dang_xu_ly: int, hd_sddv_dang_thuc_hien: int, hd_cho_thue_dang_thue: int}
+     */
+    private function hopDongDangXuLy(): array
+    {
+        $sddv = (int) HopDongSuDungDichVu::query()
+            ->where('trang_thai', 'dang_thuc_hien')
+            ->count();
+
+        $choThue = (int) HopDongChoThueTrangPhuc::query()
+            ->where('trang_thai', 'dang_thue')
+            ->count();
+
+        return [
+            'hd_dang_xu_ly' => $sddv + $choThue,
+            'hd_sddv_dang_thuc_hien' => $sddv,
+            'hd_cho_thue_dang_thue' => $choThue,
         ];
     }
 
@@ -966,6 +1039,32 @@ class DashboardController extends BaseApiController
     }
 
     /**
+     * Khách đến trong kỳ (ngày đến thực tế) + TLC = có tra_cuu_hd / tổng khách đến.
+     *
+     * @return array{so_khach_den: int, so_khach_den_co_tra_cuu_hd: int, tlc_khach_den: float}
+     */
+    private function khachDenTrongKy(Carbon $start, Carbon $end): array
+    {
+        $base = KhachHangNoteKhachMoi::query()
+            ->whereNotNull('ngay_den_thuc_te')
+            ->whereBetween('ngay_den_thuc_te', [$start->toDateString(), $end->toDateString()]);
+
+        $soKhachDen = (int) (clone $base)->count();
+        $soCoTraCuuHd = (int) (clone $base)
+            ->whereNotNull('tra_cuu_hd')
+            ->where('tra_cuu_hd', '!=', '')
+            ->count();
+
+        return [
+            'so_khach_den' => $soKhachDen,
+            'so_khach_den_co_tra_cuu_hd' => $soCoTraCuuHd,
+            'tlc_khach_den' => $soKhachDen > 0
+                ? round($soCoTraCuuHd / $soKhachDen * 100, 1)
+                : 0.0,
+        ];
+    }
+
+    /**
      * Note khách mới trong kỳ + tỷ lệ chốt = HĐ SDDV ký / note đã đến × 100.
      *
      * @return array{tong_note_khach_moi: int, so_note_da_den: int, ty_le_chot: float}
@@ -999,7 +1098,14 @@ class DashboardController extends BaseApiController
     }
 
     /**
-     * @return array{tong_cp_quang_cao: int, tong_lead_quang_cao: int, cpl_trung_binh: int}
+     * @return array{
+     *   tong_cp_quang_cao: int,
+     *   tong_lead_quang_cao: int,
+     *   cpl_trung_binh: int,
+     *   tong_inbox: int,
+     *   inbox_facebook: int,
+     *   inbox_tiktok: int
+     * }
      */
     private function quangCaoTrongKy(Carbon $start, Carbon $end): array
     {
@@ -1010,17 +1116,24 @@ class DashboardController extends BaseApiController
             ->selectRaw(implode(', ', [
                 'COALESCE(SUM(cpqc_tiktok), 0) + COALESCE(SUM(cpqc_fb), 0) + COALESCE(SUM(cpqc_google), 0) as tong_cp',
                 'COALESCE(SUM(kh_tiktok), 0) + COALESCE(SUM(kh_fb), 0) + COALESCE(SUM(kh_google), 0) as tong_kh',
+                'COALESCE(SUM(inbox_fb), 0) as inbox_fb',
+                'COALESCE(SUM(inbox_tiktok), 0) as inbox_tiktok',
             ]))
             ->first();
 
         $tongCp = (int) ($row->tong_cp ?? 0);
         $tongKh = (int) ($row->tong_kh ?? 0);
+        $inboxFb = (int) ($row->inbox_fb ?? 0);
+        $inboxTt = (int) ($row->inbox_tiktok ?? 0);
         $cpl = $tongKh > 0 ? (int) round($tongCp / $tongKh) : 0;
 
         return [
             'tong_cp_quang_cao' => $tongCp,
             'tong_lead_quang_cao' => $tongKh,
             'cpl_trung_binh' => $cpl,
+            'tong_inbox' => $inboxFb + $inboxTt,
+            'inbox_facebook' => $inboxFb,
+            'inbox_tiktok' => $inboxTt,
         ];
     }
 

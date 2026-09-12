@@ -49,6 +49,8 @@
           :value="card.value"
           :hint="card.hint"
           :tone="card.tone"
+          :pending="card.pending"
+          :pending-text="card.pendingText"
         >
           <template #icon>
             <component :is="card.icon" />
@@ -114,11 +116,15 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
+  ChatDotRound,
   Coin,
+  DataAnalysis,
   Document,
+  FolderOpened,
   Histogram,
   Money,
   Opportunity,
+  Ticket,
   TrendCharts,
   User,
   UserFilled,
@@ -166,6 +172,7 @@ const appliedRangeLabel = computed(() => {
 
 const statCards = computed(() => {
   const s = stats.value || emptyStats()
+  const daChotLuong = s.da_chot_luong === true
 
   return [
     {
@@ -185,12 +192,36 @@ const statCards = computed(() => {
       icon: Money,
     },
     {
+      key: 'doanh_thu_trung_binh',
+      title: 'Doanh thu HĐ SDDV trung bình',
+      value: formatMoney(s.doanh_thu_trung_binh),
+      hint: `DT SDDV ${formatMoney(s.doanh_thu_sddv)} / ${formatCount(s.so_hop_dong_sddv_ky)} HĐ SDDV`,
+      tone: 'info',
+      icon: Ticket,
+    },
+    {
       key: 'loi_nhuan_truoc_thue',
       title: 'Lợi nhuận trước thuế',
-      value: formatMoney(s.loi_nhuan_truoc_thue),
-      hint: `Thu ${formatMoney(s.tong_thu_da_duyet)} − Chi ${formatMoney(s.tong_chi_da_duyet)} (đã duyệt)`,
-      tone: 'success',
+      value: daChotLuong ? formatMoney(s.loi_nhuan_truoc_thue) : '',
+      hint: daChotLuong
+        ? `DT ${formatMoney(s.tong_doanh_thu)} − (Chi ${formatMoney(s.tong_chi_da_duyet)} + Quỹ lương ${formatMoney(s.quy_luong)})`
+        : '',
+      pending: !daChotLuong,
+      pendingText: 'Đợi chốt lương...',
+      tone: daChotLuong ? 'success' : 'warning',
       icon: TrendCharts,
+    },
+    {
+      key: 'bien_loi_nhuan_gop',
+      title: 'Biên lợi nhuận gộp',
+      value: daChotLuong ? formatPercent(s.bien_loi_nhuan_gop) : '',
+      hint: daChotLuong
+        ? `LNTT ${formatMoney(s.loi_nhuan_truoc_thue)} / DT ${formatMoney(s.tong_doanh_thu)}`
+        : '',
+      pending: !daChotLuong,
+      pendingText: 'Đợi chốt lương...',
+      tone: daChotLuong ? 'info' : 'warning',
+      icon: DataAnalysis,
     },
     {
       key: 'so_hop_dong_ky',
@@ -201,12 +232,28 @@ const statCards = computed(() => {
       icon: Document,
     },
     {
-      key: 'tong_khach_hang',
-      title: 'Tổng khách hàng',
-      value: formatCount(s.tong_khach_hang),
-      hint: khachHangHint(s.khach_hang),
+      key: 'hd_dang_xu_ly',
+      title: 'HĐ đang xử lý',
+      value: formatCount(s.hd_dang_xu_ly),
+      hint: `SDDV đang thực hiện ${formatCount(s.hd_sddv_dang_thuc_hien)} · Thuê TP đang thuê ${formatCount(s.hd_cho_thue_dang_thue)}`,
+      tone: 'warning',
+      icon: FolderOpened,
+    },
+    {
+      key: 'so_khach_den',
+      title: 'Số khách đến',
+      value: formatCount(s.so_khach_den),
+      hint: 'Note khách mới có ngày đến trong kỳ',
       tone: 'info',
       icon: User,
+    },
+    {
+      key: 'tlc_khach_den',
+      title: 'TLC khách đến',
+      value: formatPercent(s.tlc_khach_den),
+      hint: `Có tra cứu HĐ ${formatCount(s.so_khach_den_co_tra_cuu_hd)} / Đến ${formatCount(s.so_khach_den)}`,
+      tone: 'success',
+      icon: TrendCharts,
     },
     {
       key: 'tong_note_khach_moi',
@@ -223,6 +270,14 @@ const statCards = computed(() => {
       hint: `HĐ SDDV ký ${formatCount(s.so_hop_dong_sddv_ky)} / Đã đến ${formatCount(s.so_note_da_den)}`,
       tone: 'success',
       icon: TrendCharts,
+    },
+    {
+      key: 'tong_inbox',
+      title: 'Tổng inbox',
+      value: formatCount(s.tong_inbox),
+      hint: `FB ${formatCount(s.inbox_facebook)} · TikTok ${formatCount(s.inbox_tiktok)}`,
+      tone: 'primary',
+      icon: ChatDotRound,
     },
     {
       key: 'tong_cp_quang_cao',
@@ -354,17 +409,27 @@ function emptyStats() {
   return {
     tong_doanh_thu: 0,
     doanh_thu_sddv: 0,
-    loi_nhuan_truoc_thue: 0,
+    doanh_thu_trung_binh: 0,
+    da_chot_luong: false,
+    loi_nhuan_truoc_thue: null,
+    bien_loi_nhuan_gop: null,
     tong_thu_da_duyet: 0,
     tong_chi_da_duyet: 0,
     so_hop_dong_ky: 0,
     so_hop_dong_sddv_ky: 0,
     so_hop_dong_cho_thue_ky: 0,
-    tong_khach_hang: 0,
-    khach_hang: null,
+    hd_dang_xu_ly: 0,
+    hd_sddv_dang_thuc_hien: 0,
+    hd_cho_thue_dang_thue: 0,
+    so_khach_den: 0,
+    so_khach_den_co_tra_cuu_hd: 0,
+    tlc_khach_den: 0,
     tong_note_khach_moi: 0,
     so_note_da_den: 0,
     ty_le_chot: 0,
+    tong_inbox: 0,
+    inbox_facebook: 0,
+    inbox_tiktok: 0,
     tong_cp_quang_cao: 0,
     tong_lead_quang_cao: 0,
     cpl_trung_binh: 0,
@@ -385,11 +450,6 @@ function emptyStats() {
       so_hop_dong_cho_thue: [],
     },
   }
-}
-
-function khachHangHint(kh) {
-  if (!kh) return 'Gom theo SĐT từ note, HĐ SDDV, HĐ cho thuê'
-  return `Note ${formatCount(kh.tu_note_khach_moi)} · SDDV ${formatCount(kh.tu_hop_dong_sddv)} · Thuê TP ${formatCount(kh.tu_hop_dong_cho_thue)}`
 }
 
 function quyLuongHint(meta) {

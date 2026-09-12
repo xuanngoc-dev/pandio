@@ -1,13 +1,15 @@
 <script setup>
 import { computed } from 'vue'
-import { CaretBottom, CaretTop } from '@element-plus/icons-vue'
+import { CaretBottom, CaretTop, Loading } from '@element-plus/icons-vue'
 
 defineOptions({ name: 'StatCard' })
 
 const props = defineProps({
   title: { type: String, required: true },
-  value: { type: [String, Number], required: true },
+  value: { type: [String, Number], default: '' },
   hint: { type: String, default: '' },
+  pending: { type: Boolean, default: false },
+  pendingText: { type: String, default: 'Đợi chốt lương...' },
   change: { type: Number, default: null },
   changeLabel: { type: String, default: 'so với kỳ trước' },
   tone: {
@@ -40,8 +42,12 @@ const changeText = computed(() => {
       </div>
       <div class="stat-card__meta">
         <p class="stat-card__title">{{ title }}</p>
-        <p class="stat-card__value">{{ value }}</p>
-        <p v-if="hint && change == null" class="stat-card__hint">{{ hint }}</p>
+        <p v-if="pending" class="stat-card__value is-pending">
+          <CustomIcon class="is-loading"><Loading /></CustomIcon>
+          <span>{{ pendingText }}</span>
+        </p>
+        <p v-else class="stat-card__value">{{ value }}</p>
+        <p v-if="hint && change == null && !pending" class="stat-card__hint">{{ hint }}</p>
       </div>
       <CustomTooltip v-if="change != null" :content="hint || changeLabel" placement="top">
         <span class="stat-card__change" :class="`is-${changeKind}`">
@@ -140,6 +146,15 @@ const changeText = computed(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+
+  &.is-pending {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--el-text-color-secondary);
+  }
 }
 
 .stat-card__hint {
