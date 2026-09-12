@@ -65,6 +65,7 @@ import { ElMessage } from 'element-plus'
 import {
   Camera,
   CircleCheck,
+  Clock,
   Document,
   Finished,
   Picture,
@@ -118,6 +119,14 @@ const statCards = computed(() => {
       hint: 'Tổng buổi chụp trong thông tin điều phối của HĐ ký trong kỳ',
       tone: 'info',
       icon: Camera,
+    },
+    {
+      key: 'so_hd_cho_dieu_phoi',
+      title: 'HĐ chờ điều phối',
+      value: formatCount(s.so_hd_cho_dieu_phoi),
+      hint: 'HĐ ký trong kỳ chưa có trạng thái điều phối',
+      tone: 'warning',
+      icon: Clock,
     },
     {
       key: 'so_hd_tien_ky',
@@ -197,6 +206,7 @@ function emptyStats() {
   return {
     so_hop_dong_sddv_ky: 0,
     so_buoi_chup: 0,
+    so_hd_cho_dieu_phoi: 0,
     so_hd_tien_ky: 0,
     so_hd_hau_ky: 0,
     so_hd_gui_in: 0,

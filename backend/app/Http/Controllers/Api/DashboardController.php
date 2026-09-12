@@ -238,10 +238,18 @@ class DashboardController extends BaseApiController
             [$start, $end] = $this->resolvePeriodBounds($validated);
             $stats = $this->marketingQuangCaoTrongKy($start, $end);
             $bieuDoTheoNgay = $this->marketingBieuDoTheoNgay($start, $end);
+            $hopDong = $this->hopDongKyTrongKy($start, $end);
+            $tongNoteKhachMoi = (int) KhachHangNoteKhachMoi::query()
+                ->whereBetween('created_at', [$start, $end])
+                ->count();
 
             return response()->json(array_merge([
                 'tu_ngay' => $start->toDateString(),
                 'den_ngay' => $end->toDateString(),
+                'tong_note_khach_moi' => $tongNoteKhachMoi,
+                'so_hop_dong_ky' => $hopDong['so_hop_dong_ky'],
+                'so_hop_dong_sddv_ky' => $hopDong['so_hop_dong_sddv_ky'],
+                'so_hop_dong_cho_thue_ky' => $hopDong['so_hop_dong_cho_thue_ky'],
                 'bieu_do_theo_ngay' => $bieuDoTheoNgay,
             ], $stats));
         }, 'lấy thống kê Marketing');
@@ -727,6 +735,7 @@ class DashboardController extends BaseApiController
      * @return array{
      *   so_hop_dong_sddv_ky: int,
      *   so_buoi_chup: int,
+     *   so_hd_cho_dieu_phoi: int,
      *   so_hd_tien_ky: int,
      *   so_hd_hau_ky: int,
      *   so_hd_gui_in: int,
@@ -741,6 +750,7 @@ class DashboardController extends BaseApiController
             ->get(['id', 'thong_tin_dieu_phoi', 'ket_qua_hop_dong']);
 
         $soBuoiChup = 0;
+        $soHdChoDieuPhoi = 0;
         $soHdTienKy = 0;
         $soHdHauKy = 0;
         $soHdGuiIn = 0;
@@ -751,6 +761,7 @@ class DashboardController extends BaseApiController
 
             $status = HopDongSuDungDichVu::trangThaiDieuPhoi($row->thong_tin_dieu_phoi);
             if ($status === null) {
+                $soHdChoDieuPhoi++;
                 $ketQua = is_array($row->ket_qua_hop_dong) ? $row->ket_qua_hop_dong : [];
                 $fromKetQua = $ketQua['trang_thai']['gia_tri'] ?? null;
                 $status = ($fromKetQua === null || $fromKetQua === '')
@@ -770,6 +781,7 @@ class DashboardController extends BaseApiController
         return [
             'so_hop_dong_sddv_ky' => $rows->count(),
             'so_buoi_chup' => $soBuoiChup,
+            'so_hd_cho_dieu_phoi' => $soHdChoDieuPhoi,
             'so_hd_tien_ky' => $soHdTienKy,
             'so_hd_hau_ky' => $soHdHauKy,
             'so_hd_gui_in' => $soHdGuiIn,
