@@ -10,6 +10,9 @@ import {
   parseSessionLoaiQuayChup,
   sharedLichQuayChupLabel,
   THOI_GIAN_HOAN_TAT_SAN_XUAT_KEY,
+  THOI_GIAN_UP_FILE_GOC_KEY,
+  THOI_GIAN_UP_FILE_IN_KEY,
+  THOI_GIAN_UP_FILE_LE_KEY,
 } from './thongTinDieuPhoi'
 
 const STAFF_ROLE_LABELS = {
@@ -73,15 +76,31 @@ export function formatDieuPhoiDateTime(value) {
   return `${dd}/${mm}/${yyyy} ${hh}:${mi}`
 }
 
-export function getThoiGianHoanTatSanXuat(row) {
+function getDieuPhoiEnvelopeDateTime(row, key) {
   const raw = row?.thong_tin_dieu_phoi
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return ''
-  const value = raw[THOI_GIAN_HOAN_TAT_SAN_XUAT_KEY] ?? raw.thoi_gian_hoan_tat_san_xuat
+  const value = raw[key]
   if (value == null || value === '') return ''
   if (typeof value === 'object' && !Array.isArray(value)) {
     return formatDieuPhoiDateTime(value.gia_tri)
   }
   return formatDieuPhoiDateTime(value)
+}
+
+export function getThoiGianHoanTatSanXuat(row) {
+  return getDieuPhoiEnvelopeDateTime(row, THOI_GIAN_HOAN_TAT_SAN_XUAT_KEY)
+}
+
+export function getThoiGianUpFileGoc(row) {
+  return getDieuPhoiEnvelopeDateTime(row, THOI_GIAN_UP_FILE_GOC_KEY)
+}
+
+export function getThoiGianUpFileLe(row) {
+  return getDieuPhoiEnvelopeDateTime(row, THOI_GIAN_UP_FILE_LE_KEY)
+}
+
+export function getThoiGianUpFileIn(row) {
+  return getDieuPhoiEnvelopeDateTime(row, THOI_GIAN_UP_FILE_IN_KEY)
 }
 
 function formatTime(value) {

@@ -147,7 +147,14 @@
           :key="field.key"
           class="cong-viec-card__file"
         >
-          <span class="label">{{ field.label }}</span>
+          <CustomTooltip
+            v-if="field.uploadedAt"
+            :content="`Up lúc ${field.uploadedAt}`"
+            placement="top"
+          >
+            <span class="label is-hint">{{ field.label }}</span>
+          </CustomTooltip>
+          <span v-else class="label">{{ field.label }}</span>
           <div class="cong-viec-card__file-actions">
             <template v-if="field.url">
               <a
@@ -448,7 +455,12 @@ import {
   CustomTooltip,
 } from '@/components/element'
 import { useAuthStore } from '@/stores/auth'
-import { getThoiGianHoanTatSanXuat } from '@/utils/dieuPhoiTuDongDisplay'
+import {
+  getThoiGianHoanTatSanXuat,
+  getThoiGianUpFileGoc,
+  getThoiGianUpFileIn,
+  getThoiGianUpFileLe,
+} from '@/utils/dieuPhoiTuDongDisplay'
 import {
   collectDieuPhoiGiaTri,
   firstDieuPhoiGiaTri,
@@ -633,7 +645,15 @@ const fileLinkFields = computed(() => {
     const giaTri = ketQua.value?.[def.key]?.gia_tri
     const url =
       giaTri != null && String(giaTri).trim() !== '' ? String(giaTri).trim() : null
-    return { ...def, url }
+    const uploadedAt =
+      def.key === 'link_file_goc'
+        ? getThoiGianUpFileGoc(props.item)
+        : def.key === 'link_file_le'
+          ? getThoiGianUpFileLe(props.item)
+          : def.key === 'link_file_in'
+            ? getThoiGianUpFileIn(props.item)
+            : ''
+    return { ...def, url, uploadedAt }
   })
 })
 
@@ -1489,6 +1509,11 @@ async function onBanGiao() {
       font-size: 11px;
       color: var(--el-text-color-secondary);
       line-height: 1.2;
+
+      &.is-hint {
+        cursor: help;
+        border-bottom: 1px dashed var(--el-border-color);
+      }
     }
   }
 

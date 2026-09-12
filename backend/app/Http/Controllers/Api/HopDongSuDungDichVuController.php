@@ -711,7 +711,25 @@ class HopDongSuDungDichVuController extends BaseApiController
                 $fieldUpdate,
             );
 
-            $hop_dong_su_dung_dich_vu->update(['ket_qua_hop_dong' => $ketQua]);
+            $payload = ['ket_qua_hop_dong' => $ketQua];
+            $dieuPhoiTsKey = match ($key) {
+                'link_file_goc' => HopDongSuDungDichVu::THOI_GIAN_UP_FILE_GOC_KEY,
+                'link_file_le' => HopDongSuDungDichVu::THOI_GIAN_UP_FILE_LE_KEY,
+                'link_file_in' => HopDongSuDungDichVu::THOI_GIAN_UP_FILE_IN_KEY,
+                default => null,
+            };
+            if ($dieuPhoiTsKey !== null) {
+                $dieuPhoi = is_array($hop_dong_su_dung_dich_vu->thong_tin_dieu_phoi)
+                    ? $hop_dong_su_dung_dich_vu->thong_tin_dieu_phoi
+                    : [];
+                $existingTs = $dieuPhoi[$dieuPhoiTsKey] ?? null;
+                if ($existingTs === null || $existingTs === '') {
+                    $dieuPhoi[$dieuPhoiTsKey] = now()->toDateTimeString();
+                    $payload['thong_tin_dieu_phoi'] = $dieuPhoi;
+                }
+            }
+
+            $hop_dong_su_dung_dich_vu->update($payload);
 
             return response()->json(
                 $hop_dong_su_dung_dich_vu->fresh()->load(['loaiHopDong:id,ten_hop_dong,ma_hop_dong'])
@@ -2549,17 +2567,8 @@ class HopDongSuDungDichVuController extends BaseApiController
             $existingStatus,
         );
 
-        // Giữ thoi_gian_hoan_tat_san_xuat nếu payload mới không gửi kèm.
-        $existingTs = is_array($existing?->thong_tin_dieu_phoi)
-            ? ($existing->thong_tin_dieu_phoi[HopDongSuDungDichVu::THOI_GIAN_HOAN_TAT_SAN_XUAT_KEY] ?? null)
-            : null;
-        if (($existingTs !== null && $existingTs !== '')
-            && (! array_key_exists(HopDongSuDungDichVu::THOI_GIAN_HOAN_TAT_SAN_XUAT_KEY, $payload)
-                || $payload[HopDongSuDungDichVu::THOI_GIAN_HOAN_TAT_SAN_XUAT_KEY] === null
-                || $payload[HopDongSuDungDichVu::THOI_GIAN_HOAN_TAT_SAN_XUAT_KEY] === '')
-        ) {
-            $payload[HopDongSuDungDichVu::THOI_GIAN_HOAN_TAT_SAN_XUAT_KEY] = $existingTs;
-        }
+        // Giữ timestamp envelope nếu payload mới không gửi kèm.
+        $payload = $this->preserveDieuPhoiTimestamps($payload, $existing);
 
         $validated['thong_tin_dieu_phoi'] = $payload;
 
@@ -2583,6 +2592,41 @@ class HopDongSuDungDichVuController extends BaseApiController
         $validated['ket_qua_hop_dong'] = $ketQua;
 
         return $validated;
+    }
+
+    /**
+     * Giữ timestamp envelope nếu payload mới không gửi kèm.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function preserveDieuPhoiTimestamps(array $payload, ?HopDongSuDungDichVu $existing): array
+    {
+        $keys = [
+            HopDongSuDungDichVu::THOI_GIAN_HOAN_TAT_SAN_XUAT_KEY,
+            HopDongSuDungDichVu::THOI_GIAN_UP_FILE_GOC_KEY,
+            HopDongSuDungDichVu::THOI_GIAN_UP_FILE_LE_KEY,
+            HopDongSuDungDichVu::THOI_GIAN_UP_FILE_IN_KEY,
+        ];
+        $existingRaw = is_array($existing?->thong_tin_dieu_phoi)
+            ? $existing->thong_tin_dieu_phoi
+            : [];
+
+        foreach ($keys as $key) {
+            $existingTs = $existingRaw[$key] ?? null;
+            if ($existingTs === null || $existingTs === '') {
+                continue;
+            }
+            if (array_key_exists($key, $payload)
+                && $payload[$key] !== null
+                && $payload[$key] !== ''
+            ) {
+                continue;
+            }
+            $payload[$key] = $existingTs;
+        }
+
+        return $payload;
     }
 
     private function resolveTrangThaiDieuPhoiFallback(?HopDongSuDungDichVu $existing): ?string

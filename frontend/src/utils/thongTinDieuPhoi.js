@@ -64,6 +64,12 @@ export function insertDieuPhoiSchemaFields(schema, inserts, afterKey) {
 export const TRANG_THAI_DIEU_PHOI_KEY = 'trang_thai_dieu_phoi'
 /** Thời điểm chuyển hoàn tất sản xuất, lưu ở envelope thong_tin_dieu_phoi */
 export const THOI_GIAN_HOAN_TAT_SAN_XUAT_KEY = 'thoi_gian_hoan_tat_san_xuat'
+/** Thời điểm up file gốc, lưu ở envelope thong_tin_dieu_phoi */
+export const THOI_GIAN_UP_FILE_GOC_KEY = 'thoi_gian_up_file_goc'
+/** Thời điểm up file lẻ, lưu ở envelope thong_tin_dieu_phoi */
+export const THOI_GIAN_UP_FILE_LE_KEY = 'thoi_gian_up_file_le'
+/** Thời điểm up file in, lưu ở envelope thong_tin_dieu_phoi */
+export const THOI_GIAN_UP_FILE_IN_KEY = 'thoi_gian_up_file_in'
 export const TRANG_THAI_DIEU_PHOI_CHO_NHAN = 'cho_nhan'
 export const TRANG_THAI_DIEU_PHOI_TIEN_KY = 'tien_ky'
 export const TRANG_THAI_DIEU_PHOI_LATER = [
@@ -262,7 +268,7 @@ export function isDieuPhoiSessionMap(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }
 
-/** Payload chuẩn: { ngay_tra_file_le, ngay_tra_file_in, ngay_khach_hen_qua, trang_thai_dieu_phoi, thoi_gian_hoan_tat_san_xuat?, danh_sach_buoi_chup } */
+/** Payload chuẩn: { ngay_tra_file_le, ngay_tra_file_in, ngay_khach_hen_qua, trang_thai_dieu_phoi, thoi_gian_hoan_tat_san_xuat?, thoi_gian_up_file_goc?, thoi_gian_up_file_le?, thoi_gian_up_file_in?, danh_sach_buoi_chup } */
 export function isDieuPhoiEnvelope(value) {
   return isDieuPhoiSessionMap(value) && Array.isArray(value[DANH_SACH_BUOI_CHUP_KEY])
 }
@@ -485,6 +491,7 @@ export function buildDieuPhoiEnvelope(existingRaw, nextSessions, sharedDates = {
 
   return {
     ...dates,
+    ...pickDieuPhoiEnvelopeTimestamps(existingRaw, sharedDates),
     [NOTE_THO_SHOP_KEY]: normalizeNoteThoShopValue(noteThoShop),
     [TRANG_THAI_DIEU_PHOI_KEY]:
       sharedDates[TRANG_THAI_DIEU_PHOI_KEY] !== undefined
@@ -492,6 +499,26 @@ export function buildDieuPhoiEnvelope(existingRaw, nextSessions, sharedDates = {
         : getTrangThaiDieuPhoi(existingRaw),
     [DANH_SACH_BUOI_CHUP_KEY]: mergeDieuPhoiSessions(existingRaw, nextSessions),
   }
+}
+
+function pickDieuPhoiEnvelopeTimestamps(existingRaw, sharedDates = {}) {
+  const keys = [
+    THOI_GIAN_HOAN_TAT_SAN_XUAT_KEY,
+    THOI_GIAN_UP_FILE_GOC_KEY,
+    THOI_GIAN_UP_FILE_LE_KEY,
+    THOI_GIAN_UP_FILE_IN_KEY,
+  ]
+  const result = {}
+  for (const key of keys) {
+    const value =
+      sharedDates[key] !== undefined
+        ? sharedDates[key]
+        : isDieuPhoiSessionMap(existingRaw)
+          ? existingRaw[key]
+          : null
+    if (value != null && value !== '') result[key] = value
+  }
+  return result
 }
 
 export function isDieuPhoiExtraSessionKey(key) {

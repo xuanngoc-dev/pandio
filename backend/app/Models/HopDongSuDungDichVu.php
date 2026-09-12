@@ -63,6 +63,15 @@ class HopDongSuDungDichVu extends Model
     /** Thời điểm chuyển hoàn tất sản xuất, lưu ở envelope thong_tin_dieu_phoi. */
     public const THOI_GIAN_HOAN_TAT_SAN_XUAT_KEY = 'thoi_gian_hoan_tat_san_xuat';
 
+    /** Thời điểm up file gốc lần đầu, lưu ở envelope thong_tin_dieu_phoi. */
+    public const THOI_GIAN_UP_FILE_GOC_KEY = 'thoi_gian_up_file_goc';
+
+    /** Thời điểm up file lẻ lần đầu, lưu ở envelope thong_tin_dieu_phoi. */
+    public const THOI_GIAN_UP_FILE_LE_KEY = 'thoi_gian_up_file_le';
+
+    /** Thời điểm up file in lần đầu, lưu ở envelope thong_tin_dieu_phoi. */
+    public const THOI_GIAN_UP_FILE_IN_KEY = 'thoi_gian_up_file_in';
+
     /** Note trạng thái thợ shop, lưu ở envelope thong_tin_dieu_phoi. */
     public const NOTE_THO_SHOP_KEY = 'note_tho_shop';
 
