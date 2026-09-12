@@ -116,6 +116,7 @@ declare module 'vue' {
     StatCard: typeof import('./components/dashboard/StatCard.vue')['default']
     TableColumnConfig: typeof import('./components/TableColumnConfig.vue')['default']
     TermsPrivacyModal: typeof import('./components/TermsPrivacyModal.vue')['default']
+    XepHangSaleDialog: typeof import('./components/dashboard/XepHangSaleDialog.vue')['default']
   }
   export interface GlobalDirectives {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']

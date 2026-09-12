@@ -12,3 +12,18 @@ import api from '@/api/axios'
 export function fetchTongQuanKinhDoanh(params = {}, config = {}) {
   return api.get('/tong-quan/kinh-doanh', { params, ...config })
 }
+
+/**
+ * Xếp hạng sale đầy đủ theo tiêu chí (phân trang).
+ * @param {{
+ *   tu_ngay?: string,
+ *   den_ngay?: string,
+ *   tieu_chi: 'so_hd' | 'doanh_thu',
+ *   page?: number,
+ *   per_page?: number,
+ * }} params
+ * @param {{ skipLoading?: boolean }} [config]
+ */
+export function fetchXepHangSaleKinhDoanh(params, config = {}) {
+  return api.get('/tong-quan/kinh-doanh/xep-hang-sale', { params, ...config })
+}

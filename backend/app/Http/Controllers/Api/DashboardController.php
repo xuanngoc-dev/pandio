@@ -140,8 +140,10 @@ class DashboardController extends BaseApiController
             $doanhThuSddv = $this->doanhThuSddvTrongKy($start, $end);
             $doanhThuTp = $this->doanhThuChoThueTrongKy($start, $end);
             $hopDong = $this->hopDongKyTrongKy($start, $end);
+            $hopDongDangXuLy = $this->hopDongDangXuLy();
             $noteKhachMoi = $this->noteKhachMoiTrongKy($start, $end, $hopDong['so_hop_dong_sddv_ky']);
-            $tyLeDen = $this->tyLeDenTrongKy($start, $end, $noteKhachMoi['tong_note_khach_moi']);
+            $khachDen = $this->khachDenTrongKy($start, $end);
+            $tyLeDen = $this->tyLeDenHenTrongKy($start, $end);
             $trangThaiNote = $this->bieuDoTrangThaiNoteTrongKy($start, $end);
             $nguonKhach = $this->bieuDoNguonKhachTrongKy($start, $end);
             $xepHang = $this->xepHangSaleTrongKy($start, $end);
@@ -154,17 +156,68 @@ class DashboardController extends BaseApiController
                 'so_hop_dong' => $hopDong['so_hop_dong_ky'],
                 'so_hop_dong_sddv_ky' => $hopDong['so_hop_dong_sddv_ky'],
                 'so_hop_dong_cho_thue_ky' => $hopDong['so_hop_dong_cho_thue_ky'],
+                'hd_dang_xu_ly' => $hopDongDangXuLy['hd_dang_xu_ly'],
+                'hd_sddv_dang_thuc_hien' => $hopDongDangXuLy['hd_sddv_dang_thuc_hien'],
+                'hd_cho_thue_dang_thue' => $hopDongDangXuLy['hd_cho_thue_dang_thue'],
                 'ty_le_chot' => $noteKhachMoi['ty_le_chot'],
                 'so_note_da_den' => $noteKhachMoi['so_note_da_den'],
+                'so_khach_den' => $khachDen['so_khach_den'],
                 'tong_note_khach_moi' => $noteKhachMoi['tong_note_khach_moi'],
                 'ty_le_den' => $tyLeDen['ty_le_den'],
-                'so_note_den_theo_tao' => $tyLeDen['so_note_den_theo_tao'],
+                'so_khach_hen' => $tyLeDen['so_khach_hen'],
+                'so_khach_den_theo_hen' => $tyLeDen['so_khach_den_theo_hen'],
                 'bieu_do_trang_thai_note' => $trangThaiNote,
                 'bieu_do_nguon_khach' => $nguonKhach,
                 'top_sale_so_hd' => $xepHang['top_sale_so_hd'],
                 'top_sale_doanh_thu' => $xepHang['top_sale_doanh_thu'],
             ]);
         }, 'lấy thống kê Kinh doanh');
+    }
+
+    /**
+     * Xếp hạng sale đầy đủ theo tiêu chí, có phân trang.
+     *
+     * Query: tu_ngay, den_ngay, tieu_chi (so_hd|doanh_thu), page, per_page
+     */
+    public function kinhDoanhXepHangSale(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'tu_ngay' => ['sometimes', 'nullable', 'date'],
+                'den_ngay' => ['sometimes', 'nullable', 'date', 'after_or_equal:tu_ngay'],
+                'thang' => ['sometimes', 'nullable', 'string', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/'],
+                'tieu_chi' => ['required', 'string', 'in:so_hd,doanh_thu'],
+                'page' => ['sometimes', 'integer', 'min:1'],
+                'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            ]);
+
+            [$start, $end] = $this->resolvePeriodBounds($validated);
+            $tieuChi = $validated['tieu_chi'];
+            $page = (int) ($validated['page'] ?? 1);
+            $perPage = (int) ($validated['per_page'] ?? 15);
+
+            $sorted = $this->xepHangSaleSorted($start, $end, $tieuChi, tatCaUser: true);
+            $total = $sorted->count();
+            $lastPage = max(1, (int) ceil($total / max(1, $perPage)));
+            $page = min($page, $lastPage);
+
+            $items = $sorted
+                ->values()
+                ->forPage($page, $perPage)
+                ->values()
+                ->all();
+
+            return response()->json([
+                'tu_ngay' => $start->toDateString(),
+                'den_ngay' => $end->toDateString(),
+                'tieu_chi' => $tieuChi,
+                'data' => $items,
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'total' => $total,
+                'last_page' => $lastPage,
+            ]);
+        }, 'lấy xếp hạng sale Kinh doanh');
     }
 
     /**
@@ -1407,22 +1460,25 @@ class DashboardController extends BaseApiController
     }
 
     /**
-     * Tỷ lệ đến = note tạo trong kỳ có trạng thái đã đến / đã ký HĐ ÷ tổng note tạo trong kỳ.
+     * Tỷ lệ đến hẹn = note có ngày đến / note có ngày hẹn trong kỳ.
      *
-     * @return array{ty_le_den: float, so_note_den_theo_tao: int}
+     * @return array{ty_le_den: float, so_khach_hen: int, so_khach_den_theo_hen: int}
      */
-    private function tyLeDenTrongKy(Carbon $start, Carbon $end, int $tongNote): array
+    private function tyLeDenHenTrongKy(Carbon $start, Carbon $end): array
     {
-        $soDen = (int) KhachHangNoteKhachMoi::query()
-            ->whereBetween('created_at', [$start, $end])
-            ->whereIn('trang_thai', ['da_den', 'da_ky_hd'])
+        $base = KhachHangNoteKhachMoi::query()
+            ->whereNotNull('ngay_hen_lich')
+            ->whereBetween('ngay_hen_lich', [$start->toDateString(), $end->toDateString()]);
+
+        $soHen = (int) (clone $base)->count();
+        $soDen = (int) (clone $base)
+            ->whereNotNull('ngay_den_thuc_te')
             ->count();
 
-        $tyLe = $tongNote > 0 ? round(($soDen / $tongNote) * 100, 1) : 0.0;
-
         return [
-            'ty_le_den' => $tyLe,
-            'so_note_den_theo_tao' => $soDen,
+            'ty_le_den' => $soHen > 0 ? round(($soDen / $soHen) * 100, 1) : 0.0,
+            'so_khach_hen' => $soHen,
+            'so_khach_den_theo_hen' => $soDen,
         ];
     }
 
@@ -1620,6 +1676,55 @@ class DashboardController extends BaseApiController
      */
     private function xepHangSaleTrongKy(Carbon $start, Carbon $end): array
     {
+        $topSoHd = $this->xepHangSaleSorted($start, $end, 'so_hd')
+            ->take(5)
+            ->values()
+            ->map(fn ($row) => [
+                'id' => $row['id'],
+                'name' => $row['name'],
+                'value' => $row['so_hd'],
+                'so_hd_sddv' => $row['so_hd_sddv'],
+                'so_hd_tp' => $row['so_hd_tp'],
+                'doanh_thu' => $row['doanh_thu'],
+            ])
+            ->all();
+
+        $topDoanhThu = $this->xepHangSaleSorted($start, $end, 'doanh_thu')
+            ->take(5)
+            ->values()
+            ->map(fn ($row) => [
+                'id' => $row['id'],
+                'name' => $row['name'],
+                'value' => $row['doanh_thu'],
+                'so_hd' => $row['so_hd'],
+                'doanh_thu_sddv' => $row['doanh_thu_sddv'],
+                'doanh_thu_tp' => $row['doanh_thu_tp'],
+            ])
+            ->all();
+
+        return [
+            'top_sale_so_hd' => $topSoHd,
+            'top_sale_doanh_thu' => $topDoanhThu,
+        ];
+    }
+
+    /**
+     * Xếp hạng nhân viên (kể cả chưa có HĐ trong kỳ = 0), sắp theo tiêu chí.
+     * $tatCaUser = true: lấy toàn bộ users; false: chỉ user có hồ sơ nhân viên.
+     *
+     * @return \Illuminate\Support\Collection<int, array{
+     *   id: int,
+     *   name: string,
+     *   so_hd: int,
+     *   so_hd_sddv: int,
+     *   so_hd_tp: int,
+     *   doanh_thu: int,
+     *   doanh_thu_sddv: int,
+     *   doanh_thu_tp: int
+     * }>
+     */
+    private function xepHangSaleSorted(Carbon $start, Carbon $end, string $tieuChi, bool $tatCaUser = false)
+    {
         $sddvRows = HopDongSuDungDichVu::query()
             ->whereNotIn('trang_thai', self::HD_EXCLUDED_STATUSES)
             ->whereBetween('created_at', [$start, $end])
@@ -1640,30 +1745,36 @@ class DashboardController extends BaseApiController
             ->get()
             ->keyBy('user_id');
 
-        $userIds = collect($sddvRows->keys())
+        $usersQuery = User::query()->orderBy('name');
+        if (! $tatCaUser) {
+            $usersQuery->whereHas('nhanVien');
+        }
+        $users = $usersQuery->get(['id', 'name'])->keyBy('id');
+
+        $extraIds = collect($sddvRows->keys())
             ->merge($tpRows->keys())
             ->unique()
-            ->filter()
+            ->filter(fn ($id) => $id && ! $users->has($id))
             ->values()
             ->all();
 
-        $users = User::query()
-            ->whereIn('id', $userIds)
-            ->get(['id', 'name'])
-            ->keyBy('id');
+        if ($extraIds !== []) {
+            foreach (User::query()->whereIn('id', $extraIds)->get(['id', 'name']) as $user) {
+                $users->put($user->id, $user);
+            }
+        }
 
-        $merged = collect($userIds)->map(function ($userId) use ($sddvRows, $tpRows, $users) {
-            $sddv = $sddvRows->get($userId);
-            $tp = $tpRows->get($userId);
+        $merged = $users->map(function ($user) use ($sddvRows, $tpRows) {
+            $sddv = $sddvRows->get($user->id);
+            $tp = $tpRows->get($user->id);
             $soHdSddv = (int) ($sddv->so_hd ?? 0);
             $soHdTp = (int) ($tp->so_hd ?? 0);
             $dtSddv = (int) ($sddv->doanh_thu ?? 0);
             $dtTp = (int) ($tp->doanh_thu ?? 0);
-            $user = $users->get($userId);
 
             return [
-                'id' => (int) $userId,
-                'name' => $user?->name ?: ('User #'.$userId),
+                'id' => (int) $user->id,
+                'name' => $user->name ?: ('User #'.$user->id),
                 'so_hd' => $soHdSddv + $soHdTp,
                 'so_hd_sddv' => $soHdSddv,
                 'so_hd_tp' => $soHdTp,
@@ -1673,49 +1784,30 @@ class DashboardController extends BaseApiController
             ];
         });
 
-        $topSoHd = $merged
-            ->sort(function ($a, $b) {
-                if ($a['so_hd'] === $b['so_hd']) {
-                    return $b['doanh_thu'] <=> $a['doanh_thu'];
-                }
-
-                return $b['so_hd'] <=> $a['so_hd'];
-            })
-            ->take(5)
-            ->values()
-            ->map(fn ($row) => [
-                'id' => $row['id'],
-                'name' => $row['name'],
-                'value' => $row['so_hd'],
-                'so_hd_sddv' => $row['so_hd_sddv'],
-                'so_hd_tp' => $row['so_hd_tp'],
-                'doanh_thu' => $row['doanh_thu'],
-            ])
-            ->all();
-
-        $topDoanhThu = $merged
-            ->sort(function ($a, $b) {
+        if ($tieuChi === 'doanh_thu') {
+            return $merged->sort(function ($a, $b) {
                 if ($a['doanh_thu'] === $b['doanh_thu']) {
+                    if ($a['so_hd'] === $b['so_hd']) {
+                        return strcasecmp($a['name'], $b['name']);
+                    }
+
                     return $b['so_hd'] <=> $a['so_hd'];
                 }
 
                 return $b['doanh_thu'] <=> $a['doanh_thu'];
-            })
-            ->take(5)
-            ->values()
-            ->map(fn ($row) => [
-                'id' => $row['id'],
-                'name' => $row['name'],
-                'value' => $row['doanh_thu'],
-                'so_hd' => $row['so_hd'],
-                'doanh_thu_sddv' => $row['doanh_thu_sddv'],
-                'doanh_thu_tp' => $row['doanh_thu_tp'],
-            ])
-            ->all();
+            });
+        }
 
-        return [
-            'top_sale_so_hd' => $topSoHd,
-            'top_sale_doanh_thu' => $topDoanhThu,
-        ];
+        return $merged->sort(function ($a, $b) {
+            if ($a['so_hd'] === $b['so_hd']) {
+                if ($a['doanh_thu'] === $b['doanh_thu']) {
+                    return strcasecmp($a['name'], $b['name']);
+                }
+
+                return $b['doanh_thu'] <=> $a['doanh_thu'];
+            }
+
+            return $b['so_hd'] <=> $a['so_hd'];
+        });
     }
 }

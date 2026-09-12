@@ -111,6 +111,9 @@
                 <div class="card-title">Top 5 sale — số HĐ ký</div>
                 <p class="card-sub">SDDV theo người tạo · TP theo người cho thuê</p>
               </div>
+              <CustomTooltip content="Xem chi tiết" placement="top">
+                <CustomButton type="primary" link :icon="View" @click="openXepHang('so_hd')" />
+              </CustomTooltip>
             </div>
           </template>
           <RankList v-if="topSaleSoHd.length" :items="topSaleSoHd" />
@@ -126,6 +129,9 @@
                 <div class="card-title">Top 5 sale — doanh thu HĐ ký</div>
                 <p class="card-sub">SUM tong_tien HĐ ký trong kỳ (SDDV + TP)</p>
               </div>
+              <CustomTooltip content="Xem chi tiết" placement="top">
+                <CustomButton type="primary" link :icon="View" @click="openXepHang('doanh_thu')" />
+              </CustomTooltip>
             </div>
           </template>
           <RankList v-if="topSaleDoanhThu.length" :items="topSaleDoanhThu" />
@@ -133,6 +139,13 @@
         </CustomCard>
       </CustomCol>
     </CustomRow>
+
+    <XepHangSaleDialog
+      v-model="xepHangVisible"
+      :tieu-chi="xepHangTieuChi"
+      :tu-ngay="appliedRange?.[0] || ''"
+      :den-ngay="appliedRange?.[1] || ''"
+    />
   </div>
 </template>
 
@@ -141,16 +154,20 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
   Document,
+  FolderOpened,
   Money,
   Opportunity,
   Position,
   TrendCharts,
+  User,
+  View,
   Wallet,
 } from '@element-plus/icons-vue'
 import { fetchTongQuanKinhDoanh } from '@/api/tongQuanKinhDoanh'
 import { ChartBarBasic, ChartColumnBasic } from '@/components/charts'
 import RankList from '@/components/dashboard/RankList.vue'
 import StatCard from '@/components/dashboard/StatCard.vue'
+import XepHangSaleDialog from '@/components/dashboard/XepHangSaleDialog.vue'
 
 defineOptions({ name: 'KinhDoanh' })
 
@@ -169,6 +186,8 @@ const dateRange = ref(getPresetRange('this_month'))
 const appliedRange = ref(getPresetRange('this_month'))
 const loading = ref(false)
 const stats = ref(null)
+const xepHangVisible = ref(false)
+const xepHangTieuChi = ref('so_hd')
 
 const activePreset = computed(() => {
   const range = dateRange.value
@@ -204,11 +223,19 @@ const statCards = computed(() => {
     },
     {
       key: 'so_hop_dong',
-      title: 'Số hợp đồng',
+      title: 'Hợp đồng ký trong kỳ',
       value: formatCount(s.so_hop_dong),
       hint: `SDDV ${formatCount(s.so_hop_dong_sddv_ky)} · TP ${formatCount(s.so_hop_dong_cho_thue_ky)}`,
       tone: 'primary',
       icon: Document,
+    },
+    {
+      key: 'hd_dang_xu_ly',
+      title: 'HĐ đang xử lý',
+      value: formatCount(s.hd_dang_xu_ly),
+      hint: `SDDV đang thực hiện ${formatCount(s.hd_sddv_dang_thuc_hien)} · Thuê TP đang thuê ${formatCount(s.hd_cho_thue_dang_thue)}`,
+      tone: 'warning',
+      icon: FolderOpened,
     },
     {
       key: 'ty_le_chot',
@@ -227,10 +254,18 @@ const statCards = computed(() => {
       icon: Opportunity,
     },
     {
+      key: 'so_khach_den',
+      title: 'Số khách đến',
+      value: formatCount(s.so_khach_den),
+      hint: 'Note khách mới có ngày đến trong kỳ',
+      tone: 'info',
+      icon: User,
+    },
+    {
       key: 'ty_le_den',
-      title: 'Tỷ lệ đến',
+      title: 'Tỷ lệ đến hẹn',
       value: formatPercent(s.ty_le_den),
-      hint: `Đã đến/ký HĐ ${formatCount(s.so_note_den_theo_tao)} / Note tạo ${formatCount(s.tong_note_khach_moi)}`,
+      hint: `Có ngày đến ${formatCount(s.so_khach_den_theo_hen)} / Có ngày hẹn ${formatCount(s.so_khach_hen)}`,
       tone: 'info',
       icon: Position,
     },
@@ -308,6 +343,11 @@ function applyDatePreset(key) {
   applyFilter()
 }
 
+function openXepHang(tieuChi) {
+  xepHangTieuChi.value = tieuChi
+  xepHangVisible.value = true
+}
+
 async function loadStats() {
   const range = appliedRange.value
   if (!range?.[0] || !range?.[1]) return
@@ -336,11 +376,16 @@ function emptyStats() {
     so_hop_dong: 0,
     so_hop_dong_sddv_ky: 0,
     so_hop_dong_cho_thue_ky: 0,
+    hd_dang_xu_ly: 0,
+    hd_sddv_dang_thuc_hien: 0,
+    hd_cho_thue_dang_thue: 0,
     ty_le_chot: 0,
     so_note_da_den: 0,
     tong_note_khach_moi: 0,
+    so_khach_den: 0,
     ty_le_den: 0,
-    so_note_den_theo_tao: 0,
+    so_khach_hen: 0,
+    so_khach_den_theo_hen: 0,
     bieu_do_trang_thai_note: {
       categories: ['Chờ hẹn', 'Đã đến', 'Không đến', 'Đã ký HĐ', 'Đã hủy'],
       data: [0, 0, 0, 0, 0],
@@ -474,6 +519,19 @@ function formatCount(val) {
   :deep(.el-card__body) {
     padding: 4px 12px 12px;
   }
+}
+
+.card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
 }
 
 .card-sub {
