@@ -3,9 +3,9 @@
 use App\Models\DichVuDanhSachDichNhomDichVu;
 use App\Models\DichVuDanhSachDichVuLe;
 use App\Models\DichVuLoaiDichVu;
-use App\Models\LoaiHopDong;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -15,7 +15,14 @@ return new class extends Migration
 
     public function up(): void
     {
-        $loaiHopDongs = LoaiHopDong::query()
+        // Bảng còn tên loai_hop_dong đến migration 2026_08_04_100000.
+        // Model LoaiHopDong đã trỏ danh_muc_loai_hop_dong nên không dùng model ở đây.
+        $loaiHopDongTable = $this->loaiHopDongTable();
+        if ($loaiHopDongTable === null) {
+            return;
+        }
+
+        $loaiHopDongs = DB::table($loaiHopDongTable)
             ->orderBy('id')
             ->get(['id', 'ma_hop_dong', 'ten_hop_dong']);
 
@@ -101,6 +108,19 @@ return new class extends Migration
         DichVuDanhSachDichVuLe::query()
             ->where('ma_dich_vu', 'like', self::SEED_PREFIX_DV.'%')
             ->delete();
+    }
+
+    private function loaiHopDongTable(): ?string
+    {
+        if (Schema::hasTable('danh_muc_loai_hop_dong')) {
+            return 'danh_muc_loai_hop_dong';
+        }
+
+        if (Schema::hasTable('loai_hop_dong')) {
+            return 'loai_hop_dong';
+        }
+
+        return null;
     }
 
     /**

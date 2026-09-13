@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Models\HopDongChoThueTrangPhuc;
+use App\Models\HopDongSuDungDichVu;
 use App\Models\TrangPhuc;
 use App\Support\Media;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 
 class TrangPhucController extends BaseApiController
@@ -207,6 +210,14 @@ class TrangPhucController extends BaseApiController
     public function destroy(TrangPhuc $trang_phuc): JsonResponse
     {
         return $this->handleApi(function () use ($trang_phuc) {
+            $maHopDong = $this->maHopDongDangSuDung($trang_phuc);
+
+            if ($maHopDong->isNotEmpty()) {
+                return response()->json([
+                    'message' => 'Không thể xóa trang phục vì đang được sử dụng bởi hợp đồng: '.$maHopDong->implode(', ').'.',
+                ], 409);
+            }
+
             Media::delete($trang_phuc->getRawOriginal('hinh_anh'));
 
             $trang_phuc->delete();
@@ -265,6 +276,29 @@ class TrangPhucController extends BaseApiController
         }
 
         return $validated;
+    }
+
+    /**
+     * Mã hợp đồng dịch vụ / cho thuê đang tham chiếu trang phục này.
+     *
+     * @return Collection<int, string>
+     */
+    private function maHopDongDangSuDung(TrangPhuc $trangPhuc): Collection
+    {
+        $maHopDongDichVu = HopDongSuDungDichVu::query()
+            ->whereHas('trangPhucs', fn ($q) => $q->where('trang_phuc_id', $trangPhuc->id))
+            ->pluck('ma_hop_dong');
+
+        $maHopDongChoThue = HopDongChoThueTrangPhuc::query()
+            ->whereHas('sanPhamChoThue', fn ($q) => $q->where('san_pham_id', $trangPhuc->id))
+            ->pluck('ma_hop_dong');
+
+        return $maHopDongDichVu
+            ->merge($maHopDongChoThue)
+            ->map(fn ($ma) => trim((string) $ma))
+            ->filter()
+            ->unique()
+            ->values();
     }
 
     /**

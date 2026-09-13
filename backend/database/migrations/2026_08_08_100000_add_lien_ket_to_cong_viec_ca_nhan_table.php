@@ -6,21 +6,30 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
+        if (! Schema::hasTable('cong_viec_ca_nhan')) {
+            return;
+        }
+
+        if (Schema::hasColumn('cong_viec_ca_nhan', 'lien_ket')) {
+            return;
+        }
+
         Schema::table('cong_viec_ca_nhan', function (Blueprint $table) {
-            $table->string('lien_ket', 500)->nullable()->after('ghi_chu');
+            $column = $table->string('lien_ket', 500)->nullable();
+            if (Schema::hasColumn('cong_viec_ca_nhan', 'ghi_chu')) {
+                $column->after('ghi_chu');
+            }
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
+        if (! Schema::hasTable('cong_viec_ca_nhan') || ! Schema::hasColumn('cong_viec_ca_nhan', 'lien_ket')) {
+            return;
+        }
+
         Schema::table('cong_viec_ca_nhan', function (Blueprint $table) {
             $table->dropColumn('lien_ket');
         });

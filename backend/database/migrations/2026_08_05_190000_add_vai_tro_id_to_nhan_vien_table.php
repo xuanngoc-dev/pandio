@@ -8,17 +8,32 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (! Schema::hasTable('nhan_vien')) {
+            return;
+        }
+
+        if (Schema::hasColumn('nhan_vien', 'vai_tro_id')) {
+            return;
+        }
+
         Schema::table('nhan_vien', function (Blueprint $table) {
-            $table->foreignId('vai_tro_id')
+            $column = $table->foreignId('vai_tro_id')
                 ->nullable()
-                ->after('phong_ban_ids')
                 ->constrained('vai_tro')
                 ->nullOnDelete();
+
+            if (Schema::hasColumn('nhan_vien', 'phong_ban_ids')) {
+                $column->after('phong_ban_ids');
+            }
         });
     }
 
     public function down(): void
     {
+        if (! Schema::hasTable('nhan_vien') || ! Schema::hasColumn('nhan_vien', 'vai_tro_id')) {
+            return;
+        }
+
         Schema::table('nhan_vien', function (Blueprint $table) {
             $table->dropConstrainedForeignId('vai_tro_id');
         });

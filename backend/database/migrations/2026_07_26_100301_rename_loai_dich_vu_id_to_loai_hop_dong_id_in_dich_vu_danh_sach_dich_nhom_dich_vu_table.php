@@ -6,8 +6,24 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    /**
+     * Cột đã là loai_hop_dong_id trong migration create bảng.
+     * Chỉ đổi tên + đổi FK nếu cột cũ còn tồn tại.
+     */
     public function up(): void
     {
+        if (! Schema::hasTable('dich_vu_danh_sach_dich_nhom_dich_vu')) {
+            return;
+        }
+
+        if (Schema::hasColumn('dich_vu_danh_sach_dich_nhom_dich_vu', 'loai_hop_dong_id')) {
+            return;
+        }
+
+        if (! Schema::hasColumn('dich_vu_danh_sach_dich_nhom_dich_vu', 'loai_dich_vu_id')) {
+            return;
+        }
+
         Schema::table('dich_vu_danh_sach_dich_nhom_dich_vu', function (Blueprint $table) {
             $table->dropForeign(['loai_dich_vu_id']);
         });
@@ -26,6 +42,18 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (! Schema::hasTable('dich_vu_danh_sach_dich_nhom_dich_vu')) {
+            return;
+        }
+
+        if (Schema::hasColumn('dich_vu_danh_sach_dich_nhom_dich_vu', 'loai_dich_vu_id')) {
+            return;
+        }
+
+        if (! Schema::hasColumn('dich_vu_danh_sach_dich_nhom_dich_vu', 'loai_hop_dong_id')) {
+            return;
+        }
+
         Schema::table('dich_vu_danh_sach_dich_nhom_dich_vu', function (Blueprint $table) {
             $table->dropForeign(['loai_hop_dong_id']);
         });
