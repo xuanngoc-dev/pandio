@@ -5,6 +5,7 @@ namespace App\Services\Excel;
 use App\Services\Excel\Types\ConceptExcelType;
 use App\Services\Excel\Types\DanhMucConceptExcelType;
 use App\Services\Excel\Types\DanhMucTrangPhucExcelType;
+use App\Services\Excel\Types\LoaiDichVuExcelType;
 use App\Services\Excel\Types\NhaCungCapTrangPhucExcelType;
 use App\Services\Excel\Types\TrangPhucExcelType;
 use Illuminate\Validation\ValidationException;
@@ -18,6 +19,7 @@ class ExcelTypeRegistry
         'trang_phuc' => TrangPhucExcelType::class,
         'danh_muc_concept' => DanhMucConceptExcelType::class,
         'concept' => ConceptExcelType::class,
+        'loai_dich_vu' => LoaiDichVuExcelType::class,
     ];
 
     /**

@@ -205,6 +205,18 @@ const LOAI_CONFIG = {
       { key: 'mo_ta', label: 'Mô tả', minWidth: 180 },
     ],
   },
+  loai_dich_vu: {
+    label: 'Loại dịch vụ',
+    tenKey: 'ten_dich_vu',
+    duplicateHint: 'Tên loại dịch vụ đã tồn tại sẽ không được thêm.',
+    importHint:
+      'Nhập từ file Excel. Cột "Trạng thái" điền dang_hoat_dong (Đang hoạt động) hoặc ngung_hoat_dong (Ngừng hoạt động) — xem sheet "Trạng thái". Tên đã tồn tại sẽ không được thêm.',
+    resultColumns: [
+      { key: 'ten_dich_vu', label: 'Tên', minWidth: 180 },
+      { key: 'mo_ta', label: 'Mô tả', minWidth: 180 },
+      { key: 'trang_thai', label: 'Trạng thái', minWidth: 140 },
+    ],
+  },
   concept: {
     label: 'Concept',
     maKey: 'ma_concept',
