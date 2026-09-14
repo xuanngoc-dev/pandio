@@ -205,6 +205,20 @@ const LOAI_CONFIG = {
       { key: 'mo_ta', label: 'Mô tả', minWidth: 180 },
     ],
   },
+  concept: {
+    label: 'Concept',
+    maKey: 'ma_concept',
+    tenKey: 'ten_concept',
+    importHint:
+      'Nhập từ file Excel. Cột "ID danh mục" điền id của danh mục concept — xem sheet "Danh sách danh mục". Cột "Trạng thái" điền dang_su_dung (Đang sử dụng) hoặc ngung_su_dung (Ngừng sử dụng). Cột "Hình ảnh" điền tên file (vd: concept-studio.jpg).',
+    resultColumns: [
+      { key: 'ma_concept', label: 'Mã', minWidth: 120 },
+      { key: 'ten_concept', label: 'Tên', minWidth: 160 },
+      { key: 'hinh_anh', label: 'Hình ảnh', minWidth: 140 },
+      { key: 'loai_concept', label: 'ID DM', minWidth: 90 },
+      { key: 'ten_danh_muc', label: 'Danh mục', minWidth: 140 },
+    ],
+  },
   trang_phuc: {
     label: 'Trang phục',
     maKey: 'ma_san_pham',

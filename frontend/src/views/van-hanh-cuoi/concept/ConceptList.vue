@@ -64,6 +64,11 @@
                 Thêm
               </CustomButton>
             </CustomTooltip>
+            <CustomTooltip content="Xuất / Nhập Excel" placement="top">
+              <CustomButton :icon="Download" @click="excelVisible = true">
+                Xuất/Nhập Excel
+              </CustomButton>
+            </CustomTooltip>
           </BulkActionBar>
         </div>
       </template>
@@ -196,34 +201,46 @@
         <CustomRow :gutter="16">
           <CustomCol :xs="24" :sm="8">
             <CustomFormItem label="Hình ảnh" prop="hinh_anh">
-              <div class="image-slot">
-                <el-upload
-                  class="image-uploader"
-                  :show-file-list="false"
-                  :auto-upload="false"
-                  accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
-                  :on-change="onImageChange"
-                >
-                  <img
+              <div class="image-field">
+                <div class="image-slot">
+                  <el-upload
+                    class="image-uploader"
+                    :show-file-list="false"
+                    :auto-upload="false"
+                    accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                    :on-change="onImageChange"
+                  >
+                    <img
+                      v-if="imagePreviewUrl"
+                      :src="imagePreviewUrl"
+                      class="image-preview"
+                      alt="Ảnh concept"
+                    />
+                    <div v-else class="image-placeholder">
+                      <el-icon><Plus /></el-icon>
+                      <span>Chọn ảnh</span>
+                    </div>
+                  </el-upload>
+                  <button
                     v-if="imagePreviewUrl"
-                    :src="imagePreviewUrl"
-                    class="image-preview"
-                    alt="Ảnh concept"
-                  />
-                  <div v-else class="image-placeholder">
-                    <el-icon><Plus /></el-icon>
-                    <span>Chọn ảnh</span>
-                  </div>
-                </el-upload>
-                <button
-                  v-if="imagePreviewUrl"
-                  type="button"
-                  class="image-remove"
-                  title="Xóa ảnh"
-                  @click.stop="onImageRemove"
-                >
-                  <el-icon><Delete /></el-icon>
-                </button>
+                    type="button"
+                    class="image-remove"
+                    title="Xóa ảnh"
+                    @click.stop="onImageRemove"
+                  >
+                    <el-icon><Delete /></el-icon>
+                  </button>
+                </div>
+                <CustomInput
+                  v-model="form.hinh_anh"
+                  placeholder="Tên ảnh hoặc link CDN"
+                  clearable
+                  maxlength="1000"
+                  @update:model-value="onHinhAnhTyped"
+                />
+                <p class="image-url-hint">
+                  Nhập tên file đã có (vd: concept-studio.jpg) hoặc dán link ảnh. Không bắt buộc tải lên.
+                </p>
               </div>
             </CustomFormItem>
           </CustomCol>
@@ -292,6 +309,13 @@
         <CustomButton type="primary" :loading="saving" @click="save">Lưu</CustomButton>
       </template>
     </CustomDialog>
+
+    <ExcelImportExportModal
+      v-model="excelVisible"
+      loai-du-lieu="concept"
+      ten-loai="Concept"
+      @imported="loadItems"
+    />
   </div>
 </template>
 
@@ -299,7 +323,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Delete, Edit, Plus, Search } from '@element-plus/icons-vue'
+import { Delete, Download, Edit, Plus, Search } from '@element-plus/icons-vue'
 import {
   createConcept,
   deleteConcept,
@@ -308,6 +332,7 @@ import {
   uploadConceptHinhAnh,
 } from '@/api/concept'
 import { fetchDanhMucConcept } from '@/api/danhMucConcept'
+import ExcelImportExportModal from '@/components/ExcelImportExportModal.vue'
 import BulkActionBar from '@/components/BulkActionBar.vue'
 import TableColumnConfig from '@/components/TableColumnConfig.vue'
 import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
@@ -362,6 +387,7 @@ const loaiFilter = ref(null)
 const trangThaiFilter = ref(null)
 
 const dialogVisible = ref(false)
+const excelVisible = ref(false)
 const editingId = ref(null)
 const formRef = ref(null)
 const pendingImageFile = ref(null)
@@ -434,7 +460,7 @@ const rules = {
 
 const imagePreviewUrl = computed(() => {
   if (pendingPreviewUrl.value) return pendingPreviewUrl.value
-  return mediaUrl(form.hinh_anh)
+  return mediaUrl(normalizeHinhAnhInput(form.hinh_anh))
 })
 
 function clearPendingPreview() {
@@ -453,9 +479,51 @@ function onImageChange(uploadFile) {
   pendingPreviewUrl.value = URL.createObjectURL(file)
 }
 
+function onHinhAnhTyped(value) {
+  if (String(value || '').trim() && pendingImageFile.value) {
+    clearPendingPreview()
+  }
+}
+
 function onImageRemove() {
   clearPendingPreview()
   form.hinh_anh = ''
+}
+
+function isExternalImageUrl(value) {
+  const v = String(value || '').trim()
+  return /^(https?:)?\/\//i.test(v) && !/\/storage\//i.test(v)
+}
+
+function toHinhAnhInputValue(value) {
+  const v = String(value || '').trim()
+  if (!v) return ''
+  if (isExternalImageUrl(v)) return v
+
+  let path = v
+  const storageMatch = v.match(/\/storage\/(.+)$/i)
+  if (storageMatch) {
+    path = storageMatch[1]
+  } else {
+    path = v.replace(/^\/+/, '').replace(/^storage\//i, '')
+  }
+
+  if (path.toLowerCase().startsWith('concept/')) {
+    return path.slice('concept/'.length)
+  }
+
+  return path
+}
+
+function normalizeHinhAnhInput(value) {
+  const v = String(value || '').trim()
+  if (!v) return ''
+  if (/^(https?:)?\/\//i.test(v)) return v
+
+  const cleaned = v.replace(/\\/g, '/').replace(/^\/+/, '').replace(/^storage\//i, '')
+  if (!cleaned || cleaned === '.' || cleaned === '..' || cleaned.includes('..')) return ''
+  if (cleaned.includes('/')) return cleaned
+  return `concept/${cleaned}`
 }
 
 async function loadDanhMucOptions() {
@@ -506,7 +574,7 @@ function openEdit(row) {
   editingId.value = row.id
   clearPendingPreview()
   Object.assign(form, {
-    hinh_anh: row.hinh_anh || '',
+    hinh_anh: toHinhAnhInputValue(row.hinh_anh),
     loai_concept: row.loai_concept,
     ma_concept: row.ma_concept,
     ten_concept: row.ten_concept,
@@ -531,7 +599,7 @@ async function save() {
     }
 
     const payload = {
-      hinh_anh: form.hinh_anh?.trim() || null,
+      hinh_anh: normalizeHinhAnhInput(form.hinh_anh) || null,
       loai_concept: form.loai_concept,
       ma_concept: form.ma_concept.trim(),
       ten_concept: form.ten_concept.trim(),
@@ -686,9 +754,22 @@ watch(
   border-radius: 6px;
 }
 
+.image-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .image-slot {
   position: relative;
   width: 100%;
+}
+
+.image-url-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--el-text-color-secondary);
 }
 
 .image-uploader {

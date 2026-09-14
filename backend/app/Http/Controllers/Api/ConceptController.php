@@ -157,9 +157,32 @@ class ConceptController extends BaseApiController
         ]);
 
         if (array_key_exists('hinh_anh', $validated)) {
-            $validated['hinh_anh'] = Media::normalizePath($validated['hinh_anh']);
+            $validated['hinh_anh'] = $this->normalizeConceptHinhAnh($validated['hinh_anh'] ?? null);
         }
 
         return $validated;
+    }
+
+    private function normalizeConceptHinhAnh(?string $value): ?string
+    {
+        $normalized = Media::normalizePath($value);
+        if ($normalized === null || $normalized === '') {
+            return null;
+        }
+
+        if (preg_match('#^(https?:)?//#i', $normalized)) {
+            return $normalized;
+        }
+
+        $normalized = ltrim(str_replace('\\', '/', $normalized), '/');
+        if ($normalized === '' || $normalized === '.' || $normalized === '..' || str_contains($normalized, '..')) {
+            return null;
+        }
+
+        if (str_contains($normalized, '/')) {
+            return $normalized;
+        }
+
+        return 'concept/'.$normalized;
     }
 }
