@@ -28,6 +28,14 @@ abstract class BaseExcelType implements ExcelType
     }
 
     /**
+     * @return list<array{title: string, headers: array<string, string>, rows: list<array<string, mixed>>}>
+     */
+    public function extraSheets(): array
+    {
+        return [];
+    }
+
+    /**
      * Convert bảng Excel (hàng tiêu đề + dữ liệu) thành mảng JSON.
      *
      * @param  list<list<mixed>>  $table

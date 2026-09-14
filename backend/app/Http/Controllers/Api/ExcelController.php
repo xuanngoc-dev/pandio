@@ -30,7 +30,8 @@ class ExcelController extends BaseApiController
         $path = $this->workbook->write(
             $type->label(),
             $type->headers(),
-            $type->exportRows()
+            $type->exportRows(),
+            $type->extraSheets()
         );
 
         return $this->downloadXlsx($path, $type->downloadName());
@@ -48,7 +49,8 @@ class ExcelController extends BaseApiController
         $path = $this->workbook->write(
             $type->label(),
             $type->headers(),
-            []
+            [],
+            $type->extraSheets()
         );
 
         return $this->downloadXlsx($path, $type->templateName());

@@ -14,7 +14,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'ten_san_pham',
     'danh_muc',
     'nha_cung_cap',
-    'chi_nhanh',
     'gia_tri',
     'gia_cho_thue',
     'phan_loai_chi_phi',
@@ -55,11 +54,6 @@ class TrangPhuc extends Model
     public function nhaCungCapTrangPhuc(): BelongsTo
     {
         return $this->belongsTo(NhaCungCapTrangPhuc::class, 'nha_cung_cap');
-    }
-
-    public function cauHinhChiNhanh(): BelongsTo
-    {
-        return $this->belongsTo(CauHinhChiNhanh::class, 'chi_nhanh');
     }
 
     public function lichChoThue(): HasMany

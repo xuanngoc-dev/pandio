@@ -35,23 +35,6 @@
         </CustomCol>
         <CustomCol :xs="12" :sm="12" :md="4" :lg="4">
           <CustomSelect
-            v-model="chiNhanhFilter"
-            placeholder="Chi nhánh"
-            clearable
-            filterable
-            style="width: 100%"
-            @change="onSearch"
-          >
-            <CustomOption
-              v-for="item in chiNhanhOptions"
-              :key="item.id"
-              :label="item.ten_chi_nhanh"
-              :value="item.id"
-            />
-          </CustomSelect>
-        </CustomCol>
-        <CustomCol :xs="12" :sm="12" :md="4" :lg="4">
-          <CustomSelect
             v-model="trangThaiFilter"
             placeholder="Trạng thái"
             clearable
@@ -79,6 +62,11 @@
             <CustomTooltip content="Thêm mới" placement="top">
               <CustomButton type="primary" @click="openCreate">
                 Thêm
+              </CustomButton>
+            </CustomTooltip>
+            <CustomTooltip content="Xuất / Nhập Excel" placement="top">
+              <CustomButton :icon="Download" @click="excelVisible = true">
+                Xuất/Nhập Excel
               </CustomButton>
             </CustomTooltip>
           </BulkActionBar>
@@ -145,15 +133,6 @@
         >
           <template #default="{ row }">
             {{ row.nha_cung_cap_trang_phuc?.ten_nha_cung_cap || '—' }}
-          </template>
-        </CustomTableColumn>
-        <CustomTableColumn
-          v-if="columnSettings.isColumnVisible('chi_nhanh')"
-          label="Chi nhánh"
-          min-width="140"
-        >
-          <template #default="{ row }">
-            {{ row.cau_hinh_chi_nhanh?.ten_chi_nhanh || '—' }}
           </template>
         </CustomTableColumn>
         <CustomTableColumn
@@ -352,23 +331,6 @@
                 </CustomFormItem>
               </CustomCol>
               <CustomCol :xs="24" :sm="12" :md="6">
-                <CustomFormItem label="Chi nhánh" prop="chi_nhanh">
-                  <CustomSelect
-                    v-model="form.chi_nhanh"
-                    placeholder="Chọn chi nhánh"
-                    filterable
-                    style="width: 100%"
-                  >
-                    <CustomOption
-                      v-for="item in chiNhanhOptions"
-                      :key="item.id"
-                      :label="item.ten_chi_nhanh"
-                      :value="item.id"
-                    />
-                  </CustomSelect>
-                </CustomFormItem>
-              </CustomCol>
-              <CustomCol :xs="24" :sm="12" :md="6">
                 <CustomFormItem label="Phân loại chi phí" prop="phan_loai_chi_phi">
                   <CustomSelect v-model="form.phan_loai_chi_phi" placeholder="Chọn phân loại" style="width: 100%">
                     <CustomOption
@@ -482,6 +444,13 @@
         <CustomButton type="primary" :loading="saving" @click="save">Lưu</CustomButton>
       </template>
     </CustomDialog>
+
+    <ExcelImportExportModal
+      v-model="excelVisible"
+      loai-du-lieu="trang_phuc"
+      ten-loai="Trang phục"
+      @imported="loadItems"
+    />
   </div>
 </template>
 
@@ -489,8 +458,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Delete, Edit, Plus, Search } from '@element-plus/icons-vue'
-import { fetchChiNhanh } from '@/api/chiNhanh'
+import { Delete, Download, Edit, Plus, Search } from '@element-plus/icons-vue'
 import { fetchDanhMucTrangPhuc } from '@/api/danhMucTrangPhuc'
 import { fetchNhaCungCapTrangPhuc } from '@/api/nhaCungCapTrangPhuc'
 import {
@@ -500,6 +468,7 @@ import {
   updateTrangPhuc,
   uploadTrangPhucHinhAnh,
 } from '@/api/trangPhuc'
+import ExcelImportExportModal from '@/components/ExcelImportExportModal.vue'
 import BulkActionBar from '@/components/BulkActionBar.vue'
 import TableColumnConfig from '@/components/TableColumnConfig.vue'
 import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
@@ -532,7 +501,6 @@ const tableColumns = [
   { key: 'ten_san_pham', label: 'Tên sản phẩm' },
   { key: 'danh_muc', label: 'Danh mục' },
   { key: 'nha_cung_cap', label: 'Nhà cung cấp' },
-  { key: 'chi_nhanh', label: 'Chi nhánh' },
   { key: 'gia_tri', label: 'Giá trị' },
   { key: 'gia_cho_thue', label: 'Giá cho thuê' },
   { key: 'tinh_trang', label: 'Tình trạng' },
@@ -557,7 +525,6 @@ const tinhTrangOptions = [
 const items = ref([])
 const danhMucOptions = ref([])
 const nhaCungCapOptions = ref([])
-const chiNhanhOptions = ref([])
 const loading = ref(false)
 const saving = ref(false)
 const togglingId = ref(null)
@@ -567,10 +534,10 @@ const total = ref(0)
 const route = useRoute()
 const keyword = ref(String(route.query.keyword || ''))
 const danhMucFilter = ref(null)
-const chiNhanhFilter = ref(null)
 const trangThaiFilter = ref(null)
 
 const dialogVisible = ref(false)
+const excelVisible = ref(false)
 const editingId = ref(null)
 const formRef = ref(null)
 const pendingImageFile = ref(null)
@@ -637,7 +604,6 @@ const emptyForm = () => ({
   ten_san_pham: '',
   danh_muc: null,
   nha_cung_cap: null,
-  chi_nhanh: null,
   gia_tri: 0,
   gia_cho_thue: 0,
   phan_loai_chi_phi: 'dau_tu_tai_san',
@@ -654,7 +620,6 @@ const rules = {
   ten_san_pham: [{ required: true, message: 'Vui lòng nhập tên sản phẩm', trigger: 'blur' }],
   danh_muc: [{ required: true, message: 'Vui lòng chọn danh mục', trigger: 'change' }],
   nha_cung_cap: [{ required: true, message: 'Vui lòng chọn nhà cung cấp', trigger: 'change' }],
-  chi_nhanh: [{ required: true, message: 'Vui lòng chọn chi nhánh', trigger: 'change' }],
   gia_tri: [{ required: true, message: 'Vui lòng nhập giá trị', trigger: 'blur' }],
   gia_cho_thue: [{ required: true, message: 'Vui lòng nhập giá cho thuê', trigger: 'blur' }],
   phan_loai_chi_phi: [{ required: true, message: 'Vui lòng chọn phân loại chi phí', trigger: 'change' }],
@@ -752,18 +717,15 @@ function resolveFkId(value) {
 
 async function loadOptions() {
   try {
-    const [danhMucRes, nhaCungCapRes, chiNhanhRes] = await Promise.all([
+    const [danhMucRes, nhaCungCapRes] = await Promise.all([
       fetchDanhMucTrangPhuc({ per_page: 100 }),
       fetchNhaCungCapTrangPhuc({ per_page: 100 }),
-      fetchChiNhanh({ per_page: 100 }),
     ])
     danhMucOptions.value = danhMucRes.data.data || []
     nhaCungCapOptions.value = nhaCungCapRes.data.data || []
-    chiNhanhOptions.value = chiNhanhRes.data.data || []
   } catch {
     danhMucOptions.value = []
     nhaCungCapOptions.value = []
-    chiNhanhOptions.value = []
   }
 }
 
@@ -774,7 +736,6 @@ function statusPayload(row, trangThai) {
     ten_san_pham: row.ten_san_pham,
     danh_muc: resolveFkId(row.danh_muc),
     nha_cung_cap: resolveFkId(row.nha_cung_cap),
-    chi_nhanh: resolveFkId(row.chi_nhanh),
     gia_tri: row.gia_tri,
     gia_cho_thue: row.gia_cho_thue,
     phan_loai_chi_phi: row.phan_loai_chi_phi,
@@ -794,7 +755,6 @@ async function loadItems() {
       per_page: perPage.value,
       keyword: keyword.value.trim() || undefined,
       danh_muc: danhMucFilter.value || undefined,
-      chi_nhanh: chiNhanhFilter.value || undefined,
       trang_thai: trangThaiFilter.value ?? undefined,
     })
     items.value = data.data || []
@@ -829,7 +789,6 @@ function openEdit(row) {
     ten_san_pham: row.ten_san_pham,
     danh_muc: resolveFkId(row.danh_muc),
     nha_cung_cap: resolveFkId(row.nha_cung_cap),
-    chi_nhanh: resolveFkId(row.chi_nhanh),
     gia_tri: row.gia_tri ?? 0,
     gia_cho_thue: row.gia_cho_thue ?? 0,
     phan_loai_chi_phi: row.phan_loai_chi_phi,
@@ -848,7 +807,6 @@ function buildPayload() {
     ten_san_pham: form.ten_san_pham.trim(),
     danh_muc: resolveFkId(form.danh_muc),
     nha_cung_cap: resolveFkId(form.nha_cung_cap),
-    chi_nhanh: resolveFkId(form.chi_nhanh),
     gia_tri: Number(form.gia_tri) || 0,
     gia_cho_thue: Number(form.gia_cho_thue) || 0,
     phan_loai_chi_phi: form.phan_loai_chi_phi,

@@ -2,7 +2,7 @@ import api from '@/api/axios'
 
 /**
  * Danh sách trang phục — phân trang.
- * @param {{ page?: number, per_page?: number, keyword?: string, danh_muc?: number, nha_cung_cap?: number, chi_nhanh?: number, trang_thai?: number, gia_tu?: number, gia_den?: number, ngay_thue?: string, ngay_tra_du_kien?: string, exclude_hop_dong_id?: number }} params
+ * @param {{ page?: number, per_page?: number, keyword?: string, danh_muc?: number, nha_cung_cap?: number, trang_thai?: number, gia_tu?: number, gia_den?: number, ngay_thue?: string, ngay_tra_du_kien?: string, exclude_hop_dong_id?: number }} params
  */
 export function fetchTrangPhuc(params = {}) {
   return api.get('/trang-phuc', { params })

@@ -16,6 +16,13 @@ interface ExcelType
     public function columns(): array;
 
     /**
+     * Extra sheets (file mẫu / xuất). Rỗng nếu không cần.
+     *
+     * @return list<array{title: string, headers: array<string, string>, rows: list<array<string, mixed>>}>
+     */
+    public function extraSheets(): array;
+
+    /**
      * @return list<array<string, mixed>>
      */
     public function exportRows(): array;

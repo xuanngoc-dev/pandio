@@ -21,7 +21,7 @@
 
           <div class="excel-panel__toolbar">
             <p class="excel-panel__desc">
-              Nhập dữ liệu từ file Excel (.xlsx, .xls, .csv) vào hệ thống.
+              {{ importDesc }}
             </p>
             <CustomButton plain type="primary" :loading="downloadingTemplate" @click="onDownloadTemplate">
               Tải file mẫu
@@ -196,6 +196,20 @@ const LOAI_CONFIG = {
       { key: 'email', label: 'Email', minWidth: 160 },
     ],
   },
+  trang_phuc: {
+    label: 'Trang phục',
+    maKey: 'ma_san_pham',
+    tenKey: 'ten_san_pham',
+    importHint:
+      'Nhập từ file Excel. Cột "Trạng thái" điền 1 (Hoạt động) hoặc 0 (Ngừng hoạt động) — xem sheet "Trạng thái". Cột "Hình ảnh" điền tên file (vd: ao-cuoi.jpg). File mẫu còn sheet danh mục và nhà cung cấp.',
+    resultColumns: [
+      { key: 'ma_san_pham', label: 'Mã SP', minWidth: 120 },
+      { key: 'ten_san_pham', label: 'Tên', minWidth: 160 },
+      { key: 'hinh_anh', label: 'Hình ảnh', minWidth: 140 },
+      { key: 'ma_danh_muc', label: 'Mã DM', minWidth: 120 },
+      { key: 'ma_nha_cung_cap', label: 'Mã NCC', minWidth: 120 },
+    ],
+  },
 }
 
 const visible = defineModel({ type: Boolean, default: false })
@@ -234,6 +248,12 @@ const resolvedTenLoai = computed(
 )
 
 const resultColumns = computed(() => loaiConfig.value?.resultColumns || [])
+
+const importDesc = computed(
+  () =>
+    loaiConfig.value?.importHint ||
+    'Nhập dữ liệu từ file Excel (.xlsx, .xls, .csv) vào hệ thống.'
+)
 
 const dialogTitle = computed(() => `Xuất / Nhập Excel + ${resolvedTenLoai.value}`)
 const resultTitle = computed(() => `Kết quả nhập Excel + ${resolvedTenLoai.value}`)

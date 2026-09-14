@@ -17,7 +17,7 @@ class TrangPhucController extends BaseApiController
     /**
      * Danh sách trang phục — phân trang + tìm kiếm.
      *
-     * Query: page, per_page, keyword, danh_muc, nha_cung_cap, chi_nhanh, trang_thai, gia_tu, gia_den,
+     * Query: page, per_page, keyword, danh_muc, nha_cung_cap, trang_thai, gia_tu, gia_den,
      *        ngay_thue, ngay_tra_du_kien, exclude_hop_dong_id
      */
     public function index(Request $request): JsonResponse
@@ -29,7 +29,6 @@ class TrangPhucController extends BaseApiController
                 'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
                 'danh_muc' => ['sometimes', 'nullable', 'integer', 'exists:danh_muc_trang_phuc,id'],
                 'nha_cung_cap' => ['sometimes', 'nullable', 'integer', 'exists:nha_cung_cap_trang_phuc,id'],
-                'chi_nhanh' => ['sometimes', 'nullable', 'integer', 'exists:cau_hinh_chi_nhanh,id'],
                 'trang_thai' => ['sometimes', 'nullable', Rule::in([0, 1, '0', '1'])],
                 'gia_tu' => ['sometimes', 'nullable', 'integer', 'min:0'],
                 'gia_den' => ['sometimes', 'nullable', 'integer', 'min:0'],
@@ -70,7 +69,6 @@ class TrangPhucController extends BaseApiController
                 ->with([
                     'danhMucTrangPhuc:id,ten_danh_muc,ma_danh_muc',
                     'nhaCungCapTrangPhuc:id,ten_nha_cung_cap,ma_nha_cung_cap',
-                    'cauHinhChiNhanh:id,ten_chi_nhanh',
                 ])
                 ->withCount('lichChoThue as luot_thue')
                 ->withExists($existsRelations)
@@ -83,7 +81,6 @@ class TrangPhucController extends BaseApiController
                 })
                 ->when(isset($validated['danh_muc']), fn ($q) => $q->where('danh_muc', $validated['danh_muc']))
                 ->when(isset($validated['nha_cung_cap']), fn ($q) => $q->where('nha_cung_cap', $validated['nha_cung_cap']))
-                ->when(isset($validated['chi_nhanh']), fn ($q) => $q->where('chi_nhanh', $validated['chi_nhanh']))
                 ->when(array_key_exists('trang_thai', $validated) && $validated['trang_thai'] !== null, function ($q) use ($validated) {
                     $q->where('trang_thai', (int) $validated['trang_thai']);
                 })
@@ -132,7 +129,6 @@ class TrangPhucController extends BaseApiController
             $trang_phuc->load([
                 'danhMucTrangPhuc:id,ten_danh_muc,ma_danh_muc',
                 'nhaCungCapTrangPhuc:id,ten_nha_cung_cap,ma_nha_cung_cap',
-                'cauHinhChiNhanh:id,ten_chi_nhanh',
             ]);
 
             return response()->json($trang_phuc);
@@ -177,7 +173,6 @@ class TrangPhucController extends BaseApiController
             $trangPhuc->load([
                 'danhMucTrangPhuc:id,ten_danh_muc,ma_danh_muc',
                 'nhaCungCapTrangPhuc:id,ten_nha_cung_cap,ma_nha_cung_cap',
-                'cauHinhChiNhanh:id,ten_chi_nhanh',
             ]);
 
             return response()->json($trangPhuc, 201);
@@ -198,7 +193,6 @@ class TrangPhucController extends BaseApiController
             return response()->json($trang_phuc->fresh()->load([
                 'danhMucTrangPhuc:id,ten_danh_muc,ma_danh_muc',
                 'nhaCungCapTrangPhuc:id,ten_nha_cung_cap,ma_nha_cung_cap',
-                'cauHinhChiNhanh:id,ten_chi_nhanh',
             ]));
 
         }, 'cập nhật trang phục');
@@ -243,7 +237,6 @@ class TrangPhucController extends BaseApiController
             'ten_san_pham' => ['required', 'string', 'max:255'],
             'danh_muc' => ['required', 'integer', 'exists:danh_muc_trang_phuc,id'],
             'nha_cung_cap' => ['required', 'integer', 'exists:nha_cung_cap_trang_phuc,id'],
-            'chi_nhanh' => ['required', 'integer', 'exists:cau_hinh_chi_nhanh,id'],
             'gia_tri' => ['required', 'integer', 'min:0'],
             'gia_cho_thue' => ['required', 'integer', 'min:0'],
             'phan_loai_chi_phi' => ['required', 'string', Rule::in(['dau_tu_tai_san', 'vat_tu_tieu_hao'])],

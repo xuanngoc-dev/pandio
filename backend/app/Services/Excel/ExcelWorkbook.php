@@ -16,13 +16,43 @@ class ExcelWorkbook
     /**
      * @param  array<string, string>  $headers
      * @param  list<array<string, mixed>>  $rows
+     * @param  list<array{title: string, headers: array<string, string>, rows: list<array<string, mixed>>}>  $extraSheets
      */
-    public function write(string $title, array $headers, array $rows): string
+    public function write(string $title, array $headers, array $rows, array $extraSheets = []): string
     {
         $spreadsheet = new Spreadsheet;
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheetTitle = $this->safeSheetTitle($title);
-        $sheet->setTitle($sheetTitle);
+        $this->fillSheet($spreadsheet->getActiveSheet(), $title, $headers, $rows);
+
+        foreach ($extraSheets as $sheet) {
+            $this->fillSheet(
+                $spreadsheet->createSheet(),
+                (string) ($sheet['title'] ?? 'Sheet'),
+                is_array($sheet['headers'] ?? null) ? $sheet['headers'] : [],
+                is_array($sheet['rows'] ?? null) ? $sheet['rows'] : []
+            );
+        }
+
+        $spreadsheet->setActiveSheetIndex(0);
+
+        $path = tempnam(sys_get_temp_dir(), 'pandio-xlsx-') ?: sys_get_temp_dir().'/pandio-xlsx-'.uniqid();
+        $xlsxPath = $path.'.xlsx';
+        @unlink($path);
+
+        $writer = new Xlsx($spreadsheet);
+        $writer->save($xlsxPath);
+        $spreadsheet->disconnectWorksheets();
+        unset($spreadsheet, $writer);
+
+        return $xlsxPath;
+    }
+
+    /**
+     * @param  array<string, string>  $headers
+     * @param  list<array<string, mixed>>  $rows
+     */
+    private function fillSheet(Worksheet $sheet, string $title, array $headers, array $rows): void
+    {
+        $sheet->setTitle($this->safeSheetTitle($title));
 
         $fields = array_keys($headers);
         $columnCount = max(1, count($fields));
@@ -41,17 +71,6 @@ class ExcelWorkbook
         $this->autoSizeColumns($sheet, $columnCount);
         $sheet->freezePane('A2');
         $sheet->setAutoFilter([1, 1, $columnCount, max(1, count($rows) + 1)]);
-
-        $path = tempnam(sys_get_temp_dir(), 'pandio-xlsx-') ?: sys_get_temp_dir().'/pandio-xlsx-'.uniqid();
-        $xlsxPath = $path.'.xlsx';
-        @unlink($path);
-
-        $writer = new Xlsx($spreadsheet);
-        $writer->save($xlsxPath);
-        $spreadsheet->disconnectWorksheets();
-        unset($spreadsheet, $writer);
-
-        return $xlsxPath;
     }
 
     /**
