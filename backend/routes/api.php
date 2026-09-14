@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\DanhMucNguonKhachController;
 use App\Http\Controllers\Api\HeThongThongBaoController;
 use App\Http\Controllers\Api\TienIchThoiTietController;
 use App\Http\Controllers\Api\DanhMucTrangPhucController;
+use App\Http\Controllers\Api\ExcelController;
 use App\Http\Controllers\Api\DichVuDanhSachDichNhomDichVuController;
 use App\Http\Controllers\Api\DichVuDanhSachDichVuLeController;
 use App\Http\Controllers\Api\DichVuLoaiDichVuController;
@@ -195,6 +196,12 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
     Route::apiResource('trang-phuc', TrangPhucController::class);                       // CRUD trang phục
     Route::apiResource('danh-muc-trang-phuc', DanhMucTrangPhucController::class);       // CRUD danh mục trang phục
     Route::apiResource('nha-cung-cap-trang-phuc', NhaCungCapTrangPhucController::class); // CRUD nhà cung cấp trang phục
+
+    // --- Excel (xuất / nhập theo loại dữ liệu) ---
+    Route::get('/excel/export', [ExcelController::class, 'export']);     // Tải file Excel dữ liệu
+    Route::get('/excel/template', [ExcelController::class, 'template']); // Tải file Excel mẫu
+    Route::post('/excel/import', [ExcelController::class, 'import']);    // Nhập dữ liệu từ Excel / CSV
+    Route::post('/excel/validate-template', [ExcelController::class, 'validateTemplate']); // Kiểm tra đúng file mẫu
 
     // Đặt mua trang phục
     Route::post('/dat-mua-trang-phuc/bulk-duyet', [DatMuaTrangPhucController::class, 'bulkDuyet']);                     // Duyệt hàng loạt đơn đặt mua
