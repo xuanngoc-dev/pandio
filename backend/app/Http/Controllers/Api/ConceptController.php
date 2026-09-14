@@ -3,13 +3,20 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\Concept;
+use App\Services\ConceptHinhAnhFileService;
+use App\Services\TrangPhucHinhAnhFileService;
 use App\Support\Media;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Validation\Rule;
 
 class ConceptController extends BaseApiController
 {
+    public function __construct(
+        private readonly ConceptHinhAnhFileService $hinhAnhFiles,
+    ) {}
+
     /**
      * Danh sách concept — phân trang + tìm kiếm.
      *
@@ -88,6 +95,164 @@ class ConceptController extends BaseApiController
             ], 201);
 
         }, 'upload hình ảnh concept');
+    }
+
+    /**
+     * Danh sách hình ảnh trong thư mục public/concept
+     * (và storage/app/public/concept — nơi upload API lưu file).
+     *
+     * Query: page, per_page, keyword
+     */
+    public function hinhAnh(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'page' => ['sometimes', 'integer', 'min:1'],
+                'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+                'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
+            ]);
+
+            $page = (int) ($validated['page'] ?? 1);
+            $perPage = (int) ($validated['per_page'] ?? 24);
+            $keyword = mb_strtolower(trim((string) ($validated['keyword'] ?? '')));
+
+            $items = $this->hinhAnhFiles->listFiles();
+
+            if ($keyword !== '') {
+                $items = $items->filter(
+                    fn (array $item) => str_contains(mb_strtolower($item['name']), $keyword)
+                )->values();
+            }
+
+            $items = $items
+                ->sortByDesc(fn (array $item) => $item['modified_at'] ?? '')
+                ->values();
+
+            $total = $items->count();
+            $pageItems = $items->forPage($page, $perPage)->values();
+
+            $paginator = new LengthAwarePaginator(
+                $pageItems,
+                $total,
+                $perPage,
+                $page,
+                [
+                    'path' => $request->url(),
+                    'query' => $request->query(),
+                ]
+            );
+
+            return response()->json($paginator);
+
+        }, 'lấy danh sách hình ảnh concept');
+    }
+
+    /**
+     * Đổi tên file hình ảnh trong public/concept hoặc storage public disk.
+     */
+    public function doiTenHinhAnh(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'path' => ['required', 'string', 'max:1000'],
+                'name' => ['required', 'string', 'max:255'],
+            ], [
+                'path.required' => 'Thiếu đường dẫn hình ảnh.',
+                'name.required' => 'Vui lòng nhập tên file.',
+            ]);
+
+            return response()->json($this->hinhAnhFiles->rename($validated['path'], $validated['name']));
+
+        }, 'đổi tên hình ảnh concept');
+    }
+
+    /**
+     * Nhận 1 phần (chunk) khi tải ảnh hoặc zip.
+     */
+    public function uploadHinhAnhChunk(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'upload_id' => ['sometimes', 'nullable', 'uuid'],
+                'filename' => ['required', 'string', 'max:255'],
+                'chunk_index' => ['required', 'integer', 'min:0'],
+                'total_chunks' => ['required', 'integer', 'min:1', 'max:2048'],
+                'total_size' => ['required', 'integer', 'min:1', 'max:'.TrangPhucHinhAnhFileService::ZIP_MAX_BYTES],
+                'chunk' => ['required', 'file', 'max:'.TrangPhucHinhAnhFileService::CHUNK_MAX_KILOBYTES],
+            ], [
+                'filename.required' => 'Thiếu tên file.',
+                'chunk.required' => 'Thiếu dữ liệu phần file.',
+                'chunk.max' => 'Mỗi phần tải lên tối đa 1.5MB.',
+            ]);
+
+            return response()->json($this->hinhAnhFiles->storeChunk(
+                $validated['filename'],
+                (int) $validated['chunk_index'],
+                (int) $validated['total_chunks'],
+                (int) $validated['total_size'],
+                $validated['chunk'],
+                $validated['upload_id'] ?? null,
+            ));
+
+        }, 'tải phần file hình ảnh concept');
+    }
+
+    /**
+     * Ghép các chunk thành file ảnh / zip.
+     */
+    public function completeHinhAnhUpload(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'upload_id' => ['required', 'uuid'],
+            ], [
+                'upload_id.required' => 'Thiếu mã phiên tải lên.',
+            ]);
+
+            return response()->json($this->hinhAnhFiles->completeUpload($validated['upload_id']), 201);
+
+        }, 'hoàn tất tải file hình ảnh concept');
+    }
+
+    /**
+     * Giải nén ảnh từ file zip trong thư mục concept.
+     */
+    public function giaiNenHinhAnh(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'path' => ['required', 'string', 'max:1000'],
+                'cursor' => ['sometimes', 'integer', 'min:0'],
+                'limit' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            ], [
+                'path.required' => 'Thiếu đường dẫn file zip.',
+            ]);
+
+            return response()->json($this->hinhAnhFiles->extractZip(
+                $validated['path'],
+                (int) ($validated['cursor'] ?? 0),
+                (int) ($validated['limit'] ?? TrangPhucHinhAnhFileService::EXTRACT_BATCH),
+            ));
+
+        }, 'giải nén zip hình ảnh concept');
+    }
+
+    /**
+     * Xóa danh sách file ảnh / zip trong thư mục concept.
+     */
+    public function xoaHinhAnh(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'paths' => ['required', 'array', 'min:1', 'max:200'],
+                'paths.*' => ['required', 'string', 'max:1000'],
+            ], [
+                'paths.required' => 'Vui lòng chọn file cần xóa.',
+            ]);
+
+            return response()->json($this->hinhAnhFiles->deleteFiles($validated['paths']));
+
+        }, 'xóa hình ảnh concept');
     }
 
     /**

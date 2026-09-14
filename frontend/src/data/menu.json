@@ -90,7 +90,8 @@
         "component": "van-hanh-cuoi/Concept",
         "tabs": [
           { "key": "concept", "label": "Concept" },
-          { "key": "danh-muc", "label": "Danh mục concept" }
+          { "key": "danh-muc", "label": "Danh mục concept" },
+          { "key": "hinh-anh-concept", "label": "Hình ảnh concept" }
         ]
       },
       {

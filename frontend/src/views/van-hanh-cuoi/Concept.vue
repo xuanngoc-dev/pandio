@@ -11,6 +11,9 @@
       <el-tab-pane v-if="hasTab('danh-muc')" label="Danh mục concept" name="danh-muc">
         <DanhMucConcept :active="activeTab === 'danh-muc'" />
       </el-tab-pane>
+      <el-tab-pane v-if="hasTab('hinh-anh-concept')" label="Hình ảnh concept" name="hinh-anh-concept">
+        <HinhAnhConcept :active="activeTab === 'hinh-anh-concept'" />
+      </el-tab-pane>
     </el-tabs>
   </div>
 </template>
@@ -18,6 +21,7 @@
 <script setup>
 import ConceptList from './concept/ConceptList.vue'
 import DanhMucConcept from './concept/DanhMucConcept.vue'
+import HinhAnhConcept from './concept/HinhAnhConcept.vue'
 import { usePageTabs } from '@/composables/usePageTabs'
 
 const { activeTab, visibleTabs, hasTab } = usePageTabs('/van-hanh-cuoi/concept', {

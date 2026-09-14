@@ -23,6 +23,10 @@ class TrangPhucHinhAnhFileService
 
     public const ZIP_ENTRY_MAX_BYTES = 20 * 1024 * 1024;
 
+    public function __construct(
+        private readonly string $folder = 'trang-phuc',
+    ) {}
+
     /**
      * @return list<string>
      */
@@ -184,7 +188,7 @@ class TrangPhucHinhAnhFileService
         $this->putLocalFile($filename, $assembled);
         $this->forgetUpload($uploadId);
 
-        $path = 'trang-phuc/'.$filename;
+        $path = $this->relativePath($filename);
 
         return [
             'name' => $filename,
@@ -308,7 +312,7 @@ class TrangPhucHinhAnhFileService
             return null;
         }
 
-        $relative = 'trang-phuc/'.$name;
+        $relative = $this->relativePath($name);
         $publicFile = public_path($relative);
         if (is_file($publicFile)) {
             return [
@@ -335,13 +339,13 @@ class TrangPhucHinhAnhFileService
     public function putLocalFile(string $name, string $absoluteSource): void
     {
         $this->deletePublicDuplicate($name);
-        Storage::disk('public')->putFileAs('trang-phuc', new LocalFile($absoluteSource), $name);
+        Storage::disk('public')->putFileAs($this->folder, new LocalFile($absoluteSource), $name);
     }
 
     public function putContents(string $name, string $contents): void
     {
         $this->deletePublicDuplicate($name);
-        Storage::disk('public')->put('trang-phuc/'.$name, $contents);
+        Storage::disk('public')->put($this->relativePath($name), $contents);
     }
 
     /**
@@ -378,6 +382,124 @@ class TrangPhucHinhAnhFileService
         ];
     }
 
+    /**
+     * File ảnh/zip trong public/{folder} và storage public disk.
+     *
+     * @return \Illuminate\Support\Collection<int, array{name: string, path: string, url: string, size: int, modified_at: string, kind: string}>
+     */
+    public function listFiles(): \Illuminate\Support\Collection
+    {
+        $extensions = $this->listExtensions();
+        $items = collect();
+
+        $publicDir = $this->publicDir();
+        if (is_dir($publicDir)) {
+            foreach (File::files($publicDir) as $file) {
+                $ext = strtolower($file->getExtension());
+                if (! in_array($ext, $extensions, true)) {
+                    continue;
+                }
+
+                $name = $file->getFilename();
+                $path = $this->relativePath($name);
+
+                $items->push([
+                    'name' => $name,
+                    'path' => $path,
+                    'url' => asset($path),
+                    'size' => $file->getSize(),
+                    'modified_at' => date('c', $file->getMTime()),
+                    'kind' => $ext === 'zip' ? 'zip' : 'image',
+                ]);
+            }
+        }
+
+        foreach (Storage::disk('public')->files($this->folder) as $storagePath) {
+            $ext = strtolower(pathinfo($storagePath, PATHINFO_EXTENSION));
+            if (! in_array($ext, $extensions, true)) {
+                continue;
+            }
+
+            $items->push([
+                'name' => basename($storagePath),
+                'path' => $storagePath,
+                'url' => Media::url($storagePath),
+                'size' => Storage::disk('public')->size($storagePath),
+                'modified_at' => date('c', Storage::disk('public')->lastModified($storagePath)),
+                'kind' => $ext === 'zip' ? 'zip' : 'image',
+            ]);
+        }
+
+        return $items
+            ->unique(fn (array $item) => mb_strtolower($item['name']))
+            ->values();
+    }
+
+    /**
+     * @return array{name: string, path: string, url: string}
+     */
+    public function rename(string $path, string $newName): array
+    {
+        $resolved = $this->resolveFile($path);
+        if ($resolved === null) {
+            throw ValidationException::withMessages([
+                'path' => 'Không tìm thấy hình ảnh.',
+            ]);
+        }
+
+        $oldName = $resolved['name'];
+        $newName = $this->sanitizeName($newName);
+        $oldExt = strtolower((string) pathinfo($oldName, PATHINFO_EXTENSION));
+        $allowedExt = $oldExt === 'zip' ? ['zip'] : $this->imageExtensions();
+        $newExt = strtolower((string) pathinfo($newName, PATHINFO_EXTENSION));
+        $newStem = (string) pathinfo($newName, PATHINFO_FILENAME);
+
+        if ($newStem === '' || $newExt === '') {
+            throw ValidationException::withMessages([
+                'name' => 'Tên file phải gồm tên và đuôi (vd: concept-studio.jpg).',
+            ]);
+        }
+
+        if (! in_array($newExt, $allowedExt, true)) {
+            throw ValidationException::withMessages([
+                'name' => 'Đuôi file không hợp lệ. Chỉ chấp nhận: '.implode(', ', $allowedExt).'.',
+            ]);
+        }
+
+        $newName = $newStem.'.'.$newExt;
+
+        if ($newName === $oldName) {
+            return [
+                'name' => $oldName,
+                'path' => $resolved['path'],
+                'url' => $resolved['url'],
+            ];
+        }
+
+        $isSameFile = mb_strtolower($newName) === mb_strtolower($oldName);
+        if (! $isSameFile && $this->nameExists($newName)) {
+            throw ValidationException::withMessages([
+                'name' => 'Tên file đã tồn tại. Vui lòng chọn tên khác.',
+            ]);
+        }
+
+        $newPath = $this->relativePath($newName);
+
+        if (($resolved['location'] ?? '') === 'public') {
+            $this->moveLocalFile((string) ($resolved['absolute'] ?? ''), public_path($newPath));
+        } else {
+            $this->moveStorageFile($resolved['path'], $newPath);
+        }
+
+        return [
+            'name' => $newName,
+            'path' => $newPath,
+            'url' => ($resolved['location'] ?? '') === 'public'
+                ? asset($newPath)
+                : Media::url($newPath),
+        ];
+    }
+
     public function uniqueZipName(string $name): string
     {
         $name = $this->sanitizeName($name);
@@ -401,7 +523,7 @@ class TrangPhucHinhAnhFileService
     {
         $target = mb_strtolower(basename($name));
 
-        $publicDir = public_path('trang-phuc');
+        $publicDir = $this->publicDir();
         if (is_dir($publicDir)) {
             foreach (File::files($publicDir) as $file) {
                 if (mb_strtolower($file->getFilename()) === $target) {
@@ -410,7 +532,7 @@ class TrangPhucHinhAnhFileService
             }
         }
 
-        foreach (Storage::disk('public')->files('trang-phuc') as $storagePath) {
+        foreach (Storage::disk('public')->files($this->folder) as $storagePath) {
             if (mb_strtolower(basename($storagePath)) === $target) {
                 return true;
             }
@@ -423,7 +545,7 @@ class TrangPhucHinhAnhFileService
     {
         $target = mb_strtolower($name);
 
-        $publicDir = public_path('trang-phuc');
+        $publicDir = $this->publicDir();
         if (is_dir($publicDir)) {
             foreach (File::files($publicDir) as $file) {
                 if (mb_strtolower($file->getFilename()) === $target) {
@@ -432,7 +554,7 @@ class TrangPhucHinhAnhFileService
             }
         }
 
-        foreach (Storage::disk('public')->files('trang-phuc') as $path) {
+        foreach (Storage::disk('public')->files($this->folder) as $path) {
             if (mb_strtolower(basename($path)) === $target) {
                 Storage::disk('public')->delete($path);
             }
@@ -441,10 +563,61 @@ class TrangPhucHinhAnhFileService
 
     private function deletePublicDuplicate(string $name): void
     {
-        $publicFile = public_path('trang-phuc/'.$name);
+        $publicFile = public_path($this->relativePath($name));
         if (is_file($publicFile)) {
             File::delete($publicFile);
         }
+    }
+
+    private function relativePath(string $name): string
+    {
+        return $this->folder.'/'.$name;
+    }
+
+    private function publicDir(): string
+    {
+        return public_path($this->folder);
+    }
+
+    private function moveLocalFile(string $from, string $to): void
+    {
+        if ($from === '' || $from === $to) {
+            return;
+        }
+
+        $dir = dirname($to);
+        if (! is_dir($dir)) {
+            File::makeDirectory($dir, 0755, true);
+        }
+
+        if (strcasecmp($from, $to) === 0) {
+            $tmp = $from.'.tmp-'.bin2hex(random_bytes(4));
+            File::move($from, $tmp);
+            File::move($tmp, $to);
+
+            return;
+        }
+
+        File::move($from, $to);
+    }
+
+    private function moveStorageFile(string $from, string $to): void
+    {
+        if ($from === $to) {
+            return;
+        }
+
+        $disk = Storage::disk('public');
+
+        if (strcasecmp($from, $to) === 0) {
+            $tmp = $from.'.tmp-'.bin2hex(random_bytes(4));
+            $disk->move($from, $tmp);
+            $disk->move($tmp, $to);
+
+            return;
+        }
+
+        $disk->move($from, $to);
     }
 
     private function kindFromName(string $name): ?string

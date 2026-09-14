@@ -25,7 +25,11 @@ export function isZipName(filename) {
   return fileExtension(filename) === 'zip'
 }
 
-export function useHinhAnhTrangPhucUpload() {
+export function useHinhAnhFolderUpload({
+  uploadChunk,
+  completeUpload,
+  extractZip: extractZipApi,
+}) {
   const progressVisible = ref(false)
   const progressPercent = ref(0)
   const progressText = ref('')
@@ -51,12 +55,12 @@ export function useHinhAnhTrangPhucUpload() {
       formData.append('total_size', String(file.size))
       formData.append('chunk', blob, `${file.name}.part${index}`)
 
-      const { data } = await uploadHinhAnhTrangPhucChunk(formData)
+      const { data } = await uploadChunk(formData)
       uploadId = data.upload_id
       onChunkProgress?.((index + 1) / totalChunks)
     }
 
-    const { data } = await completeHinhAnhTrangPhucUpload({ upload_id: uploadId })
+    const { data } = await completeUpload({ upload_id: uploadId })
     return data
   }
 
@@ -67,7 +71,7 @@ export function useHinhAnhTrangPhucUpload() {
     let total = 0
 
     do {
-      const { data } = await giaiNenHinhAnhTrangPhuc({
+      const { data } = await extractZipApi({
         path,
         cursor,
         limit: 40,
@@ -237,4 +241,12 @@ export function useHinhAnhTrangPhucUpload() {
     uploadSelection,
     extractExisting,
   }
+}
+
+export function useHinhAnhTrangPhucUpload() {
+  return useHinhAnhFolderUpload({
+    uploadChunk: uploadHinhAnhTrangPhucChunk,
+    completeUpload: completeHinhAnhTrangPhucUpload,
+    extractZip: giaiNenHinhAnhTrangPhuc,
+  })
 }

@@ -187,6 +187,12 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
 
     // --- Concept ---
     Route::post('/concept/upload-hinh-anh', [ConceptController::class, 'uploadHinhAnh']); // Upload ảnh concept
+    Route::get('/concept/hinh-anh', [ConceptController::class, 'hinhAnh']); // Danh sách ảnh trong public/concept (+ storage)
+    Route::put('/concept/hinh-anh', [ConceptController::class, 'doiTenHinhAnh']); // Đổi tên file ảnh concept
+    Route::post('/concept/hinh-anh/chunk', [ConceptController::class, 'uploadHinhAnhChunk']); // Tải 1 phần ảnh/zip
+    Route::post('/concept/hinh-anh/complete', [ConceptController::class, 'completeHinhAnhUpload']); // Ghép chunk thành file
+    Route::post('/concept/hinh-anh/giai-nen', [ConceptController::class, 'giaiNenHinhAnh']); // Giải nén zip ảnh concept
+    Route::delete('/concept/hinh-anh', [ConceptController::class, 'xoaHinhAnh']); // Xóa danh sách ảnh/zip
     Route::apiResource('concept', ConceptController::class);                 // CRUD concept chụp
     Route::apiResource('danh-muc-concept', DanhMucConceptController::class); // CRUD danh mục concept
 
