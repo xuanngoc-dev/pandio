@@ -217,6 +217,19 @@ const LOAI_CONFIG = {
       { key: 'trang_thai', label: 'Trạng thái', minWidth: 140 },
     ],
   },
+  dich_vu_le: {
+    label: 'Dịch vụ lẻ',
+    maKey: 'ma_dich_vu',
+    tenKey: 'ten_dich_vu',
+    importHint:
+      'Nhập từ file Excel. Cột "ID loại dịch vụ" điền id — xem sheet "Loại dịch vụ". Cột "ID loại hợp đồng" điền danh sách id cách nhau bằng dấu phẩy — xem sheet "Loại hợp đồng". Cột "Trạng thái" điền dang_su_dung hoặc ngung_su_dung. Mã đã tồn tại sẽ không được thêm.',
+    resultColumns: [
+      { key: 'ma_dich_vu', label: 'Mã', minWidth: 120 },
+      { key: 'ten_dich_vu', label: 'Tên', minWidth: 160 },
+      { key: 'loai_dich_vu_id', label: 'ID loại DV', minWidth: 110 },
+      { key: 'ten_loai_dich_vu', label: 'Loại dịch vụ', minWidth: 140 },
+    ],
+  },
   concept: {
     label: 'Concept',
     maKey: 'ma_concept',

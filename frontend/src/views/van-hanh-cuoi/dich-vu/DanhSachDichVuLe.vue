@@ -64,6 +64,11 @@
                 Thêm
               </CustomButton>
             </CustomTooltip>
+            <CustomTooltip content="Xuất / Nhập Excel" placement="top">
+              <CustomButton :icon="Download" @click="excelVisible = true">
+                Xuất/Nhập Excel
+              </CustomButton>
+            </CustomTooltip>
           </BulkActionBar>
         </div>
       </template>
@@ -87,7 +92,7 @@
           v-if="columnSettings.isColumnVisible('ma_dich_vu')"
           prop="ma_dich_vu"
           label="Mã"
-          width="120"
+          width="160"
         />
         <CustomTableColumn
           v-if="columnSettings.isColumnVisible('ten_dich_vu')"
@@ -303,6 +308,13 @@
         <CustomButton type="primary" :loading="saving" @click="save">Lưu</CustomButton>
       </template>
     </CustomDialog>
+
+    <ExcelImportExportModal
+      v-model="excelVisible"
+      loai-du-lieu="dich_vu_le"
+      ten-loai="Dịch vụ lẻ"
+      @imported="loadItems"
+    />
   </div>
 </template>
 
@@ -310,7 +322,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Check, Delete, Edit, Plus, Search } from '@element-plus/icons-vue'
+import { Check, Delete, Download, Edit, Search } from '@element-plus/icons-vue'
 import {
   createDichVuDanhSachDichVuLe,
   deleteDichVuDanhSachDichVuLe,
@@ -319,6 +331,7 @@ import {
 } from '@/api/dichVuDanhSachDichVuLe'
 import { fetchDichVuLoaiDichVu } from '@/api/dichVuLoaiDichVu'
 import { fetchLoaiHopDong } from '@/api/loaiHopDong'
+import ExcelImportExportModal from '@/components/ExcelImportExportModal.vue'
 import BulkActionBar from '@/components/BulkActionBar.vue'
 import TableColumnConfig from '@/components/TableColumnConfig.vue'
 import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
@@ -371,6 +384,7 @@ const loaiDichVuOptions = ref([])
 const loaiHopDongOptions = ref([])
 
 const dialogVisible = ref(false)
+const excelVisible = ref(false)
 const editingId = ref(null)
 const formRef = ref(null)
 const giaKhuyenMaiSynced = ref(true)
