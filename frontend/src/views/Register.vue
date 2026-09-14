@@ -172,7 +172,7 @@ async function onSubmit() {
       password_confirmation: form.password_confirmation,
     })
     if (!data) return
-    router.push({ name: 'tong-quan' })
+    router.push({ name: 'login' })
   } catch {
     // Lỗi đã được interceptor xử lý
   } finally {

@@ -104,16 +104,17 @@ export const useAuthStore = defineStore('auth', () => {
     setToken(null)
   }
 
-  /** Đăng ký */
+  /** Đăng ký — không lưu phiên vì tài khoản mặc định chưa kích hoạt */
   async function register(payload) {
     if (loading.value) return null
     loading.value = true
     try {
       const { data } = await api.post('/auth/register', payload)
-      setAuth(data.token, data.user)
       ElNotification.success({
         title: 'Thành công',
-        message: data.message || 'Đăng ký thành công.',
+        message:
+          data.message ||
+          'Đăng ký thành công. Tài khoản đang chờ quản trị viên kích hoạt.',
       })
       return data
     } finally {

@@ -92,11 +92,12 @@
           </div>
 
           <div class="auth-header">
-            <h2>Đăng nhập</h2>
-            <!-- <p>Đăng nhập bằng email hoặc số điện thoại</p> -->
+            <h2>{{ isRegister ? 'Đăng ký' : 'Đăng nhập' }}</h2>
+            <p v-if="isRegister">Tạo tài khoản mới. Quản trị viên sẽ kích hoạt trước khi bạn đăng nhập.</p>
           </div>
 
           <el-form
+            v-if="!isRegister"
             ref="formRef"
             class="login-form"
             :model="form"
@@ -141,8 +142,91 @@
             </el-form-item>
           </el-form>
 
+          <el-form
+            v-else
+            ref="registerFormRef"
+            class="login-form"
+            :model="registerForm"
+            :rules="registerRules"
+            label-position="top"
+            size="large"
+            @submit.prevent="onRegister"
+          >
+            <el-form-item label="Họ tên" prop="name">
+              <el-input
+                v-model="registerForm.name"
+                placeholder="Nguyễn Văn A"
+                clearable
+                :prefix-icon="User"
+              />
+            </el-form-item>
+
+            <el-form-item label="Email" prop="email">
+              <el-input
+                v-model="registerForm.email"
+                type="email"
+                placeholder="you@example.com"
+                clearable
+                :prefix-icon="Message"
+              />
+            </el-form-item>
+
+            <el-form-item label="Số điện thoại" prop="phone">
+              <el-input
+                v-model="registerForm.phone"
+                placeholder="0912345678"
+                clearable
+                maxlength="12"
+                :prefix-icon="Phone"
+              />
+            </el-form-item>
+
+            <el-form-item label="Mật khẩu" prop="password">
+              <el-input
+                v-model="registerForm.password"
+                type="password"
+                placeholder="••••••••"
+                show-password
+                :prefix-icon="Lock"
+              />
+            </el-form-item>
+
+            <el-form-item label="Xác nhận mật khẩu" prop="password_confirmation">
+              <el-input
+                v-model="registerForm.password_confirmation"
+                type="password"
+                placeholder="••••••••"
+                show-password
+                :prefix-icon="Lock"
+              />
+            </el-form-item>
+
+            <el-form-item class="login-submit">
+              <el-button
+                type="primary"
+                native-type="submit"
+                :loading="authStore.loading || submitting"
+                :disabled="authStore.loading || submitting"
+                style="width: 100%"
+              >
+                Đăng ký
+              </el-button>
+            </el-form-item>
+          </el-form>
+
+          <div class="auth-switch">
+            <template v-if="isRegister">
+              Đã có tài khoản?
+              <a href="#" @click.prevent="switchMode('login')">Đăng nhập</a>
+            </template>
+            <template v-else>
+              Chưa có tài khoản?
+              <a href="#" @click.prevent="switchMode('register')">Đăng ký</a>
+            </template>
+          </div>
+
           <div class="auth-footer">
-            Bằng việc đăng nhập, bạn đồng ý với
+            Bằng việc {{ isRegister ? 'đăng ký' : 'đăng nhập' }}, bạn đồng ý với
             <a href="#" @click.prevent="openTerms('terms')">Điều khoản sử dụng</a>
             và
             <a href="#" @click.prevent="openTerms('privacy')">Chính sách bảo mật</a>
@@ -156,9 +240,9 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { User, Lock } from '@element-plus/icons-vue'
+import { User, Lock, Message, Phone } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { isMenuPathAllowed } from '@/utils/menuAccess'
 import TermsPrivacyModal from '@/components/TermsPrivacyModal.vue'
@@ -169,7 +253,11 @@ const authStore = useAuthStore()
 const router = useRouter()
 const route = useRoute()
 
+const mode = ref(route.name === 'register' ? 'register' : 'login')
+const isRegister = computed(() => mode.value === 'register')
+
 const formRef = ref()
+const registerFormRef = ref()
 const submitting = ref(false)
 const termsVisible = ref(false)
 const termsTab = ref('terms')
@@ -178,6 +266,14 @@ const form = reactive({
   login: '',
   password: '',
   remember: false,
+})
+
+const registerForm = reactive({
+  name: '',
+  email: '',
+  phone: '',
+  password: '',
+  password_confirmation: '',
 })
 
 const PHONE_RE = /^(0|\+84)(3|5|7|8|9)[0-9]{8}$/
@@ -196,6 +292,27 @@ const validateLogin = (_rule, value, callback) => {
   callback(new Error('Email hoặc số điện thoại không hợp lệ'))
 }
 
+const validatePhone = (_rule, value, callback) => {
+  const v = String(value || '').trim()
+  if (!v) {
+    callback(new Error('Vui lòng nhập số điện thoại'))
+    return
+  }
+  if (!PHONE_RE.test(v)) {
+    callback(new Error('Số điện thoại không hợp lệ (VD: 0912345678)'))
+    return
+  }
+  callback()
+}
+
+const validateConfirm = (_rule, value, callback) => {
+  if (value !== registerForm.password) {
+    callback(new Error('Mật khẩu xác nhận không khớp'))
+  } else {
+    callback()
+  }
+}
+
 const rules = {
   login: [{ required: true, validator: validateLogin, trigger: 'blur' }],
   password: [
@@ -203,6 +320,48 @@ const rules = {
     { min: 6, message: 'Tối thiểu 6 ký tự', trigger: 'blur' },
   ],
 }
+
+const registerRules = {
+  name: [{ required: true, message: 'Vui lòng nhập họ tên', trigger: 'blur' }],
+  email: [
+    { required: true, message: 'Vui lòng nhập email', trigger: 'blur' },
+    { type: 'email', message: 'Email không hợp lệ', trigger: 'blur' },
+  ],
+  phone: [{ required: true, validator: validatePhone, trigger: 'blur' }],
+  password: [
+    { required: true, message: 'Vui lòng nhập mật khẩu', trigger: 'blur' },
+    { min: 8, message: 'Tối thiểu 8 ký tự', trigger: 'blur' },
+  ],
+  password_confirmation: [
+    { required: true, message: 'Vui lòng xác nhận mật khẩu', trigger: 'blur' },
+    { validator: validateConfirm, trigger: 'blur' },
+  ],
+}
+
+function switchMode(next) {
+  mode.value = next
+  submitting.value = false
+  if (next === 'login') {
+    formRef.value?.clearValidate?.()
+    if (route.name !== 'login') {
+      router.replace({ name: 'login' })
+    }
+  } else {
+    registerFormRef.value?.clearValidate?.()
+    if (route.name !== 'register') {
+      router.replace({ name: 'register' })
+    }
+  }
+}
+
+watch(
+  () => route.name,
+  (name) => {
+    if (name === 'register' || name === 'login') {
+      mode.value = name
+    }
+  }
+)
 
 function loadRememberedLogin() {
   try {
@@ -235,6 +394,37 @@ function openTerms(tab) {
 }
 
 onMounted(loadRememberedLogin)
+
+async function onRegister() {
+  if (submitting.value || authStore.loading) return
+  submitting.value = true
+
+  try {
+    const valid = await registerFormRef.value?.validate().catch(() => false)
+    if (!valid) return
+
+    const data = await authStore.register({
+      name: registerForm.name.trim(),
+      email: registerForm.email.trim(),
+      phone: registerForm.phone.trim(),
+      password: registerForm.password,
+      password_confirmation: registerForm.password_confirmation,
+    })
+    if (!data) return
+
+    form.login = registerForm.email.trim()
+    registerForm.name = ''
+    registerForm.email = ''
+    registerForm.phone = ''
+    registerForm.password = ''
+    registerForm.password_confirmation = ''
+    switchMode('login')
+  } catch {
+    // Lỗi đã được interceptor / store xử lý hiển thị
+  } finally {
+    submitting.value = false
+  }
+}
 
 async function onSubmit() {
   // Khóa đồng bộ ngay từ đầu — tránh Enter/submit trùng hoặc double-click
@@ -399,6 +589,17 @@ async function onSubmit() {
 
 .login-submit {
   margin-bottom: 8px;
+}
+
+.auth-switch {
+  margin-top: 4px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--el-text-color-secondary);
+}
+
+.auth-switch a {
+  font-weight: 600;
 }
 
 .auth-footer {

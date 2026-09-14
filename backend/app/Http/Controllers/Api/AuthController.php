@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
@@ -12,7 +13,8 @@ use Illuminate\Validation\ValidationException;
 class AuthController extends BaseApiController
 {
     /**
-     * Đăng ký tài khoản mới và trả về token Sanctum.
+     * Đăng ký tài khoản mới: users (status inactive) + hồ sơ nhan_vien.
+     * Không cấp token — tài khoản phải được quản trị kích hoạt trước khi đăng nhập.
      */
     public function register(Request $request): JsonResponse
     {
@@ -23,24 +25,34 @@ class AuthController extends BaseApiController
                 'phone' => ['required', 'string', 'max:20', 'unique:users,phone', 'regex:/^(0|\+84)(3|5|7|8|9)[0-9]{8}$/'],
                 'password' => ['required', 'confirmed', Password::defaults()],
             ], [
+                'name.required' => 'Vui lòng nhập họ tên.',
+                'email.required' => 'Vui lòng nhập email.',
+                'email.email' => 'Email không hợp lệ.',
+                'email.unique' => 'Email đã được sử dụng.',
+                'phone.required' => 'Vui lòng nhập số điện thoại.',
                 'phone.regex' => 'Số điện thoại không hợp lệ (VD: 0912345678).',
                 'phone.unique' => 'Số điện thoại đã được sử dụng.',
-                'email.unique' => 'Email đã được sử dụng.',
+                'password.confirmed' => 'Mật khẩu xác nhận không khớp.',
             ]);
 
-            $user = User::create([
-                'name' => $validated['name'],
-                'email' => $validated['email'],
-                'phone' => $validated['phone'],
-                'password' => $validated['password'],
-            ]);
+            $user = DB::transaction(function () use ($validated) {
+                $user = User::create([
+                    'name' => $validated['name'],
+                    'email' => $validated['email'],
+                    'phone' => $validated['phone'],
+                    'password' => $validated['password'],
+                    'role' => 'user',
+                    'status' => 'inactive',
+                ]);
 
-            $token = $user->createToken('spa-token')->plainTextToken;
+                $user->nhanVien()->create([]);
+
+                return $user->load('nhanVien');
+            });
 
             return response()->json([
-                'message' => 'Đăng ký thành công.',
+                'message' => 'Đăng ký thành công. Tài khoản đang chờ quản trị viên kích hoạt.',
                 'user' => $user,
-                'token' => $token,
             ], 201);
 
         }, 'đăng ký tài khoản');
@@ -78,7 +90,7 @@ class AuthController extends BaseApiController
 
             if ($user->status !== 'active') {
                 throw ValidationException::withMessages([
-                    'login' => ['Tài khoản đã bị khóa hoặc không hoạt động.'],
+                    'login' => ['Tài khoản chưa được kích hoạt hoặc đã bị khóa. Vui lòng liên hệ quản trị viên.'],
                 ]);
             }
 
