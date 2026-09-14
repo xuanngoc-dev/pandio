@@ -98,7 +98,7 @@
             <el-avatar
               v-if="row.hinh_anh"
               :size="48"
-              :src="mediaUrl(row.hinh_anh)"
+              :src="mediaUrl(row.hinh_anh, imageCacheBust)"
               shape="square"
               class="product-thumb"
             />
@@ -537,6 +537,7 @@ const tinhTrangOptions = [
 const items = ref([])
 const danhMucOptions = ref([])
 const nhaCungCapOptions = ref([])
+const imageCacheBust = ref(Date.now())
 const loading = ref(false)
 const saving = ref(false)
 const togglingId = ref(null)
@@ -814,6 +815,7 @@ async function loadItems() {
     items.value = data.data || []
     total.value = data.total || 0
     page.value = data.current_page || page.value
+    imageCacheBust.value = Date.now()
   } catch {
     items.value = []
     total.value = 0
