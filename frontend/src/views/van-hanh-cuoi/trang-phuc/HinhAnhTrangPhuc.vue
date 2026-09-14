@@ -27,8 +27,37 @@
     <CustomCard shadow="hover" class="gallery-card">
       <template #header>
         <div class="card-header">
-          <span class="card-title">Hình ảnh trang phục</span>
+          <div class="card-header-left">
+            <el-checkbox
+              v-if="items.length"
+              :model-value="allChecked"
+              :indeterminate="isIndeterminate"
+              :disabled="loading || progressBusy"
+              @change="toggleAll"
+            >
+              Chọn tất cả
+            </el-checkbox>
+            <span class="card-title">Hình ảnh trang phục</span>
+          </div>
           <div class="card-header-right view-toggle">
+            <input
+              ref="fileInputRef"
+              type="file"
+              multiple
+              accept=".jpg,.jpeg,.png,.webp,.gif,.bmp,.svg,.zip,image/*"
+              class="hidden-file-input"
+              @change="onFilesPicked"
+            >
+            <CustomTooltip content="Ảnh mỗi file ≤ 5MB, hoặc 1 zip ≤ 1GB. Ảnh trùng tên sẽ ghi đè; zip trùng tên đổi thành fileName(1).zip và không tự giải nén." placement="top">
+              <CustomButton type="primary" :icon="Upload" :disabled="progressBusy" @click="openFilePicker">
+                Tải lên
+              </CustomButton>
+            </CustomTooltip>
+            <CustomTooltip :content="selectedCount ? `Xóa ${selectedCount} file đã chọn` : 'Chọn file để xóa'" placement="top">
+              <CustomButton type="danger" :disabled="!selectedCount || progressBusy" :loading="bulkDeleting" @click="removeSelected">
+                Xóa{{ selectedCount ? ` (${selectedCount})` : '' }}
+              </CustomButton>
+            </CustomTooltip>
             <CustomTooltip content="Dạng lưới" placement="top">
               <CustomButton
                 :type="viewMode === VIEW_GRID ? 'primary' : 'default'"
@@ -59,14 +88,27 @@
 
         <div v-else-if="viewMode === VIEW_GRID" class="gallery-grid">
           <div
-            v-for="(item, index) in items"
-            :key="item.path"
+            v-for="item in items"
+            :key="`${item.path}-${item.modified_at}`"
             class="gallery-item"
+            :class="{ 'is-selected': isSelected(item.path) }"
           >
+            <el-checkbox
+              class="gallery-check"
+              :model-value="isSelected(item.path)"
+              :disabled="progressBusy"
+              @click.stop
+              @change="(val) => toggleItem(item.path, val)"
+            />
+            <div v-if="item.kind === 'zip'" class="gallery-zip">
+              <el-icon :size="42"><Files /></el-icon>
+              <span>ZIP</span>
+            </div>
             <el-image
+              v-else
               :src="imageUrl(item)"
               :preview-src-list="previewUrls"
-              :initial-index="index"
+              :initial-index="previewIndex(item)"
               fit="cover"
               class="gallery-image"
               preview-teleported
@@ -77,8 +119,17 @@
             </el-image>
             <div class="gallery-meta">
               <span class="gallery-name" :title="item.name">{{ item.name }}</span>
+              <CustomTooltip v-if="item.kind === 'zip'" content="Giải nén" placement="top">
+                <CustomButton type="primary" link :icon="FolderOpened" :disabled="progressBusy" @click="onExtract(item)" />
+              </CustomTooltip>
+              <CustomTooltip content="Sao chép tên" placement="top">
+                <CustomButton type="primary" link :icon="CopyDocument" @click="copyFileName(item)" />
+              </CustomTooltip>
               <CustomTooltip content="Sửa tên" placement="top">
                 <CustomButton type="primary" link :icon="Edit" @click="openEdit(item)" />
+              </CustomTooltip>
+              <CustomTooltip content="Xóa" placement="top">
+                <CustomButton type="danger" link :icon="Delete" :disabled="progressBusy || bulkDeleting" @click="removeItem(item)" />
               </CustomTooltip>
             </div>
           </div>
@@ -91,17 +142,30 @@
           row-key="path"
           style="width: 100%"
         >
+          <CustomTableColumn width="48" align="center">
+            <template #default="{ row }">
+              <el-checkbox
+                :model-value="isSelected(row.path)"
+                :disabled="progressBusy"
+                @change="(val) => toggleItem(row.path, val)"
+              />
+            </template>
+          </CustomTableColumn>
           <CustomTableColumn label="STT" width="60" align="center">
             <template #default="{ $index }">
               {{ (page - 1) * perPage + $index + 1 }}
             </template>
           </CustomTableColumn>
           <CustomTableColumn label="Hình ảnh" width="90" align="center">
-            <template #default="{ row, $index }">
+            <template #default="{ row }">
+              <div v-if="row.kind === 'zip'" class="table-zip">
+                <el-icon :size="22"><Files /></el-icon>
+              </div>
               <el-image
+                v-else
                 :src="imageUrl(row)"
                 :preview-src-list="previewUrls"
-                :initial-index="$index"
+                :initial-index="previewIndex(row)"
                 fit="cover"
                 class="table-thumb"
                 preview-teleported
@@ -123,11 +187,22 @@
               {{ formatDateTime(row.modified_at) }}
             </template>
           </CustomTableColumn>
-          <CustomTableColumn label="Thao tác" width="90" fixed="right" align="center">
+          <CustomTableColumn label="Thao tác" width="160" fixed="right" align="right">
             <template #default="{ row }">
-              <CustomTooltip content="Sửa tên" placement="top">
-                <CustomButton type="primary" link :icon="Edit" @click="openEdit(row)" />
-              </CustomTooltip>
+              <div class="action-btns">
+                <CustomTooltip v-if="row.kind === 'zip'" content="Giải nén" placement="top">
+                  <CustomButton type="primary" link :icon="FolderOpened" :disabled="progressBusy" @click="onExtract(row)" />
+                </CustomTooltip>
+                <CustomTooltip content="Sao chép tên" placement="top">
+                  <CustomButton type="primary" link :icon="CopyDocument" @click="copyFileName(row)" />
+                </CustomTooltip>
+                <CustomTooltip content="Sửa tên" placement="top">
+                  <CustomButton type="primary" link :icon="Edit" @click="openEdit(row)" />
+                </CustomTooltip>
+                <CustomTooltip content="Xóa" placement="top">
+                  <CustomButton type="danger" link :icon="Delete" :disabled="progressBusy || bulkDeleting" @click="removeItem(row)" />
+                </CustomTooltip>
+              </div>
             </template>
           </CustomTableColumn>
         </CustomTable>
@@ -145,7 +220,11 @@
 
     <CustomDialog v-model="dialogVisible" title="Sửa tên hình ảnh" :width="480">
       <div v-if="editingItem" class="edit-preview">
-        <el-image :src="imageUrl(editingItem)" fit="cover" class="edit-preview-image" />
+        <div v-if="editingItem.kind === 'zip'" class="gallery-zip edit-preview-image">
+          <el-icon :size="42"><Files /></el-icon>
+          <span>ZIP</span>
+        </div>
+        <el-image v-else :src="imageUrl(editingItem)" fit="cover" class="edit-preview-image" />
       </div>
       <CustomForm ref="formRef" :model="form" :rules="rules">
         <CustomFormItem label="Tên file" prop="name">
@@ -161,14 +240,28 @@
         <CustomButton type="primary" :loading="saving" @click="save">Lưu</CustomButton>
       </template>
     </CustomDialog>
+    <CustomDialog
+      v-model="progressVisible"
+      title="Tải / giải nén hình ảnh"
+      :width="480"
+      :close-on-click-modal="!progressBusy"
+      :show-close="!progressBusy"
+      :close-on-press-escape="!progressBusy"
+    >
+      <p class="progress-text">{{ progressText }}</p>
+      <el-progress :percentage="progressPercent" :stroke-width="16" />
+      <template #footer>
+        <CustomButton :disabled="progressBusy" @click="progressVisible = false">Đóng</CustomButton>
+      </template>
+    </CustomDialog>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
-import { Edit, Grid, List, Search } from '@element-plus/icons-vue'
-import { fetchHinhAnhTrangPhuc, updateHinhAnhTrangPhuc } from '@/api/trangPhuc'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { CopyDocument, Delete, Edit, Files, FolderOpened, Grid, List, Search, Upload } from '@element-plus/icons-vue'
+import { deleteHinhAnhTrangPhuc, fetchHinhAnhTrangPhuc, updateHinhAnhTrangPhuc } from '@/api/trangPhuc'
 import {
   CustomButton,
   CustomCard,
@@ -184,6 +277,7 @@ import {
   CustomTooltip,
 } from '@/components/element'
 import Pagination from '@/components/Pagination.vue'
+import { useHinhAnhTrangPhucUpload } from '@/composables/useHinhAnhTrangPhucUpload'
 import { apiOrigin, mediaUrl } from '@/utils/media'
 
 const VIEW_GRID = 'grid'
@@ -203,7 +297,19 @@ const saving = ref(false)
 const formRef = ref(null)
 const editingItem = ref(null)
 const form = reactive({ name: '' })
+const fileInputRef = ref(null)
+const selectedPaths = ref([])
+const bulkDeleting = ref(false)
 const ALLOWED_EXTS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'svg']
+
+const {
+  progressVisible,
+  progressPercent,
+  progressText,
+  progressBusy,
+  uploadSelection,
+  extractExisting,
+} = useHinhAnhTrangPhucUpload()
 
 const rules = {
   name: [
@@ -235,7 +341,7 @@ function validateFileName(_rule, value, callback) {
     return
   }
 
-  if (!ALLOWED_EXTS.includes(ext)) {
+  if (!ALLOWED_EXTS.includes(ext) && !(editingItem.value?.kind === 'zip' && ext === 'zip')) {
     callback(new Error(`Đuôi file không hợp lệ. Chỉ chấp nhận: ${ALLOWED_EXTS.join(', ')}.`))
     return
   }
@@ -270,10 +376,54 @@ function formatDateTime(value) {
   return date.toLocaleString('vi-VN')
 }
 
-const previewUrls = computed(() => items.value.map((item) => imageUrl(item)))
+const previewItems = computed(() => items.value.filter((item) => item.kind !== 'zip'))
+const previewUrls = computed(() => previewItems.value.map((item) => imageUrl(item)))
+
+function previewIndex(item) {
+  return previewItems.value.findIndex((row) => row.path === item.path)
+}
+
+const selectedCount = computed(() => selectedPaths.value.length)
+const selectedSet = computed(() => new Set(selectedPaths.value))
+const pageSelectedCount = computed(
+  () => items.value.filter((item) => selectedSet.value.has(item.path)).length,
+)
+const allChecked = computed(
+  () => items.value.length > 0 && pageSelectedCount.value === items.value.length,
+)
+const isIndeterminate = computed(
+  () => pageSelectedCount.value > 0 && pageSelectedCount.value < items.value.length,
+)
+
+function isSelected(path) {
+  return selectedSet.value.has(path)
+}
+
+function toggleItem(path, checked) {
+  if (checked) {
+    if (!selectedSet.value.has(path)) selectedPaths.value = [...selectedPaths.value, path]
+    return
+  }
+  selectedPaths.value = selectedPaths.value.filter((item) => item !== path)
+}
+
+function toggleAll(checked) {
+  const pagePaths = items.value.map((item) => item.path)
+  if (checked) {
+    selectedPaths.value = [...new Set([...selectedPaths.value, ...pagePaths])]
+    return
+  }
+  const drop = new Set(pagePaths)
+  selectedPaths.value = selectedPaths.value.filter((path) => !drop.has(path))
+}
+
+function clearSelection() {
+  selectedPaths.value = []
+}
 
 async function loadItems() {
   loading.value = true
+  clearSelection()
   try {
     const { data } = await fetchHinhAnhTrangPhuc({
       page: page.value,
@@ -294,6 +444,87 @@ async function loadItems() {
 function onSearch() {
   page.value = 1
   loadItems()
+}
+
+function openFilePicker() {
+  fileInputRef.value?.click()
+}
+
+async function onFilesPicked(event) {
+  const input = event.target
+  const files = input.files ? [...input.files] : []
+  input.value = ''
+  if (!files.length) return
+
+  try {
+    const result = await uploadSelection(files)
+    if (result) {
+      page.value = 1
+      await loadItems()
+    }
+  } catch {
+    // interceptor
+  }
+}
+
+async function onExtract(item) {
+  try {
+    const result = await extractExisting(item.path, item.name)
+    if (result) {
+      page.value = 1
+      await loadItems()
+    }
+  } catch {
+    // interceptor
+  }
+}
+
+async function copyFileName(item) {
+  const name = String(item?.name || '').trim()
+  if (!name) return
+
+  try {
+    await navigator.clipboard.writeText(name)
+    ElMessage.success('Đã sao chép tên file.')
+  } catch {
+    ElMessage.warning('Không thể sao chép. Vui lòng copy thủ công.')
+  }
+}
+
+async function deleteFiles(paths, confirmText) {
+  if (!paths.length) return false
+
+  try {
+    await ElMessageBox.confirm(confirmText, 'Xác nhận', {
+      type: 'warning',
+      confirmButtonText: 'Xóa',
+      cancelButtonText: 'Hủy',
+    })
+  } catch {
+    return false
+  }
+
+  bulkDeleting.value = true
+  try {
+    const { data } = await deleteHinhAnhTrangPhuc({ paths })
+    ElMessage.success(`Đã xóa ${data.count || paths.length} file.`)
+    await loadItems()
+    return true
+  } catch {
+    return false
+  } finally {
+    bulkDeleting.value = false
+  }
+}
+
+async function removeItem(item) {
+  if (!item?.path) return
+  await deleteFiles([item.path], `Xóa "${item.name}"?`)
+}
+
+async function removeSelected() {
+  const paths = [...selectedPaths.value]
+  await deleteFiles(paths, `Xóa ${paths.length} file đã chọn?`)
 }
 
 function openEdit(item) {
@@ -333,6 +564,46 @@ onMounted(loadItems)
   gap: 6px;
 }
 
+.action-btns {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.hidden-file-input {
+  display: none;
+}
+
+.progress-text {
+  margin: 0 0 12px;
+  color: var(--el-text-color-regular);
+}
+
+.gallery-zip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 180px;
+  background: var(--el-fill-color);
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.table-zip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 4px;
+  background: var(--el-fill-color);
+  color: var(--el-text-color-secondary);
+}
+
 .gallery-wrap {
   min-height: 180px;
 }
@@ -343,13 +614,38 @@ onMounted(loadItems)
   gap: 16px;
 }
 
+.card-header-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
 .gallery-item {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-width: 0;
   border-radius: 8px;
   overflow: hidden;
   background: var(--el-fill-color-light);
+
+  &.is-selected {
+    outline: 2px solid var(--el-color-primary);
+    outline-offset: -2px;
+  }
+}
+
+.gallery-check {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  margin: 0;
+
+  :deep(.el-checkbox__inner) {
+    background-color: #fff;
+  }
 }
 
 .gallery-image {
@@ -414,7 +710,8 @@ onMounted(loadItems)
     gap: 8px;
   }
 
-  .gallery-image {
+  .gallery-image,
+  .gallery-zip {
     height: 140px;
   }
 }

@@ -40,6 +40,49 @@ export function updateHinhAnhTrangPhuc(payload) {
   return api.put('/trang-phuc/hinh-anh', payload)
 }
 
+const HINH_ANH_UPLOAD_TIMEOUT = 120000
+
+/**
+ * Tải 1 chunk ảnh hoặc zip.
+ * @param {FormData} formData
+ */
+export function uploadHinhAnhTrangPhucChunk(formData) {
+  return api.post('/trang-phuc/hinh-anh/chunk', formData, {
+    skipLoading: true,
+    timeout: HINH_ANH_UPLOAD_TIMEOUT,
+  })
+}
+
+/**
+ * Ghép chunk thành file (ghi đè nếu trùng tên).
+ * @param {{ upload_id: string }} payload
+ */
+export function completeHinhAnhTrangPhucUpload(payload) {
+  return api.post('/trang-phuc/hinh-anh/complete', payload, {
+    skipLoading: true,
+    timeout: HINH_ANH_UPLOAD_TIMEOUT,
+  })
+}
+
+/**
+ * Giải nén ảnh từ zip trong thư mục trang phục.
+ * @param {{ path: string, cursor?: number, limit?: number }} payload
+ */
+export function giaiNenHinhAnhTrangPhuc(payload) {
+  return api.post('/trang-phuc/hinh-anh/giai-nen', payload, {
+    skipLoading: true,
+    timeout: HINH_ANH_UPLOAD_TIMEOUT,
+  })
+}
+
+/**
+ * Xóa danh sách file ảnh / zip.
+ * @param {{ paths: string[] }} payload
+ */
+export function deleteHinhAnhTrangPhuc(payload) {
+  return api.delete('/trang-phuc/hinh-anh', { data: payload })
+}
+
 /**
  * Upload hình ảnh trang phục.
  * @param {File} file

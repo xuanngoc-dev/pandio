@@ -193,6 +193,10 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
     // --- Trang phục ---
     Route::get('/trang-phuc/hinh-anh', [TrangPhucController::class, 'hinhAnh']); // Danh sách ảnh trong public/trang-phuc (+ storage)
     Route::put('/trang-phuc/hinh-anh', [TrangPhucController::class, 'doiTenHinhAnh']); // Đổi tên file ảnh trang phục
+    Route::post('/trang-phuc/hinh-anh/chunk', [TrangPhucController::class, 'uploadHinhAnhChunk']); // Tải 1 phần ảnh/zip
+    Route::post('/trang-phuc/hinh-anh/complete', [TrangPhucController::class, 'completeHinhAnhUpload']); // Ghép chunk thành file
+    Route::post('/trang-phuc/hinh-anh/giai-nen', [TrangPhucController::class, 'giaiNenHinhAnh']); // Giải nén zip ảnh trang phục
+    Route::delete('/trang-phuc/hinh-anh', [TrangPhucController::class, 'xoaHinhAnh']); // Xóa danh sách ảnh/zip
     Route::post('/trang-phuc/upload-hinh-anh', [TrangPhucController::class, 'uploadHinhAnh']); // Upload ảnh trang phục
     Route::get('/trang-phuc/{trang_phuc}/lich-cho-thue', [TrangPhucController::class, 'lichChoThue']); // Lịch đang cho thuê của 1 bộ đồ
     Route::apiResource('trang-phuc', TrangPhucController::class);                       // CRUD trang phục

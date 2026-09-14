@@ -248,34 +248,46 @@
         <CustomRow :gutter="16" class="main-form-row">
           <CustomCol :xs="24" :md="6">
             <CustomFormItem label="Hình ảnh" prop="hinh_anh">
-              <div class="image-slot">
-                <el-upload
-                  class="image-uploader"
-                  :show-file-list="false"
-                  :auto-upload="false"
-                  accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
-                  :on-change="onImageChange"
-                >
-                  <img
+              <div class="image-field">
+                <div class="image-slot">
+                  <el-upload
+                    class="image-uploader"
+                    :show-file-list="false"
+                    :auto-upload="false"
+                    accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                    :on-change="onImageChange"
+                  >
+                    <img
+                      v-if="imagePreviewUrl"
+                      :src="imagePreviewUrl"
+                      class="image-preview"
+                      alt="Ảnh trang phục"
+                    />
+                    <div v-else class="image-placeholder">
+                      <el-icon><Plus /></el-icon>
+                      <span>Chọn ảnh</span>
+                    </div>
+                  </el-upload>
+                  <button
                     v-if="imagePreviewUrl"
-                    :src="imagePreviewUrl"
-                    class="image-preview"
-                    alt="Ảnh trang phục"
-                  />
-                  <div v-else class="image-placeholder">
-                    <el-icon><Plus /></el-icon>
-                    <span>Chọn ảnh</span>
-                  </div>
-                </el-upload>
-                <button
-                  v-if="imagePreviewUrl"
-                  type="button"
-                  class="image-remove"
-                  title="Xóa ảnh"
-                  @click.stop="onImageRemove"
-                >
-                  <el-icon><Delete /></el-icon>
-                </button>
+                    type="button"
+                    class="image-remove"
+                    title="Xóa ảnh"
+                    @click.stop="onImageRemove"
+                  >
+                    <el-icon><Delete /></el-icon>
+                  </button>
+                </div>
+                <CustomInput
+                  v-model="form.hinh_anh"
+                  placeholder="Tên ảnh hoặc link CDN"
+                  clearable
+                  maxlength="1000"
+                  @update:model-value="onHinhAnhTyped"
+                />
+                <p class="image-url-hint">
+                  Nhập tên file đã có (vd: ao-cuoi.jpg) hoặc dán link ảnh. Không bắt buộc tải lên.
+                </p>
               </div>
             </CustomFormItem>
           </CustomCol>
@@ -633,7 +645,7 @@ const thongTinThemRules = {
 
 const imagePreviewUrl = computed(() => {
   if (pendingPreviewUrl.value) return pendingPreviewUrl.value
-  return mediaUrl(form.hinh_anh)
+  return mediaUrl(normalizeHinhAnhInput(form.hinh_anh))
 })
 
 function formatMoney(value) {
@@ -675,9 +687,51 @@ function onImageChange(uploadFile) {
   pendingPreviewUrl.value = URL.createObjectURL(file)
 }
 
+function onHinhAnhTyped(value) {
+  if (String(value || '').trim() && pendingImageFile.value) {
+    clearPendingPreview()
+  }
+}
+
 function onImageRemove() {
   clearPendingPreview()
   form.hinh_anh = ''
+}
+
+function isExternalImageUrl(value) {
+  const v = String(value || '').trim()
+  return /^(https?:)?\/\//i.test(v) && !/\/storage\//i.test(v)
+}
+
+function toHinhAnhInputValue(value) {
+  const v = String(value || '').trim()
+  if (!v) return ''
+  if (isExternalImageUrl(v)) return v
+
+  let path = v
+  const storageMatch = v.match(/\/storage\/(.+)$/i)
+  if (storageMatch) {
+    path = storageMatch[1]
+  } else {
+    path = v.replace(/^\/+/, '').replace(/^storage\//i, '')
+  }
+
+  if (path.toLowerCase().startsWith('trang-phuc/')) {
+    return path.slice('trang-phuc/'.length)
+  }
+
+  return path
+}
+
+function normalizeHinhAnhInput(value) {
+  const v = String(value || '').trim()
+  if (!v) return ''
+  if (/^(https?:)?\/\//i.test(v)) return v
+
+  const cleaned = v.replace(/\\/g, '/').replace(/^\/+/, '').replace(/^storage\//i, '')
+  if (!cleaned || cleaned === '.' || cleaned === '..' || cleaned.includes('..')) return ''
+  if (cleaned.includes('/')) return cleaned
+  return `trang-phuc/${cleaned}`
 }
 
 function addThongTinThemRow() {
@@ -784,7 +838,7 @@ function openEdit(row) {
   editingId.value = row.id
   clearPendingPreview()
   Object.assign(form, {
-    hinh_anh: row.hinh_anh || '',
+    hinh_anh: toHinhAnhInputValue(row.hinh_anh),
     ma_san_pham: row.ma_san_pham,
     ten_san_pham: row.ten_san_pham,
     danh_muc: resolveFkId(row.danh_muc),
@@ -802,7 +856,7 @@ function openEdit(row) {
 
 function buildPayload() {
   return {
-    hinh_anh: form.hinh_anh?.trim() || null,
+    hinh_anh: normalizeHinhAnhInput(form.hinh_anh) || null,
     ma_san_pham: form.ma_san_pham.trim(),
     ten_san_pham: form.ten_san_pham.trim(),
     danh_muc: resolveFkId(form.danh_muc),
@@ -953,9 +1007,22 @@ onMounted(async () => {
   border-radius: 6px;
 }
 
+.image-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .image-slot {
   position: relative;
   width: 100%;
+}
+
+.image-url-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--el-text-color-secondary);
 }
 
 .image-uploader {

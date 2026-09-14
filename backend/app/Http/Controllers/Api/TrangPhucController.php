@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Models\HopDongChoThueTrangPhuc;
 use App\Models\HopDongSuDungDichVu;
 use App\Models\TrangPhuc;
+use App\Services\TrangPhucHinhAnhFileService;
 use App\Support\Media;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -18,6 +19,10 @@ use Illuminate\Validation\ValidationException;
 
 class TrangPhucController extends BaseApiController
 {
+    public function __construct(
+        private readonly TrangPhucHinhAnhFileService $hinhAnhFiles,
+    ) {}
+
     /**
      * Danh sách trang phục — phân trang + tìm kiếm.
      *
@@ -212,7 +217,8 @@ class TrangPhucController extends BaseApiController
 
             $oldName = $resolved['name'];
             $newName = $this->sanitizeHinhAnhName($validated['name']);
-            $allowedExt = $this->hinhAnhExtensions();
+            $oldExt = strtolower((string) pathinfo($oldName, PATHINFO_EXTENSION));
+            $allowedExt = $oldExt === 'zip' ? ['zip'] : $this->hinhAnhExtensions();
             $newExt = strtolower((string) pathinfo($newName, PATHINFO_EXTENSION));
             $newStem = (string) pathinfo($newName, PATHINFO_FILENAME);
 
@@ -258,6 +264,96 @@ class TrangPhucController extends BaseApiController
             ]);
 
         }, 'đổi tên hình ảnh trang phục');
+    }
+
+    /**
+     * Nhận 1 phần (chunk) khi tải ảnh hoặc zip.
+     */
+    public function uploadHinhAnhChunk(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'upload_id' => ['sometimes', 'nullable', 'uuid'],
+                'filename' => ['required', 'string', 'max:255'],
+                'chunk_index' => ['required', 'integer', 'min:0'],
+                'total_chunks' => ['required', 'integer', 'min:1', 'max:2048'],
+                'total_size' => ['required', 'integer', 'min:1', 'max:'.TrangPhucHinhAnhFileService::ZIP_MAX_BYTES],
+                'chunk' => ['required', 'file', 'max:'.TrangPhucHinhAnhFileService::CHUNK_MAX_KILOBYTES],
+            ], [
+                'filename.required' => 'Thiếu tên file.',
+                'chunk.required' => 'Thiếu dữ liệu phần file.',
+                'chunk.max' => 'Mỗi phần tải lên tối đa 1.5MB.',
+            ]);
+
+            return response()->json($this->hinhAnhFiles->storeChunk(
+                $validated['filename'],
+                (int) $validated['chunk_index'],
+                (int) $validated['total_chunks'],
+                (int) $validated['total_size'],
+                $validated['chunk'],
+                $validated['upload_id'] ?? null,
+            ));
+
+        }, 'tải phần file hình ảnh trang phục');
+    }
+
+    /**
+     * Ghép các chunk thành file ảnh / zip.
+     * Ảnh trùng tên thì ghi đè; zip trùng tên thì đổi thành fileName(1).zip.
+     */
+    public function completeHinhAnhUpload(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'upload_id' => ['required', 'uuid'],
+            ], [
+                'upload_id.required' => 'Thiếu mã phiên tải lên.',
+            ]);
+
+            return response()->json($this->hinhAnhFiles->completeUpload($validated['upload_id']), 201);
+
+        }, 'hoàn tất tải file hình ảnh trang phục');
+    }
+
+    /**
+     * Giải nén ảnh từ file zip trong thư mục trang phục (ghi đè nếu trùng tên).
+     */
+    public function giaiNenHinhAnh(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'path' => ['required', 'string', 'max:1000'],
+                'cursor' => ['sometimes', 'integer', 'min:0'],
+                'limit' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            ], [
+                'path.required' => 'Thiếu đường dẫn file zip.',
+            ]);
+
+            return response()->json($this->hinhAnhFiles->extractZip(
+                $validated['path'],
+                (int) ($validated['cursor'] ?? 0),
+                (int) ($validated['limit'] ?? TrangPhucHinhAnhFileService::EXTRACT_BATCH),
+            ));
+
+        }, 'giải nén zip hình ảnh trang phục');
+    }
+
+    /**
+     * Xóa danh sách file ảnh / zip trong thư mục trang phục.
+     */
+    public function xoaHinhAnh(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'paths' => ['required', 'array', 'min:1', 'max:200'],
+                'paths.*' => ['required', 'string', 'max:1000'],
+            ], [
+                'paths.required' => 'Vui lòng chọn file cần xóa.',
+            ]);
+
+            return response()->json($this->hinhAnhFiles->deleteFiles($validated['paths']));
+
+        }, 'xóa hình ảnh trang phục');
     }
 
     /**
@@ -376,7 +472,7 @@ class TrangPhucController extends BaseApiController
         $validated['trang_thai'] = (int) $validated['trang_thai'];
 
         if (array_key_exists('hinh_anh', $validated)) {
-            $validated['hinh_anh'] = Media::normalizePath($validated['hinh_anh']);
+            $validated['hinh_anh'] = $this->normalizeTrangPhucHinhAnh($validated['hinh_anh'] ?? null);
         }
 
         if (! empty($validated['thong_tin_them'])) {
@@ -393,6 +489,29 @@ class TrangPhucController extends BaseApiController
         }
 
         return $validated;
+    }
+
+    private function normalizeTrangPhucHinhAnh(?string $value): ?string
+    {
+        $normalized = Media::normalizePath($value);
+        if ($normalized === null || $normalized === '') {
+            return null;
+        }
+
+        if (preg_match('#^(https?:)?//#i', $normalized)) {
+            return $normalized;
+        }
+
+        $normalized = ltrim(str_replace('\\', '/', $normalized), '/');
+        if ($normalized === '' || $normalized === '.' || $normalized === '..' || str_contains($normalized, '..')) {
+            return null;
+        }
+
+        if (str_contains($normalized, '/')) {
+            return $normalized;
+        }
+
+        return 'trang-phuc/'.$normalized;
     }
 
     /**
@@ -425,7 +544,7 @@ class TrangPhucController extends BaseApiController
      */
     private function collectHinhAnhFiles(): Collection
     {
-        $extensions = $this->hinhAnhExtensions();
+        $extensions = $this->hinhAnhFiles->listExtensions();
         $items = collect();
 
         $publicDir = public_path('trang-phuc');
@@ -445,6 +564,7 @@ class TrangPhucController extends BaseApiController
                     'url' => asset($path),
                     'size' => $file->getSize(),
                     'modified_at' => date('c', $file->getMTime()),
+                    'kind' => $ext === 'zip' ? 'zip' : 'image',
                 ]);
             }
         }
@@ -461,6 +581,7 @@ class TrangPhucController extends BaseApiController
                 'url' => Media::url($storagePath),
                 'size' => Storage::disk('public')->size($storagePath),
                 'modified_at' => date('c', Storage::disk('public')->lastModified($storagePath)),
+                'kind' => $ext === 'zip' ? 'zip' : 'image',
             ]);
         }
 
