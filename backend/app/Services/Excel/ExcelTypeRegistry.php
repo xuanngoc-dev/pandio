@@ -3,6 +3,7 @@
 namespace App\Services\Excel;
 
 use App\Services\Excel\Types\DanhMucTrangPhucExcelType;
+use App\Services\Excel\Types\NhaCungCapTrangPhucExcelType;
 use Illuminate\Validation\ValidationException;
 
 class ExcelTypeRegistry
@@ -10,6 +11,7 @@ class ExcelTypeRegistry
     /** @var array<string, class-string<ExcelType>> */
     private const TYPES = [
         'danh_muc_trang_phuc' => DanhMucTrangPhucExcelType::class,
+        'nha_cung_cap_trang_phuc' => NhaCungCapTrangPhucExcelType::class,
     ];
 
     /**

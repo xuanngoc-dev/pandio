@@ -112,11 +112,16 @@
           style="width: 100%"
         >
           <CustomTableColumn prop="hang" label="Hàng" width="70" align="center" />
-          <CustomTableColumn prop="ma_danh_muc" label="Mã" min-width="120" />
-          <CustomTableColumn prop="ten_danh_muc" label="Tên" min-width="160" />
-          <CustomTableColumn prop="mo_ta" label="Mô tả" min-width="180" show-overflow-tooltip>
+          <CustomTableColumn
+            v-for="col in resultColumns"
+            :key="col.key"
+            :prop="col.key"
+            :label="col.label"
+            :min-width="col.minWidth || 140"
+            show-overflow-tooltip
+          >
             <template #default="{ row }">
-              {{ row.mo_ta || '—' }}
+              {{ row[col.key] || '—' }}
             </template>
           </CustomTableColumn>
         </CustomTable>
@@ -169,8 +174,28 @@ import {
   CustomTableColumn,
 } from '@/components/element'
 
-const LOAI_LABELS = {
-  danh_muc_trang_phuc: 'Danh mục trang phục',
+const LOAI_CONFIG = {
+  danh_muc_trang_phuc: {
+    label: 'Danh mục trang phục',
+    maKey: 'ma_danh_muc',
+    tenKey: 'ten_danh_muc',
+    resultColumns: [
+      { key: 'ma_danh_muc', label: 'Mã', minWidth: 120 },
+      { key: 'ten_danh_muc', label: 'Tên', minWidth: 160 },
+      { key: 'mo_ta', label: 'Mô tả', minWidth: 180 },
+    ],
+  },
+  nha_cung_cap_trang_phuc: {
+    label: 'Nhà cung cấp trang phục',
+    maKey: 'ma_nha_cung_cap',
+    tenKey: 'ten_nha_cung_cap',
+    resultColumns: [
+      { key: 'ma_nha_cung_cap', label: 'Mã', minWidth: 120 },
+      { key: 'ten_nha_cung_cap', label: 'Tên', minWidth: 160 },
+      { key: 'so_dien_thoai', label: 'SĐT', minWidth: 120 },
+      { key: 'email', label: 'Email', minWidth: 160 },
+    ],
+  },
 }
 
 const visible = defineModel({ type: Boolean, default: false })
@@ -202,9 +227,13 @@ const result = ref(null)
 const resultVisible = ref(false)
 const resultTab = ref('thanh_cong')
 
+const loaiConfig = computed(() => LOAI_CONFIG[props.loaiDuLieu] || null)
+
 const resolvedTenLoai = computed(
-  () => props.tenLoai || LOAI_LABELS[props.loaiDuLieu] || props.loaiDuLieu
+  () => props.tenLoai || loaiConfig.value?.label || props.loaiDuLieu
 )
+
+const resultColumns = computed(() => loaiConfig.value?.resultColumns || [])
 
 const dialogTitle = computed(() => `Xuất / Nhập Excel + ${resolvedTenLoai.value}`)
 const resultTitle = computed(() => `Kết quả nhập Excel + ${resolvedTenLoai.value}`)
@@ -216,14 +245,17 @@ const canImport = computed(
 const thanhCong = computed(() => result.value?.thanh_cong || [])
 const thatBai = computed(() => result.value?.that_bai || [])
 
-const thatBaiRows = computed(() =>
-  thatBai.value.map((item) => ({
+const thatBaiRows = computed(() => {
+  const maKey = loaiConfig.value?.maKey
+  const tenKey = loaiConfig.value?.tenKey
+
+  return thatBai.value.map((item) => ({
     hang: item.hang,
     mo_ta: item.mo_ta,
-    ma: item.du_lieu?.ma_danh_muc || item.ma_danh_muc || '',
-    ten: item.du_lieu?.ten_danh_muc || item.ten_danh_muc || '',
+    ma: (maKey && (item.du_lieu?.[maKey] || item[maKey])) || '',
+    ten: (tenKey && (item.du_lieu?.[tenKey] || item[tenKey])) || '',
   }))
-)
+})
 
 function isAllowedExcel(file) {
   const name = (file?.name || '').toLowerCase()
