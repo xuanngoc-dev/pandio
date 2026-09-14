@@ -9,8 +9,12 @@ use App\Support\Media;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class TrangPhucController extends BaseApiController
 {
@@ -134,6 +138,126 @@ class TrangPhucController extends BaseApiController
             return response()->json($trang_phuc);
 
         }, 'lấy chi tiết trang phục');
+    }
+
+    /**
+     * Danh sách hình ảnh trong thư mục public/trang-phuc
+     * (và storage/app/public/trang-phuc — nơi upload API lưu file).
+     *
+     * Query: page, per_page, keyword
+     */
+    public function hinhAnh(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'page' => ['sometimes', 'integer', 'min:1'],
+                'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+                'keyword' => ['sometimes', 'nullable', 'string', 'max:255'],
+            ]);
+
+            $page = (int) ($validated['page'] ?? 1);
+            $perPage = (int) ($validated['per_page'] ?? 24);
+            $keyword = mb_strtolower(trim((string) ($validated['keyword'] ?? '')));
+
+            $items = $this->collectHinhAnhFiles();
+
+            if ($keyword !== '') {
+                $items = $items->filter(
+                    fn (array $item) => str_contains(mb_strtolower($item['name']), $keyword)
+                )->values();
+            }
+
+            $items = $items
+                ->sortByDesc(fn (array $item) => $item['modified_at'] ?? '')
+                ->values();
+
+            $total = $items->count();
+            $pageItems = $items->forPage($page, $perPage)->values();
+
+            $paginator = new LengthAwarePaginator(
+                $pageItems,
+                $total,
+                $perPage,
+                $page,
+                [
+                    'path' => $request->url(),
+                    'query' => $request->query(),
+                ]
+            );
+
+            return response()->json($paginator);
+
+        }, 'lấy danh sách hình ảnh trang phục');
+    }
+
+    /**
+     * Đổi tên file hình ảnh trong public/trang-phuc hoặc storage public disk.
+     * Không cập nhật hinh_anh trên trang phục đang tham chiếu file cũ.
+     */
+    public function doiTenHinhAnh(Request $request): JsonResponse
+    {
+        return $this->handleApi(function () use ($request) {
+            $validated = $request->validate([
+                'path' => ['required', 'string', 'max:1000'],
+                'name' => ['required', 'string', 'max:255'],
+            ], [
+                'path.required' => 'Thiếu đường dẫn hình ảnh.',
+                'name.required' => 'Vui lòng nhập tên file.',
+            ]);
+
+            $resolved = $this->resolveHinhAnhFile($validated['path']);
+            if ($resolved === null) {
+                return response()->json(['message' => 'Không tìm thấy hình ảnh.'], 404);
+            }
+
+            $oldName = $resolved['name'];
+            $newName = $this->sanitizeHinhAnhName($validated['name']);
+            $allowedExt = $this->hinhAnhExtensions();
+            $newExt = strtolower((string) pathinfo($newName, PATHINFO_EXTENSION));
+            $newStem = (string) pathinfo($newName, PATHINFO_FILENAME);
+
+            if ($newStem === '' || $newExt === '') {
+                throw ValidationException::withMessages([
+                    'name' => 'Tên file phải gồm tên và đuôi (vd: ao-cuoi.jpg).',
+                ]);
+            }
+
+            if (! in_array($newExt, $allowedExt, true)) {
+                throw ValidationException::withMessages([
+                    'name' => 'Đuôi file không hợp lệ. Chỉ chấp nhận: '.implode(', ', $allowedExt).'.',
+                ]);
+            }
+
+            $newName = $newStem.'.'.$newExt;
+
+            if ($newName === $oldName) {
+                return response()->json([
+                    'name' => $oldName,
+                    'path' => $resolved['path'],
+                    'url' => $resolved['url'],
+                ]);
+            }
+
+            $isSameFile = mb_strtolower($newName) === mb_strtolower($oldName);
+            if (! $isSameFile && $this->hinhAnhNameExists($newName)) {
+                throw ValidationException::withMessages([
+                    'name' => 'Tên file đã tồn tại. Vui lòng chọn tên khác.',
+                ]);
+            }
+
+            $this->moveHinhAnhFile($resolved, $newName);
+
+            $newPath = 'trang-phuc/'.$newName;
+
+            return response()->json([
+                'name' => $newName,
+                'path' => $newPath,
+                'url' => $resolved['location'] === 'public'
+                    ? asset($newPath)
+                    : Media::url($newPath),
+            ]);
+
+        }, 'đổi tên hình ảnh trang phục');
     }
 
     /**
@@ -292,6 +416,177 @@ class TrangPhucController extends BaseApiController
             ->filter()
             ->unique()
             ->values();
+    }
+
+    /**
+     * File ảnh trong public/trang-phuc và storage public disk trang-phuc.
+     *
+     * @return Collection<int, array{name: string, path: string, url: string, size: int, modified_at: string}>
+     */
+    private function collectHinhAnhFiles(): Collection
+    {
+        $extensions = $this->hinhAnhExtensions();
+        $items = collect();
+
+        $publicDir = public_path('trang-phuc');
+        if (is_dir($publicDir)) {
+            foreach (File::files($publicDir) as $file) {
+                $ext = strtolower($file->getExtension());
+                if (! in_array($ext, $extensions, true)) {
+                    continue;
+                }
+
+                $name = $file->getFilename();
+                $path = 'trang-phuc/'.$name;
+
+                $items->push([
+                    'name' => $name,
+                    'path' => $path,
+                    'url' => asset($path),
+                    'size' => $file->getSize(),
+                    'modified_at' => date('c', $file->getMTime()),
+                ]);
+            }
+        }
+
+        foreach (Storage::disk('public')->files('trang-phuc') as $storagePath) {
+            $ext = strtolower(pathinfo($storagePath, PATHINFO_EXTENSION));
+            if (! in_array($ext, $extensions, true)) {
+                continue;
+            }
+
+            $items->push([
+                'name' => basename($storagePath),
+                'path' => $storagePath,
+                'url' => Media::url($storagePath),
+                'size' => Storage::disk('public')->size($storagePath),
+                'modified_at' => date('c', Storage::disk('public')->lastModified($storagePath)),
+            ]);
+        }
+
+        return $items
+            ->unique(fn (array $item) => mb_strtolower($item['name']))
+            ->values();
+    }
+
+    /**
+     * @return array{location: string, name: string, path: string, url: string, absolute?: string}|null
+     */
+    private function resolveHinhAnhFile(string $path): ?array
+    {
+        $normalized = Media::normalizePath($path) ?: ltrim($path, '/');
+        $name = basename(str_replace('\\', '/', $normalized));
+
+        if ($name === '' || $name === '.' || $name === '..' || str_contains($name, '/') || str_contains($name, '\\')) {
+            return null;
+        }
+
+        $relative = 'trang-phuc/'.$name;
+        $publicFile = public_path($relative);
+        if (is_file($publicFile)) {
+            return [
+                'location' => 'public',
+                'name' => $name,
+                'path' => $relative,
+                'url' => asset($relative),
+                'absolute' => $publicFile,
+            ];
+        }
+
+        if (Storage::disk('public')->exists($relative)) {
+            return [
+                'location' => 'storage',
+                'name' => $name,
+                'path' => $relative,
+                'url' => Media::url($relative),
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function hinhAnhExtensions(): array
+    {
+        return ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'svg'];
+    }
+
+    private function sanitizeHinhAnhName(string $name): string
+    {
+        $name = str_replace(["\0", '/', '\\'], '', trim($name));
+        $name = basename($name);
+        $name = preg_replace('/[:*?"<>|]/u', '', $name) ?? '';
+        $name = trim($name);
+
+        return ltrim($name, '.');
+    }
+
+    private function hinhAnhNameExists(string $name): bool
+    {
+        $target = mb_strtolower(basename($name));
+
+        return $this->collectHinhAnhFiles()->contains(
+            fn (array $item) => mb_strtolower($item['name']) === $target
+        );
+    }
+
+    /**
+     * @param  array{location: string, name: string, path: string, absolute?: string}  $resolved
+     */
+    private function moveHinhAnhFile(array $resolved, string $newName): void
+    {
+        $newPath = 'trang-phuc/'.$newName;
+
+        if (($resolved['location'] ?? '') === 'public') {
+            $this->moveLocalFile((string) ($resolved['absolute'] ?? ''), public_path($newPath));
+
+            return;
+        }
+
+        $this->moveStorageFile($resolved['path'], $newPath);
+    }
+
+    private function moveLocalFile(string $from, string $to): void
+    {
+        if ($from === '' || $from === $to) {
+            return;
+        }
+
+        $dir = dirname($to);
+        if (! is_dir($dir)) {
+            File::makeDirectory($dir, 0755, true);
+        }
+
+        if (strcasecmp($from, $to) === 0) {
+            $tmp = $from.'.tmp-'.bin2hex(random_bytes(4));
+            File::move($from, $tmp);
+            File::move($tmp, $to);
+
+            return;
+        }
+
+        File::move($from, $to);
+    }
+
+    private function moveStorageFile(string $from, string $to): void
+    {
+        if ($from === $to) {
+            return;
+        }
+
+        $disk = Storage::disk('public');
+
+        if (strcasecmp($from, $to) === 0) {
+            $tmp = $from.'.tmp-'.bin2hex(random_bytes(4));
+            $disk->move($from, $tmp);
+            $disk->move($tmp, $to);
+
+            return;
+        }
+
+        $disk->move($from, $to);
     }
 
     /**

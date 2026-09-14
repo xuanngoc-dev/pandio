@@ -25,6 +25,22 @@ export function fetchTrangPhucLichChoThue(id) {
 }
 
 /**
+ * Danh sách hình ảnh trong thư mục trang-phuc (public + storage).
+ * @param {{ page?: number, per_page?: number, keyword?: string }} params
+ */
+export function fetchHinhAnhTrangPhuc(params = {}) {
+  return api.get('/trang-phuc/hinh-anh', { params })
+}
+
+/**
+ * Đổi tên file hình ảnh trang phục.
+ * @param {{ path: string, name: string }} payload
+ */
+export function updateHinhAnhTrangPhuc(payload) {
+  return api.put('/trang-phuc/hinh-anh', payload)
+}
+
+/**
  * Upload hình ảnh trang phục.
  * @param {File} file
  */

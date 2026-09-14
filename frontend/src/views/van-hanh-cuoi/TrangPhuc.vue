@@ -15,6 +15,9 @@
       <el-tab-pane v-if="hasTab('dat-mua')" label="Đặt mua trang phục" name="dat-mua">
         <DatMuaTrangPhuc />
       </el-tab-pane>
+      <el-tab-pane v-if="hasTab('hinh-anh-trang-phuc')" label="Hình ảnh trang phục" name="hinh-anh-trang-phuc">
+        <HinhAnhTrangPhuc />
+      </el-tab-pane>
     </el-tabs>
   </div>
 </template>
@@ -22,6 +25,7 @@
 <script setup>
 import DanhMucTrangPhuc from './trang-phuc/DanhMucTrangPhuc.vue'
 import DatMuaTrangPhuc from './trang-phuc/DatMuaTrangPhuc.vue'
+import HinhAnhTrangPhuc from './trang-phuc/HinhAnhTrangPhuc.vue'
 import NhaCungCapTrangPhuc from './trang-phuc/NhaCungCapTrangPhuc.vue'
 import TrangPhucList from './trang-phuc/TrangPhucList.vue'
 import { usePageTabs } from '@/composables/usePageTabs'

@@ -191,6 +191,8 @@ Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function (
     Route::apiResource('danh-muc-concept', DanhMucConceptController::class); // CRUD danh mục concept
 
     // --- Trang phục ---
+    Route::get('/trang-phuc/hinh-anh', [TrangPhucController::class, 'hinhAnh']); // Danh sách ảnh trong public/trang-phuc (+ storage)
+    Route::put('/trang-phuc/hinh-anh', [TrangPhucController::class, 'doiTenHinhAnh']); // Đổi tên file ảnh trang phục
     Route::post('/trang-phuc/upload-hinh-anh', [TrangPhucController::class, 'uploadHinhAnh']); // Upload ảnh trang phục
     Route::get('/trang-phuc/{trang_phuc}/lich-cho-thue', [TrangPhucController::class, 'lichChoThue']); // Lịch đang cho thuê của 1 bộ đồ
     Route::apiResource('trang-phuc', TrangPhucController::class);                       // CRUD trang phục

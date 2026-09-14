@@ -73,7 +73,8 @@
           { "key": "trang-phuc", "label": "Trang phục" },
           { "key": "danh-muc", "label": "Danh mục trang phục" },
           { "key": "nha-cung-cap", "label": "Nhà cung cấp trang phục" },
-          { "key": "dat-mua", "label": "Đặt mua trang phục" }
+          { "key": "dat-mua", "label": "Đặt mua trang phục" },
+          { "key": "hinh-anh-trang-phuc", "label": "Hình ảnh trang phục" }
         ]
       },
       {
