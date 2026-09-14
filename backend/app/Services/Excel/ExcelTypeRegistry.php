@@ -2,6 +2,7 @@
 
 namespace App\Services\Excel;
 
+use App\Services\Excel\Types\DanhMucConceptExcelType;
 use App\Services\Excel\Types\DanhMucTrangPhucExcelType;
 use App\Services\Excel\Types\NhaCungCapTrangPhucExcelType;
 use App\Services\Excel\Types\TrangPhucExcelType;
@@ -14,6 +15,7 @@ class ExcelTypeRegistry
         'danh_muc_trang_phuc' => DanhMucTrangPhucExcelType::class,
         'nha_cung_cap_trang_phuc' => NhaCungCapTrangPhucExcelType::class,
         'trang_phuc' => TrangPhucExcelType::class,
+        'danh_muc_concept' => DanhMucConceptExcelType::class,
     ];
 
     /**

@@ -135,7 +135,7 @@
           style="width: 100%"
         >
           <CustomTableColumn prop="hang" label="Hàng" width="70" align="center" />
-          <CustomTableColumn prop="ma" label="Mã" min-width="120">
+          <CustomTableColumn v-if="loaiConfig?.maKey" prop="ma" label="Mã" min-width="120">
             <template #default="{ row }">
               {{ row.ma || '—' }}
             </template>
@@ -196,6 +196,15 @@ const LOAI_CONFIG = {
       { key: 'email', label: 'Email', minWidth: 160 },
     ],
   },
+  danh_muc_concept: {
+    label: 'Danh mục concept',
+    tenKey: 'ten_danh_muc',
+    duplicateHint: 'Tên danh mục đã tồn tại sẽ không được thêm.',
+    resultColumns: [
+      { key: 'ten_danh_muc', label: 'Tên', minWidth: 160 },
+      { key: 'mo_ta', label: 'Mô tả', minWidth: 180 },
+    ],
+  },
   trang_phuc: {
     label: 'Trang phục',
     maKey: 'ma_san_pham',
@@ -253,6 +262,10 @@ const importDesc = computed(
   () =>
     loaiConfig.value?.importHint ||
     'Nhập dữ liệu từ file Excel (.xlsx, .xls, .csv) vào hệ thống.'
+)
+
+const duplicateHint = computed(
+  () => loaiConfig.value?.duplicateHint || 'Mã đã tồn tại sẽ không được thêm.'
 )
 
 const dialogTitle = computed(() => `Xuất / Nhập Excel + ${resolvedTenLoai.value}`)
@@ -401,7 +414,7 @@ async function onImport() {
   const tong = previewItems.value.length
   try {
     await ElMessageBox.confirm(
-      `Nhập ${tong} dòng ${resolvedTenLoai.value}? Mã đã tồn tại sẽ không được thêm.`,
+      `Nhập ${tong} dòng ${resolvedTenLoai.value}? ${duplicateHint.value}`,
       'Xác nhận nhập Excel',
       {
         type: 'warning',

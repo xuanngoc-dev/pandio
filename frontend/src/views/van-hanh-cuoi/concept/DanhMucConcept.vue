@@ -35,6 +35,11 @@
                 Thêm
               </CustomButton>
             </CustomTooltip>
+            <CustomTooltip content="Xuất / Nhập Excel" placement="top">
+              <CustomButton :icon="Download" @click="excelVisible = true">
+                Xuất/Nhập Excel
+              </CustomButton>
+            </CustomTooltip>
           </BulkActionBar>
         </div>
       </template>
@@ -123,19 +128,27 @@
         <CustomButton type="primary" :loading="saving" @click="save">Lưu</CustomButton>
       </template>
     </CustomDialog>
+
+    <ExcelImportExportModal
+      v-model="excelVisible"
+      loai-du-lieu="danh_muc_concept"
+      ten-loai="Danh mục concept"
+      @imported="loadItems"
+    />
   </div>
 </template>
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Delete, Edit, Plus, Search } from '@element-plus/icons-vue'
+import { Delete, Download, Edit, Search } from '@element-plus/icons-vue'
 import {
   createDanhMucConcept,
   deleteDanhMucConcept,
   fetchDanhMucConcept,
   updateDanhMucConcept,
 } from '@/api/danhMucConcept'
+import ExcelImportExportModal from '@/components/ExcelImportExportModal.vue'
 import BulkActionBar from '@/components/BulkActionBar.vue'
 import TableColumnConfig from '@/components/TableColumnConfig.vue'
 import { runBulk, useBulkSelection } from '@/composables/useBulkSelection'
@@ -171,6 +184,7 @@ const total = ref(0)
 const keyword = ref('')
 
 const dialogVisible = ref(false)
+const excelVisible = ref(false)
 const editingId = ref(null)
 const formRef = ref(null)
 const bulkDeleting = ref(false)
