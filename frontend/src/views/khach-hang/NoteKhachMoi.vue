@@ -437,10 +437,8 @@ const trangThaiOptions = [
 const nguonKhachOptions = ref([])
 
 const hinhThucDatCocOptions = [
-  { value: 'tien_mat', label: 'Tiền mặt' },
-  { value: 'chuyen_khoan', label: 'Chuyển khoản' },
-  { value: 'khong_coc', label: 'Không cọc' },
-  { value: 'khac', label: 'Khác' },
+  { value: 'online', label: 'Cọc online' },
+  { value: 'tai_cua_hang', label: 'Tại cửa hàng' },
 ]
 
 const items = ref([])
